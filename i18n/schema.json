@@ -2236,6 +2236,236 @@
 			"type": "object",
 			"additionalProperties": false,
 			"properties": {
+				"history": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"providerConfiguration": {
+							"type": "string"
+						},
+						"providerCredential": {
+							"type": "string"
+						},
+						"memberHistory": {
+							"type": "string"
+						},
+						"roleChanged": {
+							"type": "string"
+						},
+						"preferenceFields": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"density": {
+									"type": "string"
+								},
+								"layout": {
+									"type": "string"
+								},
+								"listGroups": {
+									"type": "string"
+								},
+								"columns": {
+									"type": "string"
+								},
+								"columnWidths": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"density",
+								"layout",
+								"listGroups",
+								"columns",
+								"columnWidths"
+							]
+						},
+						"notificationDelivery": {
+							"type": "string"
+						},
+						"notificationDigest": {
+							"type": "string"
+						},
+						"notificationQuietHours": {
+							"type": "string"
+						},
+						"notificationWorkspaceRule": {
+							"type": "string"
+						},
+						"securityPassword": {
+							"type": "string"
+						},
+						"securityMfa": {
+							"type": "string"
+						},
+						"personalKey": {
+							"type": "string"
+						},
+						"profileYou": {
+							"type": "string"
+						},
+						"profileLocale": {
+							"type": "string"
+						},
+						"title": {
+							"type": "string"
+						},
+						"lastChanged": {
+							"type": "string"
+						},
+						"empty": {
+							"type": "string"
+						},
+						"error": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"personUnavailable": {
+							"type": "string"
+						},
+						"apiKey": {
+							"type": "string"
+						},
+						"automation": {
+							"type": "string"
+						},
+						"system": {
+							"type": "string"
+						},
+						"fields": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"name": {
+									"type": "string"
+								},
+								"description": {
+									"type": "string"
+								},
+								"icon": {
+									"type": "string"
+								},
+								"key": {
+									"type": "string"
+								},
+								"logo": {
+									"type": "string"
+								},
+								"workspaceSlug": {
+									"type": "string"
+								},
+								"kind": {
+									"type": "string"
+								},
+								"supportLevel": {
+									"type": "string"
+								},
+								"serviceCalendar": {
+									"type": "string"
+								},
+								"defaultCommentVisibility": {
+									"type": "string"
+								},
+								"manager": {
+									"type": "string"
+								},
+								"startDate": {
+									"type": "string"
+								},
+								"endDate": {
+									"type": "string"
+								},
+								"defaultAssignee": {
+									"type": "string"
+								},
+								"health": {
+									"type": "string"
+								},
+								"stateSetMode": {
+									"type": "string"
+								},
+								"position": {
+									"type": "string"
+								},
+								"isDefault": {
+									"type": "string"
+								},
+								"activity": {
+									"type": "string"
+								},
+								"archived": {
+									"type": "string"
+								},
+								"workflowDefinition": {
+									"type": "string"
+								},
+								"workflowActiveVersion": {
+									"type": "string"
+								},
+								"backdateLimit": {
+									"type": "string"
+								},
+								"defaultBillable": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"name",
+								"description",
+								"icon",
+								"key",
+								"logo",
+								"workspaceSlug",
+								"kind",
+								"supportLevel",
+								"serviceCalendar",
+								"defaultCommentVisibility",
+								"manager",
+								"startDate",
+								"endDate",
+								"defaultAssignee",
+								"health",
+								"stateSetMode",
+								"position",
+								"isDefault",
+								"activity",
+								"archived",
+								"workflowDefinition",
+								"workflowActiveVersion",
+								"backdateLimit",
+								"defaultBillable"
+							]
+						}
+					},
+					"required": [
+						"providerConfiguration",
+						"providerCredential",
+						"memberHistory",
+						"roleChanged",
+						"preferenceFields",
+						"notificationDelivery",
+						"notificationDigest",
+						"notificationQuietHours",
+						"notificationWorkspaceRule",
+						"securityPassword",
+						"securityMfa",
+						"personalKey",
+						"profileYou",
+						"profileLocale",
+						"title",
+						"lastChanged",
+						"empty",
+						"error",
+						"retry",
+						"personUnavailable",
+						"apiKey",
+						"automation",
+						"system",
+						"fields"
+					]
+				},
 				"account": {
 					"type": "string"
 				},
@@ -8447,6 +8677,7 @@
 				}
 			},
 			"required": [
+				"history",
 				"account",
 				"developer",
 				"information",
@@ -15494,6 +15725,57 @@
 							"type": "object",
 							"additionalProperties": false,
 							"properties": {
+								"workflow_created": {
+									"type": "string"
+								},
+								"workflow_version_created": {
+									"type": "string"
+								},
+								"workflow_version_published": {
+									"type": "string"
+								},
+								"time_settings_updated": {
+									"type": "string"
+								},
+								"plugin_changed": {
+									"type": "string"
+								},
+								"canned_response_created": {
+									"type": "string"
+								},
+								"canned_response_updated": {
+									"type": "string"
+								},
+								"canned_response_deleted": {
+									"type": "string"
+								},
+								"automation_created": {
+									"type": "string"
+								},
+								"automation_updated": {
+									"type": "string"
+								},
+								"automation_enabled": {
+									"type": "string"
+								},
+								"automation_disabled": {
+									"type": "string"
+								},
+								"team_created": {
+									"type": "string"
+								},
+								"team_updated": {
+									"type": "string"
+								},
+								"team_member_added": {
+									"type": "string"
+								},
+								"team_member_updated": {
+									"type": "string"
+								},
+								"team_member_removed": {
+									"type": "string"
+								},
 								"work_item_created": {
 									"type": "string"
 								},
@@ -15559,9 +15841,47 @@
 								},
 								"bulk_performed": {
 									"type": "string"
+								},
+								"workspace_settings_updated": {
+									"type": "string"
+								},
+								"workspace_project_settings_updated": {
+									"type": "string"
+								},
+								"project_settings_updated": {
+									"type": "string"
+								},
+								"project_general_settings_updated": {
+									"type": "string"
+								},
+								"project_states_updated": {
+									"type": "string"
+								},
+								"time_activity_created": {
+									"type": "string"
+								},
+								"time_activity_updated": {
+									"type": "string"
 								}
 							},
 							"required": [
+								"workflow_created",
+								"workflow_version_created",
+								"workflow_version_published",
+								"time_settings_updated",
+								"plugin_changed",
+								"canned_response_created",
+								"canned_response_updated",
+								"canned_response_deleted",
+								"automation_created",
+								"automation_updated",
+								"automation_enabled",
+								"automation_disabled",
+								"team_created",
+								"team_updated",
+								"team_member_added",
+								"team_member_updated",
+								"team_member_removed",
 								"work_item_created",
 								"work_item_updated",
 								"work_item_transitioned",
@@ -15583,7 +15903,14 @@
 								"attachment_downloaded",
 								"audit_read",
 								"pending_action_viewed",
-								"bulk_performed"
+								"bulk_performed",
+								"workspace_settings_updated",
+								"workspace_project_settings_updated",
+								"project_settings_updated",
+								"project_general_settings_updated",
+								"project_states_updated",
+								"time_activity_created",
+								"time_activity_updated"
 							]
 						},
 						"fields": {
@@ -21949,6 +22276,19 @@
 			"type": "object",
 			"additionalProperties": false,
 			"properties": {
+				"changes": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						}
+					},
+					"required": ["title", "description"]
+				},
 				"workspace": {
 					"type": "object",
 					"additionalProperties": false,
@@ -21994,6 +22334,9 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"changeHistory": {
+							"type": "string"
+						},
 						"new": {
 							"type": "string"
 						},
@@ -22086,6 +22429,7 @@
 						}
 					},
 					"required": [
+						"changeHistory",
 						"new",
 						"enabled",
 						"disabled",
@@ -23004,6 +23348,7 @@
 				}
 			},
 			"required": [
+				"changes",
 				"workspace",
 				"project",
 				"list",

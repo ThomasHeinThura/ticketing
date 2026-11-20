@@ -1295,7 +1295,33 @@
 			"personUnavailable": "Osoba niedostępna",
 			"apiKey": "Klucz API",
 			"automation": "Automatyzacja",
-			"system": "System"
+			"system": "System",
+			"fields": {
+				"name": "Nazwa",
+				"description": "Opis",
+				"icon": "Ikona",
+				"key": "Klucz",
+				"logo": "Logo",
+				"workspaceSlug": "Identyfikator obszaru roboczego",
+				"kind": "Rodzaj",
+				"supportLevel": "Poziom wsparcia",
+				"serviceCalendar": "Kalendarz usług",
+				"defaultCommentVisibility": "Domyślna widoczność komentarzy",
+				"manager": "Kierownik",
+				"startDate": "Data rozpoczęcia",
+				"endDate": "Data zakończenia",
+				"defaultAssignee": "Domyślnie przypisana osoba",
+				"health": "Kondycja",
+				"stateSetMode": "Zestaw statusów",
+				"position": "Pozycja",
+				"isDefault": "Domyślne",
+				"activity": "Aktywność",
+				"archived": "Zarchiwizowano",
+				"workflowDefinition": "Wersje",
+				"workflowActiveVersion": "Aktywna wersja",
+				"backdateLimit": "Limit wpisów z datą wsteczną (dni)",
+				"defaultBillable": "Nowy czas jest domyślnie rozliczalny"
+			}
 		},
 		"account": "Konto",
 		"apiKey": {
@@ -3880,7 +3906,14 @@
 				"work_item_transitioned": "Changed state",
 				"work_item_unassigned": "Unassigned",
 				"work_item_unblocked": "Unblocked",
-				"work_item_updated": "Updated"
+				"work_item_updated": "Updated",
+				"workspace_settings_updated": "Zaktualizowano ustawienia obszaru roboczego",
+				"workspace_project_settings_updated": "Zaktualizowano domyślne ustawienia projektów obszaru roboczego",
+				"project_settings_updated": "Zaktualizowano ustawienia projektu",
+				"project_general_settings_updated": "Zaktualizowano ogólne ustawienia projektu",
+				"project_states_updated": "Zaktualizowano statusy projektu",
+				"time_activity_created": "Utworzono aktywność czasową",
+				"time_activity_updated": "Zaktualizowano aktywność czasową"
 			},
 			"emptyValue": "(empty)",
 			"fields": {

@@ -28,6 +28,31 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     configuration: "settings:history.providerConfiguration",
     credential: "settings:history.providerCredential",
   },
+  workspace: {
+    name: "settings:history.fields.name",
+    slug: "settings:history.fields.workspaceSlug",
+    logo: "settings:history.fields.logo",
+    description: "settings:history.fields.description",
+  },
+  project: {
+    name: "settings:history.fields.name",
+    icon: "settings:history.fields.icon",
+    slug: "settings:history.fields.key",
+    description: "settings:history.fields.description",
+    kind: "settings:history.fields.kind",
+    supportLevel: "settings:history.fields.supportLevel",
+    serviceCalendarId: "settings:history.fields.serviceCalendar",
+    defaultCommentVisibility:
+      "settings:history.fields.defaultCommentVisibility",
+    managerId: "settings:history.fields.manager",
+    startDate: "settings:history.fields.startDate",
+    endDate: "settings:history.fields.endDate",
+    defaultAssigneeId: "settings:history.fields.defaultAssignee",
+    health: "settings:history.fields.health",
+    stateSetMode: "settings:history.fields.stateSetMode",
+    position: "settings:history.fields.position",
+    isDefault: "settings:history.fields.isDefault",
+  },
   workspace_member: { role: "settings:projectMembers.role" },
   project_membership: { role: "settings:projectMembers.role" },
   canned_response: {
@@ -68,8 +93,8 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
       "godModeSettings:fields.attachmentAllowedExtensions.label",
   },
   time_activity: {
-    name: "timeTracking:fields.activity",
-    archived: "timeTracking:activities.archived",
+    name: "settings:history.fields.activity",
+    archived: "settings:history.fields.archived",
   },
   automation: {
     name: "automations:editor.name",
@@ -259,51 +284,27 @@ function SettingsHistoryForSession({
                         ? ["definition", "activeVersion"]
                         : labelled
                           ? Object.keys(labelled)
-                          : type === "project"
-                            ? [
-                                "name",
-                                "icon",
-                                "slug",
-                                "description",
-                                "kind",
-                                "supportLevel",
-                                "serviceCalendarId",
-                                "defaultCommentVisibility",
-                                "managerId",
-                                "startDate",
-                                "endDate",
-                                "defaultAssigneeId",
-                                "health",
-                                "stateSetMode",
-                                "position",
-                                "isDefault",
-                              ]
-                            : ["name", "slug", "logo", "description"]
+                          : ["name", "slug", "logo", "description"]
                       ).includes(field),
                 )
                 .map((field) =>
                   row.action === "time_settings.updated" &&
                   field === "backdateLimitDays" &&
                   type === "workspace"
-                    ? t("timeTracking:settings.backdateLimit")
+                    ? t("settings:history.fields.backdateLimit")
                     : row.action === "time_settings.updated" &&
                         field === "projectDefaultBillable" &&
                         type === "project"
-                      ? t("timeTracking:settings.defaultBillable")
+                      ? t("settings:history.fields.defaultBillable")
                       : type === "workflow"
                         ? t(
                             field === "definition"
-                              ? "settings:workflows.versions.title"
-                              : "settings:workflows.list.active",
+                              ? "settings:history.fields.workflowDefinition"
+                              : "settings:history.fields.workflowActiveVersion",
                           )
                         : labelled
                           ? t(labelled[field] ?? "")
-                          : auditFieldLabel(
-                              field
-                                .replace(/Id$/, "")
-                                .replace(/([a-z])([A-Z])/g, "$1_$2"),
-                              t,
-                            ),
+                          : auditFieldLabel(field, t),
                 )
                 .join(", ")}
             </p>

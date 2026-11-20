@@ -249,7 +249,9 @@ describe("SettingsHistory", () => {
     expect(get).toHaveBeenCalledWith("project", "p1", expect.any(AbortSignal));
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
     expect(
-      await screen.findByText(/Service Calendar, State Set Mode/),
+      await screen.findByText(
+        /settings:history.fields.serviceCalendar, settings:history.fields.stateSetMode/,
+      ),
     ).toBeTruthy();
     expect(
       screen.queryByText(/privateField|hidden-value|serviceCalendarId/),
@@ -283,7 +285,7 @@ describe("SettingsHistory", () => {
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
     expect(
       await screen.findByText(
-        /settings:workflows.versions.title, settings:workflows.list.active/,
+        /settings:history.fields.workflowDefinition, settings:history.fields.workflowActiveVersion/,
       ),
     ).toBeTruthy();
     expect(
@@ -362,7 +364,7 @@ describe("SettingsHistory", () => {
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
     expect(
       await screen.findByText(
-        "timeTracking:fields.activity, timeTracking:activities.archived",
+        "settings:history.fields.activity, settings:history.fields.archived",
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/position|secret_raw|hidden-value/)).toBeNull();
@@ -486,8 +488,8 @@ describe("SettingsHistory", () => {
     for (const locale of locales) {
       const own = read(locale);
       for (const key of [
-        "timeTracking:fields.activity",
-        "timeTracking:activities.archived",
+        "settings:history.fields.activity",
+        "settings:history.fields.archived",
       ])
         expect(lookup(own, key), `${locale} ${key}`).toBeTruthy();
     }
@@ -1032,13 +1034,13 @@ it.each([
   [
     "workspace",
     "backdateLimitDays",
-    "timeTracking:settings.backdateLimit",
+    "settings:history.fields.backdateLimit",
     "projectDefaultBillable",
   ],
   [
     "project",
     "projectDefaultBillable",
-    "timeTracking:settings.defaultBillable",
+    "settings:history.fields.defaultBillable",
     "backdateLimitDays",
   ],
 ] as const)(
@@ -1108,7 +1110,9 @@ it("keeps legacy time-setting rows to action and time when no verified marker ex
   await waitFor(() =>
     expect(screen.getByText(/Time settings updated/)).toBeTruthy(),
   );
-  expect(screen.queryByText("timeTracking:settings.backdateLimit")).toBeNull();
+  expect(
+    screen.queryByText("settings:history.fields.backdateLimit"),
+  ).toBeNull();
 });
 
 it("localizes the time-settings action in all 19 catalogs", () => {

@@ -147,7 +147,7 @@ const when = "2026-01-01T00:00:00Z";
 const person = { kind: "person" as const, name: "Alice" };
 async function renderHistory(
   locale: string,
-  type: "instance" | "team",
+  type: "instance" | "team" | "workspace" | "project" | "time_activity",
   id: string,
   payload: Json,
 ) {
@@ -392,4 +392,126 @@ describe("SettingsHistory renders the translated strings (real i18next)", () => 
       expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
     },
   );
+});
+
+const NEW_FIELDS = [
+  "name",
+  "description",
+  "icon",
+  "key",
+  "logo",
+  "workspaceSlug",
+  "kind",
+  "supportLevel",
+  "serviceCalendar",
+  "defaultCommentVisibility",
+  "manager",
+  "startDate",
+  "endDate",
+  "defaultAssignee",
+  "health",
+  "stateSetMode",
+  "position",
+  "isDefault",
+  "activity",
+  "archived",
+  "workflowDefinition",
+  "workflowActiveVersion",
+  "backdateLimit",
+  "defaultBillable",
+] as const;
+const NEW_ACTIONS = [
+  "workspace_settings_updated",
+  "workspace_project_settings_updated",
+  "project_settings_updated",
+  "project_general_settings_updated",
+  "project_states_updated",
+  "time_activity_created",
+  "time_activity_updated",
+] as const;
+
+describe("workspace, project and time activity History labels", () => {
+  it.each(nonEnglish)(
+    "%s: every label key exists with its placeholders",
+    (locale) => {
+      const own = read(locale);
+      const paths = [
+        ...NEW_FIELDS.map((k) => `settings.history.fields.${k}`),
+        ...NEW_ACTIONS.map((k) => `workItems.auditHistory.actions.${k}`),
+      ];
+      for (const path of paths) {
+        const value = at(own, path);
+        expect(value, `${locale} ${path}`).toBe(value.trim());
+        expect(value, `${locale} ${path}`).not.toBe("");
+        // Some catalogs spell the project word out instead of using the term placeholder.
+        for (const placeholder of value.match(/\{\{[^}]+\}\}/g) ?? [])
+          expect(
+            ["{{term_project_one}}", "{{term_project_other}}"],
+            `${locale} ${path}`,
+          ).toContain(placeholder);
+      }
+    },
+  );
+
+  it("de-DE: workspace update, project field change and time activity events are German", async () => {
+    const own = read("de-DE");
+    const cases: Array<
+      [
+        "workspace" | "project" | "time_activity",
+        string,
+        string[],
+        string,
+        string,
+      ]
+    > = [
+      [
+        "workspace",
+        "workspace.settings_updated",
+        ["name", "description"],
+        "Workspace-Einstellungen aktualisiert",
+        "Name, Beschreibung",
+      ],
+      [
+        "project",
+        "project.general_settings_updated",
+        ["serviceCalendarId", "managerId"],
+        "Allgemeine Projekteinstellungen aktualisiert",
+        "Servicekalender, Projektleitung",
+      ],
+      [
+        "time_activity",
+        "time_activity.created",
+        ["name"],
+        "Zeitaktivität erstellt",
+        "Aktivität",
+      ],
+      [
+        "time_activity",
+        "time_activity.updated",
+        ["name", "archived"],
+        "Zeitaktivität aktualisiert",
+        "Aktivität, Archiviert",
+      ],
+    ];
+    for (const [type, action, changedFields, title, fields] of cases) {
+      await renderHistory("de-DE", type, "x1", {
+        lastChanged: { actor: person, at: when },
+        rows: [{ at: when, actor: person, action, changedFields }],
+      });
+      await screen.findByRole("button", {
+        name: at(own, "settings.history.title"),
+      });
+      open("de-DE");
+      expect(
+        await screen.findByText(new RegExp(`^${escapeRe(title)} · `)),
+      ).toBeTruthy();
+      expect(screen.getByText(fields)).toBeTruthy();
+      expect(
+        screen.queryByText(
+          /Workspace settings|Time activity|Service calendar|Manager|Archived|Activity|settings updated|Description/,
+        ),
+      ).toBeNull();
+      cleanup();
+    }
+  });
 });
