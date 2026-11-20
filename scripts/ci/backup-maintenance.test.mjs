@@ -112,6 +112,10 @@ function handle() {
     delete c.networks[argv[2]]; return;
   }
   if (argv[0] === "network" && argv[1] === "connect") {
+    if (process.env.FAKE_SIGNAL_RECONNECT && !existsSync(process.env.FAKE_SIGNAL_RECONNECT)) {
+      writeFileSync(process.env.FAKE_SIGNAL_RECONNECT, "sent");
+      process.kill(process.ppid, "SIGTERM");
+    }
     const aliases = [];
     for (let i = 2; i < argv.length - 2; i += 2) aliases.push(argv[i + 1]);
     const c = s.containers[find(argv[argv.length - 1])];
@@ -763,6 +767,20 @@ test("M-F12: SIGTERM during the backup still releases", async () => {
     assert.equal(status, 143, stderr);
     assertRestored(f);
     assert.match(outcome(f), /release=verified/);
+  } finally {
+    f.close();
+  }
+});
+
+test("SIGTERM during reconnection still releases and records the outcome", () => {
+  const f = fixture();
+  try {
+    const signal = join(f.dir, "signal-sent");
+    const r = f.run({ FAKE_SIGNAL_RECONNECT: signal });
+    assert.ok(existsSync(signal));
+    assert.equal(r.status, 0, r.stderr);
+    assertRestored(f);
+    assert.match(outcome(f), /^backup=published\nrelease=verified\n/);
   } finally {
     f.close();
   }

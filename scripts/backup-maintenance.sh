@@ -419,7 +419,8 @@ report_outcome() {
 
 on_exit() {
   local st=$?
-  trap - EXIT INT TERM HUP
+  trap - EXIT
+  trap '' INT TERM HUP
   if [ "$MUTATING" = 1 ]; then release; fi
   report_outcome
   case "$RELEASE" in
