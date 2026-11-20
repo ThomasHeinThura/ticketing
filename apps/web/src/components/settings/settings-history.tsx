@@ -75,6 +75,12 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     body: "settings:history.fields.body",
     visibilityDefault: "settings:history.fields.visibilityDefault",
   },
+  state_template: {
+    created: "settings:history.fields.created",
+    enabled: "settings:history.fields.enabled",
+    name: "settings:history.fields.name",
+    group: "settings:history.fields.group",
+  },
   // The 18 keys the API projects for `instance.settings_changed`.
   instance: {
     approvalDefaultExpiryDays:

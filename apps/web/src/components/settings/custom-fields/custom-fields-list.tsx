@@ -39,7 +39,7 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
@@ -72,6 +72,12 @@ function moved<T>(list: readonly T[], from: number, to: number): T[] {
   next.splice(to, 0, item);
   return next;
 }
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 function SectionDialog({
   section,
@@ -156,6 +162,18 @@ function SectionDialog({
               <Alert variant="error">
                 <AlertDescription>{save.error.message}</AlertDescription>
               </Alert>
+            ) : null}
+            {section ? (
+              <Suspense fallback={null}>
+                <SettingsHistory
+                  target={{
+                    kind: "entity",
+                    type: "custom_field_section",
+                    id: section.id,
+                    scope: { kind: "workspace", workspaceId },
+                  }}
+                />
+              </Suspense>
             ) : null}
           </div>
           <DialogFooter>

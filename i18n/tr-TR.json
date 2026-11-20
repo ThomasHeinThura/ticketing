@@ -643,7 +643,9 @@
 				"staffSelfRegistration": "Personel kendi kaydı",
 				"enabled": "Etkin",
 				"schedule": "Zamanlama",
-				"unknown": "Diğer ayar"
+				"unknown": "Diğer ayar",
+				"group": "Grup",
+				"created": "Oluşturuldu"
 			},
 			"actions": {
 				"workflow_created": "İş akışı oluşturuldu",
@@ -689,7 +691,29 @@
 				"webhook_auto_disabled": "Webhook otomatik olarak devre dışı bırakıldı",
 				"job_configuration_changed": "İş yapılandırması değiştirildi",
 				"identity_connection_changed": "Kimlik bağlantısı değiştirildi",
-				"unknown": "Ayarlar değiştirildi"
+				"unknown": "Ayarlar değiştirildi",
+				"team_deleted": "Ekip silindi",
+				"service_calendar_created": "Hizmet takvimi oluşturuldu",
+				"service_calendar_updated": "Hizmet takvimi güncellendi",
+				"service_calendar_deleted": "Hizmet takvimi silindi",
+				"sla_policy_created": "SLA ilkesi oluşturuldu",
+				"sla_policy_updated": "SLA ilkesi güncellendi",
+				"sla_policy_published": "SLA ilkesi yayımlandı",
+				"request_type_created": "Talep türü oluşturuldu",
+				"request_type_updated": "Talep türü güncellendi",
+				"request_type_published": "Talep türü yayımlandı",
+				"request_type_unpublished": "Talep türü yayından kaldırıldı",
+				"request_type_deleted": "Talep türü silindi",
+				"custom_field_created": "Özel alan oluşturuldu",
+				"custom_field_updated": "Özel alan güncellendi",
+				"custom_field_deleted": "Özel alan silindi",
+				"custom_field_restored": "Özel alan geri yüklendi",
+				"custom_field_purged": "Özel alan kalıcı olarak silindi",
+				"custom_field_section_created": "Özel alan bölümü oluşturuldu",
+				"custom_field_section_updated": "Özel alan bölümü güncellendi",
+				"custom_field_section_deleted": "Özel alan bölümü silindi",
+				"state_template_created": "Durum şablonu oluşturuldu",
+				"state_template_updated": "Durum şablonu güncellendi"
 			}
 		},
 		"account": "Hesap",

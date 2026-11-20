@@ -643,7 +643,9 @@
 				"staffSelfRegistration": "Selbstregistrierung für Mitarbeiter",
 				"enabled": "Aktiviert",
 				"schedule": "Zeitplan",
-				"unknown": "Weitere Einstellung"
+				"unknown": "Weitere Einstellung",
+				"group": "Gruppe",
+				"created": "Erstellt"
 			},
 			"actions": {
 				"workflow_created": "Workflow erstellt",
@@ -689,7 +691,29 @@
 				"webhook_auto_disabled": "Webhook automatisch deaktiviert",
 				"job_configuration_changed": "Jobkonfiguration geändert",
 				"identity_connection_changed": "Identitätsverbindung geändert",
-				"unknown": "Einstellungen geändert"
+				"unknown": "Einstellungen geändert",
+				"team_deleted": "Team gelöscht",
+				"service_calendar_created": "Servicekalender erstellt",
+				"service_calendar_updated": "Servicekalender aktualisiert",
+				"service_calendar_deleted": "Servicekalender gelöscht",
+				"sla_policy_created": "SLA-Richtlinie erstellt",
+				"sla_policy_updated": "SLA-Richtlinie aktualisiert",
+				"sla_policy_published": "SLA-Richtlinie veröffentlicht",
+				"request_type_created": "Anfragetyp erstellt",
+				"request_type_updated": "Anfragetyp aktualisiert",
+				"request_type_published": "Anfragetyp veröffentlicht",
+				"request_type_unpublished": "Anfragetyp zurückgezogen",
+				"request_type_deleted": "Anfragetyp gelöscht",
+				"custom_field_created": "Benutzerdefiniertes Feld erstellt",
+				"custom_field_updated": "Benutzerdefiniertes Feld aktualisiert",
+				"custom_field_deleted": "Benutzerdefiniertes Feld gelöscht",
+				"custom_field_restored": "Benutzerdefiniertes Feld wiederhergestellt",
+				"custom_field_purged": "Benutzerdefiniertes Feld endgültig gelöscht",
+				"custom_field_section_created": "Abschnitt für benutzerdefinierte Felder erstellt",
+				"custom_field_section_updated": "Abschnitt für benutzerdefinierte Felder aktualisiert",
+				"custom_field_section_deleted": "Abschnitt für benutzerdefinierte Felder gelöscht",
+				"state_template_created": "Statusvorlage erstellt",
+				"state_template_updated": "Statusvorlage aktualisiert"
 			}
 		},
 		"account": "Konto",

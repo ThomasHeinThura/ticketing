@@ -643,7 +643,9 @@
 				"staffSelfRegistration": "Саморегистрация сотрудников",
 				"enabled": "Включено",
 				"schedule": "Расписание",
-				"unknown": "Другая настройка"
+				"unknown": "Другая настройка",
+				"group": "Группа",
+				"created": "Создано"
 			},
 			"actions": {
 				"workflow_created": "Рабочий процесс создан",
@@ -689,7 +691,29 @@
 				"webhook_auto_disabled": "Webhook автоматически отключён",
 				"job_configuration_changed": "Конфигурация задания изменена",
 				"identity_connection_changed": "Подключение удостоверения изменено",
-				"unknown": "Настройки изменены"
+				"unknown": "Настройки изменены",
+				"team_deleted": "Команда удалена",
+				"service_calendar_created": "Календарь обслуживания создан",
+				"service_calendar_updated": "Календарь обслуживания обновлён",
+				"service_calendar_deleted": "Календарь обслуживания удалён",
+				"sla_policy_created": "Политика SLA создана",
+				"sla_policy_updated": "Политика SLA обновлена",
+				"sla_policy_published": "Политика SLA опубликована",
+				"request_type_created": "Тип запроса создан",
+				"request_type_updated": "Тип запроса обновлён",
+				"request_type_published": "Тип запроса опубликован",
+				"request_type_unpublished": "Тип запроса снят с публикации",
+				"request_type_deleted": "Тип запроса удалён",
+				"custom_field_created": "Настраиваемое поле создано",
+				"custom_field_updated": "Настраиваемое поле обновлено",
+				"custom_field_deleted": "Настраиваемое поле удалено",
+				"custom_field_restored": "Настраиваемое поле восстановлено",
+				"custom_field_purged": "Настраиваемое поле удалено навсегда",
+				"custom_field_section_created": "Раздел настраиваемых полей создан",
+				"custom_field_section_updated": "Раздел настраиваемых полей обновлён",
+				"custom_field_section_deleted": "Раздел настраиваемых полей удалён",
+				"state_template_created": "Шаблон состояния создан",
+				"state_template_updated": "Шаблон состояния обновлён"
 			}
 		},
 		"account": "Аккаунт",

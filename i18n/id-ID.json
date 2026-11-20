@@ -643,7 +643,9 @@
 				"staffSelfRegistration": "Pendaftaran mandiri staf",
 				"enabled": "Aktif",
 				"schedule": "Jadwal",
-				"unknown": "Pengaturan lainnya"
+				"unknown": "Pengaturan lainnya",
+				"group": "Grup",
+				"created": "Dibuat"
 			},
 			"actions": {
 				"workflow_created": "Alur kerja dibuat",
@@ -689,7 +691,29 @@
 				"webhook_auto_disabled": "Webhook dinonaktifkan otomatis",
 				"job_configuration_changed": "Konfigurasi job diubah",
 				"identity_connection_changed": "Koneksi identitas diubah",
-				"unknown": "Pengaturan diubah"
+				"unknown": "Pengaturan diubah",
+				"team_deleted": "Tim dihapus",
+				"service_calendar_created": "Kalender layanan dibuat",
+				"service_calendar_updated": "Kalender layanan diperbarui",
+				"service_calendar_deleted": "Kalender layanan dihapus",
+				"sla_policy_created": "Kebijakan SLA dibuat",
+				"sla_policy_updated": "Kebijakan SLA diperbarui",
+				"sla_policy_published": "Kebijakan SLA diterbitkan",
+				"request_type_created": "Jenis permintaan dibuat",
+				"request_type_updated": "Jenis permintaan diperbarui",
+				"request_type_published": "Jenis permintaan diterbitkan",
+				"request_type_unpublished": "Penerbitan jenis permintaan dibatalkan",
+				"request_type_deleted": "Jenis permintaan dihapus",
+				"custom_field_created": "Kolom khusus dibuat",
+				"custom_field_updated": "Kolom khusus diperbarui",
+				"custom_field_deleted": "Kolom khusus dihapus",
+				"custom_field_restored": "Kolom khusus dipulihkan",
+				"custom_field_purged": "Kolom khusus dihapus permanen",
+				"custom_field_section_created": "Bagian kolom khusus dibuat",
+				"custom_field_section_updated": "Bagian kolom khusus diperbarui",
+				"custom_field_section_deleted": "Bagian kolom khusus dihapus",
+				"state_template_created": "Templat status dibuat",
+				"state_template_updated": "Templat status diperbarui"
 			}
 		},
 		"account": "Akun",

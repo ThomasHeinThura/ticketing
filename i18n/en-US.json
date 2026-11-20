@@ -643,7 +643,9 @@
 				"staffSelfRegistration": "Staff self-registration",
 				"enabled": "Enabled",
 				"schedule": "Schedule",
-				"unknown": "Other setting"
+				"unknown": "Other setting",
+				"group": "Group",
+				"created": "Created"
 			},
 			"actions": {
 				"workflow_created": "Workflow created",
@@ -689,7 +691,29 @@
 				"webhook_auto_disabled": "Webhook disabled automatically",
 				"job_configuration_changed": "Job configuration changed",
 				"identity_connection_changed": "Identity connection changed",
-				"unknown": "Settings changed"
+				"unknown": "Settings changed",
+				"team_deleted": "Team deleted",
+				"service_calendar_created": "Service calendar created",
+				"service_calendar_updated": "Service calendar updated",
+				"service_calendar_deleted": "Service calendar deleted",
+				"sla_policy_created": "SLA policy created",
+				"sla_policy_updated": "SLA policy updated",
+				"sla_policy_published": "SLA policy published",
+				"request_type_created": "Request type created",
+				"request_type_updated": "Request type updated",
+				"request_type_published": "Request type published",
+				"request_type_unpublished": "Request type unpublished",
+				"request_type_deleted": "Request type deleted",
+				"custom_field_created": "Custom field created",
+				"custom_field_updated": "Custom field updated",
+				"custom_field_deleted": "Custom field deleted",
+				"custom_field_restored": "Custom field restored",
+				"custom_field_purged": "Custom field permanently deleted",
+				"custom_field_section_created": "Custom field section created",
+				"custom_field_section_updated": "Custom field section updated",
+				"custom_field_section_deleted": "Custom field section deleted",
+				"state_template_created": "State template created",
+				"state_template_updated": "State template updated"
 			}
 		},
 		"account": "Account",

@@ -1361,7 +1361,9 @@
 				"staffSelfRegistration": "Samodzielna rejestracja pracowników",
 				"enabled": "Włączone",
 				"schedule": "Harmonogram",
-				"unknown": "Inne ustawienie"
+				"unknown": "Inne ustawienie",
+				"group": "Grupa",
+				"created": "Utworzono"
 			},
 			"actions": {
 				"workflow_created": "Utworzono przepływ pracy",
@@ -1407,7 +1409,29 @@
 				"webhook_auto_disabled": "Webhook wyłączony automatycznie",
 				"job_configuration_changed": "Zmieniono konfigurację zadania",
 				"identity_connection_changed": "Zmieniono połączenie tożsamości",
-				"unknown": "Zmieniono ustawienia"
+				"unknown": "Zmieniono ustawienia",
+				"team_deleted": "Usunięto zespół",
+				"service_calendar_created": "Utworzono kalendarz usług",
+				"service_calendar_updated": "Zaktualizowano kalendarz usług",
+				"service_calendar_deleted": "Usunięto kalendarz usług",
+				"sla_policy_created": "Utworzono politykę SLA",
+				"sla_policy_updated": "Zaktualizowano politykę SLA",
+				"sla_policy_published": "Opublikowano politykę SLA",
+				"request_type_created": "Utworzono typ zgłoszenia",
+				"request_type_updated": "Zaktualizowano typ zgłoszenia",
+				"request_type_published": "Opublikowano typ zgłoszenia",
+				"request_type_unpublished": "Wycofano publikację typu zgłoszenia",
+				"request_type_deleted": "Usunięto typ zgłoszenia",
+				"custom_field_created": "Utworzono pole niestandardowe",
+				"custom_field_updated": "Zaktualizowano pole niestandardowe",
+				"custom_field_deleted": "Usunięto pole niestandardowe",
+				"custom_field_restored": "Przywrócono pole niestandardowe",
+				"custom_field_purged": "Trwale usunięto pole niestandardowe",
+				"custom_field_section_created": "Utworzono sekcję pól niestandardowych",
+				"custom_field_section_updated": "Zaktualizowano sekcję pól niestandardowych",
+				"custom_field_section_deleted": "Usunięto sekcję pól niestandardowych",
+				"state_template_created": "Utworzono szablon stanu",
+				"state_template_updated": "Zaktualizowano szablon stanu"
 			}
 		},
 		"account": "Konto",

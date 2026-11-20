@@ -31,7 +31,7 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
@@ -50,6 +50,12 @@ import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import { auditEntity } from "@/query-client/audit-invalidation";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 function useTeamMutation<TInput>(
   team: TeamDetail,
@@ -527,6 +533,19 @@ export function TeamDetailView({
               }
             />
             <DeleteCard team={team.data} />
+            <Suspense fallback={null}>
+              <SettingsHistory
+                target={{
+                  kind: "entity",
+                  type: "team",
+                  id: team.data.id,
+                  scope: {
+                    kind: "workspace",
+                    workspaceId: team.data.workspaceId,
+                  },
+                }}
+              />
+            </Suspense>
           </>
         )}
       </div>

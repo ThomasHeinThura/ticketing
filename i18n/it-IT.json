@@ -643,7 +643,9 @@
 				"staffSelfRegistration": "Autoregistrazione del personale",
 				"enabled": "Attivo",
 				"schedule": "Pianificazione",
-				"unknown": "Altra impostazione"
+				"unknown": "Altra impostazione",
+				"group": "Gruppo",
+				"created": "Creato"
 			},
 			"actions": {
 				"workflow_created": "Flusso di lavoro creato",
@@ -689,7 +691,29 @@
 				"webhook_auto_disabled": "Webhook disattivato automaticamente",
 				"job_configuration_changed": "Configurazione del job modificata",
 				"identity_connection_changed": "Connessione di identità modificata",
-				"unknown": "Impostazioni modificate"
+				"unknown": "Impostazioni modificate",
+				"team_deleted": "Team eliminato",
+				"service_calendar_created": "Calendario di servizio creato",
+				"service_calendar_updated": "Calendario di servizio aggiornato",
+				"service_calendar_deleted": "Calendario di servizio eliminato",
+				"sla_policy_created": "Policy SLA creata",
+				"sla_policy_updated": "Policy SLA aggiornata",
+				"sla_policy_published": "Policy SLA pubblicata",
+				"request_type_created": "Tipo di richiesta creato",
+				"request_type_updated": "Tipo di richiesta aggiornato",
+				"request_type_published": "Tipo di richiesta pubblicato",
+				"request_type_unpublished": "Tipo di richiesta ritirato",
+				"request_type_deleted": "Tipo di richiesta eliminato",
+				"custom_field_created": "Campo personalizzato creato",
+				"custom_field_updated": "Campo personalizzato aggiornato",
+				"custom_field_deleted": "Campo personalizzato eliminato",
+				"custom_field_restored": "Campo personalizzato ripristinato",
+				"custom_field_purged": "Campo personalizzato eliminato definitivamente",
+				"custom_field_section_created": "Sezione dei campi personalizzati creata",
+				"custom_field_section_updated": "Sezione dei campi personalizzati aggiornata",
+				"custom_field_section_deleted": "Sezione dei campi personalizzati eliminata",
+				"state_template_created": "Modello di stato creato",
+				"state_template_updated": "Modello di stato aggiornato"
 			}
 		},
 		"account": "Account",

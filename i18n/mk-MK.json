@@ -643,7 +643,9 @@
 				"staffSelfRegistration": "Саморегистрација на персонал",
 				"enabled": "Овозможено",
 				"schedule": "Распоред",
-				"unknown": "Друга поставка"
+				"unknown": "Друга поставка",
+				"group": "Група",
+				"created": "Создадено"
 			},
 			"actions": {
 				"workflow_created": "Работниот тек е создаден",
@@ -689,7 +691,29 @@
 				"webhook_auto_disabled": "Webhook е автоматски оневозможен",
 				"job_configuration_changed": "Конфигурацијата на задачата е променета",
 				"identity_connection_changed": "Врската за идентитет е променета",
-				"unknown": "Поставките се променети"
+				"unknown": "Поставките се променети",
+				"team_deleted": "Тимот е избришан",
+				"service_calendar_created": "Календарот за услуги е создаден",
+				"service_calendar_updated": "Календарот за услуги е ажуриран",
+				"service_calendar_deleted": "Календарот за услуги е избришан",
+				"sla_policy_created": "Политиката за SLA е создадена",
+				"sla_policy_updated": "Политиката за SLA е ажурирана",
+				"sla_policy_published": "Политиката за SLA е објавена",
+				"request_type_created": "Типот на барање е создаден",
+				"request_type_updated": "Типот на барање е ажуриран",
+				"request_type_published": "Типот на барање е објавен",
+				"request_type_unpublished": "Објавувањето на типот на барање е повлечено",
+				"request_type_deleted": "Типот на барање е избришан",
+				"custom_field_created": "Прилагоденото поле е создадено",
+				"custom_field_updated": "Прилагоденото поле е ажурирано",
+				"custom_field_deleted": "Прилагоденото поле е избришано",
+				"custom_field_restored": "Прилагоденото поле е вратено",
+				"custom_field_purged": "Прилагоденото поле е трајно избришано",
+				"custom_field_section_created": "Делот за прилагодени полиња е создаден",
+				"custom_field_section_updated": "Делот за прилагодени полиња е ажуриран",
+				"custom_field_section_deleted": "Делот за прилагодени полиња е избришан",
+				"state_template_created": "Шаблонот за статус е создаден",
+				"state_template_updated": "Шаблонот за статус е ажуриран"
 			}
 		},
 		"account": "Сметка",

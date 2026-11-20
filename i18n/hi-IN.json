@@ -643,7 +643,9 @@
 				"staffSelfRegistration": "स्टाफ स्व-पंजीकरण",
 				"enabled": "सक्षम",
 				"schedule": "शेड्यूल",
-				"unknown": "अन्य सेटिंग"
+				"unknown": "अन्य सेटिंग",
+				"group": "समूह",
+				"created": "बनाया गया"
 			},
 			"actions": {
 				"workflow_created": "कार्यप्रवाह बनाया गया",
@@ -689,7 +691,29 @@
 				"webhook_auto_disabled": "वेबहुक स्वतः अक्षम किया गया",
 				"job_configuration_changed": "जॉब कॉन्फ़िगरेशन बदला गया",
 				"identity_connection_changed": "पहचान कनेक्शन बदला गया",
-				"unknown": "सेटिंग बदली गईं"
+				"unknown": "सेटिंग बदली गईं",
+				"team_deleted": "टीम हटाई गई",
+				"service_calendar_created": "सेवा कैलेंडर बनाया गया",
+				"service_calendar_updated": "सेवा कैलेंडर अपडेट किया गया",
+				"service_calendar_deleted": "सेवा कैलेंडर हटाया गया",
+				"sla_policy_created": "SLA नीति बनाई गई",
+				"sla_policy_updated": "SLA नीति अपडेट की गई",
+				"sla_policy_published": "SLA नीति प्रकाशित की गई",
+				"request_type_created": "अनुरोध प्रकार बनाया गया",
+				"request_type_updated": "अनुरोध प्रकार अपडेट किया गया",
+				"request_type_published": "अनुरोध प्रकार प्रकाशित किया गया",
+				"request_type_unpublished": "अनुरोध प्रकार का प्रकाशन रद्द किया गया",
+				"request_type_deleted": "अनुरोध प्रकार हटाया गया",
+				"custom_field_created": "कस्टम फ़ील्ड बनाया गया",
+				"custom_field_updated": "कस्टम फ़ील्ड अपडेट किया गया",
+				"custom_field_deleted": "कस्टम फ़ील्ड हटाया गया",
+				"custom_field_restored": "कस्टम फ़ील्ड पुनर्स्थापित किया गया",
+				"custom_field_purged": "कस्टम फ़ील्ड स्थायी रूप से हटाया गया",
+				"custom_field_section_created": "कस्टम फ़ील्ड अनुभाग बनाया गया",
+				"custom_field_section_updated": "कस्टम फ़ील्ड अनुभाग अपडेट किया गया",
+				"custom_field_section_deleted": "कस्टम फ़ील्ड अनुभाग हटाया गया",
+				"state_template_created": "स्थिति टेम्पलेट बनाया गया",
+				"state_template_updated": "स्थिति टेम्पलेट अपडेट किया गया"
 			}
 		},
 		"account": "खाता",

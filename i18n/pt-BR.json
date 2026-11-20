@@ -643,7 +643,9 @@
 				"staffSelfRegistration": "Autorregistro da equipe",
 				"enabled": "Ativado",
 				"schedule": "Agendamento",
-				"unknown": "Outra configuração"
+				"unknown": "Outra configuração",
+				"group": "Grupo",
+				"created": "Criado"
 			},
 			"actions": {
 				"workflow_created": "Fluxo de trabalho criado",
@@ -689,7 +691,29 @@
 				"webhook_auto_disabled": "Webhook desativado automaticamente",
 				"job_configuration_changed": "Configuração do job alterada",
 				"identity_connection_changed": "Conexão de identidade alterada",
-				"unknown": "Configurações alteradas"
+				"unknown": "Configurações alteradas",
+				"team_deleted": "Equipe excluída",
+				"service_calendar_created": "Calendário de serviço criado",
+				"service_calendar_updated": "Calendário de serviço atualizado",
+				"service_calendar_deleted": "Calendário de serviço excluído",
+				"sla_policy_created": "Política de SLA criada",
+				"sla_policy_updated": "Política de SLA atualizada",
+				"sla_policy_published": "Política de SLA publicada",
+				"request_type_created": "Tipo de solicitação criado",
+				"request_type_updated": "Tipo de solicitação atualizado",
+				"request_type_published": "Tipo de solicitação publicado",
+				"request_type_unpublished": "Tipo de solicitação despublicado",
+				"request_type_deleted": "Tipo de solicitação excluído",
+				"custom_field_created": "Campo personalizado criado",
+				"custom_field_updated": "Campo personalizado atualizado",
+				"custom_field_deleted": "Campo personalizado excluído",
+				"custom_field_restored": "Campo personalizado restaurado",
+				"custom_field_purged": "Campo personalizado excluído permanentemente",
+				"custom_field_section_created": "Seção de campos personalizados criada",
+				"custom_field_section_updated": "Seção de campos personalizados atualizada",
+				"custom_field_section_deleted": "Seção de campos personalizados excluída",
+				"state_template_created": "Modelo de estado criado",
+				"state_template_updated": "Modelo de estado atualizado"
 			}
 		},
 		"account": "Conta",

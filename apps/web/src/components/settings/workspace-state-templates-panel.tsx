@@ -14,7 +14,7 @@ import {
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
@@ -47,6 +47,12 @@ const GROUPS: WorkspaceStateTemplate["group"][] = [
 ];
 
 type TemplateDraft = Pick<WorkspaceStateTemplate, "name" | "group">;
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 export function WorkspaceStateTemplatesPanel({
   workspaceId,
@@ -382,98 +388,113 @@ export function WorkspaceStateTemplatesPanel({
           };
           const dirty = draft.name !== item.name || draft.group !== item.group;
           return (
-            <div
-              key={item.id}
-              className="grid gap-3 rounded-md border border-border bg-sidebar p-3 sm:grid-cols-[minmax(8rem,1fr)_minmax(8rem,1fr)_minmax(8rem,1fr)_auto_auto] sm:items-center"
-              data-testid={`state-template-${item.id}`}
-            >
-              <div className="min-w-0">
-                <p className="truncate text-xs text-muted-foreground">
-                  {item.key}
-                </p>
-                <Input
-                  aria-label={t("settings:workspaceStateTemplates.name")}
-                  value={draft.name}
-                  disabled={!canEdit || !item.enabled || savingId === item.id}
-                  onChange={(event) =>
-                    setDrafts((current) => ({
-                      ...current,
-                      [item.id]: { ...draft, name: event.target.value },
-                    }))
-                  }
-                />
-              </div>
-              <Select
-                items={GROUPS.map((group) => ({
-                  value: group,
-                  label: t(`settings:workspaceStateTemplates.groups.${group}`),
-                }))}
-                value={draft.group}
-                disabled={!canEdit || !item.enabled || savingId === item.id}
-                onValueChange={(value) => {
-                  if (GROUPS.includes(value as WorkspaceStateTemplate["group"]))
-                    setDrafts((current) => ({
-                      ...current,
-                      [item.id]: {
-                        ...draft,
-                        group: value as WorkspaceStateTemplate["group"],
-                      },
-                    }));
-                }}
+            <div key={item.id} className="space-y-1">
+              <div
+                className="grid gap-3 rounded-md border border-border bg-sidebar p-3 sm:grid-cols-[minmax(8rem,1fr)_minmax(8rem,1fr)_minmax(8rem,1fr)_auto_auto] sm:items-center"
+                data-testid={`state-template-${item.id}`}
               >
-                <SelectTrigger
-                  aria-label={t("settings:workspaceStateTemplates.group")}
+                <div className="min-w-0">
+                  <p className="truncate text-xs text-muted-foreground">
+                    {item.key}
+                  </p>
+                  <Input
+                    aria-label={t("settings:workspaceStateTemplates.name")}
+                    value={draft.name}
+                    disabled={!canEdit || !item.enabled || savingId === item.id}
+                    onChange={(event) =>
+                      setDrafts((current) => ({
+                        ...current,
+                        [item.id]: { ...draft, name: event.target.value },
+                      }))
+                    }
+                  />
+                </div>
+                <Select
+                  items={GROUPS.map((group) => ({
+                    value: group,
+                    label: t(
+                      `settings:workspaceStateTemplates.groups.${group}`,
+                    ),
+                  }))}
+                  value={draft.group}
+                  disabled={!canEdit || !item.enabled || savingId === item.id}
+                  onValueChange={(value) => {
+                    if (
+                      GROUPS.includes(value as WorkspaceStateTemplate["group"])
+                    )
+                      setDrafts((current) => ({
+                        ...current,
+                        [item.id]: {
+                          ...draft,
+                          group: value as WorkspaceStateTemplate["group"],
+                        },
+                      }));
+                  }}
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {GROUPS.map((group) => (
-                    <SelectItem key={group} value={group}>
-                      {t(`settings:workspaceStateTemplates.groups.${group}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {canEdit && (
-                <SaveButton
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={
-                    (!dirty && !(savingTemplate && savingId === item.id)) ||
-                    isCheckingPermissions ||
-                    (savingId !== null &&
-                      !(savingTemplate && savingId === item.id))
-                  }
-                  pending={savingTemplate && savingId === item.id}
-                  success={savedId === item.id}
-                  savedLabel={t("common:actions.saved")}
-                  workingLabel={t("common:actions.saving")}
-                  onClick={() => void saveTemplate(item)}
-                >
-                  {t("settings:workspaceStateTemplates.save")}
-                </SaveButton>
-              )}
-              <span className="text-xs text-muted-foreground">
-                {item.enabled
-                  ? t("settings:workspaceStateTemplates.enabled")
-                  : t("settings:workspaceStateTemplates.disabled")}
-              </span>
-              {canEdit && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  disabled={
-                    dirty || savingId === item.id || isCheckingPermissions
-                  }
-                  onClick={() => void toggleEnabled(item)}
-                >
+                  <SelectTrigger
+                    aria-label={t("settings:workspaceStateTemplates.group")}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GROUPS.map((group) => (
+                      <SelectItem key={group} value={group}>
+                        {t(`settings:workspaceStateTemplates.groups.${group}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {canEdit && (
+                  <SaveButton
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={
+                      (!dirty && !(savingTemplate && savingId === item.id)) ||
+                      isCheckingPermissions ||
+                      (savingId !== null &&
+                        !(savingTemplate && savingId === item.id))
+                    }
+                    pending={savingTemplate && savingId === item.id}
+                    success={savedId === item.id}
+                    savedLabel={t("common:actions.saved")}
+                    workingLabel={t("common:actions.saving")}
+                    onClick={() => void saveTemplate(item)}
+                  >
+                    {t("settings:workspaceStateTemplates.save")}
+                  </SaveButton>
+                )}
+                <span className="text-xs text-muted-foreground">
                   {item.enabled
-                    ? t("settings:workspaceStateTemplates.disable")
-                    : t("settings:workspaceStateTemplates.enable")}
-                </Button>
-              )}
+                    ? t("settings:workspaceStateTemplates.enabled")
+                    : t("settings:workspaceStateTemplates.disabled")}
+                </span>
+                {canEdit && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={
+                      dirty || savingId === item.id || isCheckingPermissions
+                    }
+                    onClick={() => void toggleEnabled(item)}
+                  >
+                    {item.enabled
+                      ? t("settings:workspaceStateTemplates.disable")
+                      : t("settings:workspaceStateTemplates.enable")}
+                  </Button>
+                )}
+              </div>
+              <Suspense fallback={null}>
+                <SettingsHistory
+                  target={{
+                    kind: "entity",
+                    type: "state_template",
+                    id: item.id,
+                    scope: { kind: "workspace", workspaceId },
+                  }}
+                />
+              </Suspense>
             </div>
           );
         })}

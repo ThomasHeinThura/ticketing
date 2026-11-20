@@ -643,7 +643,9 @@
 				"staffSelfRegistration": "员工自助注册",
 				"enabled": "已启用",
 				"schedule": "计划",
-				"unknown": "其他设置"
+				"unknown": "其他设置",
+				"group": "分组",
+				"created": "已创建"
 			},
 			"actions": {
 				"workflow_created": "已创建工作流",
@@ -689,7 +691,29 @@
 				"webhook_auto_disabled": "Webhook 已自动停用",
 				"job_configuration_changed": "已更改作业配置",
 				"identity_connection_changed": "已更改身份连接",
-				"unknown": "设置已更改"
+				"unknown": "设置已更改",
+				"team_deleted": "已删除团队",
+				"service_calendar_created": "已创建服务日历",
+				"service_calendar_updated": "已更新服务日历",
+				"service_calendar_deleted": "已删除服务日历",
+				"sla_policy_created": "已创建 SLA 策略",
+				"sla_policy_updated": "已更新 SLA 策略",
+				"sla_policy_published": "已发布 SLA 策略",
+				"request_type_created": "已创建请求类型",
+				"request_type_updated": "已更新请求类型",
+				"request_type_published": "已发布请求类型",
+				"request_type_unpublished": "已取消发布请求类型",
+				"request_type_deleted": "已删除请求类型",
+				"custom_field_created": "已创建自定义字段",
+				"custom_field_updated": "已更新自定义字段",
+				"custom_field_deleted": "已删除自定义字段",
+				"custom_field_restored": "已恢复自定义字段",
+				"custom_field_purged": "已永久删除自定义字段",
+				"custom_field_section_created": "已创建自定义字段分区",
+				"custom_field_section_updated": "已更新自定义字段分区",
+				"custom_field_section_deleted": "已删除自定义字段分区",
+				"state_template_created": "已创建状态模板",
+				"state_template_updated": "已更新状态模板"
 			}
 		},
 		"account": "账户",

@@ -2508,6 +2508,12 @@
 								},
 								"unknown": {
 									"type": "string"
+								},
+								"group": {
+									"type": "string"
+								},
+								"created": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -2567,7 +2573,9 @@
 								"staffSelfRegistration",
 								"enabled",
 								"schedule",
-								"unknown"
+								"unknown",
+								"group",
+								"created"
 							]
 						},
 						"actions": {
@@ -2705,6 +2713,72 @@
 								},
 								"unknown": {
 									"type": "string"
+								},
+								"team_deleted": {
+									"type": "string"
+								},
+								"service_calendar_created": {
+									"type": "string"
+								},
+								"service_calendar_updated": {
+									"type": "string"
+								},
+								"service_calendar_deleted": {
+									"type": "string"
+								},
+								"sla_policy_created": {
+									"type": "string"
+								},
+								"sla_policy_updated": {
+									"type": "string"
+								},
+								"sla_policy_published": {
+									"type": "string"
+								},
+								"request_type_created": {
+									"type": "string"
+								},
+								"request_type_updated": {
+									"type": "string"
+								},
+								"request_type_published": {
+									"type": "string"
+								},
+								"request_type_unpublished": {
+									"type": "string"
+								},
+								"request_type_deleted": {
+									"type": "string"
+								},
+								"custom_field_created": {
+									"type": "string"
+								},
+								"custom_field_updated": {
+									"type": "string"
+								},
+								"custom_field_deleted": {
+									"type": "string"
+								},
+								"custom_field_restored": {
+									"type": "string"
+								},
+								"custom_field_purged": {
+									"type": "string"
+								},
+								"custom_field_section_created": {
+									"type": "string"
+								},
+								"custom_field_section_updated": {
+									"type": "string"
+								},
+								"custom_field_section_deleted": {
+									"type": "string"
+								},
+								"state_template_created": {
+									"type": "string"
+								},
+								"state_template_updated": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -2751,7 +2825,29 @@
 								"webhook_auto_disabled",
 								"job_configuration_changed",
 								"identity_connection_changed",
-								"unknown"
+								"unknown",
+								"team_deleted",
+								"service_calendar_created",
+								"service_calendar_updated",
+								"service_calendar_deleted",
+								"sla_policy_created",
+								"sla_policy_updated",
+								"sla_policy_published",
+								"request_type_created",
+								"request_type_updated",
+								"request_type_published",
+								"request_type_unpublished",
+								"request_type_deleted",
+								"custom_field_created",
+								"custom_field_updated",
+								"custom_field_deleted",
+								"custom_field_restored",
+								"custom_field_purged",
+								"custom_field_section_created",
+								"custom_field_section_updated",
+								"custom_field_section_deleted",
+								"state_template_created",
+								"state_template_updated"
 							]
 						}
 					},
