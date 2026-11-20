@@ -79,3 +79,16 @@ it("sends the explicit instance or workspace scope of a terminology cell", async
     },
   });
 });
+
+it("rejects malformed history rows before rendering", async () => {
+  get.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      entityType: "workspace",
+      entityId: "w1",
+      lastChanged: null,
+      rows: null,
+    }),
+  });
+  await expect(getSettingsHistory("workspace", "w1")).rejects.toThrow();
+});

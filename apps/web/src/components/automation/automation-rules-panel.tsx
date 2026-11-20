@@ -16,6 +16,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogPanel,
   DialogTitle,
   Empty,
   EmptyDescription,
@@ -410,7 +411,7 @@ export function AutomationRulesPanel({
               </DialogTitle>
               <DialogDescription>{t("changes.description")}</DialogDescription>
             </DialogHeader>
-            <div className="px-6 pb-6">
+            <DialogPanel>
               <Suspense fallback={null}>
                 <SettingsHistory
                   target={{
@@ -421,7 +422,7 @@ export function AutomationRulesPanel({
                   }}
                 />
               </Suspense>
-            </div>
+            </DialogPanel>
           </DialogContent>
         </Dialog>
       ) : null}

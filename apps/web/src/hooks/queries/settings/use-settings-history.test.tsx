@@ -13,6 +13,8 @@ import type { HistoryTarget } from "@/query-client/settings-history-key";
 import { useSettingsHistory } from "./use-settings-history";
 
 const read = vi.hoisted(() => vi.fn());
+const projectRead = vi.hoisted(() => vi.fn());
+vi.mock("@/fetchers/project/get-project", () => ({ default: projectRead }));
 const session = vi.hoisted(() => ({
   user: "u1",
   id: "s1",
@@ -413,4 +415,81 @@ describe("class 6: the global MutationCache withdraws what the mutation declares
     expect(read).toHaveBeenCalledOnce();
     expect(status()).toBe("ready:1");
   });
+});
+
+it("admits both observers of the same shared read", async () => {
+  read.mockResolvedValue(view("w1"));
+  render(
+    <QueryClientProvider client={productionClient()}>
+      <Probe target={workspace("w1")} name="first" />
+      <Probe target={workspace("w1")} name="second" />
+    </QueryClientProvider>,
+  );
+  await waitFor(() => {
+    expect(screen.getByTestId("first").textContent).toBe("ready:1");
+    expect(screen.getByTestId("second").textContent).toBe("ready:1");
+  });
+  expect(read).toHaveBeenCalledOnce();
+});
+
+it("uses the mutation's original metadata after its observer changes options", async () => {
+  const client = productionClient();
+  read.mockImplementation(async (_type, id) => view(id));
+  render(
+    <QueryClientProvider client={client}>
+      <Probe target={workspace("w1")} name="first" />
+      <Probe target={workspace("w2")} name="second" />
+    </QueryClientProvider>,
+  );
+  await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+  const pending = deferred<string>();
+  const mutation = new TanstackMutationObserver(client, {
+    mutationFn: () => pending.promise,
+    meta: { audits: { targets: () => [workspace("w1")] } },
+  });
+  let completion!: Promise<string>;
+  act(() => {
+    completion = mutation.mutate();
+  });
+  mutation.setOptions({
+    mutationFn: () => pending.promise,
+    meta: { audits: { targets: () => [workspace("w2")] } },
+  });
+  await act(async () => {
+    pending.resolve("ok");
+    await completion;
+  });
+  await waitFor(() => expect(read).toHaveBeenCalledTimes(3));
+  expect(read.mock.calls[2]?.[1]).toBe("w1");
+});
+
+it("rejects a project in a different workspace before reading history", async () => {
+  projectRead.mockResolvedValue({ id: "p1", workspaceId: "w1" });
+  mountProbe(productionClient(), {
+    kind: "entity",
+    type: "project_membership",
+    id: "m1",
+    scope: { kind: "project", workspaceId: "w2", projectId: "p1" },
+  });
+  await waitFor(() => expect(status()).toBe("hidden"));
+  expect(read).not.toHaveBeenCalled();
+});
+
+it("admits an observer joining an already-running shared read", async () => {
+  const pending = deferred<unknown>();
+  read.mockReturnValue(pending.promise);
+  const client = productionClient();
+  const wrapper = (both: boolean) => (
+    <QueryClientProvider client={client}>
+      <Probe target={workspace("w1")} name="first" />
+      {both && <Probe target={workspace("w1")} name="second" />}
+    </QueryClientProvider>
+  );
+  const screenView = render(wrapper(false));
+  await waitFor(() => expect(read).toHaveBeenCalledOnce());
+  screenView.rerender(wrapper(true));
+  await act(async () => pending.resolve(view("w1")));
+  await waitFor(() =>
+    expect(screen.getByTestId("second").textContent).toBe("ready:1"),
+  );
 });

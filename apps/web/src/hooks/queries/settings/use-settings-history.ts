@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, useSyncExternalStore } from "react";
+import getProject from "@/fetchers/project/get-project";
 import {
   getSelfHistory,
   type SelfHistory,
@@ -87,6 +88,23 @@ async function readTarget(
   if (target.kind === "entity") {
     // Only terminology cells are addressed by a scope selector; the API rejects it elsewhere.
     const { scope } = target;
+    if (scope.kind === "project") {
+      const project = await getProject({
+        id: scope.projectId,
+        workspaceId: scope.workspaceId,
+      });
+      if (
+        project.id !== scope.projectId ||
+        project.workspaceId !== scope.workspaceId
+      )
+        throw new HttpError(404, "Project unavailable");
+    }
+    if (
+      scope.kind === "workspace" &&
+      target.type === "workspace" &&
+      target.id !== scope.workspaceId
+    )
+      throw new HttpError(404, "Workspace unavailable");
     const selector =
       target.type !== "terminology_override"
         ? undefined
@@ -116,6 +134,7 @@ async function readTarget(
 // One counter orders every read and every mount/revalidation: rows show only for a read that
 // started after the latest mount or revalidation of this panel.
 let counter = 0;
+const activeReads = new WeakMap<object, number>();
 
 /**
  * The only way to read History. The reader checks the session before and after the API read;
@@ -135,9 +154,6 @@ export function useSettingsHistory(target: HistoryTarget): {
   const stamp = useSyncExternalStore(subscribeHistory, () =>
     historyStamp(hash),
   );
-  const [mounted] = useState(() => ++counter);
-  const floor = useRef(mounted);
-  const started = useRef(0);
   const queryKey = [
     SETTINGS_HISTORY_KEY,
     identity?.host,
@@ -147,6 +163,15 @@ export function useSettingsHistory(target: HistoryTarget): {
     stamp,
     hash,
   ];
+  const [mounted] = useState(() => {
+    const query = client.getQueryCache().find({ queryKey, exact: true });
+    const active =
+      query?.state.fetchStatus === "fetching"
+        ? activeReads.get(query)
+        : undefined;
+    return active === undefined ? ++counter : active - 1;
+  });
+  const floor = useRef(mounted);
   const history = useQuery({
     queryKey,
     enabled: Boolean(identity),
@@ -157,7 +182,8 @@ export function useSettingsHistory(target: HistoryTarget): {
     refetchOnReconnect: "always",
     queryFn: async ({ signal }) => {
       const read = ++counter;
-      started.current = read;
+      const query = client.getQueryCache().find({ queryKey, exact: true });
+      if (query) activeReads.set(query, read);
       try {
         if (!identity) throw new HttpError(401, "Session unavailable");
         await checkSession(identity);
@@ -180,11 +206,10 @@ export function useSettingsHistory(target: HistoryTarget): {
       .cancelQueries({ queryKey, exact: true })
       .then(() => history.refetch());
   };
-  const mine = started.current > floor.current;
   let state: HistoryState;
   if (!identity || (history.isError && isDenied(history.error)))
     state = { status: "hidden" };
-  else if (history.fetchStatus === "fetching" || !mine)
+  else if (history.fetchStatus === "fetching" || history.isPending)
     state = { status: "checking" };
   else if (
     history.isSuccess &&

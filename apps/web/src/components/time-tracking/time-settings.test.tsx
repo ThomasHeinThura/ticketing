@@ -96,7 +96,9 @@ function wrap(node: React.ReactNode) {
   return render(
     <QueryClientProvider
       client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        new QueryClient({
+          defaultOptions: { queries: { retry: false, retryDelay: 0 } },
+        })
       }
     >
       {node}
@@ -308,6 +310,12 @@ it("declares the saved workspace's time settings as the History target", async (
   );
   expect(auditedTargets(client)).toEqual([
     { kind: "time-settings", scope: { kind: "workspace", workspaceId: "w1" } },
+    {
+      kind: "entity",
+      type: "workspace",
+      id: "w1",
+      scope: { kind: "workspace", workspaceId: "w1" },
+    },
   ]);
 });
 
@@ -382,6 +390,12 @@ it("declares the saved project's time settings as the History target", async () 
   expect(auditedTargets(client)).toEqual([
     {
       kind: "time-settings",
+      scope: { kind: "project", workspaceId: "w1", projectId: "p1" },
+    },
+    {
+      kind: "entity",
+      type: "project",
+      id: "p1",
       scope: { kind: "project", workspaceId: "w1", projectId: "p1" },
     },
   ]);
@@ -704,3 +718,32 @@ it("does not reconcile a staff save after switching into impersonation", async (
   expect(mocks.success).not.toHaveBeenCalled();
   expect(mocks.updateTimeSettings).toHaveBeenCalledTimes(1);
 });
+
+it.each(["workspace", "project"])(
+  "keeps %s History and a retry when settings fail",
+  async (scope) => {
+    mocks.getTimeSettings.mockRejectedValue(new Error("network down"));
+    wrap(
+      scope === "workspace" ? (
+        <BackdateLimitSetting />
+      ) : (
+        <ProjectBillableSetting projectId="p1" />
+      ),
+    );
+    expect(await screen.findByTestId("settings-history")).toBeTruthy();
+    const retry = await screen.findByRole("button", {
+      name: "common:actions.retry",
+    });
+    mocks.getTimeSettings.mockResolvedValue({
+      backdateLimitDays: 30,
+      canManage: true,
+      project: { id: "p1", defaultBillable: true },
+    });
+    fireEvent.click(retry);
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "common:actions.retry" }),
+      ).toBeNull(),
+    );
+  },
+);

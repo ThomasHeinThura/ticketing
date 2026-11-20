@@ -14,6 +14,9 @@ const mocks = vi.hoisted(() => ({
   patchProject: vi.fn(),
   updateHealth: vi.fn(),
 }));
+vi.mock("@/fetchers/project/get-project", () => ({
+  default: async () => ({ id: "p1", workspaceId: "w1" }),
+}));
 vi.mock("@/fetchers/project/update-health", () => ({
   default: mocks.updateHealth,
 }));

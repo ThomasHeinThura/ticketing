@@ -155,7 +155,8 @@ describe("automation rules panel History", () => {
     fireEvent.click(
       screen.getAllByText("list.changeHistory")[0] as HTMLElement,
     );
-    await screen.findByText("History panel");
+    const history = await screen.findByText("History panel");
+    expect(history.closest('[data-slot="dialog-panel"]')).not.toBeNull();
     expect(mocks.history).toHaveBeenCalledWith(target("a1"));
   });
 

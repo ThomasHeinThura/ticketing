@@ -3,6 +3,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogPanel,
   DialogTitle,
 } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
@@ -34,7 +35,9 @@ export default function ServiceKeyHistoryDialog({
             {t("settings:serviceKeys.description")}
           </DialogDescription>
         </DialogHeader>
-        <SettingsHistory target={target} />
+        <DialogPanel>
+          <SettingsHistory target={target} />
+        </DialogPanel>
       </DialogContent>
     </Dialog>
   );

@@ -1,5 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  Alert,
+  AlertDescription,
+  Button,
   Input,
   Label,
   SaveButton,
@@ -99,6 +102,12 @@ export function BackdateLimitSetting() {
             kind: "time-settings",
             scope: { kind: "workspace", workspaceId },
           } as const,
+          {
+            kind: "entity",
+            type: "workspace",
+            id: workspaceId,
+            scope: { kind: "workspace", workspaceId },
+          } as const,
         ],
       },
     },
@@ -139,76 +148,87 @@ export function BackdateLimitSetting() {
       if (lifecycle.isCurrent(intent)) toast.error(message(error));
     },
   });
-  if (!settings.data) return null;
-  const dirty = draft !== null && days !== settings.data.backdateLimitDays;
-  const canEdit = settings.data.canManage && !sessionScope?.impersonatedBy;
+  const dirty = draft !== null && days !== settings.data?.backdateLimitDays;
+  const canEdit = Boolean(
+    settings.data?.canManage && !sessionScope?.impersonatedBy,
+  );
   return (
     <>
-      <form
-        className="flex flex-wrap items-end gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (
-            canEdit &&
-            dirty &&
-            valid &&
-            !save.isPending &&
-            workspace?.id &&
-            days !== null
-          )
-            save.mutate({
-              workspaceId: workspace.id,
-              days,
-              identity: userId && sessionId ? { userId, sessionId } : null,
-              intent: lifecycle.capture(),
-              revision: revision.current,
-            });
-        }}
-      >
-        <div className="w-56 space-y-1">
+      {settings.isError ? (
+        <Alert variant="error">
+          <AlertDescription>{message(settings.error)}</AlertDescription>
+          <Button variant="outline" onClick={() => void settings.refetch()}>
+            {t("common:actions.retry")}
+          </Button>
+        </Alert>
+      ) : null}
+      {settings.data ? (
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (
+              canEdit &&
+              dirty &&
+              valid &&
+              !save.isPending &&
+              workspace?.id &&
+              days !== null
+            )
+              save.mutate({
+                workspaceId: workspace.id,
+                days,
+                identity: userId && sessionId ? { userId, sessionId } : null,
+                intent: lifecycle.capture(),
+                revision: revision.current,
+              });
+          }}
+        >
+          <div className="w-56 space-y-1">
+            {canEdit ? (
+              <>
+                <Label htmlFor="backdate-limit" className="text-xs">
+                  {t("timeTracking:settings.backdateLimit")}
+                </Label>
+                <Input
+                  id="backdate-limit"
+                  inputMode="numeric"
+                  value={value}
+                  aria-invalid={!valid}
+                  disabled={save.isPending}
+                  onChange={(event) => {
+                    revision.current += 1;
+                    setSavedRevision(null);
+                    setDraft(event.target.value);
+                    if (!save.isPending) save.reset();
+                  }}
+                />
+              </>
+            ) : (
+              <p>
+                {t("timeTracking:settings.backdateLimit")}:{" "}
+                {settings.data.backdateLimitDays}
+              </p>
+            )}
+          </div>
           {canEdit ? (
-            <>
-              <Label htmlFor="backdate-limit" className="text-xs">
-                {t("timeTracking:settings.backdateLimit")}
-              </Label>
-              <Input
-                id="backdate-limit"
-                inputMode="numeric"
-                value={value}
-                aria-invalid={!valid}
-                disabled={save.isPending}
-                onChange={(event) => {
-                  revision.current += 1;
-                  setSavedRevision(null);
-                  setDraft(event.target.value);
-                  if (!save.isPending) save.reset();
-                }}
-              />
-            </>
-          ) : (
-            <p>
-              {t("timeTracking:settings.backdateLimit")}:{" "}
-              {settings.data.backdateLimitDays}
-            </p>
-          )}
-        </div>
-        {canEdit ? (
-          <SaveButton
-            type="submit"
-            disabled={(!dirty || !valid) && !save.isPending}
-            pending={save.isPending}
-            success={save.isSuccess && savedRevision === revision.current}
-            savedLabel={t("common:actions.saved")}
-            workingLabel={t("common:actions.saving")}
-            announceSuccess={false}
-          >
-            {t("timeTracking:actions.save")}
-          </SaveButton>
-        ) : null}
-        <p className="basis-full text-muted-foreground text-xs">
-          {t("timeTracking:settings.backdateHelp")}
-        </p>
-      </form>
+            <SaveButton
+              type="submit"
+              disabled={(!dirty || !valid) && !save.isPending}
+              pending={save.isPending}
+              success={save.isSuccess && savedRevision === revision.current}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
+              {t("timeTracking:actions.save")}
+            </SaveButton>
+          ) : null}
+          <p className="basis-full text-muted-foreground text-xs">
+            {t("timeTracking:settings.backdateHelp")}
+          </p>
+        </form>
+      ) : null}
       {workspace?.id ? (
         <Suspense fallback={null}>
           <SettingsHistory
@@ -281,6 +301,12 @@ export function ProjectBillableSetting({ projectId }: { projectId: string }) {
               projectId: targetProjectId,
             },
           } as const,
+          {
+            kind: "entity",
+            type: "project",
+            id: targetProjectId,
+            scope: { kind: "project", workspaceId, projectId: targetProjectId },
+          } as const,
         ],
       },
     },
@@ -294,48 +320,59 @@ export function ProjectBillableSetting({ projectId }: { projectId: string }) {
     },
   });
   const project = settings.data?.project;
-  if (!settings.data || !project) return null;
-  const canEdit = settings.data.canManage && !sessionScope?.impersonatedBy;
+  const canEdit = Boolean(
+    settings.data?.canManage && !sessionScope?.impersonatedBy,
+  );
   return (
     <>
-      <div className="flex items-center gap-3">
-        {canEdit ? (
-          <Switch
-            id="project-default-billable"
-            checked={project.defaultBillable}
-            disabled={save.isPending}
-            onCheckedChange={(next) => {
-              if (canEdit && workspace?.id)
-                save.mutate({
-                  workspaceId: workspace.id,
-                  targetProjectId: projectId,
-                  defaultBillable: next,
-                  intent: lifecycle.capture(),
-                });
-            }}
-          />
-        ) : (
-          <span>
-            {t(
-              project.defaultBillable
-                ? "featureFlags:stateOn"
-                : "featureFlags:stateOff",
-            )}
-          </span>
-        )}
-        <div className="space-y-0.5">
+      {settings.isError ? (
+        <Alert variant="error">
+          <AlertDescription>{message(settings.error)}</AlertDescription>
+          <Button variant="outline" onClick={() => void settings.refetch()}>
+            {t("common:actions.retry")}
+          </Button>
+        </Alert>
+      ) : null}
+      {settings.data && project ? (
+        <div className="flex items-center gap-3">
           {canEdit ? (
-            <Label htmlFor="project-default-billable">
-              {t("timeTracking:settings.defaultBillable")}
-            </Label>
+            <Switch
+              id="project-default-billable"
+              checked={project.defaultBillable}
+              disabled={save.isPending}
+              onCheckedChange={(next) => {
+                if (canEdit && workspace?.id)
+                  save.mutate({
+                    workspaceId: workspace.id,
+                    targetProjectId: projectId,
+                    defaultBillable: next,
+                    intent: lifecycle.capture(),
+                  });
+              }}
+            />
           ) : (
-            <p>{t("timeTracking:settings.defaultBillable")}</p>
+            <span>
+              {t(
+                project.defaultBillable
+                  ? "featureFlags:stateOn"
+                  : "featureFlags:stateOff",
+              )}
+            </span>
           )}
-          <p className="text-muted-foreground text-xs">
-            {t("timeTracking:settings.defaultBillableHelp")}
-          </p>
+          <div className="space-y-0.5">
+            {canEdit ? (
+              <Label htmlFor="project-default-billable">
+                {t("timeTracking:settings.defaultBillable")}
+              </Label>
+            ) : (
+              <p>{t("timeTracking:settings.defaultBillable")}</p>
+            )}
+            <p className="text-muted-foreground text-xs">
+              {t("timeTracking:settings.defaultBillableHelp")}
+            </p>
+          </div>
         </div>
-      </div>
+      ) : null}
       {workspace?.id ? (
         <Suspense fallback={null}>
           <SettingsHistory

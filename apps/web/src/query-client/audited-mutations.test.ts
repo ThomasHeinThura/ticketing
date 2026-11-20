@@ -23,6 +23,7 @@ const AUDITED = [
   "components/settings/workspace-project-defaults-panel.tsx",
   "components/time-tracking/time-activities-settings.tsx",
   "components/time-tracking/time-settings.tsx",
+  "components/workflow/cab-template-panel.tsx",
   "hooks/mutations/api-key/use-create-api-key.ts",
   "hooks/mutations/api-key/use-revoke-api-key.ts",
   "hooks/mutations/notification-preferences/use-notification-preferences.ts",

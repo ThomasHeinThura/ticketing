@@ -107,6 +107,13 @@ export function shouldRetryQuery(failureCount: number, error: unknown) {
 export const portalSessionQueryKey = ["portal", "session"] as const;
 export function createQueryClient() {
   let verifiedPortalUserId: string | undefined;
+  const auditWrites = new WeakMap<
+    object,
+    {
+      meta: import("./audit-invalidation").AuditMutationMeta | undefined;
+      variables: unknown;
+    }
+  >();
   const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({
       onSuccess: (data, query) => {
@@ -157,8 +164,19 @@ export function createQueryClient() {
       },
     }),
     mutationCache: new MutationCache({
-      onSuccess: (data, variables, _context, mutation) =>
-        historyHooks.onMutation?.(client, mutation.meta, variables, data),
+      onMutate: (variables, mutation) => {
+        auditWrites.set(mutation, { meta: mutation.meta, variables });
+      },
+      onSuccess: (data, _variables, _context, mutation) => {
+        const captured = auditWrites.get(mutation);
+        if (captured)
+          historyHooks.onMutation?.(
+            client,
+            captured.meta,
+            captured.variables,
+            data,
+          );
+      },
       onError: (error) => captureCacheError(error, "mutation"),
     }),
     defaultOptions: {
