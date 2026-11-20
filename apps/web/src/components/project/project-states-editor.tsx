@@ -106,7 +106,7 @@ function SortableStateRow({
       ref={setNodeRef}
       style={style}
       data-state-id={id}
-      className={`flex items-center gap-2 p-2 border border-border rounded-md bg-sidebar hover:bg-sidebar-accent/50 transition-colors ${isDragging ? "opacity-60" : ""}`}
+      className={`flex flex-wrap items-center gap-2 p-2 border border-border rounded-md bg-sidebar hover:bg-sidebar-accent/50 transition-colors ${isDragging ? "opacity-60" : ""}`}
     >
       <Button
         ref={setActivatorNodeRef}
@@ -462,7 +462,9 @@ export default function ProjectStatesEditor({
                   name: state.name,
                 })}
               >
-                <span className="text-sm flex-1 truncate">{state.name}</span>
+                <span className="min-w-0 basis-[calc(100%-2rem)] truncate text-sm sm:basis-auto sm:flex-1">
+                  {state.name}
+                </span>
                 {canEdit ? (
                   <StateWipLimitField
                     projectId={projectId}

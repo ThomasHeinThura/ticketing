@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
 import { translate } from "@/test/en-translation";
 import { Route } from "./catalogue";
 
@@ -139,6 +140,19 @@ describe("portal catalogue route", () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it("shows a not-found state with a way back when the request type key is stale", async () => {
+    mocks.getRequestType.mockRejectedValue(new HttpError(404, "Not found"));
+    renderCatalogue();
+
+    expect(
+      await screen.findByText("This form is not available."),
+    ).toBeVisible();
+    expect(screen.queryByText(/Could not load/u)).toBeNull();
+    expect(mocks.getRequestType).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Back to catalogue" }));
+    expect(mocks.navigate).toHaveBeenCalledWith({ search: { q: "access" } });
   });
 
   it("shows the visibility label, not the raw value, in the trigger", async () => {

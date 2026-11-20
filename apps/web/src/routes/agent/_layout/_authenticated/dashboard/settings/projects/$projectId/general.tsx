@@ -64,6 +64,11 @@ import { cn } from "@/lib/cn";
 import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
 
+function ReadOnlyProjectIcon({ name }: { name: string }) {
+  const Icon = icons[(name as keyof typeof icons) || "Layout"] || icons.Layout;
+  return <Icon className="h-4 w-4" aria-hidden="true" />;
+}
+
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/projects/$projectId/general",
 )({
@@ -678,7 +683,7 @@ function ProjectGeneral() {
                             return <SelectedIcon className="h-4 w-4" />;
                           })()}
                           <span className="truncate text-xs">
-                            {projectForm.watch("icon") || "Layout"}
+                            {t("settings:projectGeneral.pickIconTitle")}
                           </span>
                         </Button>
                       </PopoverTrigger>
@@ -739,7 +744,7 @@ function ProjectGeneral() {
                     </PopoverContent>
                   </Popover>
                 ) : (
-                  <span>{projectForm.watch("icon") || "Layout"}</span>
+                  <ReadOnlyProjectIcon name={projectForm.watch("icon")} />
                 )}
               </div>
             </div>

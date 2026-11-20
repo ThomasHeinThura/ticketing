@@ -39,14 +39,16 @@ function AgentSearchRoute() {
   return (
     <>
       <PageTitle title={t("workspace:search.pageTitle")} />
-      <WorkspaceSearch
-        key={workspace.id}
-        workspaceId={workspace.id}
-        search={search}
-        onSearchChange={(next) =>
-          void navigate({ to: "/agent/search", search: next, replace: true })
-        }
-      />
+      <div className="mx-auto w-full max-w-4xl px-4 sm:px-6">
+        <WorkspaceSearch
+          key={workspace.id}
+          workspaceId={workspace.id}
+          search={search}
+          onSearchChange={(next) =>
+            void navigate({ to: "/agent/search", search: next, replace: true })
+          }
+        />
+      </div>
     </>
   );
 }
