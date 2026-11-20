@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   search: {} as { workflowId?: string },
   navigate: vi.fn(),
   canManage: true,
+  workspaceId: "ws-1",
   getWorkflows: vi.fn(),
   getWorkflow: vi.fn(),
   createWorkflow: vi.fn(),
@@ -85,7 +86,7 @@ vi.mock("@/fetchers/service-management", async (importOriginal) => ({
   }),
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: { id: "ws-1" } }),
+  default: () => ({ data: { id: mocks.workspaceId } }),
 }));
 vi.mock("@/hooks/queries/project/use-get-projects", () => ({
   default: () => ({ data: [{ id: "proj-1" }] }),
@@ -192,8 +193,23 @@ function renderPage() {
 }
 
 describe("workflow settings (WF-9)", () => {
+  it("hides history when the active workspace changes with the workflow id retained", async () => {
+    const view = renderPage();
+    await screen.findByRole("button", { name: /settings:history.title/ });
+    mocks.workspaceId = "ws-2";
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <Page />
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.queryByRole("button", { name: /settings:history.title/ }),
+    ).toBeNull();
+  });
+
   beforeEach(() => {
     mocks.canManage = true;
+    mocks.workspaceId = "ws-1";
     mocks.search = { workflowId: "wf-1" };
     mocks.navigate.mockReset();
     mocks.session = { user: { id: "u1" }, session: { id: "s1" } };

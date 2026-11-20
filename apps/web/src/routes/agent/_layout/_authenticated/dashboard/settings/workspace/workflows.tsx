@@ -139,7 +139,8 @@ function WorkflowSettingsRoute() {
     <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
       {workflowId ? (
         <WorkflowDetailView
-          key={`${workflowId}:${session?.session?.id ?? ""}`}
+          key={`${workspace?.id ?? ""}:${workflowId}:${session?.session?.id ?? ""}`}
+          workspaceId={workspace?.id}
           workflowId={workflowId}
           canManage={canManage}
           states={states}
@@ -455,6 +456,7 @@ function CreateWorkflowDialog({
 }
 
 function WorkflowDetailView({
+  workspaceId,
   workflowId,
   canManage,
   states,
@@ -462,6 +464,7 @@ function WorkflowDetailView({
   projects,
   onBack,
 }: {
+  workspaceId: string | undefined;
   workflowId: string;
   canManage: boolean;
   states: NamedOption[];
@@ -650,7 +653,9 @@ function WorkflowDetailView({
         )
       ) : (
         <>
-          {session?.user?.id ? (
+          {session?.user?.id &&
+          workspaceId &&
+          workflow.workspaceId === workspaceId ? (
             <SettingsHistory
               type="workflow"
               id={workflow.id}

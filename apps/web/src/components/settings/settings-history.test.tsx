@@ -80,9 +80,120 @@ function setup(userId = "u1") {
   return { client, ...view };
 }
 describe("SettingsHistory", () => {
+  it("revalidates before disclosing previously loaded history after reach is revoked", async () => {
+    get.mockReset().mockResolvedValueOnce({
+      entityType: "workspace",
+      entityId: "w1",
+      lastChanged: { actor: row.actor, at: row.at },
+      rows: [row],
+    });
+    let rejectRead: (error: Error) => void = () => {};
+    get.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectRead = reject;
+        }),
+    );
+    const { client } = setup();
+    await screen.findByText(/Last changed by Alice/);
+    fireEvent.click(screen.getByRole("button", { name: /History/ }));
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+    expect(
+      screen.queryByText(/Last changed by Alice|Workspace settings updated/),
+    ).toBeNull();
+    await act(async () => rejectRead(new HttpError(403, "Forbidden")));
+    expect(
+      screen.queryByText(/Last changed by Alice|Workspace settings updated/),
+    ).toBeNull();
+    expect(
+      client.getQueryData(
+        settingsHistoryQueryKey("workspace", "w1", "u1", "s1"),
+      ),
+    ).toBeNull();
+  });
+
+  it("does not admit an older disclosure after a second opening", async () => {
+    let finish: (value: unknown) => void = () => {};
+    const old = {
+      entityType: "workspace",
+      entityId: "w1",
+      lastChanged: { actor: row.actor, at: row.at },
+      rows: [row],
+    };
+    const fresh = {
+      ...old,
+      lastChanged: {
+        actor: { kind: "person", name: "Fresh reader" },
+        at: row.at,
+      },
+      rows: [],
+    };
+    get
+      .mockReset()
+      .mockResolvedValueOnce(old)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue(fresh);
+    setup();
+    await screen.findByText(/Last changed by Alice/);
+    const button = screen.getByRole("button", { name: /History/ });
+    fireEvent.click(button);
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await screen.findByText(/Last changed by Fresh reader/);
+    await act(async () => finish(old));
+    expect(screen.queryByText(/Alice/)).toBeNull();
+  });
+
+  it("does not admit a pending disclosure after the session changes", async () => {
+    let finish: (value: unknown) => void = () => {};
+    const old = {
+      entityType: "workspace",
+      entityId: "w1",
+      lastChanged: { actor: row.actor, at: row.at },
+      rows: [row],
+    };
+    const fresh = {
+      ...old,
+      lastChanged: { actor: { kind: "person", name: "New user" }, at: row.at },
+      rows: [],
+    };
+    get
+      .mockReset()
+      .mockResolvedValueOnce(old)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue(fresh);
+    currentUser.id = "u1";
+    currentUser.sessionId = "s1";
+    const { rerender, client } = setup();
+    await screen.findByText(/Last changed by Alice/);
+    fireEvent.click(screen.getByRole("button", { name: /History/ }));
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+    currentUser.sessionId = "s2";
+    rerender(
+      <QueryClientProvider client={client}>
+        <SettingsHistory type="workspace" id="w1" userId="u1" />
+      </QueryClientProvider>,
+    );
+    await screen.findByText(/Last changed by New user/);
+    await act(async () => finish(old));
+    expect(screen.queryByText(/Alice/)).toBeNull();
+    currentUser.sessionId = "s1";
+  });
+
   it("shows attribution and keyboard disclosure without raw fields or values", async () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-    get.mockResolvedValueOnce({
+    get.mockResolvedValue({
       entityType: "workspace",
       entityId: "w1",
       lastChanged: { actor: row.actor, at: row.at },
@@ -113,7 +224,7 @@ describe("SettingsHistory", () => {
   it("renders allowed project fields as readable labels without values", async () => {
     currentUser.id = "u1";
     currentUser.sessionId = "s1";
-    get.mockResolvedValueOnce({
+    get.mockResolvedValue({
       entityType: "project",
       entityId: "p1",
       lastChanged: { actor: row.actor, at: row.at },
@@ -137,7 +248,9 @@ describe("SettingsHistory", () => {
     await screen.findByText(/Last changed by Alice/);
     expect(get).toHaveBeenCalledWith("project", "p1", expect.any(AbortSignal));
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
-    expect(screen.getByText(/Service Calendar, State Set Mode/)).toBeTruthy();
+    expect(
+      await screen.findByText(/Service Calendar, State Set Mode/),
+    ).toBeTruthy();
     expect(
       screen.queryByText(/privateField|hidden-value|serviceCalendarId/),
     ).toBeNull();
@@ -145,7 +258,7 @@ describe("SettingsHistory", () => {
   it("shows only the two approved workflow field labels", async () => {
     currentUser.id = "u1";
     currentUser.sessionId = "s1";
-    get.mockResolvedValueOnce({
+    get.mockResolvedValue({
       entityType: "workflow",
       entityId: "wf1",
       lastChanged: { actor: row.actor, at: row.at },
@@ -169,7 +282,7 @@ describe("SettingsHistory", () => {
     await screen.findByText(/Last changed by Alice/);
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
     expect(
-      screen.getByText(
+      await screen.findByText(
         /settings:workflows.versions.title, settings:workflows.list.active/,
       ),
     ).toBeTruthy();
@@ -180,7 +293,7 @@ describe("SettingsHistory", () => {
   it("shows only the three approved canned response field labels, no values", async () => {
     currentUser.id = "u1";
     currentUser.sessionId = "s1";
-    get.mockResolvedValueOnce({
+    get.mockResolvedValue({
       entityType: "canned_response",
       entityId: "c1",
       lastChanged: { actor: row.actor, at: row.at },
@@ -208,7 +321,7 @@ describe("SettingsHistory", () => {
       expect.any(AbortSignal),
     );
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
-    expect(screen.getByText(/Canned response updated/)).toBeTruthy();
+    expect(await screen.findByText(/Canned response updated/)).toBeTruthy();
     expect(
       screen.getByText(
         "settings:cannedResponses.name, settings:cannedResponses.body, settings:cannedResponses.visibility",
@@ -219,7 +332,7 @@ describe("SettingsHistory", () => {
   it("shows only the two approved time activity field labels as existing time-tracking labels, no values", async () => {
     currentUser.id = "u1";
     currentUser.sessionId = "s1";
-    get.mockResolvedValueOnce({
+    get.mockResolvedValue({
       entityType: "time_activity",
       entityId: "ta1",
       lastChanged: { actor: row.actor, at: row.at },
@@ -248,7 +361,7 @@ describe("SettingsHistory", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
     expect(
-      screen.getByText(
+      await screen.findByText(
         "timeTracking:fields.activity, timeTracking:activities.archived",
       ),
     ).toBeTruthy();
@@ -278,7 +391,7 @@ describe("SettingsHistory", () => {
       "attachmentAllowedExtensions",
     ];
     get.mockReset();
-    get.mockResolvedValueOnce({
+    get.mockResolvedValue({
       entityType: "instance",
       entityId: "singleton",
       lastChanged: { actor: row.actor, at: row.at },
@@ -312,7 +425,7 @@ describe("SettingsHistory", () => {
           `godModeSettings:fields.${field === "anonymousRateLimitWindowMs" ? "anonymousRateLimitWindowMinutes" : field}.label`,
       )
       .join(", ");
-    expect(screen.getByText(expected)).toBeTruthy();
+    expect(await screen.findByText(expected)).toBeTruthy();
     // The row title is the translated Saved label, never the untranslated English fallback.
     expect(screen.getByText(/common:actions\.saved/)).toBeTruthy();
     expect(screen.queryByText(/Instance settings changed/)).toBeNull();
@@ -421,7 +534,7 @@ describe("SettingsHistory", () => {
       const en = read("en-US");
       catalog.current = own;
       try {
-        get.mockResolvedValueOnce({
+        get.mockResolvedValue({
           entityType: "canned_response",
           entityId: "c1",
           lastChanged: { actor: row.actor, at: row.at },
@@ -457,7 +570,7 @@ describe("SettingsHistory", () => {
         for (const name of ["name", "body", "visibility"])
           if (!sameAsEnglish.has(`${locale}:${name}`))
             expect(lookup(own, key(name))).not.toBe(lookup(en, key(name)));
-        expect(screen.getByText(labels)).toBeTruthy();
+        expect(await screen.findByText(labels)).toBeTruthy();
         const action = lookup(
           own,
           "workItems:auditHistory.actions.canned_response_created",
@@ -475,7 +588,7 @@ describe("SettingsHistory", () => {
   it("shows only closed automation fields as existing labels, never values or scope", async () => {
     currentUser.id = "u1";
     currentUser.sessionId = "s1";
-    get.mockResolvedValueOnce({
+    get.mockResolvedValue({
       entityType: "automation",
       entityId: "au1",
       lastChanged: { actor: row.actor, at: row.at },
@@ -515,7 +628,7 @@ describe("SettingsHistory", () => {
       expect.any(AbortSignal),
     );
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
-    expect(screen.getByText(/Automation updated/)).toBeTruthy();
+    expect(await screen.findByText(/Automation updated/)).toBeTruthy();
     expect(
       screen.getByText(
         [
@@ -580,7 +693,7 @@ describe("SettingsHistory", () => {
     async (status) => {
       currentUser.id = "u1";
       currentUser.sessionId = "s1";
-      get.mockResolvedValueOnce({
+      get.mockReset().mockResolvedValue({
         entityType: "workspace",
         entityId: "w1",
         lastChanged: { actor: row.actor, at: row.at },
@@ -599,7 +712,9 @@ describe("SettingsHistory", () => {
       client.setQueryData(other, { private: "other" });
       expect(await screen.findByText(/Last changed by Alice/)).toBeTruthy();
       fireEvent.click(screen.getByRole("button", { name: /History/ }));
-      expect(screen.getByText(/Workspace settings updated/)).toBeTruthy();
+      expect(
+        await screen.findByText(/Workspace settings updated/),
+      ).toBeTruthy();
       get.mockRejectedValueOnce(new HttpError(status, "denied"));
       await client.invalidateQueries({ queryKey: key, exact: true });
       await screen.findByRole("alert");
@@ -734,7 +849,7 @@ it("ignores an obsolete denied read after a newer history response", async () =>
 });
 
 it("renders only the closed membership role marker and localized action", async () => {
-  get.mockResolvedValueOnce({
+  get.mockResolvedValue({
     entityType: "workspace_member",
     entityId: "row",
     lastChanged: null,
@@ -849,7 +964,7 @@ it.each([
     );
     await screen.findByText(/Last changed by Alice/);
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
-    expect(screen.getByText(/common:actions.saved/)).toBeTruthy();
+    expect(await screen.findByText(/common:actions.saved/)).toBeTruthy();
     expect(
       screen.queryByText(/private noun|private scale|secret_raw|forms|points/),
     ).toBeNull();
@@ -1119,7 +1234,7 @@ describe.each([
     it("hides the seeded entry during a held mount read, then shows only the fresh result", async () => {
       let finish: (value: unknown) => void = () => {};
       get.mockReset();
-      get.mockImplementationOnce(
+      get.mockImplementation(
         () =>
           new Promise((resolve) => {
             finish = resolve;
@@ -1129,6 +1244,7 @@ describe.each([
       await waitFor(() => expect(get).toHaveBeenCalledOnce());
       noPrivate();
       expect(screen.queryByText(/Last changed/)).toBeNull();
+      await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
       await act(async () => finish(fresh));
       await screen.findByText(/Last changed by Fresh Fran/);
       expect(screen.queryByText(/Private Pat/)).toBeNull();

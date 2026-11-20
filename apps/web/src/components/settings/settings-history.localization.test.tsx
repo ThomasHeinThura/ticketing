@@ -286,7 +286,7 @@ describe("SettingsHistory renders the translated strings (real i18next)", () => 
     open(locale);
     // Row title: the translated Saved label, never the English fallback, for every locale.
     expect(
-      screen.getByText(new RegExp(`^${escapeRe(saved ?? "")} · `)),
+      await screen.findByText(new RegExp(`^${escapeRe(saved ?? "")} · `)),
     ).toBeTruthy();
     expect(screen.getByText(new RegExp(escapeRe(zone ?? "")))).toBeTruthy();
     // The 18 labels, in the closed order, built independently of the renderer's key map.
@@ -325,7 +325,7 @@ describe("SettingsHistory renders the translated strings (real i18next)", () => 
       );
       for (const title of titles)
         expect(
-          screen.getByText(new RegExp(`^${escapeRe(title)} · `)),
+          await screen.findByText(new RegExp(`^${escapeRe(title)} · `)),
         ).toBeTruthy();
       expect(new Set(titles).size).toBe(5);
       expect(titles[0]).toBe(REPRESENTATIVE[locale]?.[2]);

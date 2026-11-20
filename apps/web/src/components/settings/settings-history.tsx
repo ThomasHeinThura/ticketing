@@ -8,7 +8,7 @@ import {
   Skeleton,
 } from "@taskdesk/ui";
 import { ChevronDown, History } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   getSettingsHistory,
@@ -94,11 +94,38 @@ export function SettingsHistory({
   userId: string;
   selector?: SettingsHistoryScope;
 }) {
-  const { t } = useTranslation();
   const { data: session } = authClient.useSession();
   const sessionId =
     session?.user?.id === userId ? session.session?.id : undefined;
+  return (
+    <SettingsHistoryForSession
+      key={JSON.stringify([type, id, userId, sessionId, selector])}
+      type={type}
+      id={id}
+      userId={userId}
+      sessionId={sessionId}
+      selector={selector}
+    />
+  );
+}
+
+function SettingsHistoryForSession({
+  type,
+  id,
+  userId,
+  sessionId,
+  selector,
+}: {
+  type: SettingsHistoryTarget;
+  id: string;
+  userId: string;
+  sessionId: string | undefined;
+  selector?: SettingsHistoryScope;
+}) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [disclosureReady, setDisclosureReady] = useState(true);
+  const disclosureRead = useRef(0);
   const queryKey = settingsHistoryQueryKey(
     type,
     id,
@@ -130,6 +157,7 @@ export function SettingsHistory({
     refetchOnMount: "always",
   });
   const admitted =
+    disclosureReady &&
     history.isFetchedAfterMount &&
     history.isSuccess &&
     history.fetchStatus === "idle";
@@ -173,7 +201,25 @@ export function SettingsHistory({
     <HistoryPresentation
       loading={history.isLoading || history.isFetching}
       error={history.isError || stranded}
-      retry={() => void history.refetch()}
+      retry={() => {
+        const read = ++disclosureRead.current;
+        void history.refetch().then((result) => {
+          if (read === disclosureRead.current && result.isSuccess)
+            setDisclosureReady(true);
+        });
+      }}
+      onOpen={() => {
+        if (!enabled) return;
+        const read = ++disclosureRead.current;
+        setDisclosureReady(false);
+        void queryClient.cancelQueries({ queryKey, exact: true }).then(() => {
+          if (read !== disclosureRead.current) return;
+          void history.refetch().then((result) => {
+            if (read === disclosureRead.current && result.isSuccess)
+              setDisclosureReady(true);
+          });
+        });
+      }}
       summary={
         data
           ? data.lastChanged
@@ -272,12 +318,14 @@ export function HistoryPresentation({
   loading,
   error,
   retry,
+  onOpen,
   summary,
   children,
 }: {
   loading: boolean;
   error: boolean;
   retry: () => void;
+  onOpen: () => void;
   summary?: string;
   children: ReactNode;
 }) {
@@ -305,7 +353,13 @@ export function HistoryPresentation({
       {summary !== undefined ? (
         <p className="text-muted-foreground">{summary}</p>
       ) : null}
-      <Collapsible open={open} onOpenChange={setOpen}>
+      <Collapsible
+        open={open}
+        onOpenChange={(next) => {
+          if (next) onOpen();
+          setOpen(next);
+        }}
+      >
         <CollapsibleTrigger asChild>
           <Button type="button" variant="ghost" size="sm" className="gap-2">
             <History className="size-4" />
