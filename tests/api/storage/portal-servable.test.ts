@@ -1,13 +1,10 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  createAttachmentDownloadUrl,
   createAttachmentUploadUrl,
-  createPortalAttachmentDownloadUrl,
   createPortalAttachmentUploadUrl,
-  readPortalAttachmentDownloadObject,
   StoragePathError,
   writePortalAttachmentUploadedObject,
 } from "../../../apps/api/src/storage/filesystem";
@@ -70,7 +67,7 @@ describe("portal-bound filesystem links (CP-19)", () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  it("uploads and downloads the same bytes for the person the links were minted for", async () => {
+  it("uploads the same bytes for the person the link was minted for", async () => {
     const upload = createPortalAttachmentUploadUrl(
       WORK_ITEM_KEY,
       "application/pdf",
@@ -91,22 +88,6 @@ describe("portal-bound filesystem links (CP-19)", () => {
       body: body(BYTES),
     });
     expect(await readFile(path.join(root, WORK_ITEM_KEY), "utf8")).toBe(BYTES);
-
-    const download = query(
-      createPortalAttachmentDownloadUrl(
-        WORK_ITEM_KEY,
-        "screen.pdf",
-        "person-a",
-        "https://portal.example.test/api",
-      ),
-    );
-    const object = await readPortalAttachmentDownloadObject({
-      key: download.key ?? "",
-      expires: download.expires ?? "",
-      token: download.token ?? "",
-      personId: "person-a",
-    });
-    expect(object.body).toBeTruthy();
   });
 
   it("refuses another person, another key, a raised ceiling, an expired link and an agent token", async () => {
@@ -149,36 +130,6 @@ describe("portal-bound filesystem links (CP-19)", () => {
     vi.spyOn(Date, "now").mockReturnValue(Date.now() + 10 * 60 * 1000);
     await expect(write({})).rejects.toThrow("Upload URL has expired.");
     vi.restoreAllMocks();
-
-    const download = query(
-      createPortalAttachmentDownloadUrl(
-        WORK_ITEM_KEY,
-        "screen.pdf",
-        "person-a",
-        "https://portal.example.test/api",
-      ),
-    );
-    const read = (overrides: Partial<Record<string, string>>) =>
-      readPortalAttachmentDownloadObject({
-        key: download.key ?? "",
-        expires: download.expires ?? "",
-        token: download.token ?? "",
-        personId: "person-a",
-        ...overrides,
-      });
-    await expect(read({ personId: "person-b" })).rejects.toThrow(
-      StoragePathError,
-    );
-    await expect(read({ key: FINAL_KEY })).rejects.toThrow(StoragePathError);
-    const agentDownload = query(
-      createAttachmentDownloadUrl(WORK_ITEM_KEY, "screen.pdf"),
-    );
-    await expect(
-      read({
-        token: agentDownload.token ?? "",
-        expires: agentDownload.expires ?? "",
-      }),
-    ).rejects.toThrow(StoragePathError);
   });
 
   it("binds submission uploads to their person, key, size and expiry", async () => {
@@ -224,49 +175,6 @@ describe("portal-bound filesystem links (CP-19)", () => {
     );
     vi.spyOn(Date, "now").mockReturnValue(Date.now() + 10 * 60 * 1000);
     await expect(write()).rejects.toThrow("Upload URL has expired.");
-  });
-
-  it("binds a submission file's download to the person it was minted for", async () => {
-    await mkdir(path.dirname(path.join(root, SUBMISSION_FINAL_KEY)), {
-      recursive: true,
-    });
-    await writeFile(path.join(root, SUBMISSION_FINAL_KEY), BYTES);
-    const url = createPortalAttachmentDownloadUrl(
-      SUBMISSION_FINAL_KEY,
-      "form.pdf",
-      "person-a",
-      "https://portal.example.test/api",
-    );
-    expect(new URL(url).pathname).toBe("/api/storage/portal-download");
-    const download = query(url);
-    const read = (overrides: Partial<Record<string, string>>) =>
-      readPortalAttachmentDownloadObject({
-        key: download.key ?? "",
-        expires: download.expires ?? "",
-        token: download.token ?? "",
-        personId: "person-a",
-        ...overrides,
-      });
-    const object = await read({});
-    const bytes = Buffer.from(
-      await new Response(object.body as ReadableStream).arrayBuffer(),
-    );
-    expect(bytes.toString("utf8")).toBe(BYTES);
-    await expect(read({ personId: "person-b" })).rejects.toThrow(
-      StoragePathError,
-    );
-    await expect(read({ key: SUBMISSION_KEY })).rejects.toThrow(
-      StoragePathError,
-    );
-    // The agent's unbound token for the same key is not a portal credential.
-    const agent = query(
-      createAttachmentDownloadUrl(SUBMISSION_FINAL_KEY, "form.pdf"),
-    );
-    await expect(
-      read({ token: agent.token ?? "", expires: agent.expires ?? "" }),
-    ).rejects.toThrow(StoragePathError);
-    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 10 * 60 * 1000);
-    await expect(read({})).rejects.toThrow("Download URL has expired.");
   });
 
   it("admits each portal-host route only for its own key shape", () => {

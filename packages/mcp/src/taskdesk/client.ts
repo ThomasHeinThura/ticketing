@@ -38,7 +38,6 @@ export class TaskDeskClient {
   private async authorizedFetch(
     path: string,
     init?: RequestInit,
-    didRetry = false,
   ): Promise<Response> {
     const token = await this.auth.getAccessToken();
     const headers = new Headers(init?.headers);
@@ -53,13 +52,6 @@ export class TaskDeskClient {
       ? AbortSignal.any([init.signal, timeoutSignal])
       : timeoutSignal;
     const res = await fetch(url, { ...init, headers, signal });
-
-    // With a static API key there is nothing to refresh, so surface the 401
-    // instead of looping back into the interactive device flow.
-    if (res.status === 401 && !didRetry && !this.auth.usingApiKey) {
-      await this.auth.clearToken();
-      return this.authorizedFetch(path, init, true);
-    }
 
     return res;
   }

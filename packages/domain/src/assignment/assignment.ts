@@ -11,24 +11,16 @@
  * and load-balanced assignment are out of scope for v2. They reward gaming and produce
  * worse outcomes than a person looking at a queue." No strategy function — round-robin,
  * least-open-items, or any other automated picker — exists in this module, and none
- * should be added without a spec change first (do-not 17). What *is* built here is the
- * per-person open-work count the person-picker screen displays for a human to read
- * (`assignment.md` § Screens) — a fact, not an algorithm that chooses anyone.
+ * should be added without a spec change first (do-not 17).
  */
 
-import type { StateGroup } from "../workflow/types.js";
-import { isClosedGroup } from "../workflow/workflow.js";
 import type {
   AssigneeDisplayFacts,
   AssigneeDisplayStatus,
   AssigneeStanding,
-  AssignmentEffect,
   AssignmentPlan,
-  ConcurrentAssignResult,
-  DefaultAssigneeResolution,
   EligibilityResult,
   PersonId,
-  ProjectMoveAssignmentResult,
 } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -57,90 +49,6 @@ export function evaluateAssigneeEligibility(
     return { eligible: false, reason: "not_active" };
   }
   return { eligible: true };
-}
-
-// ---------------------------------------------------------------------------
-// Defaults — AS-11 (project default), AS-12 (request-type default overrides it), and the
-// "default assignee is inactive" edge case.
-// ---------------------------------------------------------------------------
-
-/**
- * Resolves a work item's default assignee at creation time (`AS-11`/`AS-12`): the request
- * type's default overrides the project's — `AS-12`'s own word, "overriding" — and either
- * may be absent. `isEligible` is the caller's already-resolved
- * `evaluateAssigneeEligibility(...).eligible` for the chosen candidate (never re-derived
- * here); when the chosen default is not eligible, this reports `"default_inactive"`
- * rather than silently falling back to the *other* default — the edge case says the item
- * is "Left unassigned, and the project is flagged in settings," not "try the project's
- * default instead."
- */
-export function resolveDefaultAssignee(
-  projectDefaultAssigneeId: PersonId | null,
-  requestTypeDefaultAssigneeId: PersonId | null,
-  isEligible: (personId: PersonId) => boolean,
-): DefaultAssigneeResolution {
-  const chosen = requestTypeDefaultAssigneeId ?? projectDefaultAssigneeId;
-  if (chosen === null) {
-    return { assigneeId: null, reason: "no_default" };
-  }
-  if (!isEligible(chosen)) {
-    return { assigneeId: null, reason: "default_inactive" };
-  }
-  return { assigneeId: chosen };
-}
-
-// ---------------------------------------------------------------------------
-// Workflow effects — AS-13, reusing `workflow/types.ts`'s own `Effect` vocabulary
-// (`AssignmentEffect`, `types.ts`) rather than a second one.
-// ---------------------------------------------------------------------------
-
-/**
- * Resolves a `set_assignee`/`clear_assignee` effect (`AS-13`, `workflows.md` `WF-19`) to
- * the assignee a transition's execution should write. `'default'` resolves through
- * `defaultResolution` — the caller's own `resolveDefaultAssignee` result for this work
- * item's project/request type, computed the same way `AS-11`/`AS-12` are — so a
- * transition that sets "default" and an item created with no assignee behave identically
- * when the configured default is inactive: both land on `null`, never a guess at a
- * different candidate. This function only names the resulting assignee; writing
- * `work_item.assignee_id`, the activity row, or a notification is the caller's job.
- */
-export function resolveAssignmentEffect(
-  effect: AssignmentEffect,
-  defaultResolution: DefaultAssigneeResolution,
-): PersonId | null {
-  if (effect.kind === "clear_assignee") {
-    return null;
-  }
-  if (effect.personId === "default") {
-    return defaultResolution.assigneeId;
-  }
-  return effect.personId;
-}
-
-// ---------------------------------------------------------------------------
-// Concurrency — the "Two people self-assign simultaneously" edge case.
-// ---------------------------------------------------------------------------
-
-/**
- * Decides a compare-and-swap self-assign attempt — the API section's own mechanism:
- * "Conflicts are caught by a conditional write instead: `UPDATE ... WHERE assignee_id IS
- * NULL` (or, for a targeted reassign, `WHERE assignee_id = :expectedCurrentAssigneeId`);
- * zero rows updated means someone else won, and the response is 409 with the row's
- * current `assigneeId`." `expectedCurrentAssigneeId` is what the actor's client believed
- * the assignee was when the conditional write was issued; `actualCurrentAssigneeId` is
- * the row's current `assigneeId`, read by the caller in the same transaction. Equal → the
- * conditional write would have matched a row (`"success"`); unequal → it would have
- * matched zero rows, so "someone else won" and must be named (`"conflict"`) — this
- * function never retries or silently reassigns on the caller's behalf.
- */
-export function decideConcurrentSelfAssign(
-  expectedCurrentAssigneeId: PersonId | null,
-  actualCurrentAssigneeId: PersonId | null,
-): ConcurrentAssignResult {
-  if (actualCurrentAssigneeId === expectedCurrentAssigneeId) {
-    return { outcome: "success" };
-  }
-  return { outcome: "conflict", winnerId: actualCurrentAssigneeId };
 }
 
 // ---------------------------------------------------------------------------
@@ -249,68 +157,4 @@ export function resolveAssigneeDisplayStatus(
     return "inactive";
   }
   return "active";
-}
-
-/**
- * `AS-10`'s report — now marked **P5**, not v2 P1: "**P5.** A report lists work assigned
- * to inactive people, so it can be cleaned up deliberately — see
- * reports-and-dashboards.md. Not a v2 P1 screen; the person-picker's own '(inactive)'
- * rendering (`AS-8`) is what a P1 user sees day to day." Building the *screen* is P5's
- * job, not this PR's; this function is only the pure filter that report will need
- * whenever it is built, kept here now so nothing has to re-derive it later. A thin,
- * generic filter — the caller supplies whatever rows carry an `assigneeId` and its own
- * `isActive` lookup (`person.active`); this function never queries either.
- */
-export function workItemsAssignedToInactive<
-  T extends { assigneeId: PersonId | null },
->(items: readonly T[], isActive: (personId: PersonId) => boolean): T[] {
-  return items.filter(
-    (item) => item.assigneeId !== null && !isActive(item.assigneeId),
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Project moves — the "Assigning across projects during a move" edge case.
-// ---------------------------------------------------------------------------
-
-/**
- * Resolves what happens to an assignment when a work item moves to another project
- * (edge cases table: "Assignment cleared if the assignee is not on the destination
- * roster; the user is warned first"). This function only decides the outcome; issuing the
- * warning, and obtaining the user's go-ahead, happens before the caller acts on it — the
- * same "decide, then the caller confirms" split `AS-3`'s `requiresConfirmation` uses.
- */
-export function resolveAssigneeOnProjectMove(
-  currentAssigneeId: PersonId | null,
-  destinationRosterIds: ReadonlySet<PersonId>,
-): ProjectMoveAssignmentResult {
-  if (currentAssigneeId === null) {
-    return { assigneeId: null, cleared: false };
-  }
-  if (destinationRosterIds.has(currentAssigneeId)) {
-    return { assigneeId: currentAssigneeId, cleared: false };
-  }
-  return { assigneeId: null, cleared: true };
-}
-
-// ---------------------------------------------------------------------------
-// The picker's open-work count — assignment.md § Screens ("current open work count"),
-// never a routing strategy (AS-15 — see this module's own doc comment).
-// ---------------------------------------------------------------------------
-
-/**
- * How many of `items` are open (`state_template.group not in ('completed', 'cancelled')`,
- * `data-model.md` §4) and assigned to `personId` — the fact the person-picker's "current
- * open work count" displays (`assignment.md` § Screens), reusing `workflow/workflow.js`'s
- * own `isClosedGroup` rather than a second definition of "closed" (do-not 11). This is a
- * read-only count for a human choosing who to assign to next; it is not, and must never
- * become, an input to an automated assignment strategy — `AS-15` rules that out entirely.
- */
-export function countOpenAssignments(
-  items: readonly { assigneeId: PersonId | null; stateGroup: StateGroup }[],
-  personId: PersonId,
-): number {
-  return items.filter(
-    (item) => item.assigneeId === personId && !isClosedGroup(item.stateGroup),
-  ).length;
 }

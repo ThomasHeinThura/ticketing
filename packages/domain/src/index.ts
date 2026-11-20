@@ -33,8 +33,6 @@ export * from "./identity/claim-mapping.js";
 export * from "./identity/group-object-id.js";
 export * from "./identity/identity.js";
 export * from "./identity/jit-policy.js";
-export * from "./identity/membership-projection.js";
-export * from "./identity/portal.js";
 export * from "./identity/profile-mapping.js";
 export * from "./identity/scim-admin.js";
 export * from "./identity/scim-match-attributes.js";

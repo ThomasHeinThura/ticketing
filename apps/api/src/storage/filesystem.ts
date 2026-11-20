@@ -862,8 +862,6 @@ export async function readAttachmentDownloadObject(params: {
 
 const PORTAL_ATTACHMENT_UPLOAD_TOKEN_INFO =
   "taskdesk:storage:portal-attachment-upload-token:v1";
-const PORTAL_ATTACHMENT_DOWNLOAD_TOKEN_INFO =
-  "taskdesk:storage:portal-attachment-download-token:v1";
 
 function signPortalToken(info: string, fields: readonly string[]): string {
   const hmac = crypto.createHmac("sha256", deriveTokenKey(info));
@@ -1010,48 +1008,6 @@ export function verifyPortalDownloadV2(input: {
     [input.scope, input.ref, input.id, input.personId, input.expires],
     input.token,
   );
-}
-
-/** A portal-bound download URL on the portal origin: key, person and expiry signed. */
-export function createPortalAttachmentDownloadUrl(
-  key: string,
-  filename: string,
-  personId: string,
-  apiBaseUrl: string,
-): string {
-  const expires =
-    Math.floor(Date.now() / 1000) + DEFAULT_DOWNLOAD_URL_TTL_SECONDS;
-  const token = signPortalToken(PORTAL_ATTACHMENT_DOWNLOAD_TOKEN_INFO, [
-    key,
-    personId,
-    String(expires),
-  ]);
-  const query = new URLSearchParams({
-    key,
-    expires: String(expires),
-    token,
-    filename,
-  });
-  return `${normalizeApiServerUrl(apiBaseUrl)}/storage/portal-download?${query.toString()}`;
-}
-
-/** Verifies a portal download token against the session's person, then opens the object. */
-export async function readPortalAttachmentDownloadObject(params: {
-  key: string;
-  expires: string;
-  token: string;
-  personId: string;
-}): Promise<AssetObject> {
-  const expiresNum = assertNotExpired(params.expires, "download");
-  if (
-    !verifyPortalToken(
-      PORTAL_ATTACHMENT_DOWNLOAD_TOKEN_INFO,
-      [params.key, params.personId, String(expiresNum)],
-      params.token,
-    )
-  )
-    throw new StoragePathError("Invalid or missing download token.");
-  return getPrivateObject(params.key);
 }
 
 /**
