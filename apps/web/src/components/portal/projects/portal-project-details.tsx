@@ -535,14 +535,15 @@ export function PortalProjectDetails({
 }) {
   const { t } = usePortalTranslation("portal");
   const query = useQuery({
-    queryKey: portalProjectKeys.detail(projectKey),
+    queryKey: portalProjectKeys.detail(portalUserId, projectKey),
     queryFn: () => getPortalProject(projectKey),
     retry: (count, error) =>
-      !(error instanceof HttpError && error.status === 404) && count < 2,
+      !(error instanceof HttpError && [401, 403, 404].includes(error.status)) &&
+      count < 2,
     refetchOnMount: "always",
   });
   const placeholderVisible = useDelayedPending(query.isLoading);
-  const project = query.data;
+  const project = query.isError ? undefined : query.data;
   const notFound =
     query.error instanceof HttpError && query.error.status === 404;
 

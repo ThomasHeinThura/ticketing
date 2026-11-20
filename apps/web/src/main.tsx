@@ -1,11 +1,11 @@
 import "./lib/browser-validation";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { Button, ToastProvider } from "@taskdesk/ui";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import queryClient from "@/query-client";
+import { IdentityQueryProvider } from "@/query-client/identity-boundary";
 import "@/index.css";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { AppErrorBoundary } from "./components/app-error-boundary";
@@ -165,7 +165,7 @@ function bootstrapApplication() {
     root.render(
       <StrictMode>
         <AppErrorBoundary fallback={RootCrashFallback}>
-          <QueryClientProvider client={queryClient}>
+          <IdentityQueryProvider client={queryClient}>
             <ThemeProvider>
               <ToastProvider position="bottom-right">
                 <ServerErrorNotifications />
@@ -183,7 +183,7 @@ function bootstrapApplication() {
                 </AuthProvider>
               </ToastProvider>
             </ThemeProvider>
-          </QueryClientProvider>
+          </IdentityQueryProvider>
         </AppErrorBoundary>
       </StrictMode>,
     );

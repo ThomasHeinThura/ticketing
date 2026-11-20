@@ -72,7 +72,9 @@ vi.mock("@/fetchers/portal/announcements", () => ({
 }));
 vi.mock("@/fetchers/portal/projects", () => ({
   getPortalProjects,
-  portalProjectKeys: { list: () => ["portal", "projects", "list"] },
+  portalProjectKeys: {
+    list: (id: string) => ["portal", id, "projects", "list"],
+  },
 }));
 vi.mock("@/fetchers/portal-notifications", () => ({
   getPortalNotifications: vi.fn().mockResolvedValue({
@@ -112,6 +114,7 @@ function renderShell(children: ReactNode = <h1>Page</h1>) {
   return render(
     <QueryClientProvider client={client}>
       <PortalLayout
+        portalUserId="customer-a"
         user={{
           name: "Ada Customer",
           email: "ada@example.test",
@@ -480,7 +483,7 @@ it.each([
         return {
           default: () => (
             <div data-testid="recovered-content">
-              <Child />
+              <Child portalUserId="customer-a" />
             </div>
           ),
         };
@@ -511,7 +514,7 @@ it.each([
         return {
           default: () => (
             <div data-testid="recovered-content">
-              <Child user={user} />
+              <Child user={user} portalUserId="customer-a" />
             </div>
           ),
         };

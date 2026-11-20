@@ -73,18 +73,20 @@ function matchesQuery(project: PortalProjectOption, query: string) {
  */
 export function PortalProjectsList({
   search,
+  portalUserId,
 }: {
   search: PortalProjectsSearch;
+  portalUserId: string;
 }) {
   const { t } = usePortalTranslation("portal");
   const navigate = useNavigate();
   const projects = useQuery({
-    queryKey: portalProjectKeys.list(),
+    queryKey: portalProjectKeys.list(portalUserId),
     queryFn: getPortalProjects,
     staleTime: 60_000,
     refetchOnMount: "always",
   });
-  const all = projects.data?.data ?? [];
+  const all = projects.isError ? [] : (projects.data?.data ?? []);
   // Hidden controls never filter: an old `?tab=`/`?q=` link must not leave a short list narrowed
   // with no way to clear it.
   const filterable = all.length > FILTER_THRESHOLD;

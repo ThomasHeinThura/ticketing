@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   HttpError,
   httpErrorFromResponse,
@@ -51,4 +51,47 @@ describe("httpErrorFromResponse", () => {
     expect(error.message).toBe("Forbidden");
     expect(error.requestId).toBeUndefined();
   });
+});
+
+describe("unauthorized navigation", () => {
+  it.each([
+    [
+      "portal",
+      "/projects/ACME",
+      "?project=ACME",
+      "#details",
+      "/sign-in?redirect=%2Fprojects%2FACME%3Fproject%3DACME%23details",
+    ],
+    [
+      "agent",
+      "/agent/projects/ACME",
+      "?view=board",
+      "#card",
+      "/auth/sign-in?redirect=%2Fagent%2Fprojects%2FACME%3Fview%3Dboard%23card",
+    ],
+    [
+      "agent",
+      "/god-mode/users",
+      "?q=one",
+      "#row",
+      "/auth/sign-in?redirect=%2Fgod-mode%2Fusers%3Fq%3Done%23row",
+    ],
+  ])(
+    "uses the %s application sign-in for %s",
+    async (mode, pathname, search, hash, target) => {
+      const replace = vi.fn();
+      vi.stubEnv("MODE", mode);
+      vi.stubGlobal("window", {
+        location: { pathname, search, hash, replace },
+      });
+      try {
+        const { handleUnauthorized } = await import("./http-error");
+        handleUnauthorized();
+        expect(replace).toHaveBeenCalledExactlyOnceWith(target);
+      } finally {
+        vi.unstubAllGlobals();
+        vi.unstubAllEnvs();
+      }
+    },
+  );
 });

@@ -13,9 +13,11 @@ export function isUnauthorizedError(error: unknown): boolean {
 export function handleUnauthorized(): void {
   const currentPath =
     window.location.pathname + window.location.search + window.location.hash;
+  const signIn =
+    import.meta.env.MODE === "portal" ? "/sign-in" : "/auth/sign-in";
   const target = currentPath
-    ? `/auth/sign-in?redirect=${encodeURIComponent(currentPath)}`
-    : "/auth/sign-in";
+    ? `${signIn}?redirect=${encodeURIComponent(currentPath)}`
+    : signIn;
   window.location.replace(target);
 }
 

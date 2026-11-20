@@ -66,7 +66,7 @@ function PortalHome() {
   const { project } = search;
   const home = usePortalHome(portalUserId, project, true);
   const projects = useQuery({
-    ...portalProjectsOptions(),
+    ...portalProjectsOptions(portalUserId),
     refetchOnMount: false,
   });
   const cases = usePortalCases(
@@ -115,7 +115,11 @@ function PortalHome() {
         project={project}
         label={t("home.dashboardTitle")}
       />
-      <PortalProjectsCards projectKey={project} prefetched />
+      <PortalProjectsCards
+        portalUserId={portalUserId}
+        projectKey={project}
+        prefetched
+      />
       <PortalOutstandingCases
         prefetched
         portalUserId={portalUserId}

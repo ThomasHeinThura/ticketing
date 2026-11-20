@@ -83,14 +83,16 @@ function ProjectCard({ project }: { project: PortalProjectOption }) {
  */
 export function PortalProjectsCards({
   projectKey,
+  portalUserId,
   prefetched = false,
 }: {
   projectKey?: string;
+  portalUserId: string;
   prefetched?: boolean;
 }) {
   const { t } = usePortalTranslation("portal");
   const projects = useQuery({
-    ...portalProjectsOptions(),
+    ...portalProjectsOptions(portalUserId),
     staleTime: 60_000,
     // The dashboard loader refreshes on entry and the mount reuses that read.
     refetchOnMount: prefetched ? false : "always",

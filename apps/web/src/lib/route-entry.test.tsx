@@ -174,7 +174,7 @@ describe("route entry reads", () => {
         usePortalCases("u1", outstandingCasesQuery(deps, "OPS"), {
           prefetched: true,
         });
-        useQuery(portalProjectsOptions());
+        useQuery(portalProjectsOptions("u1"));
       },
       { wrapper: wrapper(portalClient) },
     );
@@ -367,7 +367,7 @@ it("preloads portal links without reads and refreshes cached dashboard data on e
     ...portalRoutePendingOptions,
   });
   portalClient.setQueryData(["portal", "u1", "home", null], {});
-  portalClient.setQueryData(portalProjectsOptions().queryKey, { data: [] });
+  portalClient.setQueryData(portalProjectsOptions("u1").queryKey, { data: [] });
   portalClient.setQueryData(
     ["portal", "u1", "cases", outstandingCasesQuery({})],
     {},
