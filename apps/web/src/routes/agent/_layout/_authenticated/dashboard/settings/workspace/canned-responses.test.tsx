@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   guard: vi.fn(),
   history: vi.fn(),
+  historyRows: 0,
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 vi.mock("@tanstack/react-router", () => ({
@@ -43,7 +44,16 @@ vi.mock("@/components/settings/settings-access", () => ({
 vi.mock("@/components/settings/settings-history", () => ({
   SettingsHistory: (props: { type: string; id: string; userId: string }) => {
     mocks.history(props);
-    return <div>History</div>;
+    return (
+      <div>
+        History
+        {Array.from({ length: mocks.historyRows }, (_, i) => i + 1).map(
+          (id) => (
+            <div key={id}>History row {id}</div>
+          ),
+        )}
+      </div>
+    );
   },
 }));
 vi.mock("@/components/settings/refresh-settings-history", () => ({
@@ -92,6 +102,7 @@ function mount() {
 }
 beforeEach(() => {
   mocks.search = {};
+  mocks.historyRows = 0;
   mocks.session = { user: { id: "u1" }, session: { id: "s1" } };
   for (const fn of [
     mocks.save,
@@ -109,6 +120,25 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("canned responses history", () => {
+  it("keeps the editor body scrollable and actions in the footer with 200 history rows", async () => {
+    mocks.search = { id: "c1" };
+    mocks.historyRows = 200;
+    mount();
+    const lastRow = await screen.findByText("History row 200");
+    const panel = lastRow.closest('[data-slot="dialog-panel"]');
+    const viewport = panel?.closest('[data-slot="scroll-area-viewport"]');
+    const save = screen.getByText("settings:cannedResponses.save");
+    const cancel = screen.getByText("common:actions.cancel");
+    const footer = save.closest('[data-slot="dialog-footer"]');
+    expect(screen.getAllByText(/^History row \d+$/)).toHaveLength(200);
+    expect(viewport).not.toBeNull();
+    expect(
+      panel?.contains(screen.getByLabelText("settings:cannedResponses.name")),
+    ).toBe(true);
+    expect(footer?.contains(cancel)).toBe(true);
+    expect(viewport?.contains(footer ?? null)).toBe(false);
+    expect(footer?.parentElement).toBe(viewport?.closest("form"));
+  });
   it("mounts History only for a loaded selected snippet, with the session user", async () => {
     mocks.search = { id: "new" };
     mount();

@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogPanel,
   DialogTitle,
   Input,
   Label,
@@ -428,14 +429,14 @@ function TimeActivitiesSettingsContent() {
                   </DialogTitle>
                   <DialogDescription>{openHistory.name}</DialogDescription>
                 </DialogHeader>
-                <div className="px-6 pb-6">
+                <DialogPanel>
                   <SettingsHistory
                     key={`${openHistory.id}:${history?.userId}:${history?.sessionId}:${history?.workspaceId}`}
                     type="time_activity"
                     id={openHistory.id}
                     userId={history?.userId as string}
                   />
-                </div>
+                </DialogPanel>
               </DialogContent>
             </Dialog>
           ) : null}

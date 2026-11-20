@@ -21,6 +21,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogPanel,
   DialogTitle,
   Empty,
   EmptyDescription,
@@ -139,9 +140,9 @@ function CannedResponseEditor({
                 visibilityDefault: visibility,
               });
           }}
-          className="space-y-4"
+          className="flex min-h-0 flex-col"
         >
-          <div className="space-y-4 px-6">
+          <DialogPanel className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="snippet-name">
                 {t("settings:cannedResponses.name")}
@@ -214,7 +215,7 @@ function CannedResponseEditor({
                 </AlertDescription>
               </Alert>
             ) : null}
-          </div>
+          </DialogPanel>
           <DialogFooter>
             <Button
               variant="outline"

@@ -3531,7 +3531,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses.tsx:CannedResponseEditor",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[2]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[2]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -3546,7 +3546,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses.tsx:CannedResponseEditor",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[2]/Select[0]/SelectContent[0]/SelectItem[1]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[2]/Select[0]/SelectContent[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -6555,7 +6555,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses.tsx:CannedResponseEditor",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[2]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[2]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -6570,7 +6570,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/canned-responses.tsx:CannedResponseEditor",
-					"jsx:Dialog[0]/DialogContent[0]/form[0]/div[0]/div[2]/Select[0]/SelectContent[0]/SelectItem[1]",
+					"jsx:Dialog[0]/DialogContent[0]/form[0]/DialogPanel[0]/div[2]/Select[0]/SelectContent[0]/SelectItem[1]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
