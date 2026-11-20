@@ -56,6 +56,8 @@ type Row = {
 type History = {
   entityType: string;
   entityId: string;
+  workspaceId: string | null;
+  projectId: string | null;
   lastChanged: { at: string; actor: Row["actor"] } | null;
   rows: Row[];
 };
@@ -149,7 +151,9 @@ function closedHistory(
     "entityId",
     "entityType",
     "lastChanged",
+    "projectId",
     "rows",
+    "workspaceId",
   ]);
   expect(data.entityType).toBe(type);
   expect(data.entityId).toBe(id);
@@ -364,6 +368,8 @@ test("workspace and project membership role History persists with closed metadat
         expect(workspaceHistory.rows.length).toBe(
           beforeWorkspace.rows.length + 1,
         );
+        expect(workspaceHistory.workspaceId).toBe(workspaceId);
+        expect(workspaceHistory.projectId).toBeNull();
         closedHistory(
           workspaceHistory,
           "workspace_member",
@@ -491,6 +497,8 @@ test("workspace and project membership role History persists with closed metadat
         expect(projectHistory.rows.length).toBe(
           projectHistoryBefore.rows.length + 1,
         );
+        expect(projectHistory.workspaceId).toBe(workspaceId);
+        expect(projectHistory.projectId).toBe(projectId);
         closedHistory(
           projectHistory,
           "project_membership",

@@ -5848,11 +5848,25 @@ async function installAuthenticatedFixture(page: Page) {
 
     if (
       path === "/api/audit" &&
+      url.searchParams.get("entity_type") === "state_template"
+    ) {
+      body = {
+        entityType: "state_template",
+        entityId: url.searchParams.get("entity_id"),
+        workspaceId: "visual-workspace",
+        projectId: null,
+        lastChanged: null,
+        rows: [],
+      };
+    } else if (
+      path === "/api/audit" &&
       url.search === "?entity_type=workspace&entity_id=visual-workspace"
     ) {
       body = {
         entityType: "workspace",
         entityId: "visual-workspace",
+        workspaceId: "visual-workspace",
+        projectId: null,
         lastChanged: {
           actor: { kind: "person", name: "Visual Tester" },
           at: "2026-01-01T12:00:00.000Z",
@@ -5866,6 +5880,8 @@ async function installAuthenticatedFixture(page: Page) {
       body = {
         entityType: "project",
         entityId: "visual-project",
+        workspaceId: "visual-workspace",
+        projectId: "visual-project",
         lastChanged: {
           actor: { kind: "person", name: "Visual Tester" },
           at: "2026-01-01T12:00:00.000Z",
@@ -8023,6 +8039,10 @@ test("workspace settings states screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Northstar Support", { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "History", exact: true }),
+  ).toHaveCount(5);
+  await expect(page.getByRole("status", { name: /loading/i })).toHaveCount(0);
   await expect(page).toHaveScreenshot("workspace-settings-states.png", {
     animations: "disabled",
     caret: "hide",
