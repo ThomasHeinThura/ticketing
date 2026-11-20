@@ -70,6 +70,7 @@ vi.mock("@/fetchers/settings/settings-history", async (importOriginal) => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: (namespace?: string) => ({
+    i18n: { exists: () => false },
     t: (rawKey: string, options: Record<string, unknown> = {}) =>
       translate(
         namespace && !rawKey.includes(":") ? `${namespace}:${rawKey}` : rawKey,
