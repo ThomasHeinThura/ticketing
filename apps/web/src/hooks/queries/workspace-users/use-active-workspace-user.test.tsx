@@ -2,6 +2,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  IdentityQueryProvider,
+  retireIdentity,
+} from "@/query-client/identity-boundary";
 import { useGetActiveWorkspaceUser } from "./use-active-workspace-user";
 import { useGetActiveWorkspaceUsers } from "./use-get-active-workspace-users";
 
@@ -104,5 +108,47 @@ describe("useGetActiveWorkspaceUser", () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBeNull();
+  });
+
+  it("drops a delayed invalidated members read after the identity changes", async () => {
+    let release!: (value: ReturnType<typeof respond>) => void;
+    membersGet.mockResolvedValueOnce(respond("member"));
+    membersGet.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    membersGet.mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({}),
+    });
+    const { queryClient } = setup();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <IdentityQueryProvider client={queryClient}>
+        {children}
+      </IdentityQueryProvider>
+    );
+    const { result } = renderHook(() => useGetActiveWorkspaceUser(), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.data?.role).toBe("member"));
+    act(() => {
+      void queryClient.invalidateQueries({
+        queryKey: ["workspace-user", "active"],
+      });
+    });
+    await waitFor(() => expect(release).toBeDefined());
+    await act(async () => {
+      retireIdentity(queryClient);
+      await queryClient.resetQueries();
+    });
+    await act(async () => {
+      release(respond("admin"));
+    });
+    expect(
+      queryClient.getQueryData(["active-workspace-users", "w1"]),
+    ).toBeUndefined();
   });
 });

@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { onFactorEnrollmentRequired } from "@taskdesk/libs";
 import { authClient } from "@/lib/auth-client";
+import { retireIdentity } from "@/query-client/identity-boundary";
 
 /**
  * The agent session, kept in the query client so a navigation does not wait for `get-session`
@@ -182,6 +183,7 @@ function adoptUser(queryClient: QueryClient, session: SessionData | undefined) {
     return;
   supersedeReads(queryClient);
   if (previous && previous.userId !== next?.userId) {
+    retireIdentity(queryClient);
     void queryClient.resetQueries({
       predicate: (query) => query.queryKey[0] !== agentSessionKeys.all[0],
     });
