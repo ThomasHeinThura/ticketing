@@ -141,6 +141,9 @@ export async function assertWebhookQuota(
     .limit(1);
   if (!workspace)
     throw new HTTPException(404, { message: "Workspace not found" });
+  await executor.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${`webhook-quota:${workspace.organisationId}`}, 0))`,
+  );
   const [quota] = await executor
     .select({ maxWebhooks: organisationQuotaTable.maxWebhooks })
     .from(organisationQuotaTable)

@@ -102,10 +102,12 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
 
 const row = (key: string) => ({ id: `id-${key}`, key, unavailableFields: [] });
 
-function mount(props: Partial<Parameters<typeof WorkItemBoardView>[0]> = {}) {
-  const queryClient = new QueryClient({
+function mount(
+  props: Partial<Parameters<typeof WorkItemBoardView>[0]> = {},
+  queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
-  });
+  }),
+) {
   return render(
     <QueryClientProvider client={queryClient}>
       <WorkItemBoardView
@@ -347,12 +349,19 @@ describe("combined board capabilities", () => {
         deleteTasks: false,
       }),
     });
-    mount({ combined: true, workspaceId: "workspace" });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    mount({ combined: true, workspaceId: "workspace" }, client);
 
     await waitFor(() => {
       expect(state.boardProps?.canRank).toBe(true);
       expect(state.boardProps?.canTransition).toBe(false);
     });
+    state.capabilityGet.mockReturnValueOnce(new Promise(() => {}));
+    void client.invalidateQueries({ queryKey: ["workspace-capabilities"] });
+    await waitFor(() => expect(state.capabilityGet).toHaveBeenCalledTimes(2));
+    expect(state.boardProps?.canRank).toBe(true);
     expect(state.capabilityGet).toHaveBeenCalledWith({
       query: { workspaceId: "workspace", projectId: "child-project" },
     });
