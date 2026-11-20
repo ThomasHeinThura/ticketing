@@ -419,7 +419,7 @@
 		},
 		"accountSecurity": {
 			"pageTitle": "Account security",
-			"description": "Manage your authenticator factor and backup codes.",
+			"description": "Manage your password, sign-in methods and authenticator factor.",
 			"required": "Instance policy requires you to enroll a factor before continuing.",
 			"unavailable": "Security settings are unavailable.",
 			"enabled": "Authenticator factor enabled",
@@ -1899,7 +1899,9 @@
 			"deleteNamed": "Delete {{name}}",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
 			"save": "Save",
-			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
+			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending.",
+			"emptyLibrary": "No canned responses yet",
+			"emptyLibraryDescription": "Create a reusable reply that agents can insert into comments."
 		},
 		"projectLabels": {
 			"subtitle": "Create, edit, and delete labels for this {{term_project_one}}.",
@@ -4192,7 +4194,9 @@
 				"description": "{{ref}} will be closed and the team will not work on it. You cannot undo this; to continue later, submit a new {{term_request_one}}.",
 				"done": "{{ref}} was withdrawn.",
 				"pending": "Withdrawing…"
-			}
+			},
+			"typeNotFoundTitle": "This form is not available.",
+			"typeNotFoundDescription": "The link may be out of date, or you may not have access to it."
 		},
 		"orientation": {
 			"title": "Welcome to your portal",

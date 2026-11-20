@@ -100,7 +100,10 @@ test("workspace settings creates, edits and deletes reusable replies with URL-ad
   await expect(
     page.getByRole("heading", { name: "Canned responses", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "New response" }).click();
+  const emptyLibrary = page.locator('[data-slot="empty"]').filter({
+    hasText: "No canned responses yet",
+  });
+  await emptyLibrary.getByRole("button", { name: "New response" }).click();
   await expect(page).toHaveURL(/id=new/);
   const dialog = page.locator('[data-slot="dialog-popup"]');
   await expect(dialog).toContainText("{{requester.name}}");

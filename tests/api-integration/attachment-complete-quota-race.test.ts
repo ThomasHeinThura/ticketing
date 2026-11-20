@@ -115,6 +115,11 @@ const s3Fakes = vi.hoisted(() => {
         if (!obj) {
           const error = new Error("NoSuchKey");
           error.name = "NoSuchKey";
+          // The real SDK error shape of a first-attempt 404: the one copy failure PTM-06
+          // classifies as settled (nothing was copied).
+          Object.assign(error, {
+            $metadata: { httpStatusCode: 404, attempts: 1 },
+          });
           throw error;
         }
         const snapshot = Buffer.from(obj);
@@ -781,9 +786,15 @@ describe("PTM-05 complete: accepted, resolved request completed through both rou
     return { s, identity, submission, id, pendingKey };
   }
 
-  // The submission route copies the valid object and is held mid-copy while it owns the
-  // attachment row; the portal route then copies whatever is at the pending key and queues on
-  // that row (its ready UPDATE, or its reject DELETE when the second object is invalid).
+  // PTM-06 changed what this overlap can be. The submission route no longer holds its row locks
+  // across storage I/O (Phase A commits before the copy, Phase C holds no connection or lock), so a
+  // held COPY can no longer make the portal route queue on the attachment row. The lock overlap
+  // that still exists is Phase D: the submission transaction owns the submission and attachment rows
+  // (and the quota advisory lock) until it commits. The submission route is therefore held right
+  // before its pending-only ready UPDATE, while it owns those locks; the portal route then copies
+  // whatever is at the pending key (re-created by a replayed upload through the still-valid
+  // credential, r7 errata) and queues on that row (its ready UPDATE, or its reject DELETE when the
+  // second object is invalid). The waiting statement is observed in `pg_stat_activity`, not slept.
   it.each([
     {
       name: "valid then valid",
@@ -805,13 +816,32 @@ describe("PTM-05 complete: accepted, resolved request completed through both rou
       const bytes = png(64);
       s3Fakes.fakeStore.set(pendingKey, bytes);
 
+      // Hold the submission transaction in Phase D, after it locked the submission and attachment
+      // rows and took the quota lock, immediately before its pending-only ready UPDATE.
+      let signalPhaseD: () => void = () => {};
+      const phaseDReached = new Promise<void>((resolve) => {
+        signalPhaseD = resolve;
+      });
+      let releasePhaseD: () => void = () => {};
+      const phaseDReleased = new Promise<void>((resolve) => {
+        releasePhaseD = resolve;
+      });
+      const realMarkReady = attachmentRepository.markSubmissionAttachmentReady;
+      vi.spyOn(
+        attachmentRepository,
+        "markSubmissionAttachmentReady",
+      ).mockImplementation(async (executor, input) => {
+        signalPhaseD();
+        await phaseDReleased;
+        return realMarkReady(executor, input);
+      });
+
       const started = startedOperations();
       const observer = rawClient();
       await observer.connect();
       let submissionRun: Promise<Settled<unknown>> | undefined;
       let ordinaryRun: Promise<Settled<unknown>> | undefined;
       try {
-        s3Fakes.arm();
         submissionRun = started.run(
           completeSubmissionAttachment({
             attachmentId: id,
@@ -822,9 +852,10 @@ describe("PTM-05 complete: accepted, resolved request completed through both rou
             identity,
           }),
         );
-        await waitForHeldCopy(s3Fakes.gate.reached, submissionRun);
-        // The held copy already snapshotted the valid bytes; replace what a later copy sees.
-        if (second) s3Fakes.fakeStore.set(pendingKey, second);
+        await waitForHeldCopy(phaseDReached, submissionRun);
+        // The submission already moved and validated the first object. A replayed upload through
+        // the still-valid credential recreates the pending key for the portal completion.
+        s3Fakes.fakeStore.set(pendingKey, second ?? bytes);
         ordinaryRun = started.run(
           completeAttachment({
             attachmentId: id,
@@ -841,7 +872,8 @@ describe("PTM-05 complete: accepted, resolved request completed through both rou
           `the portal completion to queue on the attachment row (${queuedOn})`,
         );
       } finally {
-        // Release the held copy first, then leave no writer running into the next DB reset.
+        // Release the held Phase D first, then leave no writer running into the next DB reset.
+        releasePhaseD();
         s3Fakes.gate.release();
         await observer.end();
         await started.drain();
@@ -874,4 +906,92 @@ describe("PTM-05 complete: accepted, resolved request completed through both rou
       );
     },
   );
+
+  // The other overlap, now possible by design (r5 M2, r7 W8d): while the submission copy is held in
+  // Phase C it holds no row lock, so the portal completion is NOT queued behind it. It completes
+  // first; the held submission then reaches Phase D, finds the row already ready and fails with 409,
+  // removing only its own random final key. Exactly one ready row; the winner's bytes are intact.
+  it("a copy held in the submission's Phase C does not block the portal completion; the late submission loses with 409 and removes only its own key", async () => {
+    const { s, identity, submission, id, pendingKey } =
+      await seedAcceptedResolvedUpload();
+    const bytes = png(64);
+    s3Fakes.fakeStore.set(pendingKey, bytes);
+
+    const started = startedOperations();
+    let submissionRun: Promise<Settled<unknown>> | undefined;
+    let ordinaryResult: Settled<unknown> | undefined;
+    try {
+      s3Fakes.arm();
+      submissionRun = started.run(
+        completeSubmissionAttachment({
+          attachmentId: id,
+          submissionId: submission.id,
+          submissionWorkItemId: submission.workItemId,
+          requesterId: s.customer.person.id,
+          workspaceId: s.t.workspaceId,
+          identity,
+        }),
+      );
+      await waitForHeldCopy(s3Fakes.gate.reached, submissionRun);
+      // The submission is parked mid-copy. The portal completion runs to the end meanwhile; if
+      // Phase C still held a lock on the attachment row this would never settle.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const portal = started.run(
+        completeAttachment({
+          attachmentId: id,
+          workspaceId: s.t.workspaceId,
+          workItemId: s.t.workItem.id,
+          actorId: s.customer.user.id,
+          actorType: "person",
+          identity,
+          portal: true,
+        }),
+      );
+      ordinaryResult = await Promise.race([
+        portal,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new Error(
+                  "the portal completion was blocked while the submission copy was held",
+                ),
+              ),
+            15_000,
+          );
+        }),
+      ]).finally(() => clearTimeout(timer));
+    } finally {
+      s3Fakes.gate.release();
+      await started.drain();
+    }
+    const submissionResult = (await submissionRun) as Settled<unknown>;
+
+    for (const result of [submissionResult, ordinaryResult]) {
+      if (result?.status === "rejected")
+        expect(pgCode(result.reason)).not.toBe("40P01");
+    }
+    expect(ordinaryResult?.status).toBe("fulfilled");
+    expect(httpStatus(submissionResult)).toBe(409);
+
+    const ready = await attachmentRow(id);
+    expect(ready?.state).toBe("ready");
+    const finalKey = ready?.objectKey as string;
+    expect(finalKey).not.toBe(pendingKey);
+    // Only the portal winner's final object is left, with the validated bytes: the late
+    // submission removed just its own random final key.
+    expect([...s3Fakes.fakeStore.keys()]).toEqual([finalKey]);
+    expect(s3Fakes.fakeStore.get(finalKey)?.equals(bytes)).toBe(true);
+    const activity = await db
+      .select()
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, s.t.workItem.id));
+    // One ready row, so one `attachment.added`; the lost submission recorded no reopen.
+    expect(activity.filter((a) => a.verb === "attachment.added")).toHaveLength(
+      1,
+    );
+    expect(
+      activity.filter((a) => a.verb === "reopen_received").length,
+    ).toBeLessThanOrEqual(1);
+  });
 });

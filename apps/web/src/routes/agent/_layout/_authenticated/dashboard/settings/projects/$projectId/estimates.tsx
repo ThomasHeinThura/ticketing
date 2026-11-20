@@ -84,9 +84,12 @@ function RouteComponent() {
     );
   if (isForbiddenError(estimates.error)) return <NoAccessPage />;
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto space-y-6">
       <PageTitle title={t("estimates.pageTitle")} />
       <h1 className="sr-only">{t("estimates.pageTitle")}</h1>
+      <div className="text-2xl font-semibold" aria-hidden="true">
+        {t("estimates.pageTitle")}
+      </div>
       <EstimateSettings
         projectId={project.id}
         projectKey={project.slug}

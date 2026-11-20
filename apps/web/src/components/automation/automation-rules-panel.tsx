@@ -9,7 +9,6 @@ import {
   CardAction,
   CardContent,
   CardDescription,
-  CardFrame,
   CardHeader,
   CardTitle,
   Dialog,
@@ -95,7 +94,7 @@ function RuleCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="truncate">{rule.name}</span>
+          <span className="line-clamp-2 min-w-0 break-words">{rule.name}</span>
           <Badge variant={rule.enabled ? "success" : "secondary"}>
             {rule.enabled ? t("list.enabled") : t("list.disabled")}
           </Badge>
@@ -359,7 +358,7 @@ export function AutomationRulesPanel({
             </EmptyHeader>
           </Empty>
         ) : (
-          <CardFrame>
+          <div className="flex flex-col gap-2">
             {rules.map((rule) => (
               <RuleCard
                 key={rule.id}
@@ -375,7 +374,7 @@ export function AutomationRulesPanel({
                 }}
               />
             ))}
-          </CardFrame>
+          </div>
         )}
       </div>
       {dialog?.kind === "edit" && meta ? (

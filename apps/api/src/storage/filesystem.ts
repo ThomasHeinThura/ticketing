@@ -119,6 +119,11 @@ function getFilesystemConfig(): FilesystemStorageConfig {
   };
 }
 
+/** The resolved configured root, for the backend fingerprint (`storage/index.ts`). */
+export function getResolvedStorageRoot(): string {
+  return getFilesystemConfig().root;
+}
+
 /** All object paths and containment checks use the same canonical storage root. */
 async function getCanonicalFilesystemConfig(): Promise<FilesystemStorageConfig> {
   const config = getFilesystemConfig();

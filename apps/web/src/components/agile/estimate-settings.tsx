@@ -384,7 +384,7 @@ export function EstimateSettings({
                 />
                 <Label
                   htmlFor={`policy-${option}`}
-                  className="flex flex-col gap-0.5 font-normal"
+                  className="flex flex-col items-start gap-0.5 text-left font-normal"
                 >
                   <span className="font-medium">
                     {t(`complete.policy.${option}.label`)}

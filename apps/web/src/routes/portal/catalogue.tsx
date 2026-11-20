@@ -55,6 +55,7 @@ import {
   submitPortalRequest,
 } from "@/fetchers/intake";
 import { invalidatePortalCaseViews } from "@/hooks/queries/portal/use-portal-cases";
+import { HttpError } from "@/lib/http-error";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { TerminologyProvider } from "@/lib/i18n/terminology-provider";
 import { missingRequiredIntakeFields } from "@/lib/intake-validation";
@@ -144,7 +145,13 @@ function PortalCatalogueContent() {
     queryKey: ["portal", portalUserId, "catalogue", "type", key],
     queryFn: () => getPortalRequestType(key ?? ""),
     enabled: Boolean(key),
+    // A missing request type cannot appear on retry.
+    retry: (count, error) =>
+      !(error instanceof HttpError && error.status === 404) && count < 2,
   });
+  const typeNotFound =
+    selectedType.error instanceof HttpError &&
+    selectedType.error.status === 404;
   const entries = filteredEntries;
   // Opening a card (or going back) unmounts the control that was focused, which
   // would drop focus to <body>: hand it to the new heading instead.
@@ -167,7 +174,7 @@ function PortalCatalogueContent() {
   const primaryError =
     catalogue.isError ||
     (needsSelectionMetadata && selectionMetadata.isError) ||
-    selectedType.isError;
+    (selectedType.isError && !typeNotFound);
   const primaryLoading =
     catalogue.isLoading ||
     (needsSelectionMetadata && selectionMetadata.isLoading) ||
@@ -461,7 +468,29 @@ function PortalCatalogueContent() {
         >
           <Skeleton className="h-32 w-full rounded-xl" />
         </LoadingStatus>
-      ) : primaryError ? null : selected ? (
+      ) : primaryError ? null : typeNotFound ? (
+        <EmptyState
+          icon={<FileText />}
+          title={t("portal:intake.typeNotFoundTitle", {
+            defaultValue: "This form is not available.",
+          })}
+          description={t("portal:intake.typeNotFoundDescription", {
+            defaultValue:
+              "The link may be out of date, or you may not have access to it.",
+          })}
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void navigate({ search: { q } })}
+            >
+              {t("portal:intake.backToCatalogue", {
+                defaultValue: "Back to catalogue",
+              })}
+            </Button>
+          }
+        />
+      ) : selected ? (
         <section className="flex flex-col gap-4 rounded-md border p-4">
           <Button
             variant="ghost"

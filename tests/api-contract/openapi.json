@@ -60662,7 +60662,17 @@
             }
           },
           "409": {
-            "description": "Attachment is no longer pending",
+            "description": "Attachment is no longer pending or its upload cannot be confirmed",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upload completion or storage outcome could not be confirmed",
             "content": {
               "text/plain": {
                 "schema": {
@@ -64405,7 +64415,17 @@
             }
           },
           "409": {
-            "description": "Attachment is not pending",
+            "description": "Attachment is not pending or its upload cannot be confirmed",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upload completion or storage outcome could not be confirmed",
             "content": {
               "text/plain": {
                 "schema": {
@@ -64941,7 +64961,17 @@
             }
           },
           "409": {
-            "description": "Attachment is no longer pending",
+            "description": "Attachment is no longer pending or its upload cannot be confirmed",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upload completion or storage outcome could not be confirmed",
             "content": {
               "text/plain": {
                 "schema": {

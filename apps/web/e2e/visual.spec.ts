@@ -5875,10 +5875,15 @@ async function installAuthenticatedFixture(page: Page) {
       };
     } else if (
       path === "/api/audit" &&
-      url.search === "?entity_type=project&entity_id=visual-project"
+      (url.search === "?entity_type=project&entity_id=visual-project" ||
+        url.search ===
+          "?entity_type=project_estimates&entity_id=visual-project")
     ) {
       body = {
-        entityType: "project",
+        entityType:
+          url.search === "?entity_type=project&entity_id=visual-project"
+            ? "project"
+            : "project_estimates",
         entityId: "visual-project",
         workspaceId: "visual-workspace",
         projectId: "visual-project",
@@ -8487,6 +8492,9 @@ test("project settings estimates screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(
     page.getByText("Move to the next Cycle", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator(':nth-match(p:text("Last changed by Visual Tester"), 2)'),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("project-settings-estimates.png", {
     animations: "disabled",

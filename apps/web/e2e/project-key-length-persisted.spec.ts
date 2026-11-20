@@ -122,7 +122,6 @@ test("project keys persist at 15 letters and a confirmed rename retains old work
               page.getByTestId("g13-projects-content"),
             ).toBeVisible();
             await page
-              .locator("header")
               .getByRole("button", { name: /^Create project$/i })
               .click();
             const dialog = page.getByRole("dialog");

@@ -461,7 +461,7 @@
 		"accountSecurity": {
 			"codeError": "The authenticator code was not accepted. Check the current code and retry.",
 			"codeLabel": "Enter the six-digit code",
-			"description": "Manage your authenticator factor and backup codes.",
+			"description": "Управувајте со лозинката, начините на најавување и факторот за автентикација.",
 			"enabled": "Authenticator factor enabled",
 			"enabledDescription": "Sign-ins require an authenticator or an unused backup code.",
 			"enrollmentDisabled": "Local factor enrollment is disabled by instance policy.",
@@ -1828,7 +1828,9 @@
 			"title": "Canned responses",
 			"visibility": "Стандардна видливост",
 			"save": "Save",
-			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
+			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending.",
+			"emptyLibrary": "Сè уште нема готови одговори",
+			"emptyLibraryDescription": "Создајте одговор за повеќекратна употреба што агентите можат да го вметнат во коментари."
 		},
 		"projectLabels": {
 			"subtitle": "Create, edit, and delete labels for this {{term_project_one}}.",
@@ -4188,7 +4190,9 @@
 				"description": "{{ref}} will be closed and the team will not work on it. You cannot undo this; to continue later, submit a new {{term_request_one}}.",
 				"done": "{{ref}} was withdrawn.",
 				"pending": "Withdrawing…"
-			}
+			},
+			"typeNotFoundTitle": "Овој образец не е достапен.",
+			"typeNotFoundDescription": "Врската можеби е застарена или немате пристап до неа."
 		},
 		"orientation": {
 			"body": "Raise a new {{term_request_one}} from the {{term_request_one}} catalogue. You can follow its progress, reply to our team and see what is due under My {{term_request_other}}.",

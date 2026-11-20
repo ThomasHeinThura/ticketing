@@ -461,7 +461,7 @@
 		"accountSecurity": {
 			"codeError": "The authenticator code was not accepted. Check the current code and retry.",
 			"codeLabel": "Enter the six-digit code",
-			"description": "Manage your authenticator factor and backup codes.",
+			"description": "Gerencie sua senha, seus métodos de login e seu fator de autenticação.",
 			"enabled": "Authenticator factor enabled",
 			"enabledDescription": "Sign-ins require an authenticator or an unused backup code.",
 			"enrollmentDisabled": "Local factor enrollment is disabled by instance policy.",
@@ -1829,7 +1829,9 @@
 			"title": "Canned responses",
 			"visibility": "Visibilidade padrão",
 			"save": "Save",
-			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
+			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending.",
+			"emptyLibrary": "Ainda não há respostas prontas",
+			"emptyLibraryDescription": "Crie uma resposta reutilizável que os agentes possam inserir nos comentários."
 		},
 		"projectLabels": {
 			"subtitle": "Create, edit, and delete labels for this {{term_project_one}}.",
@@ -4202,7 +4204,9 @@
 				"description": "{{ref}} will be closed and the team will not work on it. You cannot undo this; to continue later, submit a new {{term_request_one}}.",
 				"done": "{{ref}} was withdrawn.",
 				"pending": "Withdrawing…"
-			}
+			},
+			"typeNotFoundTitle": "Este formulário não está disponível.",
+			"typeNotFoundDescription": "O link pode estar desatualizado ou você pode não ter acesso a ele."
 		},
 		"orientation": {
 			"body": "Raise a new {{term_request_one}} from the {{term_request_one}} catalogue. You can follow its progress, reply to our team and see what is due under My {{term_request_other}}.",

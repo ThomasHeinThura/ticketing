@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import db from "../database";
 import type { Executor } from "../database/executor";
 
 /**
@@ -60,5 +61,91 @@ export async function queueVacatedUploadKey(
     )
     ON CONFLICT ("object_key") DO UPDATE
       SET "queued_at" = GREATEST("attachment_object_gc"."queued_at", EXCLUDED."queued_at")
+  `);
+}
+
+/**
+ * PTM-06 durable completion intent. Before a completion moves an upload to its random final key
+ * it records that key here, keyed by the authorized attachment id, so a crash or an unknown
+ * storage outcome still leaves a locator for `attachment-gc`. The row has no foreign key and
+ * carries `queued_at = 'infinity'`, which an older collector's `queued_at <= now()` never selects;
+ * its own due time is `retry_at`.
+ */
+export const MAX_COMPLETION_INTENTS_PER_ATTACHMENT = 3;
+
+/**
+ * Reserves one intent for an attachment, serialized per attachment id across both completion
+ * routes and every replica: the count and the insert run in one short transaction under a
+ * namespaced advisory lock that is released at COMMIT, before the caller touches storage.
+ *
+ * This helper takes no executor on purpose and always uses the module-level pool. A caller that
+ * holds an open transaction must not pass it in, or the advisory lock and the uncommitted row
+ * would be held across storage I/O.
+ *
+ * `"cap"` means the attachment already has {@link MAX_COMPLETION_INTENTS_PER_ATTACHMENT} intents.
+ */
+export async function reserveCompletionIntent(input: {
+  objectKey: string;
+  attachmentId: string;
+  workspaceId: string;
+  backend: string;
+}): Promise<"reserved" | "cap"> {
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${`attachment-completion-intent:${input.attachmentId}`}, 0))`,
+    );
+    const counted = await tx.execute<{ n: number }>(sql`
+      SELECT count(*)::int AS n FROM "attachment_object_gc"
+      WHERE "attachment_id" = ${input.attachmentId}
+    `);
+    if ((counted.rows[0]?.n ?? 0) >= MAX_COMPLETION_INTENTS_PER_ATTACHMENT)
+      return "cap";
+    await tx.execute(sql`
+      INSERT INTO "attachment_object_gc"
+        ("object_key", "source_workspace_id", "attachment_id", "storage_driver", "queued_at", "retry_at")
+      VALUES (
+        ${input.objectKey},
+        ${input.workspaceId},
+        ${input.attachmentId},
+        ${input.backend},
+        'infinity'::timestamptz,
+        now() + interval '1 day'
+      )
+    `);
+    return "reserved";
+  });
+}
+
+/**
+ * Consumes the intent inside the transaction that commits `ready`. It matches key, id and
+ * workspace together; `false` means the intent is gone and the caller must roll back.
+ */
+export async function consumeCompletionIntent(
+  executor: Executor,
+  input: { objectKey: string; attachmentId: string; workspaceId: string },
+): Promise<boolean> {
+  const result = await executor.execute(sql`
+    DELETE FROM "attachment_object_gc"
+    WHERE "object_key" = ${input.objectKey}
+      AND "attachment_id" = ${input.attachmentId}
+      AND "source_workspace_id" = ${input.workspaceId}
+    RETURNING 1
+  `);
+  return (result.rowCount ?? result.rows.length) > 0;
+}
+
+/**
+ * Drops an intent after a provably settled outcome AND a successful in-process delete of the
+ * final key, with the backend fingerprint unchanged since reservation. Anything else keeps it.
+ */
+export async function dropSettledCompletionIntent(
+  executor: Executor,
+  input: { objectKey: string; attachmentId: string; backend: string },
+): Promise<void> {
+  await executor.execute(sql`
+    DELETE FROM "attachment_object_gc"
+    WHERE "object_key" = ${input.objectKey}
+      AND "attachment_id" = ${input.attachmentId}
+      AND "storage_driver" = ${input.backend}
   `);
 }

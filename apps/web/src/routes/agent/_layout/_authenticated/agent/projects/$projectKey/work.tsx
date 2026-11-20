@@ -148,6 +148,9 @@ const WorkItemCreateTrigger = lazy(
 // Board layout, the selection switch and the bulk bar are loaded only when the URL or a
 // capability asks for them, so the default list route's graph carries none of them (G11).
 const WorkItemBoardView = lazy(loadWorkItemBoardView);
+const CombinedDescendantsSwitch = lazy(
+  () => import("@/components/work-item/combined-descendants-switch"),
+);
 const SortControl = lazy(() => import("@/components/common/sort-control"));
 const GroupControl = lazy(() => import("@/components/common/group-control"));
 const BulkAssignToolbar = lazy(
@@ -932,15 +935,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
       : "";
 
   const combinedButton = (
-    <Button
-      variant={combinedActive ? "secondary" : "ghost"}
-      type="button"
-      aria-pressed={combinedActive}
-      disabled={group !== "state"}
-      onClick={handleCombinedChange}
-    >
-      {t("workItems:board.combinedDescendants")}
-    </Button>
+    <Suspense fallback={<span className="inline-block h-5 w-44" />}>
+      <CombinedDescendantsSwitch
+        checked={combinedActive}
+        disabled={group !== "state"}
+        onChange={handleCombinedChange}
+      />
+    </Suspense>
   );
 
   if (projectNotFound)
