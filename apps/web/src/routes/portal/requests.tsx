@@ -185,7 +185,7 @@ function PortalRequestsPage() {
 
   // The same cached list as the top-bar project selector.
   const projects = useQuery({
-    queryKey: portalProjectKeys.list(),
+    queryKey: portalProjectKeys.list(portalUserId),
     queryFn: getPortalProjects,
     retry: false,
     staleTime: 60_000,
@@ -193,7 +193,9 @@ function PortalRequestsPage() {
   });
   // CP-2: Project only when rows can differ by project (more than one, and no project scope;
   // shown while the count is unknown); Requester / Assigned to only for All requests.
-  const projectCount = projects.data?.data.length;
+  const projectCount = projects.isError
+    ? undefined
+    : projects.data?.data.length;
   const columns: PortalCaseColumn[] = [
     ...(search.project || projectCount === 1 ? [] : ["project" as const]),
     "created",

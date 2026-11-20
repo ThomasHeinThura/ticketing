@@ -19,10 +19,13 @@ import {
   VerificationOverloadedError,
   VerificationThrottledError,
 } from "../api-key/verify-guard";
+import { rateLimitClientAddress } from "../identity/home-realm-rate-limit";
 import {
   findActiveApiKeyByHash,
   findApiKeyOwnerStatus,
 } from "./access-lookups.repository";
+
+import { apiKeyScopeFromStoredPermissions } from "./require-api-key-permission-scope";
 
 const verifiedSecrets = new VerifiedSecretCache();
 const gate = new ArgonGate();
@@ -33,7 +36,7 @@ const failures = new FailureLimiter();
  * rewritten to Argon2id before the request continues; a current row is found by its visible
  * selector and verified in constant time (cached once verified, never across a changed hash).
  */
-async function findVerifiedApiKey(key: string, clientIp: string | null) {
+async function findVerifiedApiKey(key: string, clientIp: string) {
   const legacy = await findActiveApiKeyByHash(legacySha256ApiKeyHash(key));
   if (legacy) {
     await tryUpgrade(key, legacy.id, legacy.key);
@@ -60,8 +63,8 @@ async function findVerifiedApiKey(key: string, clientIp: string | null) {
   return undefined;
 }
 
-function noteFailure(clientIp: string | null): void {
-  if (clientIp) failures.reserve(clientIp);
+function noteFailure(clientIp: string): void {
+  failures.reserve(clientIp);
 }
 
 /**
@@ -78,7 +81,7 @@ function verifyGuarded(
   key: string,
   stored: string,
   selector: string,
-  clientIp: string | null,
+  clientIp: string,
 ) {
   const slot = `${stored}\u0000${createHash("sha256").update(key).digest("base64url")}`;
   const shared = inFlightVerifications.get(slot);
@@ -94,24 +97,22 @@ async function verifyAdmitted(
   key: string,
   stored: string,
   selector: string,
-  clientIp: string | null,
+  clientIp: string,
 ) {
-  if (clientIp) {
-    const wait = failures.blockedFor(clientIp);
-    if (wait > 0) throw new VerificationThrottledError(wait);
-    // Counted before the hash so concurrent attempts cannot all slip under the limit.
-    failures.reserve(clientIp);
-  }
+  const wait = failures.blockedFor(clientIp);
+  if (wait > 0) throw new VerificationThrottledError(wait);
+  // Counted before the hash so concurrent attempts cannot all slip under the limit.
+  failures.reserve(clientIp);
   let release: () => void;
   try {
     release = await gate.acquire(selector);
   } catch (error) {
-    if (clientIp) failures.refund(clientIp);
+    failures.refund(clientIp);
     throw error;
   }
   try {
     const result = await verifyApiKeySecret(key, stored);
-    if (result.valid && clientIp) failures.refund(clientIp);
+    if (result.valid) failures.refund(clientIp);
     return result;
   } finally {
     release();
@@ -144,31 +145,6 @@ function tooMany(status: 429 | 503, message: string, retryAfter: number) {
   });
 }
 
-function parsePermissions(raw: string | null): Record<string, string[]> | null {
-  if (raw === null) return null;
-
-  let value: unknown;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return {};
-  }
-
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-
-  const permissions: Record<string, string[]> = {};
-  for (const [resource, actions] of Object.entries(
-    value as Record<string, unknown>,
-  )) {
-    if (!Array.isArray(actions)) return {};
-    if (actions.some((action) => typeof action !== "string")) return {};
-    permissions[resource] = actions as string[];
-  }
-  return permissions;
-}
-
 async function apiKeyOwnerIsActive(ownerId: string): Promise<boolean> {
   if (!ownerId) return false;
   const owner = await findApiKeyOwnerStatus(ownerId);
@@ -187,7 +163,12 @@ export async function verifyApiKey(
 ) {
   let apiKey: Awaited<ReturnType<typeof findVerifiedApiKey>>;
   try {
-    apiKey = await findVerifiedApiKey(key, options.clientIp ?? null);
+    apiKey = await findVerifiedApiKey(
+      key,
+      options.clientIp
+        ? rateLimitClientAddress(options.clientIp)
+        : "no-trusted-client-ip",
+    );
   } catch (error) {
     if (error instanceof VerificationThrottledError)
       throw tooMany(429, "too_many_failed_attempts", error.retryAfterSeconds);
@@ -227,7 +208,11 @@ export async function verifyApiKey(
       start: apiKey.start,
       enabled: apiKey.enabled ?? false,
       expiresAt: apiKey.expiresAt,
-      permissions: parsePermissions(apiKey.permissions),
+      permissions:
+        apiKey.permissions === null
+          ? null
+          : (apiKeyScopeFromStoredPermissions(apiKey.permissions).permissions ??
+            {}),
       refillInterval: apiKey.refillInterval,
       refillAmount: apiKey.refillAmount,
       lastRefillAt: apiKey.lastRefillAt,

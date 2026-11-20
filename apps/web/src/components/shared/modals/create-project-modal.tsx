@@ -26,7 +26,6 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { ActionTooltip } from "@/components/common/action-tooltip";
 import type { EngagementKind } from "@/components/project/project-engagement-form";
 import icons from "@/constants/project-icons";
@@ -37,6 +36,7 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import generateProjectSlug from "@/lib/generate-project-id";
+import { useAgentTranslation } from "@/lib/i18n/agent-translation";
 import { toast } from "@/lib/toast";
 import {
   DEFAULT_PROJECT_KIND_VALUES,
@@ -70,7 +70,7 @@ function CreateProjectModal({
   onClose,
   defaultKind = "project",
 }: CreateProjectModalProps) {
-  const { t } = useTranslation();
+  const { t } = useAgentTranslation();
   const { data: session } = authClient.useSession();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -170,7 +170,7 @@ function CreateProjectModal({
 
     try {
       const { id } = await mutateAsync();
-      toast.success("Project created successfully");
+      toast.success(t("common:modals.createProject.successToast"));
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
 
       navigate({

@@ -131,7 +131,7 @@
 				"keyLabel": "Клуч:",
 				"keyHint": "Се користи за ID на тикети (пр. {{example}}-123)",
 				"createButton": "Креирај {{term_project_one}}",
-				"successToast": "Проектот е успешно креиран",
+				"successToast": "Успешно креирање на {{term_project_one}}",
 				"errorToast": "Неуспешно креирање на {{term_project_one}}",
 				"organisationLabel": "Организација на клиент",
 				"organisationLoading": "Се вчитуваат организациите на клиенти...",

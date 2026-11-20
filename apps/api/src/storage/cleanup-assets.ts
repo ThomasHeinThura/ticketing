@@ -43,47 +43,6 @@ export interface AssetCleanupScope {
 }
 
 /**
- * Check whether an asset ID is still referenced in any content belonging to
- * the same currently reachable task.
- */
-async function isAssetReferencedElsewhere(
-  executor: Executor,
-  identity: ResolvedIdentity,
-  assetId: string,
-  taskId: string,
-): Promise<boolean> {
-  const pattern = `%/api/asset/${assetId}%`;
-
-  const taskRef = await findTaskDescriptionLike(
-    executor,
-    identity,
-    taskId,
-    pattern,
-  );
-  if (contentReferencesAsset(taskRef?.description, assetId)) return true;
-
-  const commentRefs = await listTaskCommentContentsLike(
-    executor,
-    identity,
-    taskId,
-    pattern,
-  );
-  if (commentRefs.some((ref) => contentReferencesAsset(ref.content, assetId))) {
-    return true;
-  }
-
-  const activityRefs = await listTaskActivityContentsLike(
-    executor,
-    identity,
-    taskId,
-    pattern,
-  );
-  return activityRefs.some((ref) =>
-    contentReferencesAsset(ref.content, assetId),
-  );
-}
-
-/**
  * Reconcile the detached state of inline assets inside the caller's task/project-locked
  * transaction (P0R1-01). Editing never deletes: an asset no content of the task references any
  * more is only marked detached, and the `attachment-gc` job removes it after the recovery
@@ -116,16 +75,36 @@ export async function syncInlineAssetReferences(
     removedIds,
     scope.taskId,
   );
-  const toDetach: string[] = [];
-  for (const asset of assets) {
-    const stillReferenced = await isAssetReferencedElsewhere(
-      executor,
-      identity,
-      asset.id,
-      scope.taskId,
-    );
-    if (!stillReferenced) toDetach.push(asset.id);
+  const pattern = "%/api/asset/%";
+  const description = await findTaskDescriptionLike(
+    executor,
+    identity,
+    scope.taskId,
+    pattern,
+  );
+  const comments = await listTaskCommentContentsLike(
+    executor,
+    identity,
+    scope.taskId,
+    pattern,
+  );
+  const activities = await listTaskActivityContentsLike(
+    executor,
+    identity,
+    scope.taskId,
+    pattern,
+  );
+  const referenced = new Set<string>();
+  for (const content of [
+    description?.description,
+    ...comments.map((row) => row.content),
+    ...activities.map((row) => row.content),
+  ]) {
+    for (const id of extractAssetIds(content)) referenced.add(id);
   }
+  const toDetach = assets
+    .filter((asset) => !referenced.has(asset.id))
+    .map((asset) => asset.id);
   const detached = await markAssetsDetached(
     executor,
     identity,

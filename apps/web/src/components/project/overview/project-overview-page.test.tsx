@@ -119,6 +119,10 @@ vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
 vi.mock("@/hooks/queries/project/use-get-project", () => ({
   default: () => ({ data: project }),
 }));
+vi.mock("@/fetchers/project/overview-read", async (original) => ({
+  ...(await original<typeof import("@/fetchers/project/overview-read")>()),
+  getProjectOverview: (...args: unknown[]) => mocks.getProjectOverview(...args),
+}));
 vi.mock("@/fetchers/project/overview", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/fetchers/project/overview")>()),
   getProjectOverview: (...args: unknown[]) => mocks.getProjectOverview(...args),

@@ -105,7 +105,8 @@ export default defineConfig({
 
 describe("#251 -- workspace_role_workspace_id_role_unique tracked, no schema drift", () => {
   // ponytail: 20s not the vitest 5s default -- spawnSync'ing drizzle-kit flaked past 5s
-  // once under CI load (#451); local runs are ~0.86s. Bump the ceiling, not the design.
+  // once under CI load (#451). Ceiling: 20s; revisit the harness/runtime if legitimate runs
+  // repeatedly reach it. Raising the timeout requires approval.
   it("drizzle-kit generate is a no-op against the real schema and migration history", async () => {
     const configPath = await scratchDrizzleConfig();
     const before = await readdir(join(scratchDir as string, "drizzle"));

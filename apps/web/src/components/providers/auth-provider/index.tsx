@@ -1,10 +1,5 @@
 import { LoadingStatus, useDelayedPending } from "@taskdesk/ui";
-import {
-  createContext,
-  type PropsWithChildren,
-  useEffect,
-  useRef,
-} from "react";
+import { createContext, type PropsWithChildren, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { authClient } from "@/lib/auth-client";
 import type { User } from "@/types/user";
@@ -37,16 +32,6 @@ function AuthProvider({ children }: PropsWithChildren) {
 
   const initialPending = isPending && !hasLoadedOnce.current;
   const placeholderVisible = useDelayedPending(initialPending);
-
-  // Tag transient Safari "Load failed" errors during the session fetch so
-  // instrument.ts's beforeSend can drop them. Better Auth's useSession
-  // uses nanostores rather than TanStack Query, so the query client's
-  // network-error cooldown doesn't reach this path. Real auth failures
-  // (e.g. 401) still surface through Better Auth.
-  useEffect(() => {
-    if (error instanceof Error && error.message.includes("Load failed")) {
-    }
-  }, [error]);
 
   if (!error && (initialPending || placeholderVisible)) {
     return (

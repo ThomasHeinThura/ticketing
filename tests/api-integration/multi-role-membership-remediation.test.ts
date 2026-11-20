@@ -317,7 +317,7 @@ describe("#82 §2 -- requireWorkspaceRoleAuthority applies the same rule to an i
 describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against real rows", () => {
   it("REPAIRS a comma-bearing value only when every raw piece is ALREADY the exact same well-formed byte string -- CORRECTED after formal review R1 (see the dedicated regression below): no trimming is ever performed to reach agreement, only to confirm a piece that already agrees is not itself malformed", async () => {
     const { app } = createApp();
-    const { owner, workspace } = await workspaceWithMember(app, "viewer");
+    const { workspace, member } = await workspaceWithMember(app, "viewer");
 
     const shapes = [
       { raw: "admin,admin", repaired: "admin" },
@@ -331,12 +331,6 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
 
     for (const shape of shapes) {
       await withoutRoleConstraint();
-      const member = await inviteAndAcceptAsNewMemberNative(
-        app,
-        owner.cookie,
-        workspace.id,
-        "viewer",
-      );
       await db.execute(
         sql`UPDATE "workspace_member" SET "role" = ${shape.raw} WHERE "workspace_id" = ${workspace.id} AND "user_id" = ${member.user.id}`,
       );
@@ -362,7 +356,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
 
   it("REGRESSION (formal review R1) -- REFUSES rather than repairs a no-comma padded value, or a comma-bearing value whose raw pieces are not byte-identical, and leaves the row completely unchanged", async () => {
     const { app } = createApp();
-    const { owner, workspace } = await workspaceWithMember(app, "viewer");
+    const { workspace, member } = await workspaceWithMember(app, "viewer");
 
     // Every one of these was, under the ORIGINAL (pre-review) grouping rule, collapsed to
     // "admin" the same way "admin,admin" is -- because that rule grouped by DISTINCT
@@ -387,12 +381,6 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
 
     for (const raw of shapes) {
       await withoutRoleConstraint();
-      const member = await inviteAndAcceptAsNewMemberNative(
-        app,
-        owner.cookie,
-        workspace.id,
-        "viewer",
-      );
       await db.execute(
         sql`UPDATE "workspace_member" SET "role" = ${raw} WHERE "workspace_id" = ${workspace.id} AND "user_id" = ${member.user.id}`,
       );

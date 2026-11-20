@@ -25,7 +25,6 @@ export const SCIM_CONNECTION_WINDOW_MS = 60_000;
 /** Failed authentications allowed per client address per window (the anonymous class). */
 export const SCIM_FAILURE_LIMIT = 20;
 export const SCIM_FAILURE_WINDOW_MS = 60_000;
-const MAX_TRACKED_KEYS = 10_000;
 
 export function scimErrorBody(
   status: number,
@@ -55,61 +54,6 @@ export function scimErrorResponse(
   return response;
 }
 
-/** A fixed-window counter keyed by string, bounded in size; the clock is injectable for tests. */
-export class WindowCounter {
-  private readonly buckets = new Map<
-    string,
-    { started: number; count: number }
-  >();
-
-  constructor(
-    private readonly limit: number,
-    private readonly windowMs: number,
-    private readonly now: () => number = Date.now,
-  ) {}
-
-  private prune(at: number): void {
-    if (this.buckets.size < MAX_TRACKED_KEYS) return;
-    for (const [key, bucket] of this.buckets)
-      if (at - bucket.started >= this.windowMs) this.buckets.delete(key);
-  }
-
-  /** Whether another hit would exceed the limit, without recording one. */
-  isExhausted(key: string): boolean {
-    const at = this.now();
-    const bucket = this.buckets.get(key);
-    if (!bucket || at - bucket.started >= this.windowMs) return false;
-    return bucket.count >= this.limit;
-  }
-
-  /** Records a hit; returns false when the limit was already reached (the hit is not counted). */
-  hit(key: string): { allowed: boolean; retryAfterSeconds: number } {
-    const at = this.now();
-    this.prune(at);
-    const bucket = this.buckets.get(key);
-    if (!bucket || at - bucket.started >= this.windowMs) {
-      // A full table of live buckets refuses new keys rather than growing without bound.
-      if (!bucket && this.buckets.size >= MAX_TRACKED_KEYS)
-        return {
-          allowed: false,
-          retryAfterSeconds: Math.ceil(this.windowMs / 1000),
-        };
-      this.buckets.set(key, { started: at, count: 1 });
-      return { allowed: true, retryAfterSeconds: 0 };
-    }
-    if (bucket.count >= this.limit)
-      return {
-        allowed: false,
-        retryAfterSeconds: Math.max(
-          1,
-          Math.ceil((bucket.started + this.windowMs - at) / 1000),
-        ),
-      };
-    bucket.count += 1;
-    return { allowed: true, retryAfterSeconds: 0 };
-  }
-}
-
 export function scimClientKey(c: Context): string {
   let socketAddress: string | null = null;
   try {
@@ -129,28 +73,23 @@ export function scimClientKey(c: Context): string {
 /** Per-connection limiter for AUTHENTICATED requests; reads the connection id the auth step set. */
 export function scimConnectionRateLimit(
   connectionIdOf: (c: Context) => string | undefined,
-  /** Test seam for deterministic middleware tests; production leaves this unset. */
-  counter?: WindowCounter,
 ): MiddlewareHandler {
   return async (c, next) => {
     const connectionId = connectionIdOf(c);
     if (!connectionId) return scimErrorResponse(c, 401, "Unauthorized");
     let result: { allowed: boolean; retryAfterSeconds: number };
-    if (counter) result = counter.hit(connectionId);
-    else {
-      try {
-        result = await consumeScimRateLimit({
-          bucket: "scim_connection",
-          key: connectionId,
-          limit: SCIM_CONNECTION_LIMIT,
-          windowMs: SCIM_CONNECTION_WINDOW_MS,
-        });
-      } catch {
-        reportScimRateLimitUnavailable();
-        throw new HTTPException(503, {
-          message: "SCIM rate limit unavailable",
-        });
-      }
+    try {
+      result = await consumeScimRateLimit({
+        bucket: "scim_connection",
+        key: connectionId,
+        limit: SCIM_CONNECTION_LIMIT,
+        windowMs: SCIM_CONNECTION_WINDOW_MS,
+      });
+    } catch {
+      reportScimRateLimitUnavailable();
+      throw new HTTPException(503, {
+        message: "SCIM rate limit unavailable",
+      });
     }
     if (!result.allowed) {
       await recordScimRequestDenied(connectionId, "rate_limited");

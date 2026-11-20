@@ -37,10 +37,9 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("@/lib/toast", () => ({
-  toast: {
-    error: (message: string) => state.toastError(message),
-  },
+vi.mock("@taskdesk/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@taskdesk/ui")>()),
+  toastManager: { add: state.toastError },
 }));
 
 vi.mock("@/lib/activate-workspace-for-navigation", () => ({
@@ -122,10 +121,24 @@ describe("WorkspaceCrumbSelect", () => {
 
     await waitFor(() => {
       expect(state.activateWorkspace).toHaveBeenCalledWith("workspace-2");
-      expect(state.toastError).toHaveBeenCalledWith(
-        "Could not switch workspace. Check your access and try again.",
-      );
+      expect(state.toastError).toHaveBeenCalledWith({
+        title: "Could not switch workspace. Check your access and try again.",
+        type: "error",
+      });
     });
     expect(state.navigate).not.toHaveBeenCalled();
+  });
+
+  it("reports an inaccessible workspace without attempting activation", () => {
+    render(<WorkspaceCrumbSelect workspaceId="unknown" />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Overview: Select workspace" }),
+    );
+    expect(state.activateWorkspace).not.toHaveBeenCalled();
+    expect(state.navigate).not.toHaveBeenCalled();
+    expect(state.toastError).toHaveBeenCalledWith({
+      title: "Could not switch workspace. Check your access and try again.",
+      type: "error",
+    });
   });
 });

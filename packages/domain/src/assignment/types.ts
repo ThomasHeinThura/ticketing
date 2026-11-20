@@ -22,8 +22,6 @@
  * module are always by `PersonId`; nothing here ever compares a name.
  */
 
-import type { Effect } from "../workflow/types.js";
-
 /** A `person.id` — assignment stores this, never a display name (`AS-6`). */
 export type PersonId = string;
 
@@ -58,49 +56,6 @@ export type IneligibilityReason = "not_on_roster" | "not_active";
 export type EligibilityResult =
   | { eligible: true }
   | { eligible: false; reason: IneligibilityReason };
-
-/**
- * `AS-13`'s two assignment-relevant effects, reusing `workflow/types.ts`'s own `Effect`
- * union member shapes verbatim (`Extract`) rather than redeclaring the vocabulary a
- * second time (do-not 11) — `set_assignee`/`clear_assignee` are named once, in
- * `workflow/types.ts`, and this module only narrows to the two kinds it resolves.
- */
-export type AssignmentEffect = Extract<
-  Effect,
-  { kind: "set_assignee" } | { kind: "clear_assignee" }
->;
-
-/**
- * The result of resolving a `set_assignee`/`clear_assignee` effect (`AS-13`) or a
- * default-assignee lookup (`AS-11`/`AS-12`) to an actual assignee, or the lack of one.
- * `"no_default"` is "no project or request-type default is configured"; `"default_inactive"`
- * is the edge case "Default assignee is inactive when a work item is created" — "Left
- * unassigned, and the project is flagged in settings." — now also the general case
- * `AS-5`'s new sentence names: "Assigning to a deactivated person is refused." Flagging
- * the project is the caller's job; this module only names *why* the result came back
- * empty so the caller can decide whether to flag.
- */
-export type DefaultAssigneeResolution =
-  | { assigneeId: PersonId }
-  | { assigneeId: null; reason: "no_default" | "default_inactive" };
-
-/**
- * The outcome of a compare-and-swap self-assign attempt — the edge cases table's "Two
- * people self-assign simultaneously": "The conditional `UPDATE ... WHERE assignee_id IS
- * NULL` lets only one write through; the second gets 409 with the winner's identity,
- * not a version conflict — see the API section." The API section itself names the two
- * facts this type's fields hold: "Conflicts are caught by a conditional write instead:
- * `UPDATE ... WHERE assignee_id IS NULL` (or, for a targeted reassign, `WHERE
- * assignee_id = :expectedCurrentAssigneeId`); zero rows updated means someone else won,
- * and the response is 409 with the row's current `assigneeId`." `expectedCurrentAssigneeId`
- * is that `:expectedCurrentAssigneeId`; `actualCurrentAssigneeId` is the row's current
- * `assigneeId`, read by the caller under the same transaction the conditional `UPDATE`
- * runs in. A mismatch is a lost race, never a retry the caller can silently paper over —
- * the loser must be told who won.
- */
-export type ConcurrentAssignResult =
-  | { outcome: "success" }
-  | { outcome: "conflict"; winnerId: PersonId | null };
 
 /** One reason a planned assignment change is currently blocked or requires human confirmation before it is written — see `AssignmentPlan`. */
 export type AssignmentAction = "assign" | "unassign" | "noop";
@@ -148,11 +103,4 @@ export interface AssigneeDisplayFacts {
   active: boolean;
   /** Still on the **project's** roster (`AS-5`) — distinct from `active`, which is directory-wide. */
   onProject: boolean;
-}
-
-/** The result of resolving an assignee's standing after a project move (edge cases table: "Assigning across projects during a move"). */
-export interface ProjectMoveAssignmentResult {
-  assigneeId: PersonId | null;
-  /** `true` when the assignment was cleared because the assignee is not on the destination roster — the caller warns the user first, before this decision is acted on. */
-  cleared: boolean;
 }

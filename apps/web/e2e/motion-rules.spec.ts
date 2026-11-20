@@ -895,6 +895,7 @@ test("rule 9: reduced-motion disables spatial movement animations and smooth scr
   const columnAddButton = page
     .getByTestId("work-item-board-column-create")
     .first();
+  await columnAddButton.hover({ trial: true });
   await columnAddButton.hover();
   const tooltipPositioner = page.locator('[data-slot="tooltip-positioner"]');
   const tooltipPopup = page.locator('[data-slot="tooltip-popup"]');

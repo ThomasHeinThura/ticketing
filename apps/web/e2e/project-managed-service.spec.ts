@@ -379,11 +379,11 @@ test.describe("project engagement controls (PR-9)", () => {
       (r) => r.method === "PUT" && r.path === `/api/project/${projectId}`,
     );
     expect(put?.body).toMatchObject({
-      name: "Support engagement",
-      slug: "SUPPORT",
       kind: "managed_service",
       supportLevel: "L2",
     });
+    expect(put?.body).not.toHaveProperty("name");
+    expect(put?.body).not.toHaveProperty("slug");
     // The calendar is owned by the inheritance editor, and the customer
     // organisation binding is never part of the update.
     expect(put?.body).not.toHaveProperty("serviceCalendarId");

@@ -24,12 +24,16 @@ function paged(ids: string[]) {
   return async (_executor: unknown, limit: number, exclude: string[] = []) =>
     ids.filter((id) => !exclude.includes(id)).slice(0, limit);
 }
-vi.mock("../../../apps/api/src/database", () => ({
+vi.mock("../../../apps/api/src/database", async () => ({
   default: {
     execute: m.execute,
     transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
       fn({ tx: true, execute: m.txExecute }),
     ),
+  },
+  schema: {
+    ...(await import("../../../apps/api/src/database/schema")),
+    ...(await import("../../../apps/api/src/database/schema-imports")),
   },
 }));
 vi.mock("../../../apps/api/src/scheduler/soft-delete-purge.repository", () => ({

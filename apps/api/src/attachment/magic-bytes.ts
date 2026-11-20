@@ -5,6 +5,10 @@
  * already installed, and the signature set below is a handful of comparisons, not a
  * library-sized problem) -- covers every allowed extension except plain text.
  *
+ * Ceiling: bounded header signatures identify container families, not subtype/content.
+ * Revisit when a required format needs parsing beyond this table; adding a dependency
+ * still needs approval.
+ *
  * Deliberately NOT exhaustive for exactly one family: plain-text formats (`txt`, `csv`,
  * `md`, `json`, `log`) have no reliable magic bytes at all, so those specific declared
  * MIME types are accepted without a byte check via the explicit

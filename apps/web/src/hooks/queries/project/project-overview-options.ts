@@ -1,7 +1,7 @@
 import {
   getProjectOverview,
   projectOverviewKeys,
-} from "@/fetchers/project/overview";
+} from "@/fetchers/project/overview-read";
 
 export function projectOverviewOptions(id: string) {
   return {

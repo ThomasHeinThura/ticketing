@@ -5,19 +5,9 @@ import {
 import { canonicalEntraGroupObjectId } from "./group-object-id.js";
 import { validateEntraAdmission } from "./jit-policy.js";
 import type {
-  AllowedRole,
-  ConnectionValidationResult,
   IdentityClaimResult,
   IdentityConnectionContext,
-  IdentityConnectionDraft,
   IdentityDomainOwner,
-  IdentityPortalScope,
-  IdentityRoleMapping,
-  ProvisioningDecision,
-  ProvisioningEvent,
-  ProvisioningState,
-  ScimConflictClass,
-  ScimConflictResponse,
   ScimPatchOperation,
   ScimPersonAttributes,
   ScimResult,
@@ -213,65 +203,6 @@ export function normaliseEntraClaims(
   };
 }
 
-export function validateIdentityConnection(
-  draft: IdentityConnectionDraft,
-): ConnectionValidationResult {
-  const errors = [] as Array<
-    | "customer_requires_organisation"
-    | "agent_cannot_have_organisation"
-    | "invalid_tenant_id"
-    | "invalid_role_rank"
-    | "tenant_issuer_required"
-    | "multi_tenant_issuer_forbidden"
-    | "default_role_exceeds_maximum"
-    | "customer_role_required"
-    | "staff_role_required"
-  >;
-  if (draft.portalScope === "customer" && !draft.organisationId)
-    errors.push("customer_requires_organisation");
-  if (draft.portalScope === "agent" && draft.organisationId !== null)
-    errors.push("agent_cannot_have_organisation");
-  if (
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(
-      draft.tenantId,
-    ) ||
-    draft.tenantId.toLowerCase() === "9188040d-6c67-4c5b-b112-36a304b66dad"
-  )
-    errors.push("invalid_tenant_id");
-  if (
-    (draft.portalScope === "agent" &&
-      (!Number.isSafeInteger(draft.maxRoleRank) ||
-        (draft.maxRoleRank ?? -1) < 0)) ||
-    (draft.portalScope === "customer" && draft.maxRoleRank !== null) ||
-    !Number.isSafeInteger(draft.defaultRoleRank) ||
-    draft.defaultRoleRank < 0
-  )
-    errors.push("invalid_role_rank");
-  const expectedIssuer = `https://login.microsoftonline.com/${draft.tenantId}/v2.0`;
-  if (!draft.issuer) errors.push("tenant_issuer_required");
-  if (
-    draft.issuer.includes("{tenantid}") ||
-    /\/(common|organizations)(\/|$)/iu.test(draft.issuer)
-  ) {
-    errors.push("multi_tenant_issuer_forbidden");
-  } else if (draft.issuer !== expectedIssuer) {
-    errors.push("tenant_issuer_required");
-  }
-  if (
-    draft.portalScope === "agent" &&
-    draft.maxRoleRank !== null &&
-    draft.defaultRoleRank > draft.maxRoleRank
-  )
-    errors.push("default_role_exceeds_maximum");
-  if (draft.portalScope === "customer" && !draft.defaultRoleIsCustomer)
-    errors.push("customer_role_required");
-  if (draft.portalScope === "agent" && draft.defaultRoleIsCustomer)
-    errors.push("staff_role_required");
-  return errors.length > 0
-    ? { ok: false, errors }
-    : { ok: true, connection: draft };
-}
-
 const FORBIDDEN_SCIM_KEYS = new Set([
   "organisation",
   "organisationid",
@@ -457,16 +388,6 @@ export function validateScimPutExternalId(
     : { ok: true, value: true };
 }
 
-export function scimConflictResponse(
-  _conflictClass: ScimConflictClass,
-): ScimConflictResponse {
-  return {
-    status: 409,
-    scimType: "uniqueness",
-    detail: "A matching identity already exists.",
-  };
-}
-
 const NAME_FIELD_BY_LOWER_PATH: Readonly<
   Record<string, "givenName" | "familyName" | "formatted">
 > = {
@@ -556,84 +477,4 @@ export function applyScimPatchOps(
     }
   }
   return { ok: true, value: next };
-}
-
-export function mapExternalGroupsToRoles(
-  externalGroupIds: readonly string[],
-  mappings: readonly IdentityRoleMapping[],
-  connection: { portalScope: IdentityPortalScope; maxRoleRank: number | null },
-): readonly AllowedRole[] {
-  const mappingByGroup = new Map(
-    mappings.map((mapping) => [mapping.externalGroupId, mapping]),
-  );
-  const roles = new Map<string, AllowedRole>();
-  if (
-    connection.portalScope !== "agent" &&
-    connection.portalScope !== "customer"
-  )
-    return [];
-  if (
-    connection.portalScope === "agent" &&
-    (!Number.isSafeInteger(connection.maxRoleRank) ||
-      (connection.maxRoleRank ?? -1) < 0)
-  )
-    return [];
-  for (const groupId of new Set(externalGroupIds)) {
-    const mapping = mappingByGroup.get(groupId);
-    if (
-      mapping === undefined ||
-      !Number.isSafeInteger(mapping.roleRank) ||
-      mapping.roleRank < 0 ||
-      (mapping.roleScope !== "agent" && mapping.roleScope !== "customer") ||
-      typeof mapping.roleIsCustomer !== "boolean" ||
-      mapping.grantsInstanceAdmin !== false ||
-      mapping.grantsSeesAll !== false ||
-      mapping.roleScope !== connection.portalScope ||
-      (connection.portalScope === "agent" &&
-        (connection.maxRoleRank === null ||
-          mapping.roleRank > connection.maxRoleRank)) ||
-      mapping.roleIsCustomer !== (connection.portalScope === "customer")
-    )
-      continue;
-    roles.set(mapping.roleId, {
-      roleId: mapping.roleId,
-      roleRank: mapping.roleRank,
-      roleScope: mapping.roleScope,
-      roleIsCustomer: mapping.roleIsCustomer,
-      grantsInstanceAdmin: false,
-      grantsSeesAll: false,
-    });
-  }
-  return [...roles.values()];
-}
-
-export function decideProvisioningTransition(
-  event: ProvisioningEvent,
-  current: ProvisioningState,
-  membershipPolicy: "end_memberships" | "keep_memberships" = "end_memberships",
-): ProvisioningDecision {
-  if (event === "deactivate") {
-    return current === "active"
-      ? {
-          kind: "deactivate",
-          revokeSessions: true,
-          revokeApiKeys: true,
-          revokeMcpKeys: true,
-          membershipPolicy,
-        }
-      : { kind: "refuse", reason: "already_deactivated" };
-  }
-  if (event === "reactivate") {
-    return current === "deactivated"
-      ? { kind: "reactivate", restoreRoles: false }
-      : { kind: "refuse", reason: "not_deactivated" };
-  }
-  if (event === "claim_local_verified") {
-    return current === "placeholder"
-      ? { kind: "claim_placeholder", audit: true }
-      : { kind: "refuse", reason: "placeholder_required" };
-  }
-  return current === "placeholder"
-    ? { kind: "refuse", reason: "local_verification_required" }
-    : { kind: "refuse", reason: "placeholder_required" };
 }

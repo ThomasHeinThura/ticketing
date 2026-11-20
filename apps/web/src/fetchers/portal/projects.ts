@@ -93,9 +93,10 @@ export type PortalProjectDetail = PortalProjectOption & {
 };
 
 export const portalProjectKeys = {
-  all: ["portal", "projects"] as const,
-  list: () => ["portal", "projects", "list"] as const,
-  detail: (key: string) => ["portal", "projects", "detail", key] as const,
+  all: (userId: string) => ["portal", userId, "projects"] as const,
+  list: (userId: string) => ["portal", userId, "projects", "list"] as const,
+  detail: (userId: string, key: string) =>
+    ["portal", userId, "projects", "detail", key] as const,
 };
 
 export async function getPortalProjects(): Promise<{

@@ -43,10 +43,10 @@ export function changedProjectGeneralFields(
 
 async function updateProject(
   id: string,
-  name: string,
-  icon: string,
-  slug: string,
-  description: string,
+  name: string | undefined,
+  icon: string | undefined,
+  slug: string | undefined,
+  description: string | undefined,
   workspaceId: string,
   configuration: {
     kind?: "project" | "managed_service";
@@ -136,51 +136,50 @@ async function updateProject(
       });
 
     // PR-13: only a CHANGED key must match 2-15 uppercase letters (see `PROJECT_KEY_PATTERN`):
-    // a project created before the rule keeps its legacy key and stays editable.
-    if (
-      existingProject &&
-      slug !== existingProject.slug &&
-      !PROJECT_KEY_PATTERN.test(slug)
-    ) {
-      throw new HTTPException(400, { message: PROJECT_KEY_MESSAGE });
-    }
+    // a project created before the rule keeps its legacy key and stays editable. A request that
+    // sends no slug never touches the key, its claim or the clash checks.
+    if (slug !== undefined) {
+      if (slug !== existingProject.slug && !PROJECT_KEY_PATTERN.test(slug)) {
+        throw new HTTPException(400, { message: PROJECT_KEY_MESSAGE });
+      }
 
-    // #23's mandatory Opus security review of PR #261, finding F1: answer a slug collision
-    // before attempting the write where we can, so the common case is a clean 409 rather
-    // than a caught driver error. Mirrors `update-workspace.ts`'s own pre-check exactly.
-    // The catch below still covers the race between this read and the update.
-    const [clash] = await tx
-      .select({ id: projectTable.id })
-      .from(projectTable)
-      .where(and(eq(projectTable.slug, slug), ne(projectTable.id, id)))
-      .limit(1);
-    if (clash) {
-      throw new ProjectSlugTakenError(slug);
-    }
+      // #23's mandatory Opus security review of PR #261, finding F1: answer a slug collision
+      // before attempting the write where we can, so the common case is a clean 409 rather
+      // than a caught driver error. Mirrors `update-workspace.ts`'s own pre-check exactly.
+      // The catch below still covers the race between this read and the update.
+      const [clash] = await tx
+        .select({ id: projectTable.id })
+        .from(projectTable)
+        .where(and(eq(projectTable.slug, slug), ne(projectTable.id, id)))
+        .limit(1);
+      if (clash) {
+        throw new ProjectSlugTakenError(slug);
+      }
 
-    // D1: the new slug can be free among LIVE projects (so the check above passes) while
-    // still PERMANENTLY claimed by some other project -- including one that once held this
-    // exact slug and renamed away, or whose workspace was hard-deleted. A claim already
-    // held by THIS SAME project (i.e. renaming back to a slug it once claimed itself) is
-    // not a collision -- the claim table's own guarantee is per-slug, not per-holder, and
-    // this project is already its holder of record.
-    const [existingClaim] = await tx
-      .select({ projectId: projectSlugClaimTable.projectId })
-      .from(projectSlugClaimTable)
-      .where(eq(projectSlugClaimTable.slug, slug))
-      .limit(1);
-    if (existingClaim && existingClaim.projectId !== id) {
-      throw new ProjectSlugTakenError(slug);
+      // D1: the new slug can be free among LIVE projects (so the check above passes) while
+      // still PERMANENTLY claimed by some other project -- including one that once held this
+      // exact slug and renamed away, or whose workspace was hard-deleted. A claim already
+      // held by THIS SAME project (i.e. renaming back to a slug it once claimed itself) is
+      // not a collision -- the claim table's own guarantee is per-slug, not per-holder, and
+      // this project is already its holder of record.
+      const [existingClaim] = await tx
+        .select({ projectId: projectSlugClaimTable.projectId })
+        .from(projectSlugClaimTable)
+        .where(eq(projectSlugClaimTable.slug, slug))
+        .limit(1);
+      if (existingClaim && existingClaim.projectId !== id) {
+        throw new ProjectSlugTakenError(slug);
+      }
     }
 
     try {
       const [updatedProject] = await tx
         .update(projectTable)
         .set({
-          name,
-          icon,
-          slug,
-          description,
+          ...(name !== undefined ? { name } : {}),
+          ...(icon !== undefined ? { icon } : {}),
+          ...(slug !== undefined ? { slug } : {}),
+          ...(description !== undefined ? { description } : {}),
           ...(configuration.kind !== undefined
             ? { kind: configuration.kind }
             : {}),
@@ -231,7 +230,7 @@ async function updateProject(
       //
       // The OLD slug is deliberately left claimed -- see `projectSlugClaimTable`'s
       // schema.ts comment: a claim, once made, is never released, by design.
-      if (updatedProject) {
+      if (updatedProject && slug !== undefined) {
         const [claimed] = await tx
           .insert(projectSlugClaimTable)
           .values({ slug, projectId: id })
@@ -274,7 +273,10 @@ async function updateProject(
       // `project_slug_claim`'s insert just above is `onConflictDoNothing`, so its
       // PRIMARY KEY (`project_slug_claim_pkey`) never surfaces as an unhandled
       // unique_violation here the way it can in `create-project.ts`.
-      if (isUniqueViolation(error, "project_slug_unique")) {
+      if (
+        slug !== undefined &&
+        isUniqueViolation(error, "project_slug_unique")
+      ) {
         throw new ProjectSlugTakenError(slug);
       }
       throw error;

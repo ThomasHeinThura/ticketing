@@ -9,8 +9,6 @@ export function getUserWsUrl() {
   return `${wsBase}/user?windowId=${encodeURIComponent(windowId)}`;
 }
 
-const MAX_RETRIES = 5;
-const BASE_DELAY = 1000;
 const WS_PING_INTERVAL_MS = 30_000;
 /**
  * The first connection follows the page's own inbox read, so it does not ask it again. It
@@ -49,6 +47,7 @@ export function useUserWebSocket() {
     // Set once a socket has closed: a reconnect refreshes notifications missed while
     // disconnected; the first open refreshes only an inbox served from an old cache.
     let hasDisconnected = false;
+    let disposed = false;
 
     function clearPing() {
       if (pingIntervalRef.current) {
@@ -58,6 +57,7 @@ export function useUserWebSocket() {
     }
 
     function connect() {
+      if (disposed) return;
       const url = getUserWsUrl();
       const ws = new WebSocket(url);
       wsRef.current = ws;
@@ -96,22 +96,22 @@ export function useUserWebSocket() {
       };
 
       ws.onclose = () => {
+        if (disposed) return;
         clearPing();
         wsRef.current = null;
         hasDisconnected = true;
 
-        if (retriesRef.current < MAX_RETRIES) {
-          const delay = BASE_DELAY * 2 ** retriesRef.current;
-          retriesRef.current += 1;
-          timeoutRef.current = setTimeout(connect, delay);
-        }
+        const ceiling = Math.min(30_000, 1_000 * 2 ** retriesRef.current);
+        retriesRef.current += 1;
+        const delay = Math.floor(ceiling * (0.5 + Math.random() * 0.5));
+        timeoutRef.current = setTimeout(connect, delay);
       };
     }
 
     connect();
 
     return () => {
-      retriesRef.current = MAX_RETRIES; // prevent reconnect after unmount
+      disposed = true;
       clearPing();
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);

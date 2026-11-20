@@ -332,49 +332,61 @@ export const createProjectBody = z.object({
 // fields and travel only through `PATCH /api/projects/{id}/ownership`. The object is not
 // strict, so a client that sends them anyway has them dropped, never written
 // (`project-ownership.test.ts` pins this).
-export const updateProjectBody = z.object({
-  name: z.string(),
-  icon: z.string(),
-  slug: z.string().openapi({
-    description:
-      "PR-13: when it differs from the stored key it must be 2-15 uppercase letters. " +
-      "Existing work items keep the old prefix (PR-14).",
-  }),
-  description: z.string(),
-  managerId: nulSafeId
-    .nullable()
-    .optional()
-    .openapi({
+//
+// PTM-04: the PUT applies only the known fields it carries. The four base fields are optional
+// like every other field, an omitted one is unchanged, and a body with no known field is
+// invalid. There is no optimistic version: two writes to the SAME field are last-writer-wins,
+// and a client that sends all four base fields still overwrites them (retained compatibility).
+export const updateProjectBody = z
+  .object({
+    name: z.string().optional(),
+    icon: z.string().optional(),
+    slug: z
+      .string()
+      .optional()
+      .openapi({
+        description:
+          "PR-13: when it differs from the stored key it must be 2-15 uppercase letters. " +
+          "Existing work items keep the old prefix (PR-14). Omit to leave the key unchanged.",
+      }),
+    description: z.string().optional(),
+    managerId: nulSafeId
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          "PR-6: the project manager. Must be an active person on the project roster. " +
+          "Omit to leave unchanged, null to clear. Needs project:manage_settings.",
+      }),
+    startDate: projectCalendarDate.nullable().optional().openapi({
       description:
-        "PR-6: the project manager. Must be an active person on the project roster. " +
-        "Omit to leave unchanged, null to clear. Needs project:manage_settings.",
+        "PR-10: YYYY-MM-DD. Omit to leave unchanged, null to clear. Needs project:manage_settings.",
     }),
-  startDate: projectCalendarDate.nullable().optional().openapi({
-    description:
-      "PR-10: YYYY-MM-DD. Omit to leave unchanged, null to clear. Needs project:manage_settings.",
-  }),
-  endDate: projectCalendarDate.nullable().optional().openapi({
-    description:
-      "Optional end date, YYYY-MM-DD; not before the start date. Needs project:manage_settings.",
-  }),
-  defaultAssigneeId: nulSafeId
-    .nullable()
-    .optional()
-    .openapi({
+    endDate: projectCalendarDate.nullable().optional().openapi({
       description:
-        "AS-11: assigned to work items created with no assignee. Must be an active person on " +
-        "the project roster. Omit to leave unchanged, null to clear. Needs project:manage_settings.",
+        "Optional end date, YYYY-MM-DD; not before the start date. Needs project:manage_settings.",
     }),
-  kind: z.enum(["project", "managed_service"]).optional(),
-  supportLevel: z.enum(["L1", "L2", "L3"]).nullable().optional(),
-  serviceCalendarId: nulSafeId.nullable().optional(),
-  defaultCommentVisibility: commentVisibility.optional().openapi({
-    description:
-      "CA-2: the visibility the comment composer starts on for this project. Omit to " +
-      "leave it unchanged. Sending the field requires the strict project:manage_settings " +
-      "capability (and the matching API-key scope), not just project:update.",
-  }),
-});
+    defaultAssigneeId: nulSafeId
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          "AS-11: assigned to work items created with no assignee. Must be an active person on " +
+          "the project roster. Omit to leave unchanged, null to clear. Needs project:manage_settings.",
+      }),
+    kind: z.enum(["project", "managed_service"]).optional(),
+    supportLevel: z.enum(["L1", "L2", "L3"]).nullable().optional(),
+    serviceCalendarId: nulSafeId.nullable().optional(),
+    defaultCommentVisibility: commentVisibility.optional().openapi({
+      description:
+        "CA-2: the visibility the comment composer starts on for this project. Omit to " +
+        "leave it unchanged. Sending the field requires the strict project:manage_settings " +
+        "capability (and the matching API-key scope), not just project:update.",
+    }),
+  })
+  .refine((body) => Object.values(body).some((value) => value !== undefined), {
+    message: "At least one field must be supplied",
+  });
 
 export const updateProjectOwnershipBody = z
   .object({

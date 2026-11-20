@@ -39,7 +39,7 @@ set -eu
 printf '%s\\n' "$*" >> "$FIXTURE_LOG"
 case "$*" in
   'compose -f compose.yml ps -a -q taskdesk') printf 'aaaaaaaaaaaa\\n' ;;
-  'inspect --format '* ) printf 'volume:fixture-data\\n' ;;
+  'inspect --format '* ) printf 'volume:fixture-data:/app/data\\n' ;;
   'compose -f compose.yml exec -T postgres pg_dump -Fc -U taskdesk taskdesk') printf 'fake dump' ;;
   'compose -f compose.yml exec -T postgres pg_restore --list')
     case "$FIXTURE_MODE" in

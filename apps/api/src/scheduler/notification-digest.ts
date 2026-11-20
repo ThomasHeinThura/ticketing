@@ -15,6 +15,12 @@ export type NotificationDigestRun = {
   degraded: boolean;
 };
 
+function errorLabel(error: unknown): string {
+  return error instanceof Error && /^[A-Za-z0-9_]{1,64}$/.test(error.name)
+    ? error.name
+    : "Error";
+}
+
 export async function drainNotificationDigests({
   budgetMs = 240_000,
   maxGroups = 100,
@@ -40,11 +46,7 @@ export async function drainNotificationDigests({
       JSON.stringify({
         job: NOTIFICATION_DIGEST_JOB,
         phase: "seal",
-        error: error instanceof Error ? error.name : "UnknownError",
-        message:
-          error instanceof Error
-            ? error.message.slice(0, 200)
-            : String(error).slice(0, 200),
+        error: errorLabel(error),
       }),
     );
     outcome.degraded = true;
@@ -69,11 +71,7 @@ export async function drainNotificationDigests({
         JSON.stringify({
           job: NOTIFICATION_DIGEST_JOB,
           phase: "deliver",
-          error: error instanceof Error ? error.name : "UnknownError",
-          message:
-            error instanceof Error
-              ? error.message.slice(0, 200)
-              : String(error).slice(0, 200),
+          error: errorLabel(error),
         }),
       );
       outcome.degraded = true;

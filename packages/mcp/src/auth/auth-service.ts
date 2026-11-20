@@ -1,5 +1,3 @@
-import { clearCredentials } from "./token-store.js";
-
 export type AuthServiceOptions = {
   baseUrl: string;
   clientId: string;
@@ -24,8 +22,7 @@ export type AuthServiceOptions = {
  * `credentials.json` on disk holds an access token minted by the very flow this
  * change removes. Reading it would let a token from a deleted authorization path
  * keep authenticating — which is exactly the distinction migrations `0048` and
- * `0049` make when they say dropping the tables is not revocation. `clearToken()`
- * still deletes the file, so a stale one can be purged rather than merely ignored.
+ * `0049` make when they say dropping the tables is not revocation.
  *
  * Revoking sessions those flows already minted **server-side** remains issue #17.
  * This only stops the client from presenting them.
@@ -44,19 +41,10 @@ export class AuthService {
   /**
    * True when a pre-created TaskDesk API key is configured.
    *
-   * Now always the case for a working client — there is no other credential — but
-   * kept because callers use it to decide whether to clear and retry auth on a 401,
-   * and a static key must not be cleared.
+   * Used by the client to decide whether telemetry is available.
    */
   get usingApiKey(): boolean {
     return Boolean(this.apiKey);
-  }
-
-  async clearToken(): Promise<void> {
-    // Nothing to clear for API-key auth; the key is static config.
-    if (this.apiKey) return;
-    // Purges any credentials.json left by the removed device flow.
-    await clearCredentials();
   }
 
   private log(msg: string): void {

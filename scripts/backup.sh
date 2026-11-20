@@ -77,7 +77,9 @@ COMPOSE_FILES=(-f compose.yml)
 dc() { docker compose "${COMPOSE_FILES[@]}" "$@"; }
 # shellcheck source=scripts/lib/compose-data-volume.sh
 . "$REPO_ROOT/scripts/lib/compose-data-volume.sh"
-DATA_VOLUME="$(resolve_compose_data_volume)" || exit 1
+DATA_MOUNT="$(resolve_compose_data_volume)" || exit 1
+DATA_VOLUME="${DATA_MOUNT%%:*}"
+DATA_DESTINATION="${DATA_MOUNT#*:}"
 
 umask 077
 mkdir -p "$TARGET_DIR"
@@ -85,6 +87,8 @@ mkdir -p "$TARGET_DIR"
 DUMP_FILE="$TARGET_DIR/postgres.dump"
 ATTACHMENTS_TAR="$TARGET_DIR/attachments.tar"
 CHECKSUMS_FILE="$TARGET_DIR/SHA256SUMS"
+MOUNT_FILE="$TARGET_DIR/attachment-mount.txt"
+printf '%s\n' "$DATA_DESTINATION" > "$MOUNT_FILE"
 
 printf '==> Dumping PostgreSQL database (%s) to %s\n' "$POSTGRES_DB" "$DUMP_FILE"
 dc exec -T postgres \
@@ -108,12 +112,12 @@ printf '==> Recording SHA-256 checksums\n'
 (
   cd "$TARGET_DIR"
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum postgres.dump attachments.tar > "$CHECKSUMS_FILE"
+    sha256sum postgres.dump attachments.tar attachment-mount.txt > "$CHECKSUMS_FILE"
   else
-    shasum -a 256 postgres.dump attachments.tar > "$CHECKSUMS_FILE"
+    shasum -a 256 postgres.dump attachments.tar attachment-mount.txt > "$CHECKSUMS_FILE"
   fi
 )
-chmod 0600 "$DUMP_FILE" "$ATTACHMENTS_TAR" "$CHECKSUMS_FILE"
+chmod 0600 "$DUMP_FILE" "$ATTACHMENTS_TAR" "$MOUNT_FILE" "$CHECKSUMS_FILE"
 
 printf ' ok Backup complete: %s (pg_restore entries: %s)\n' "$TARGET_DIR" "$LIST_COUNT"
 printf ' !! Store TASKDESK_ENCRYPTION_KEY, TASKDESK_AUTH_SECRET, and TASKDESK_ENCRYPTION_KEY_PREVIOUS in your password manager separately from backups.\n'

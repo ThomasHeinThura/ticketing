@@ -62,7 +62,8 @@ function captureCacheError(error: unknown, context: "query" | "mutation") {
     networkErrorCooldowns.set(dedupeKey, now);
     // ponytail: hard cap with full clear; entries older than the cooldown are
     // useless to keep, and `error.message` can vary across fetchers/CORS
-    // failures so the keyspace is unbounded in practice.
+    // failures so the keyspace is unbounded in practice. Ceiling: 50 keys with a full clear.
+    // Revisit bounded eviction if >50 distinct errors cause duplicate reports in one cooldown.
     if (networkErrorCooldowns.size > 50) networkErrorCooldowns.clear();
   }
 
@@ -104,13 +105,49 @@ export function shouldRetryQuery(failureCount: number, error: unknown) {
 
 /** The portal root's cached session read (`routes/portal/__root.tsx`). */
 export const portalSessionQueryKey = ["portal", "session"] as const;
-
 export function createQueryClient() {
+  let verifiedPortalUserId: string | undefined;
   const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({
+      onSuccess: (data, query) => {
+        const key = query.queryKey;
+        if (key.length !== 2 || key[0] !== "portal" || key[1] !== "session")
+          return;
+        const user =
+          data && typeof data === "object" && "user" in data
+            ? data.user
+            : undefined;
+        const hasSession = Boolean(
+          data && typeof data === "object" && "session" in data && data.session,
+        );
+        const userId =
+          hasSession &&
+          user &&
+          typeof user === "object" &&
+          "id" in user &&
+          typeof user.id === "string"
+            ? user.id
+            : undefined;
+        // Remove and cancel old reads before a different verified identity can use shared keys.
+        if (
+          verifiedPortalUserId !== undefined &&
+          verifiedPortalUserId !== userId
+        ) {
+          client.removeQueries({
+            predicate: ({ queryKey }) =>
+              (queryKey[0] === "portal" &&
+                !(
+                  queryKey.length === 2 &&
+                  (queryKey[1] === "session" || queryKey[1] === "auth-methods")
+                )) ||
+              (queryKey[0] === "terminology-runtime" &&
+                queryKey[1] === "customer"),
+          });
+        }
+        verifiedPortalUserId = userId;
+      },
       onError: (error, query) => {
         if (isUnauthorizedError(error)) {
-          // The session is gone: never answer the next navigation from the cached session.
           client.removeQueries({ queryKey: portalSessionQueryKey });
           handleUnauthorized();
           return;
@@ -130,9 +167,7 @@ export function createQueryClient() {
         refetchOnMount: false,
         retry: shouldRetryQuery,
       },
-      mutations: {
-        retry: false,
-      },
+      mutations: { retry: false },
     },
   });
   followAuditInvalidation(client);

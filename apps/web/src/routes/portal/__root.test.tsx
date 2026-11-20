@@ -121,6 +121,14 @@ describe("portal root session read", () => {
     expect(auth.getSession).toHaveBeenCalledTimes(2);
   });
 
+  it("rejects a cached user without a session", async () => {
+    queryClient.setQueryData(["portal", "session"], { user: { id: "u1" } });
+    const refused = await rejection(
+      beforeLoad({ location: { pathname: "/requests", searchStr: "" } }),
+    );
+    expect(refused.options?.to).toBe("/sign-in");
+  });
+
   it("Try Again runs the root's session read again before clearing the error", async () => {
     const PortalError = PortalRootRoute.options
       .errorComponent as ComponentType<{

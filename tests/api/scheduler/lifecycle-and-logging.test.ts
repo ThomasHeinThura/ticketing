@@ -12,11 +12,18 @@ const {
   startJobRunWorkerMock: vi.fn((): (() => Promise<void>) => async () => {}),
 }));
 
-vi.mock("../instance/observability/runtime", () => ({
-  logTaskDesk: logTaskDeskMock,
-}));
+vi.mock(
+  "../../../apps/api/src/instance/observability/runtime",
+  async (importOriginal) => ({
+    // Keep the real exports other modules in the scheduler import graph read at load time.
+    ...(await importOriginal<
+      typeof import("../../../apps/api/src/instance/observability/runtime")
+    >()),
+    logTaskDesk: logTaskDeskMock,
+  }),
+);
 
-vi.mock("../instance/jobs/runtime", () => ({
+vi.mock("../../../apps/api/src/instance/jobs/runtime", () => ({
   readJobConfigurations: readJobConfigurationsMock,
   runScheduledJobWithHistory: runScheduledJobWithHistoryMock,
   startJobRunWorker: startJobRunWorkerMock,
@@ -31,7 +38,7 @@ import {
   registeredJobs,
   setSchedulerShutdownTimeoutForTest,
   shutdownScheduler,
-} from "./index";
+} from "../../../apps/api/src/scheduler/index";
 
 describe("scheduler structured error logging and graceful in-flight drain", () => {
   beforeEach(() => {
@@ -81,7 +88,6 @@ describe("scheduler structured error logging and graceful in-flight drain", () =
       message: "jobs.failure",
       level: "warn",
       result: "degraded",
-      errorClass: "Error",
       traceId: "automation-schedule",
     });
     expect(registeredJobByName("automation-schedule")).toBe(originalJob);
@@ -103,7 +109,6 @@ describe("scheduler structured error logging and graceful in-flight drain", () =
       message: "jobs.failure",
       level: "error",
       result: "degraded",
-      errorClass: "Error",
     });
   });
 

@@ -10,7 +10,7 @@ export function prefetchPortalHome(
   search: PortalHomeSearch,
 ) {
   void client.prefetchQuery(portalHomeOptions(portalUserId, search.project));
-  void client.prefetchQuery(portalProjectsOptions());
+  void client.prefetchQuery(portalProjectsOptions(portalUserId));
   void client.prefetchQuery(
     portalCasesOptions(
       portalUserId,

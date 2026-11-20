@@ -83,7 +83,7 @@ Configuration is backed-up data: `instance_setting`, `instance_branding`, `insta
 
 ## Source installer integrity
 
-The maintained source SHA-256 for `install.sh` is `088bd56959c79068ac9d97cc3e4f627a961fe20c78f37facfbb1aa982cc39215`. Refresh it with an intentional installer change. The installer regression checks the actual source bytes; release archives and deployed images still require their own verified checksums and source identity.
+The maintained source SHA-256 for `install.sh` is `c70316916aed034bb1f866ea6eb571e06f8a4ae471b832e1ca0e9bfd82743888`. Refresh it with an intentional installer change. The installer regression checks the actual source bytes; release archives and deployed images still require their own verified checksums and source identity.
 
 
 ### Staff registration

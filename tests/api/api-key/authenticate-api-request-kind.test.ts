@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ApiKeyKind } from "../../../apps/api/src/api-key/credential";
 import { legacyPersonalKeyKind } from "../../../apps/api/src/api-key/credential";
 
+const storedPermissions = vi.hoisted(() => ({ value: null as string | null }));
+
 const loadApiKeyKindMock = vi.fn<(keyId: string) => Promise<ApiKeyKind>>();
 const consumeApiKeyRateLimitMock = vi.fn();
 const recordApiKeyUseMock = vi.fn();
@@ -33,7 +35,7 @@ vi.mock("../../../apps/api/src/utils/access-lookups.repository", () => ({
     start: "tdk_ab",
     enabled: true,
     expiresAt: null,
-    permissions: JSON.stringify({ work_item: ["read"] }),
+    permissions: storedPermissions.value,
     refillInterval: null,
     refillAmount: null,
     lastRefillAt: null,
@@ -67,10 +69,12 @@ vi.mock("../../../apps/api/src/utils/mcp-request-audit", () => ({
 }));
 
 import { authenticateApiRequest } from "../../../apps/api/src/utils/authenticate-api-request";
+import { verifyApiKey } from "../../../apps/api/src/utils/verify-api-key";
 
 describe("authenticateApiRequest single ApiKeyKind load (P-19)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    storedPermissions.value = JSON.stringify({ work_item: ["read"] });
     consumeApiKeyRateLimitMock.mockResolvedValue({
       allowed: true,
       limit: 100,
@@ -79,6 +83,26 @@ describe("authenticateApiRequest single ApiKeyKind load (P-19)", () => {
     recordApiKeyUseMock.mockResolvedValue(undefined);
     auditMcpRequestMock.mockResolvedValue(undefined);
   });
+
+  it.each([
+    ["SQL null", null, null],
+    ["empty permissions", "{}", {}],
+    ["malformed JSON", "{", {}],
+    ["malformed actions", JSON.stringify({ work_item: ["read", 1] }), {}],
+    [
+      "valid permissions",
+      JSON.stringify({ work_item: ["read", "update"], project: ["read"] }),
+      { work_item: ["read", "update"], project: ["read"] },
+    ],
+  ])(
+    "preserves verifyApiKey permissions for %s",
+    async (_label, raw, expected) => {
+      storedPermissions.value = raw;
+      loadApiKeyKindMock.mockResolvedValue(legacyPersonalKeyKind("key-1"));
+      const result = await verifyApiKey("tdk_test_secret_value_123456");
+      expect(result?.key.permissions).toStrictEqual(expected);
+    },
+  );
 
   it("loads ApiKeyKind once in verifyApiKey and passes it through enforcement without redundant DB reloads", async () => {
     const kind: ApiKeyKind = {
