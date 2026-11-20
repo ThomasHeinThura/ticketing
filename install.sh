@@ -221,7 +221,7 @@ done < "${TMP_ROOT}/archive-details.txt"
 mkdir -m 0700 "${TMP_ROOT}/unpacked"
 tar -xzf "${TMP_ROOT}/${ARCHIVE}" -C "${TMP_ROOT}/unpacked"
 RELEASE_ROOT="${TMP_ROOT}/unpacked/taskdesk-${VERSION}"
-for required in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/traefik/dynamic/middlewares.yml; do
+for required in compose.yml scripts/deploy.sh scripts/backup.sh scripts/restore.sh scripts/lib/compose-data-volume.sh deploy/compose.sit.yml deploy/compose.uat.yml deploy/compose.restore-drill.yml scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/traefik/dynamic/middlewares.yml; do
   [[ -f "${RELEASE_ROOT}/${required}" && ! -L "${RELEASE_ROOT}/${required}" ]] || die "release archive is missing a required regular file: ${required}"
 done
 if [[ "$MODE" == local ]]; then
@@ -263,7 +263,7 @@ fi
 docker info >/dev/null 2>&1 || die 'Docker daemon is not reachable; start Docker and ensure the invoking user can access it before rerunning'
 mkdir -p "$INSTALL_DIR"
 [[ -d "$INSTALL_DIR" && ! -L "$INSTALL_DIR" ]] || die '--dir must be a real directory'
-for member in compose.yml scripts/deploy.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.traefik.yml deploy/compose.uat.yml deploy/compose.keycloak.yml deploy/compose.observability.yml deploy/compose.testing.yml deploy/local-release.mjs deploy/entrypoint.sh deploy/seaweedfs/README.md deploy/traefik/dynamic/middlewares.yml; do
+for member in compose.yml scripts/deploy.sh scripts/backup.sh scripts/restore.sh scripts/lib/compose-data-volume.sh scripts/lib/local-certificate.sh scripts/lib/deploy-checks.sh deploy/.env.example deploy/compose.local.yml deploy/compose.prod.yml deploy/compose.sit.yml deploy/compose.uat.yml deploy/compose.restore-drill.yml deploy/compose.traefik.yml deploy/compose.keycloak.yml deploy/compose.observability.yml deploy/compose.testing.yml deploy/local-release.mjs deploy/entrypoint.sh deploy/seaweedfs/README.md deploy/traefik/dynamic/middlewares.yml; do
   [[ -f "${RELEASE_ROOT}/${member}" ]] || continue
   parent="$INSTALL_DIR"
   IFS=/ read -r -a parts <<< "$(dirname "$member")"
