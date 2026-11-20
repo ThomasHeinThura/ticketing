@@ -14,7 +14,7 @@ import {
 } from "@taskdesk/ui";
 import { LogOut, MoonIcon, Settings, SunIcon } from "lucide-react";
 import { useState } from "react";
-import { clearRecentItems } from "@/components/search-command-menu/recent-items";
+import { clearStoredKeys } from "@/lib/clear-stored-keys";
 import { getInitials } from "@/lib/get-initials";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { portalAuthClient } from "@/lib/portal-auth-client";
@@ -63,7 +63,7 @@ export default function PortalUserMenu({
     try {
       const result = await portalAuthClient.signOut();
       if (result.error) throw new Error("sign out refused");
-      clearRecentItems();
+      clearStoredKeys();
       queryClient.clear();
       await navigate({
         to: routes.portalSignIn.path,
