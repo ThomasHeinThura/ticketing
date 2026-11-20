@@ -15,13 +15,30 @@ const mocks = vi.hoisted(() => ({
   search: {} as { workflowId?: string },
   navigate: vi.fn(),
   canManage: true,
+  workspaceId: "ws-1",
   getWorkflows: vi.fn(),
   getWorkflow: vi.fn(),
   createWorkflow: vi.fn(),
   createWorkflowVersion: vi.fn(),
   previewWorkflowPublication: vi.fn(),
   publishWorkflowVersion: vi.fn(),
+  history: vi.fn(),
+  session: { user: { id: "u1" }, session: { id: "s1" } },
 }));
+
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({ data: mocks.session }),
+    getSession: vi.fn(async () => ({ data: mocks.session })),
+  },
+}));
+vi.mock("@/fetchers/settings/settings-history", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/fetchers/settings/settings-history")
+  >()),
+  getSettingsHistory: mocks.history,
+}));
+vi.mock("@/lib/format", () => ({ formatDateTime: (date: string) => date }));
 
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({
@@ -69,7 +86,7 @@ vi.mock("@/fetchers/service-management", async (importOriginal) => ({
   }),
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: { id: "ws-1" } }),
+  default: () => ({ data: { id: mocks.workspaceId } }),
 }));
 vi.mock("@/hooks/queries/project/use-get-projects", () => ({
   default: () => ({ data: [{ id: "proj-1" }] }),
@@ -165,19 +182,42 @@ function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={client}>
-      <Page />
-    </QueryClientProvider>,
-  );
+  return {
+    client,
+    ...render(
+      <QueryClientProvider client={client}>
+        <Page />
+      </QueryClientProvider>,
+    ),
+  };
 }
 
 describe("workflow settings (WF-9)", () => {
+  it("hides history when the active workspace changes with the workflow id retained", async () => {
+    const view = renderPage();
+    await screen.findByRole("button", { name: /settings:history.title/ });
+    mocks.workspaceId = "ws-2";
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <Page />
+      </QueryClientProvider>,
+    );
+    expect(
+      screen.queryByRole("button", { name: /settings:history.title/ }),
+    ).toBeNull();
+  });
+
   beforeEach(() => {
     mocks.canManage = true;
+    mocks.workspaceId = "ws-1";
     mocks.search = { workflowId: "wf-1" };
     mocks.navigate.mockReset();
+    mocks.session = { user: { id: "u1" }, session: { id: "s1" } };
+    mocks.history
+      .mockReset()
+      .mockResolvedValue({ lastChanged: null, rows: [] });
     mocks.getWorkflows.mockReset().mockResolvedValue([workflow]);
+    mocks.createWorkflow.mockReset().mockResolvedValue(workflow);
     mocks.getWorkflow.mockReset().mockResolvedValue(workflow);
     mocks.createWorkflowVersion.mockReset().mockResolvedValue({ number: 3 });
     mocks.previewWorkflowPublication.mockReset().mockResolvedValue({
@@ -206,6 +246,16 @@ describe("workflow settings (WF-9)", () => {
       mocks.canManage = false;
       renderPage();
       await screen.findByRole("heading", { level: 1, name: "Service flow" });
+      await waitFor(() =>
+        expect(mocks.history).toHaveBeenCalledWith(
+          "workflow",
+          "wf-1",
+          expect.any(AbortSignal),
+        ),
+      );
+      expect(
+        screen.getByRole("button", { name: "settings:history.title" }),
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", {
           name: "settings:workflows.transitions.add",
@@ -218,6 +268,157 @@ describe("workflow settings (WF-9)", () => {
       ).toBeNull();
     },
   );
+
+  it("refreshes the selected target after a draft without waiting for History", async () => {
+    mocks.history
+      .mockResolvedValueOnce({ lastChanged: null, rows: [] })
+      .mockImplementation(() => new Promise(() => {}));
+    renderPage();
+    await screen.findByRole("button", { name: "settings:history.title" });
+    await waitFor(() => expect(mocks.history).toHaveBeenCalledTimes(1));
+    const removes = await screen.findAllByRole("button", {
+      name: "settings:workflows.transitions.remove",
+    });
+    fireEvent.click(removes[0] as HTMLElement);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings:workflows.transitions.saveDraft",
+      }),
+    );
+    await waitFor(() => expect(mocks.history).toHaveBeenCalledTimes(2));
+    expect(
+      await screen.findByText("common:actions.saved", {
+        selector: "span:not([aria-hidden])",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not refresh History after a failed draft", async () => {
+    mocks.createWorkflowVersion.mockRejectedValue(new Error("failed"));
+    renderPage();
+    await screen.findByRole("button", { name: "settings:history.title" });
+    const removes = await screen.findAllByRole("button", {
+      name: "settings:workflows.transitions.remove",
+    });
+    fireEvent.click(removes[0] as HTMLElement);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings:workflows.transitions.saveDraft",
+      }),
+    );
+    await screen.findByText("settings:workflows.errorTitle");
+    expect(mocks.history).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes only the saved workflow and captured session after a switch", async () => {
+    let finish!: (value: { number: number }) => void;
+    mocks.createWorkflowVersion.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { client, rerender } = renderPage();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    const removes = await screen.findAllByRole("button", {
+      name: "settings:workflows.transitions.remove",
+    });
+    fireEvent.click(removes[0] as HTMLElement);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings:workflows.transitions.saveDraft",
+      }),
+    );
+    await waitFor(() =>
+      expect(mocks.createWorkflowVersion).toHaveBeenCalledTimes(1),
+    );
+    mocks.session = { user: { id: "u2" }, session: { id: "s2" } };
+    mocks.search = { workflowId: "wf-2" };
+    mocks.getWorkflow.mockResolvedValue({
+      ...workflow,
+      id: "wf-2",
+      name: "Second flow",
+    });
+    rerender(
+      <QueryClientProvider client={client}>
+        <Page />
+      </QueryClientProvider>,
+    );
+    await screen.findByRole("heading", { name: "Second flow" });
+    finish({ number: 3 });
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ["settings-history", "workflow", "wf-1", "agent", "u1", "s1"],
+        exact: true,
+        refetchType: "none",
+      }),
+    );
+    expect(invalidate).not.toHaveBeenCalledWith({
+      queryKey: ["settings-history", "workflow", "wf-2", "agent", "u2", "s2"],
+      exact: true,
+      refetchType: "none",
+    });
+  });
+
+  it("preserves a newer draft edit when an older save completes", async () => {
+    let finish!: (value: { number: number }) => void;
+    mocks.createWorkflowVersion.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderPage();
+    const removes = await screen.findAllByRole("button", {
+      name: "settings:workflows.transitions.remove",
+    });
+    fireEvent.click(removes[0] as HTMLElement);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings:workflows.transitions.saveDraft",
+      }),
+    );
+    await waitFor(() =>
+      expect(mocks.createWorkflowVersion).toHaveBeenCalledTimes(1),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings:workflows.transitions.remove",
+      }),
+    );
+    finish({ number: 3 });
+    await waitFor(() =>
+      expect(mocks.previewWorkflowPublication).toHaveBeenCalledWith({
+        id: "wf-1",
+        number: 3,
+      }),
+    );
+    expect(
+      screen.getByText("settings:workflows.transitions.unsaved"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("common:actions.saved", {
+        selector: "span:not([aria-hidden])",
+      }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: "settings:workflows.transitions.remove",
+      }),
+    ).toBeNull();
+    fireEvent.click(await screen.findByText("common:actions.close"));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings:workflows.transitions.saveDraft",
+      }),
+    );
+    await screen.findByText("common:actions.saved", {
+      selector: "span:not([aria-hidden])",
+    });
+    expect(
+      screen.queryByText("settings:workflows.transitions.unsaved"),
+    ).toBeNull();
+  });
 
   it("shows no access on a forbidden workflow read", async () => {
     mocks.getWorkflow.mockRejectedValue(
@@ -233,7 +434,8 @@ describe("workflow settings (WF-9)", () => {
   });
 
   it("lists the work items a publish would strand, each linking to the item", async () => {
-    renderPage();
+    const { client } = renderPage();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
     fireEvent.click(
       await screen.findByRole("button", {
         name: "settings:workflows.versions.validate",
@@ -269,6 +471,82 @@ describe("workflow settings (WF-9)", () => {
         number: 2,
       }),
     );
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ["settings-history", "workflow", "wf-1", "agent", "u1", "s1"],
+        exact: true,
+        refetchType: "none",
+      }),
+    );
+  });
+
+  it("refreshes the newly created workflow", async () => {
+    mocks.search = {};
+    const { client } = renderPage();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "settings:workflows.new" }),
+    );
+    fireEvent.change(screen.getByLabelText("settings:workflows.create.name"), {
+      target: { value: "Service flow" },
+    });
+    fireEvent.change(screen.getByLabelText("settings:workflows.create.key"), {
+      target: { value: "SERVICE" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings:workflows.create.submit" }),
+    );
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ["settings-history", "workflow", "wf-1", "agent", "u1", "s1"],
+        exact: true,
+        refetchType: "none",
+      }),
+    );
+  });
+
+  it("does not refresh history when creation fails", async () => {
+    mocks.search = {};
+    mocks.createWorkflow.mockRejectedValue(new Error("failed"));
+    const { client } = renderPage();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "settings:workflows.new" }),
+    );
+    fireEvent.change(screen.getByLabelText("settings:workflows.create.name"), {
+      target: { value: "Service flow" },
+    });
+    fireEvent.change(screen.getByLabelText("settings:workflows.create.key"), {
+      target: { value: "SERVICE" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "settings:workflows.create.submit" }),
+    );
+    await screen.findByText("settings:workflows.create.error");
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+
+  it("does not refresh history when publication fails", async () => {
+    mocks.publishWorkflowVersion.mockRejectedValue(new Error("failed"));
+    const { client } = renderPage();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "settings:workflows.versions.validate",
+      }),
+    );
+    await screen.findByTestId("workflow-validation");
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "settings:workflows.validation.publishAnyway:2",
+      }),
+    );
+    await screen.findByText("settings:workflows.errorTitle");
+    expect(invalidate).not.toHaveBeenCalledWith({
+      queryKey: ["settings-history", "workflow", "wf-1", "agent", "u1", "s1"],
+      exact: true,
+      refetchType: "none",
+    });
   });
 
   it("saves a removed transition as a new draft and keeps the guards it did not touch", async () => {

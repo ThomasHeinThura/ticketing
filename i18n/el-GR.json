@@ -18,7 +18,7 @@
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
 			"save": "Save",
-			"saved": "Saved",
+			"saved": "Αποθηκεύτηκε",
 			"saving": "Saving…",
 			"previous": "Previous",
 			"next": "Next",
@@ -556,6 +556,126 @@
 		}
 	},
 	"settings": {
+		"history": {
+			"providerConfiguration": "Διαμόρφωση",
+			"providerCredential": "Διαπιστευτήρια",
+			"memberHistory": "Ιστορικό για {{name}} ({{number}})",
+			"roleChanged": "Ο ρόλος άλλαξε",
+			"preferenceFields": {
+				"density": "Πυκνότητα",
+				"layout": "Διάταξη",
+				"listGroups": "Ομάδες λίστας",
+				"columns": "Ορατές στήλες",
+				"columnWidths": "Πλάτη στηλών"
+			},
+			"notificationDelivery": "Αποστολή",
+			"notificationDigest": "Χρόνος αποστολής",
+			"notificationQuietHours": "Ώρες σίγασης",
+			"notificationWorkspaceRule": "Κανόνες παράδοσης χώρων εργασίας",
+			"securityPassword": "Κωδικός πρόσβασης",
+			"securityMfa": "Έλεγχος ταυτότητας δύο παραγόντων",
+			"personalKey": "Προσωπικό κλειδί API",
+			"profileYou": "Εσείς",
+			"profileLocale": "Locale",
+			"title": "Ιστορικό",
+			"lastChanged": "Τελευταία αλλαγή από {{actor}} στις {{at}}",
+			"empty": "Δεν υπάρχουν ακόμη καταγεγραμμένες αλλαγές.",
+			"error": "Δεν ήταν δυνατή η φόρτωση του ιστορικού.",
+			"retry": "Επανάληψη",
+			"personUnavailable": "Το άτομο δεν είναι διαθέσιμο",
+			"apiKey": "Κλειδί API",
+			"automation": "Αυτοματισμός",
+			"system": "Σύστημα",
+			"fields": {
+				"name": "Όνομα",
+				"description": "Περιγραφή",
+				"icon": "Εικονίδιο",
+				"key": "Κλειδί",
+				"logo": "Λογότυπο",
+				"workspaceSlug": "Αναγνωριστικό χώρου εργασίας",
+				"kind": "Είδος",
+				"supportLevel": "Επίπεδο υποστήριξης",
+				"serviceCalendar": "Ημερολόγιο υπηρεσίας",
+				"defaultSlaPolicy": "Προεπιλεγμένη πολιτική SLA",
+				"defaultServiceCalendar": "Προεπιλεγμένο ημερολόγιο υπηρεσίας",
+				"slaPolicy": "Πολιτική SLA",
+				"defaultCommentVisibility": "Προεπιλεγμένη ορατότητα σχολίων",
+				"manager": "Υπεύθυνος",
+				"startDate": "Ημερομηνία έναρξης",
+				"endDate": "Ημερομηνία λήξης",
+				"defaultAssignee": "Προεπιλεγμένος υπεύθυνος ανάθεσης",
+				"health": "Υγεία",
+				"stateSetMode": "Σύνολο καταστάσεων",
+				"position": "Θέση",
+				"isDefault": "Προεπιλογή",
+				"activity": "Δραστηριότητα",
+				"archived": "Αρχειοθετημένη",
+				"workflowDefinition": "Εκδόσεις",
+				"workflowActiveVersion": "Ενεργή έκδοση",
+				"backdateLimit": "Όριο αναδρομικής καταχώρισης (ημέρες)",
+				"defaultBillable": "Ο νέος χρόνος είναι χρεώσιμος από προεπιλογή",
+				"approvalDefaultExpiryDays": "Λήξη έγκρισης (ημέρες)",
+				"clarificationWindowDays": "Παράθυρο διευκρίνισης (ημέρες)",
+				"reopenWindowDays": "Παράθυρο επανάνοιξης (ημέρες)",
+				"notificationRetentionDays": "Διατήρηση αναγνωσμένων ειδοποιήσεων για (ημέρες)",
+				"cspMode": "Λειτουργία πολιτικής",
+				"invitationLifetimeHours": "Διάρκεια ισχύος πρόσκλησης (ώρες)",
+				"customerInvitationCreateWindowMinutes": "Παράθυρο δημιουργίας προσκλήσεων πελατών (λεπτά)",
+				"customerInvitationPerInviterLimit": "Μέγιστος αριθμός προσκλήσεων πελατών ανά αποστολέα",
+				"customerInvitationPerOrganisationLimit": "Μέγιστος αριθμός προσκλήσεων πελατών ανά οργάνωση",
+				"customerInvitationResendCooldownSeconds": "Χρόνος αναμονής επαναποστολής πρόσκλησης πελάτη (δευτερόλεπτα)",
+				"anonymousRateLimitWindowMs": "Παράθυρο ορίου (λεπτά)",
+				"anonymousRateLimitMax": "Αιτήματα ανά παράθυρο",
+				"mcpWriteCeilingPerMinute": "Αιτήματα εγγραφής MCP ανά λεπτό",
+				"apiKeyBurstThreshold": "Όριο απενεργοποίησης ριπής MCP (προσπάθειες/λεπτό)",
+				"timezone": "Ζώνη ώρας",
+				"attachmentMaxBytes": "Μεγαλύτερο αρχείο (byte)",
+				"attachmentMaxPerItem": "Αρχεία ανά στοιχείο εργασίας",
+				"attachmentAllowedExtensions": "Επιτρεπόμενοι τύποι αρχείων",
+				"body": "Κείμενο απάντησης",
+				"visibilityDefault": "Προεπιλεγμένη ορατότητα",
+				"unknown": "Άλλη ρύθμιση"
+			},
+			"actions": {
+				"workflow_created": "Η ροή εργασίας δημιουργήθηκε",
+				"workflow_version_created": "Η έκδοση της ροής εργασίας δημιουργήθηκε",
+				"workflow_version_published": "Η έκδοση της ροής εργασίας δημοσιεύτηκε",
+				"time_settings_updated": "Οι ρυθμίσεις χρόνου άλλαξαν",
+				"plugin_changed": "Η προσθήκη άλλαξε",
+				"canned_response_created": "Η έτοιμη απάντηση δημιουργήθηκε",
+				"canned_response_updated": "Η έτοιμη απάντηση ενημερώθηκε",
+				"canned_response_deleted": "Η έτοιμη απάντηση διαγράφηκε",
+				"automation_created": "Ο κανόνας αυτοματισμού δημιουργήθηκε",
+				"automation_updated": "Ο κανόνας αυτοματισμού ενημερώθηκε",
+				"automation_enabled": "Ο κανόνας αυτοματισμού ενεργοποιήθηκε",
+				"automation_disabled": "Ο κανόνας αυτοματισμού απενεργοποιήθηκε",
+				"team_created": "Η ομάδα δημιουργήθηκε",
+				"team_updated": "Οι ρυθμίσεις της ομάδας ενημερώθηκαν",
+				"team_member_added": "Το μέλος της ομάδας προστέθηκε",
+				"team_member_updated": "Το μέλος της ομάδας ενημερώθηκε",
+				"team_member_removed": "Το μέλος της ομάδας αφαιρέθηκε",
+				"workspace_settings_updated": "Οι ρυθμίσεις του χώρου εργασίας ενημερώθηκαν",
+				"workspace_project_settings_updated": "Οι προεπιλογές έργων του χώρου εργασίας ενημερώθηκαν",
+				"project_settings_updated": "Οι ρυθμίσεις του έργου ενημερώθηκαν",
+				"project_general_settings_updated": "Οι γενικές ρυθμίσεις του έργου ενημερώθηκαν",
+				"project_states_updated": "Οι καταστάσεις του έργου ενημερώθηκαν",
+				"time_activity_created": "Η δραστηριότητα χρόνου δημιουργήθηκε",
+				"time_activity_updated": "Η δραστηριότητα χρόνου ενημερώθηκε",
+				"workspace_created": "Ο χώρος εργασίας δημιουργήθηκε",
+				"project_created": "Το έργο δημιουργήθηκε",
+				"project_archived": "Το έργο αρχειοθετήθηκε",
+				"project_restored": "Το έργο επαναφέρθηκε",
+				"project_summary_updated": "Η περίληψη του έργου ενημερώθηκε",
+				"project_customer_organisation_linked": "Το έργο συνδέθηκε με οργανισμό πελάτη",
+				"project_reach_changed": "Το εύρος πρόσβασης του έργου άλλαξε",
+				"agile_settings_updated": "Οι ρυθμίσεις Agile ενημερώθηκαν",
+				"workflow_cab_template_applied": "Εφαρμόστηκε το πρότυπο ροής εργασίας CAB",
+				"bulk_performed": "Εκτελέστηκε μαζική ενέργεια",
+				"kb_settings_changed": "Οι ρυθμίσεις της βάσης γνώσεων άλλαξαν",
+				"instance_settings_changed": "Οι ρυθμίσεις της εγκατάστασης ενημερώθηκαν",
+				"unknown": "Οι ρυθμίσεις άλλαξαν"
+			}
+		},
 		"account": "Λογαριασμός",
 		"developer": "Προγραμματιστής",
 		"information": "Πληροφορίες",
@@ -1634,7 +1754,7 @@
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number."
 		},
 		"cannedResponses": {
-			"body": "Response body",
+			"body": "Κείμενο απάντησης",
 			"create": "New response",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
 			"deleteNamed": "Delete {{name}}",
@@ -1646,11 +1766,11 @@
 			"failed": "Unable to save this response.",
 			"forbidden": "You need workspace settings permission to manage canned responses.",
 			"loadFailed": "Unable to load canned responses.",
-			"name": "Name",
+			"name": "Όνομα",
 			"notFound": "This response is no longer available in this workspace.",
 			"search": "Search responses",
 			"title": "Canned responses",
-			"visibility": "Default visibility",
+			"visibility": "Προεπιλεγμένη ορατότητα",
 			"save": "Save",
 			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		},
@@ -3176,6 +3296,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
+			"bulkHint": "Έως 10 διευθύνσεις email, χωρισμένες με κόμμα ή αλλαγή γραμμής.",
+			"bulkLimit": "Εισαγάγετε 1 έως 10 διαφορετικές διευθύνσεις email.",
+			"bulkResult": {
+				"invalid": "Μη έγκυρη διεύθυνση email.",
+				"conflict": "Έχει ήδη προσκληθεί ή είναι μέλος.",
+				"rateLimited": "Πάρα πολλές προσκλήσεις. Δοκιμάστε αργότερα.",
+				"failed": "Η πρόσκληση απέτυχε. Δοκιμάστε ξανά."
+			},
 			"sendInvitation": "Αποστολή πρόσκλησης",
 			"success": "Η πρόσκληση στάλθηκε με επιτυχία",
 			"error": "Αποτυχία πρόσκλησης μέλους ομάδας",
@@ -6268,75 +6396,75 @@
 		"fields": {
 			"approvalDefaultExpiryDays": {
 				"help": "The default for a new approval request. At most 90.",
-				"label": "Approval expiry (days)"
+				"label": "Λήξη έγκρισης (ημέρες)"
 			},
 			"attachmentAllowedExtensions": {
 				"help": "Extensions separated by commas, for example pdf, png, docx.",
-				"label": "Allowed file types"
+				"label": "Επιτρεπόμενοι τύποι αρχείων"
 			},
 			"attachmentMaxBytes": {
 				"help": "The maximum size of one uploaded file.",
-				"label": "Largest file (bytes)"
+				"label": "Μεγαλύτερο αρχείο (byte)"
 			},
 			"attachmentMaxPerItem": {
 				"help": "The maximum number of files on one work item.",
-				"label": "Files per work item"
+				"label": "Αρχεία ανά στοιχείο εργασίας"
 			},
 			"clarificationWindowDays": {
 				"help": "A request awaiting the customer's reply for longer than this is declined automatically.",
-				"label": "Clarification window (days)"
+				"label": "Παράθυρο διευκρίνισης (ημέρες)"
 			},
 			"notificationRetentionDays": {
 				"help": "Read notifications older than this are deleted daily. Unread notifications are never deleted.",
-				"label": "Keep read notifications for (days)"
+				"label": "Διατήρηση αναγνωσμένων ειδοποιήσεων για (ημέρες)"
 			},
 			"reopenWindowDays": {
 				"help": "How long after resolution a customer may reopen a request.",
-				"label": "Reopen window (days)"
+				"label": "Παράθυρο επανάνοιξης (ημέρες)"
 			},
 			"timezone": {
 				"help": "Used for digest windows and quiet hours when a person has not chosen their own.",
-				"label": "Time zone"
+				"label": "Ζώνη ώρας"
 			},
 			"anonymousRateLimitMax": {
 				"help": "Maximum requests from one internet address during the limit window.",
-				"label": "Requests per window"
+				"label": "Αιτήματα ανά παράθυρο"
 			},
 			"anonymousRateLimitWindowMinutes": {
 				"help": "The period used to count anonymous requests, from 1 minute to 24 hours.",
-				"label": "Limit window (minutes)"
+				"label": "Παράθυρο ορίου (λεπτά)"
 			},
 			"mcpWriteCeilingPerMinute": {
 				"help": "Shared across API replicas. Bulk requests also obey the separate bulk ceiling.",
-				"label": "MCP write requests per minute"
+				"label": "Αιτήματα εγγραφής MCP ανά λεπτό"
 			},
 			"apiKeyBurstThreshold": {
 				"help": "Automatically disable an MCP key after more than this many write attempts in one minute, including rate-limited attempts.",
-				"label": "MCP burst disable threshold (attempts/minute)"
+				"label": "Όριο απενεργοποίησης ριπής MCP (προσπάθειες/λεπτό)"
 			},
 			"cspMode": {
 				"help": "Begin with report-only mode, inspect browser reports, then enforce after the rollout checks pass.",
-				"label": "Policy mode"
+				"label": "Λειτουργία πολιτικής"
 			},
 			"customerInvitationCreateWindowMinutes": {
 				"help": "Time window for the per-inviter and per-organisation creation limits.",
-				"label": "Customer invitation creation window (minutes)"
+				"label": "Παράθυρο δημιουργίας προσκλήσεων πελατών (λεπτά)"
 			},
 			"customerInvitationPerInviterLimit": {
 				"help": "Maximum creation attempts by one inviter within the configured window.",
-				"label": "Maximum customer invitations per inviter"
+				"label": "Μέγιστος αριθμός προσκλήσεων πελατών ανά αποστολέα"
 			},
 			"customerInvitationPerOrganisationLimit": {
 				"help": "Maximum creation attempts for one organisation within the configured window.",
-				"label": "Maximum customer invitations per organisation"
+				"label": "Μέγιστος αριθμός προσκλήσεων πελατών ανά οργάνωση"
 			},
 			"customerInvitationResendCooldownSeconds": {
 				"help": "Minimum interval before the same customer invitation can be resent.",
-				"label": "Customer invitation resend cooldown (seconds)"
+				"label": "Χρόνος αναμονής επαναποστολής πρόσκλησης πελάτη (δευτερόλεπτα)"
 			},
 			"invitationLifetimeHours": {
 				"help": "Applies to new and renewed staff and customer invitations. Existing expiry dates stay unchanged.",
-				"label": "Invitation lifetime (hours)"
+				"label": "Διάρκεια ισχύος πρόσκλησης (ώρες)"
 			}
 		},
 		"general": {
@@ -6610,6 +6738,10 @@
 		}
 	},
 	"automations": {
+		"changes": {
+			"title": "Ιστορικό αλλαγών: {{name}}",
+			"description": "Ποιος άλλαξε αυτόν τον κανόνα και πότε. Οι ορισμοί και οι τιμές του κανόνα δεν εμφανίζονται ποτέ."
+		},
 		"actions": {
 			"daysFromNow": "days from now (empty clears the due date)",
 			"dueInDays": "Days",
@@ -6769,6 +6901,7 @@
 			"unknown": "Needs attention"
 		},
 		"list": {
+			"changeHistory": "Ιστορικό αλλαγών",
 			"disabled": "Disabled",
 			"dryRun": "Dry run",
 			"edit": "Edit",

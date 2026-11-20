@@ -18,7 +18,7 @@
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
 			"save": "Save",
-			"saved": "Saved",
+			"saved": "已保存",
 			"saving": "Saving…",
 			"previous": "Previous",
 			"next": "Next",
@@ -556,6 +556,126 @@
 		}
 	},
 	"settings": {
+		"history": {
+			"providerConfiguration": "配置",
+			"providerCredential": "凭据",
+			"memberHistory": "{{name}}的历史记录（{{number}}）",
+			"roleChanged": "角色已更改",
+			"preferenceFields": {
+				"density": "显示密度",
+				"layout": "布局",
+				"listGroups": "列表分组",
+				"columns": "可见列",
+				"columnWidths": "列宽"
+			},
+			"notificationDelivery": "通知发送",
+			"notificationDigest": "发送时间",
+			"notificationQuietHours": "免打扰时段",
+			"notificationWorkspaceRule": "工作区通知规则",
+			"securityPassword": "密码",
+			"securityMfa": "双重身份验证",
+			"personalKey": "个人 API 密钥",
+			"profileYou": "你",
+			"profileLocale": "Locale",
+			"title": "历史记录",
+			"lastChanged": "{{actor}} 于 {{at}} 最后修改",
+			"empty": "尚无已记录的更改。",
+			"error": "无法加载历史记录。",
+			"retry": "重试",
+			"personUnavailable": "人员不可用",
+			"apiKey": "API 密钥",
+			"automation": "自动化",
+			"system": "系统",
+			"fields": {
+				"name": "名称",
+				"description": "描述",
+				"icon": "图标",
+				"key": "标识",
+				"logo": "徽标",
+				"workspaceSlug": "工作区标识符",
+				"kind": "类型",
+				"supportLevel": "支持级别",
+				"serviceCalendar": "服务日历",
+				"defaultSlaPolicy": "默认 SLA 策略",
+				"defaultServiceCalendar": "默认服务日历",
+				"slaPolicy": "SLA 策略",
+				"defaultCommentVisibility": "默认评论可见性",
+				"manager": "负责人",
+				"startDate": "开始日期",
+				"endDate": "结束日期",
+				"defaultAssignee": "默认经办人",
+				"health": "健康状况",
+				"stateSetMode": "状态集",
+				"position": "位置",
+				"isDefault": "默认",
+				"activity": "活动",
+				"archived": "已归档",
+				"workflowDefinition": "版本",
+				"workflowActiveVersion": "当前版本",
+				"backdateLimit": "补录期限（天）",
+				"defaultBillable": "新工时默认可计费",
+				"approvalDefaultExpiryDays": "审批有效期（天）",
+				"clarificationWindowDays": "澄清期限（天）",
+				"reopenWindowDays": "重新打开期限（天）",
+				"notificationRetentionDays": "已读通知保留时间（天）",
+				"cspMode": "策略模式",
+				"invitationLifetimeHours": "邀请有效期（小时）",
+				"customerInvitationCreateWindowMinutes": "客户邀请创建时间窗口（分钟）",
+				"customerInvitationPerInviterLimit": "每位邀请人的客户邀请上限",
+				"customerInvitationPerOrganisationLimit": "每个组织的客户邀请上限",
+				"customerInvitationResendCooldownSeconds": "客户邀请重新发送冷却时间（秒）",
+				"anonymousRateLimitWindowMs": "限制时间窗口（分钟）",
+				"anonymousRateLimitMax": "每个时间窗口的请求数",
+				"mcpWriteCeilingPerMinute": "每分钟 MCP 写入请求数",
+				"apiKeyBurstThreshold": "MCP 突发停用阈值（次/分钟）",
+				"timezone": "时区",
+				"attachmentMaxBytes": "最大文件（字节）",
+				"attachmentMaxPerItem": "每个工作项的文件数",
+				"attachmentAllowedExtensions": "允许的文件类型",
+				"body": "回复正文",
+				"visibilityDefault": "默认可见性",
+				"unknown": "其他设置"
+			},
+			"actions": {
+				"workflow_created": "已创建工作流",
+				"workflow_version_created": "已创建工作流版本",
+				"workflow_version_published": "已发布工作流版本",
+				"time_settings_updated": "时间设置已更新",
+				"plugin_changed": "插件已更改",
+				"canned_response_created": "已创建预设回复",
+				"canned_response_updated": "已更新预设回复",
+				"canned_response_deleted": "已删除预设回复",
+				"automation_created": "自动化规则已创建",
+				"automation_updated": "自动化规则已更新",
+				"automation_enabled": "自动化规则已启用",
+				"automation_disabled": "自动化规则已停用",
+				"team_created": "已创建团队",
+				"team_updated": "已更新团队设置",
+				"team_member_added": "已添加团队成员",
+				"team_member_updated": "已更新团队成员",
+				"team_member_removed": "已移除团队成员",
+				"workspace_settings_updated": "已更新工作区设置",
+				"workspace_project_settings_updated": "已更新工作区的{{term_project_other}}默认值",
+				"project_settings_updated": "已更新{{term_project_other}}设置",
+				"project_general_settings_updated": "已更新{{term_project_other}}常规设置",
+				"project_states_updated": "已更新{{term_project_other}}状态",
+				"time_activity_created": "已创建工时活动",
+				"time_activity_updated": "已更新工时活动",
+				"workspace_created": "已创建工作区",
+				"project_created": "已创建{{term_project_other}}",
+				"project_archived": "已归档{{term_project_other}}",
+				"project_restored": "已恢复{{term_project_other}}",
+				"project_summary_updated": "已更新{{term_project_other}}摘要",
+				"project_customer_organisation_linked": "已将{{term_project_other}}关联到客户组织",
+				"project_reach_changed": "已更改{{term_project_other}}的访问范围",
+				"agile_settings_updated": "已更新敏捷设置",
+				"workflow_cab_template_applied": "已应用 CAB 工作流模板",
+				"bulk_performed": "已执行批量操作",
+				"kb_settings_changed": "已更改知识库设置",
+				"instance_settings_changed": "已更新实例设置",
+				"unknown": "设置已更改"
+			}
+		},
 		"account": "账户",
 		"developer": "开发者",
 		"information": "信息",
@@ -1633,7 +1753,7 @@
 			"open": "打开"
 		},
 		"cannedResponses": {
-			"body": "Response body",
+			"body": "回复正文",
 			"create": "New response",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
 			"deleteNamed": "Delete {{name}}",
@@ -1645,11 +1765,11 @@
 			"failed": "Unable to save this response.",
 			"forbidden": "You need workspace settings permission to manage canned responses.",
 			"loadFailed": "Unable to load canned responses.",
-			"name": "Name",
+			"name": "名称",
 			"notFound": "This response is no longer available in this workspace.",
 			"search": "Search responses",
 			"title": "Canned responses",
-			"visibility": "Default visibility",
+			"visibility": "默认可见性",
 			"save": "Save",
 			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		},
@@ -3165,6 +3285,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
+			"bulkHint": "输入最多 10 个电子邮件地址，用逗号或换行分隔。",
+			"bulkLimit": "请输入 1 至 10 个不同的电子邮件地址。",
+			"bulkResult": {
+				"invalid": "电子邮件地址无效。",
+				"conflict": "已受邀或已是成员。",
+				"rateLimited": "邀请次数过多，请稍后重试。",
+				"failed": "邀请失败，请重试。"
+			},
 			"sendInvitation": "发送邀请",
 			"success": "邀请已成功发送",
 			"error": "邀请团队成员失败",
@@ -6247,75 +6375,75 @@
 		"fields": {
 			"approvalDefaultExpiryDays": {
 				"help": "The default for a new approval request. At most 90.",
-				"label": "Approval expiry (days)"
+				"label": "审批有效期（天）"
 			},
 			"attachmentAllowedExtensions": {
 				"help": "Extensions separated by commas, for example pdf, png, docx.",
-				"label": "Allowed file types"
+				"label": "允许的文件类型"
 			},
 			"attachmentMaxBytes": {
 				"help": "The maximum size of one uploaded file.",
-				"label": "Largest file (bytes)"
+				"label": "最大文件（字节）"
 			},
 			"attachmentMaxPerItem": {
 				"help": "The maximum number of files on one work item.",
-				"label": "Files per work item"
+				"label": "每个工作项的文件数"
 			},
 			"clarificationWindowDays": {
 				"help": "A request awaiting the customer's reply for longer than this is declined automatically.",
-				"label": "Clarification window (days)"
+				"label": "澄清期限（天）"
 			},
 			"notificationRetentionDays": {
 				"help": "Read notifications older than this are deleted daily. Unread notifications are never deleted.",
-				"label": "Keep read notifications for (days)"
+				"label": "已读通知保留时间（天）"
 			},
 			"reopenWindowDays": {
 				"help": "How long after resolution a customer may reopen a request.",
-				"label": "Reopen window (days)"
+				"label": "重新打开期限（天）"
 			},
 			"timezone": {
 				"help": "Used for digest windows and quiet hours when a person has not chosen their own.",
-				"label": "Time zone"
+				"label": "时区"
 			},
 			"anonymousRateLimitMax": {
 				"help": "Maximum requests from one internet address during the limit window.",
-				"label": "Requests per window"
+				"label": "每个时间窗口的请求数"
 			},
 			"anonymousRateLimitWindowMinutes": {
 				"help": "The period used to count anonymous requests, from 1 minute to 24 hours.",
-				"label": "Limit window (minutes)"
+				"label": "限制时间窗口（分钟）"
 			},
 			"mcpWriteCeilingPerMinute": {
 				"help": "Shared across API replicas. Bulk requests also obey the separate bulk ceiling.",
-				"label": "MCP write requests per minute"
+				"label": "每分钟 MCP 写入请求数"
 			},
 			"apiKeyBurstThreshold": {
 				"help": "Automatically disable an MCP key after more than this many write attempts in one minute, including rate-limited attempts.",
-				"label": "MCP burst disable threshold (attempts/minute)"
+				"label": "MCP 突发停用阈值（次/分钟）"
 			},
 			"cspMode": {
 				"help": "Begin with report-only mode, inspect browser reports, then enforce after the rollout checks pass.",
-				"label": "Policy mode"
+				"label": "策略模式"
 			},
 			"customerInvitationCreateWindowMinutes": {
 				"help": "Time window for the per-inviter and per-organisation creation limits.",
-				"label": "Customer invitation creation window (minutes)"
+				"label": "客户邀请创建时间窗口（分钟）"
 			},
 			"customerInvitationPerInviterLimit": {
 				"help": "Maximum creation attempts by one inviter within the configured window.",
-				"label": "Maximum customer invitations per inviter"
+				"label": "每位邀请人的客户邀请上限"
 			},
 			"customerInvitationPerOrganisationLimit": {
 				"help": "Maximum creation attempts for one organisation within the configured window.",
-				"label": "Maximum customer invitations per organisation"
+				"label": "每个组织的客户邀请上限"
 			},
 			"customerInvitationResendCooldownSeconds": {
 				"help": "Minimum interval before the same customer invitation can be resent.",
-				"label": "Customer invitation resend cooldown (seconds)"
+				"label": "客户邀请重新发送冷却时间（秒）"
 			},
 			"invitationLifetimeHours": {
 				"help": "Applies to new and renewed staff and customer invitations. Existing expiry dates stay unchanged.",
-				"label": "Invitation lifetime (hours)"
+				"label": "邀请有效期（小时）"
 			}
 		},
 		"general": {
@@ -6586,6 +6714,10 @@
 		}
 	},
 	"automations": {
+		"changes": {
+			"title": "变更历史：{{name}}",
+			"description": "显示谁在何时更改了此规则。从不显示规则定义和值。"
+		},
 		"actions": {
 			"daysFromNow": "days from now (empty clears the due date)",
 			"dueInDays": "Days",
@@ -6743,6 +6875,7 @@
 			"unknown": "Needs attention"
 		},
 		"list": {
+			"changeHistory": "变更历史",
 			"disabled": "Disabled",
 			"dryRun": "Dry run",
 			"edit": "Edit",

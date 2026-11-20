@@ -5846,7 +5846,33 @@ async function installAuthenticatedFixture(page: Page) {
     // Most reads succeed; a branch sets another status where the real API answers an error.
     let status = 200;
 
-    if (path.endsWith("/api/auth/get-session")) body = session;
+    if (
+      path === "/api/audit" &&
+      url.search === "?entity_type=workspace&entity_id=visual-workspace"
+    ) {
+      body = {
+        entityType: "workspace",
+        entityId: "visual-workspace",
+        lastChanged: {
+          actor: { kind: "person", name: "Visual Tester" },
+          at: "2026-01-01T12:00:00.000Z",
+        },
+        rows: [],
+      };
+    } else if (
+      path === "/api/audit" &&
+      url.search === "?entity_type=project&entity_id=visual-project"
+    ) {
+      body = {
+        entityType: "project",
+        entityId: "visual-project",
+        lastChanged: {
+          actor: { kind: "person", name: "Visual Tester" },
+          at: "2026-01-01T12:00:00.000Z",
+        },
+        rows: [],
+      };
+    } else if (path.endsWith("/api/auth/get-session")) body = session;
     // Shell reads every authenticated page makes: profile settings sync, terminology, the
     // resolved feature switches that drive navigation, the bell, and pending invitations.
     else if (path === "/api/me/settings") {
@@ -7923,6 +7949,9 @@ test("workspace settings general screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { level: 1, name: "General Settings" }),
   ).toBeVisible();
+  await expect(
+    page.getByText("Last changed by Visual Tester", { exact: false }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("workspace-settings-general.png", {
     animations: "disabled",
     caret: "hide",
@@ -8026,6 +8055,9 @@ test("workspace settings danger screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { level: 1, name: "General Settings" }),
   ).toBeVisible();
+  await expect(
+    page.getByText("Last changed by Visual Tester", { exact: false }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("workspace-settings-danger.png", {
     animations: "disabled",
     caret: "hide",
@@ -8043,6 +8075,9 @@ test("project settings general screen @visual", async ({ page }) => {
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(
     page.getByRole("heading", { level: 1, name: "General Settings" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Last changed by Visual Tester", { exact: false }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("project-settings-general.png", {
     animations: "disabled",
@@ -8131,6 +8166,9 @@ test("project settings danger screen @visual", async ({ page }) => {
   // This URL opens kaneo's real page; assert that page's own content.
   await expect(
     page.getByRole("heading", { level: 1, name: "General Settings" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Last changed by Visual Tester", { exact: false }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("project-settings-danger.png", {
     animations: "disabled",

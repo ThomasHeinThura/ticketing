@@ -18,7 +18,7 @@
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
 			"save": "Save",
-			"saved": "Saved",
+			"saved": "Opgeslagen",
 			"saving": "Saving…",
 			"previous": "Previous",
 			"next": "Next",
@@ -556,6 +556,126 @@
 		}
 	},
 	"settings": {
+		"history": {
+			"providerConfiguration": "Configuratie",
+			"providerCredential": "Inloggegeven",
+			"memberHistory": "Geschiedenis van {{name}} ({{number}})",
+			"roleChanged": "Rol gewijzigd",
+			"preferenceFields": {
+				"density": "Dichtheid",
+				"layout": "Indeling",
+				"listGroups": "Lijstgroepen",
+				"columns": "Zichtbare kolommen",
+				"columnWidths": "Kolombreedtes"
+			},
+			"notificationDelivery": "Bezorging",
+			"notificationDigest": "Bezorgtijd",
+			"notificationQuietHours": "Stille uren",
+			"notificationWorkspaceRule": "Bezorgingsregels per werkruimte",
+			"securityPassword": "Wachtwoord",
+			"securityMfa": "Tweefactorauthenticatie",
+			"personalKey": "Persoonlijke API-sleutel",
+			"profileYou": "Jij",
+			"profileLocale": "Locale",
+			"title": "Geschiedenis",
+			"lastChanged": "Laatst gewijzigd door {{actor}} op {{at}}",
+			"empty": "Nog geen wijzigingen vastgelegd.",
+			"error": "De geschiedenis kon niet worden geladen.",
+			"retry": "Opnieuw proberen",
+			"personUnavailable": "Persoon niet beschikbaar",
+			"apiKey": "API-sleutel",
+			"automation": "Automatisering",
+			"system": "Systeem",
+			"fields": {
+				"name": "Naam",
+				"description": "Beschrijving",
+				"icon": "Icoon",
+				"key": "Sleutel",
+				"logo": "Logo",
+				"workspaceSlug": "Werkruimte-slug",
+				"kind": "Soort",
+				"supportLevel": "Supportniveau",
+				"serviceCalendar": "Servicekalender",
+				"defaultSlaPolicy": "Standaard SLA-beleid",
+				"defaultServiceCalendar": "Standaard servicekalender",
+				"slaPolicy": "SLA-beleid",
+				"defaultCommentVisibility": "Standaardzichtbaarheid van opmerkingen",
+				"manager": "Manager",
+				"startDate": "Startdatum",
+				"endDate": "Einddatum",
+				"defaultAssignee": "Standaardtoegewezene",
+				"health": "Gezondheid",
+				"stateSetMode": "Statusset",
+				"position": "Positie",
+				"isDefault": "Standaard",
+				"activity": "Activiteit",
+				"archived": "Gearchiveerd",
+				"workflowDefinition": "Versies",
+				"workflowActiveVersion": "Actieve versie",
+				"backdateLimit": "Limiet voor achterdateren (dagen)",
+				"defaultBillable": "Nieuwe tijd is standaard factureerbaar",
+				"approvalDefaultExpiryDays": "Verlooptermijn van goedkeuringen (dagen)",
+				"clarificationWindowDays": "Verduidelijkingstermijn (dagen)",
+				"reopenWindowDays": "Heropeningstermijn (dagen)",
+				"notificationRetentionDays": "Gelezen meldingen bewaren gedurende (dagen)",
+				"cspMode": "Beleidsmodus",
+				"invitationLifetimeHours": "Geldigheid van uitnodigingen (uren)",
+				"customerInvitationCreateWindowMinutes": "Aanmaakvenster voor klantuitnodigingen (minuten)",
+				"customerInvitationPerInviterLimit": "Maximaal aantal klantuitnodigingen per uitnodiger",
+				"customerInvitationPerOrganisationLimit": "Maximaal aantal klantuitnodigingen per organisatie",
+				"customerInvitationResendCooldownSeconds": "Wachttijd voor opnieuw verzenden van een klantuitnodiging (seconden)",
+				"anonymousRateLimitWindowMs": "Limietvenster (minuten)",
+				"anonymousRateLimitMax": "Verzoeken per venster",
+				"mcpWriteCeilingPerMinute": "MCP-schrijfverzoeken per minuut",
+				"apiKeyBurstThreshold": "Drempel voor uitschakelen bij MCP-piek (pogingen/minuut)",
+				"timezone": "Tijdzone",
+				"attachmentMaxBytes": "Grootste bestand (bytes)",
+				"attachmentMaxPerItem": "Bestanden per werkitem",
+				"attachmentAllowedExtensions": "Toegestane bestandstypen",
+				"body": "Antwoordtekst",
+				"visibilityDefault": "Standaardzichtbaarheid",
+				"unknown": "Overige instelling"
+			},
+			"actions": {
+				"workflow_created": "Workflow aangemaakt",
+				"workflow_version_created": "Workflowversie aangemaakt",
+				"workflow_version_published": "Workflowversie gepubliceerd",
+				"time_settings_updated": "Tijdinstellingen bijgewerkt",
+				"plugin_changed": "Plug-in gewijzigd",
+				"canned_response_created": "Standaardantwoord aangemaakt",
+				"canned_response_updated": "Standaardantwoord bijgewerkt",
+				"canned_response_deleted": "Standaardantwoord verwijderd",
+				"automation_created": "Automatiseringsregel aangemaakt",
+				"automation_updated": "Automatiseringsregel bijgewerkt",
+				"automation_enabled": "Automatiseringsregel ingeschakeld",
+				"automation_disabled": "Automatiseringsregel uitgeschakeld",
+				"team_created": "Team aangemaakt",
+				"team_updated": "Teaminstellingen bijgewerkt",
+				"team_member_added": "Teamlid toegevoegd",
+				"team_member_updated": "Teamlid bijgewerkt",
+				"team_member_removed": "Teamlid verwijderd",
+				"workspace_settings_updated": "Werkruimte-instellingen bijgewerkt",
+				"workspace_project_settings_updated": "Standaardwaarden voor projecten van de werkruimte bijgewerkt",
+				"project_settings_updated": "Projectinstellingen bijgewerkt",
+				"project_general_settings_updated": "Algemene projectinstellingen bijgewerkt",
+				"project_states_updated": "Projectstatussen bijgewerkt",
+				"time_activity_created": "Tijdsactiviteit aangemaakt",
+				"time_activity_updated": "Tijdsactiviteit bijgewerkt",
+				"workspace_created": "Werkruimte aangemaakt",
+				"project_created": "Project aangemaakt",
+				"project_archived": "Project gearchiveerd",
+				"project_restored": "Project hersteld",
+				"project_summary_updated": "Projectsamenvatting bijgewerkt",
+				"project_customer_organisation_linked": "Project gekoppeld aan een klantorganisatie",
+				"project_reach_changed": "Toegangsbereik van project gewijzigd",
+				"agile_settings_updated": "Agile-instellingen bijgewerkt",
+				"workflow_cab_template_applied": "CAB-workflowsjabloon toegepast",
+				"bulk_performed": "Bulkactie uitgevoerd",
+				"kb_settings_changed": "Instellingen van de kennisbank gewijzigd",
+				"instance_settings_changed": "Instance-instellingen bijgewerkt",
+				"unknown": "Instellingen gewijzigd"
+			}
+		},
 		"account": "Account",
 		"developer": "Ontwikkelaar",
 		"information": "Informatie",
@@ -1634,7 +1754,7 @@
 			"disconnect": "Ontkoppelen"
 		},
 		"cannedResponses": {
-			"body": "Response body",
+			"body": "Antwoordtekst",
 			"create": "New response",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
 			"deleteNamed": "Delete {{name}}",
@@ -1646,11 +1766,11 @@
 			"failed": "Unable to save this response.",
 			"forbidden": "You need workspace settings permission to manage canned responses.",
 			"loadFailed": "Unable to load canned responses.",
-			"name": "Name",
+			"name": "Naam",
 			"notFound": "This response is no longer available in this workspace.",
 			"search": "Search responses",
 			"title": "Canned responses",
-			"visibility": "Default visibility",
+			"visibility": "Standaardzichtbaarheid",
 			"save": "Save",
 			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		},
@@ -3176,6 +3296,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "collega@bedrijf.nl",
+			"bulkHint": "Voer maximaal 10 e-mailadressen in, gescheiden door komma’s of nieuwe regels.",
+			"bulkLimit": "Voer 1 tot 10 verschillende e-mailadressen in.",
+			"bulkResult": {
+				"invalid": "Ongeldig e-mailadres.",
+				"conflict": "Al uitgenodigd of lid.",
+				"rateLimited": "Te veel uitnodigingen. Probeer het later opnieuw.",
+				"failed": "Uitnodiging mislukt. Probeer het opnieuw."
+			},
 			"sendInvitation": "Uitnodiging versturen",
 			"success": "Uitnodiging succesvol verzonden",
 			"error": "Uitnodigen teamlid mislukt",
@@ -6268,75 +6396,75 @@
 		"fields": {
 			"approvalDefaultExpiryDays": {
 				"help": "The default for a new approval request. At most 90.",
-				"label": "Approval expiry (days)"
+				"label": "Verlooptermijn van goedkeuringen (dagen)"
 			},
 			"attachmentAllowedExtensions": {
 				"help": "Extensions separated by commas, for example pdf, png, docx.",
-				"label": "Allowed file types"
+				"label": "Toegestane bestandstypen"
 			},
 			"attachmentMaxBytes": {
 				"help": "The maximum size of one uploaded file.",
-				"label": "Largest file (bytes)"
+				"label": "Grootste bestand (bytes)"
 			},
 			"attachmentMaxPerItem": {
 				"help": "The maximum number of files on one work item.",
-				"label": "Files per work item"
+				"label": "Bestanden per werkitem"
 			},
 			"clarificationWindowDays": {
 				"help": "A request awaiting the customer's reply for longer than this is declined automatically.",
-				"label": "Clarification window (days)"
+				"label": "Verduidelijkingstermijn (dagen)"
 			},
 			"notificationRetentionDays": {
 				"help": "Read notifications older than this are deleted daily. Unread notifications are never deleted.",
-				"label": "Keep read notifications for (days)"
+				"label": "Gelezen meldingen bewaren gedurende (dagen)"
 			},
 			"reopenWindowDays": {
 				"help": "How long after resolution a customer may reopen a request.",
-				"label": "Reopen window (days)"
+				"label": "Heropeningstermijn (dagen)"
 			},
 			"timezone": {
 				"help": "Used for digest windows and quiet hours when a person has not chosen their own.",
-				"label": "Time zone"
+				"label": "Tijdzone"
 			},
 			"anonymousRateLimitMax": {
 				"help": "Maximum requests from one internet address during the limit window.",
-				"label": "Requests per window"
+				"label": "Verzoeken per venster"
 			},
 			"anonymousRateLimitWindowMinutes": {
 				"help": "The period used to count anonymous requests, from 1 minute to 24 hours.",
-				"label": "Limit window (minutes)"
+				"label": "Limietvenster (minuten)"
 			},
 			"mcpWriteCeilingPerMinute": {
 				"help": "Shared across API replicas. Bulk requests also obey the separate bulk ceiling.",
-				"label": "MCP write requests per minute"
+				"label": "MCP-schrijfverzoeken per minuut"
 			},
 			"apiKeyBurstThreshold": {
 				"help": "Automatically disable an MCP key after more than this many write attempts in one minute, including rate-limited attempts.",
-				"label": "MCP burst disable threshold (attempts/minute)"
+				"label": "Drempel voor uitschakelen bij MCP-piek (pogingen/minuut)"
 			},
 			"cspMode": {
 				"help": "Begin with report-only mode, inspect browser reports, then enforce after the rollout checks pass.",
-				"label": "Policy mode"
+				"label": "Beleidsmodus"
 			},
 			"customerInvitationCreateWindowMinutes": {
 				"help": "Time window for the per-inviter and per-organisation creation limits.",
-				"label": "Customer invitation creation window (minutes)"
+				"label": "Aanmaakvenster voor klantuitnodigingen (minuten)"
 			},
 			"customerInvitationPerInviterLimit": {
 				"help": "Maximum creation attempts by one inviter within the configured window.",
-				"label": "Maximum customer invitations per inviter"
+				"label": "Maximaal aantal klantuitnodigingen per uitnodiger"
 			},
 			"customerInvitationPerOrganisationLimit": {
 				"help": "Maximum creation attempts for one organisation within the configured window.",
-				"label": "Maximum customer invitations per organisation"
+				"label": "Maximaal aantal klantuitnodigingen per organisatie"
 			},
 			"customerInvitationResendCooldownSeconds": {
 				"help": "Minimum interval before the same customer invitation can be resent.",
-				"label": "Customer invitation resend cooldown (seconds)"
+				"label": "Wachttijd voor opnieuw verzenden van een klantuitnodiging (seconden)"
 			},
 			"invitationLifetimeHours": {
 				"help": "Applies to new and renewed staff and customer invitations. Existing expiry dates stay unchanged.",
-				"label": "Invitation lifetime (hours)"
+				"label": "Geldigheid van uitnodigingen (uren)"
 			}
 		},
 		"general": {
@@ -6610,6 +6738,10 @@
 		}
 	},
 	"automations": {
+		"changes": {
+			"title": "Wijzigingsgeschiedenis: {{name}}",
+			"description": "Wie deze regel wanneer heeft gewijzigd. Regeldefinities en waarden worden nooit getoond."
+		},
 		"actions": {
 			"daysFromNow": "days from now (empty clears the due date)",
 			"dueInDays": "Days",
@@ -6769,6 +6901,7 @@
 			"unknown": "Needs attention"
 		},
 		"list": {
+			"changeHistory": "Wijzigingsgeschiedenis",
 			"disabled": "Disabled",
 			"dryRun": "Dry run",
 			"edit": "Edit",
