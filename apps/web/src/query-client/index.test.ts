@@ -70,6 +70,14 @@ describe("query cache error log", () => {
         retry: false,
       }),
     ).rejects.toThrow("feature_disabled");
+    for (const status of [403, 404])
+      await expect(
+        queryClient.fetchQuery({
+          queryKey: ["settings-history", `refused-${status}`],
+          queryFn: () => Promise.reject(new HttpError(status, "refused")),
+          retry: false,
+        }),
+      ).rejects.toThrow("refused");
     expect(log).not.toHaveBeenCalled();
 
     await expect(
