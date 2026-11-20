@@ -39,6 +39,7 @@ async function fixture(
     hardlinkArchive = false,
     unsafeMember = false,
     realDeployment = false,
+    missingMember = "",
   } = {},
 ) {
   const temp = await mkdtemp(path.join(os.tmpdir(), "taskdesk-install-test-"));
@@ -55,6 +56,9 @@ async function fixture(
   for (const file of [
     "compose.yml",
     "scripts/deploy.sh",
+    "scripts/backup.sh",
+    "scripts/restore.sh",
+    "scripts/lib/compose-data-volume.sh",
     "scripts/lib/local-certificate.sh",
     "scripts/lib/deploy-checks.sh",
     "deploy/.env.example",
@@ -63,6 +67,8 @@ async function fixture(
     "deploy/compose.local.yml",
     "deploy/compose.prod.yml",
     "deploy/compose.sit.yml",
+    "deploy/compose.uat.yml",
+    "deploy/compose.restore-drill.yml",
     "deploy/compose.traefik.yml",
     "deploy/traefik/dynamic/middlewares.yml",
   ]) {
@@ -79,6 +85,7 @@ async function fixture(
           : `fixture ${file}\n`;
     await writeFile(target, contents);
   }
+  if (missingMember) await rm(path.join(content, missingMember));
   await chmod(path.join(content, "scripts/deploy.sh"), 0o755);
   if (symlinkArchive)
     await symlink(
@@ -935,6 +942,21 @@ test("release workflow packages only versioned releases and signs checksum plus 
   assert.ok(
     workflow.includes(`git archive --format=tar --prefix="${rootPrefix}"`),
   );
+  for (const member of [
+    "scripts/backup.sh",
+    "scripts/restore.sh",
+    "scripts/lib/compose-data-volume.sh",
+  ]) {
+    assert.ok(workflow.includes(member));
+    assert.ok((await readFile(installer, "utf8")).includes(member));
+  }
+  for (const member of [
+    "deploy/compose.sit.yml",
+    "deploy/compose.uat.yml",
+    "deploy/compose.restore-drill.yml",
+  ]) {
+    assert.ok((await readFile(installer, "utf8")).includes(member));
+  }
   assert.ok(workflow.includes(`sha256sum "$archive" > "${archiveSha}"`));
   assert.match(workflow, /cosign sign-blob --yes --bundle/);
   assert.match(workflow, /cosign verify-blob --bundle/);
@@ -1400,4 +1422,69 @@ test("deploy.sh removes unreachable dead local mode branches after exec delegati
   const source = await readFile(path.join(root, "scripts/deploy.sh"), "utf8");
   assert.doesNotMatch(source, /assert_local_ports_free/);
   assert.doesNotMatch(source, /^\s*local\)\s*$/m);
+});
+
+test("failed upgrade migration retains previous image selection", async (t) => {
+  const f = await fixture(t, { realDeployment: true });
+  const oldDigest = `sha256:${"b".repeat(64)}`;
+  await writeExistingEnv(f.path, { tag: "v9.8.7", digest: oldDigest });
+  await mkdir(path.join(f.path, "scripts", "lib"), { recursive: true });
+  for (const file of [
+    "scripts/deploy.sh",
+    "scripts/lib/deploy-checks.sh",
+    "compose.yml",
+    "deploy/compose.prod.yml",
+  ]) {
+    await mkdir(path.dirname(path.join(f.path, file)), { recursive: true });
+    await copyFile(path.join(root, file), path.join(f.path, file));
+  }
+  const before = await readFile(path.join(f.path, ".env"), "utf8");
+  const result = spawnSync(
+    "bash",
+    [path.join(f.path, "scripts/deploy.sh"), "upgrade", "v1.2.3"],
+    {
+      cwd: f.path,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${f.bin}:${process.env.PATH}`,
+        FAKE_DOCKER_FULL: "1",
+        FAKE_MIGRATE_FAIL: "1",
+        FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+        FAKE_RAW: RAW_MANIFEST,
+        COSIGN_LOG: path.join(f.temp, "cosign.log"),
+      },
+    },
+  );
+  assert.notEqual(result.status, 0);
+  assert.equal(await readFile(path.join(f.path, ".env"), "utf8"), before);
+  assert.match(
+    result.stderr,
+    /rollback command:|previous digest or signed tag unavailable/,
+  );
+});
+
+test("installer rejects a missing recovery archive member before writes", async (t) => {
+  const f = await fixture(t, { missingMember: "scripts/restore.sh" });
+  const result = run(
+    f,
+    [
+      "--env",
+      "production",
+      "--domain",
+      "example.test",
+      "--version",
+      "1.2.3",
+      "--dir",
+      f.path,
+      "--yes",
+    ],
+    { FAKE_PRODUCTION_HOST: "1" },
+  );
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.stderr,
+    /missing a required regular file: scripts\/restore.sh/,
+  );
+  await assert.rejects(stat(f.path), { code: "ENOENT" });
 });
