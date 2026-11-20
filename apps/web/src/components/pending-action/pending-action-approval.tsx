@@ -802,6 +802,10 @@ export function PendingActionApproval({
       ) {
         await navigate({ href: routes.serviceCalendars.build() });
       }
+      if (executed && action.data?.targetType === "team") {
+        for (const targetId of action.data.targetIds)
+          queryClient.removeQueries({ queryKey: ["team", targetId] });
+      }
       const targetPrefixes = executed
         ? (PENDING_ACTION_TARGET_QUERY_PREFIXES[
             action.data?.targetType ?? ""

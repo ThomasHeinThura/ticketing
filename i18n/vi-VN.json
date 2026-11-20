@@ -4282,6 +4282,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
+			"replyAfterReview": "Bạn có thể trả lời sau khi {{term_request_one}} của bạn được xem xét hoặc khi nhóm yêu cầu thêm thông tin.",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",

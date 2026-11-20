@@ -4310,6 +4310,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
+			"replyAfterReview": "Potrai rispondere una volta esaminata la tua {{term_request_one}} o quando il team chiederà maggiori informazioni.",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",

@@ -4296,6 +4296,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
+			"replyAfterReview": "{{term_request_one}} incelendikten sonra veya ekip daha fazla bilgi istediğinde yanıt verebilirsiniz.",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",

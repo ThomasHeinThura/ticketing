@@ -4324,6 +4324,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
+			"replyAfterReview": "Możesz odpowiedzieć po rozpatrzeniu {{term_request_one}} lub gdy zespół poprosi o więcej informacji.",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",

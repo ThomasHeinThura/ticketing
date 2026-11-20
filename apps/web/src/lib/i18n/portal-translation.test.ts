@@ -3,6 +3,7 @@ import { createInstance } from "i18next";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import english from "../../../../../i18n/en-US.json";
+import { loadLocale, supportedLocales } from "../../../../../i18n/resources";
 import { i18n as baseI18n } from "./index";
 import {
   getDefaultPortalTerm,
@@ -20,6 +21,9 @@ async function isolatedTranslator(noun = "Case", plural = "Cases") {
     resources: {
       "en-US": {
         portal: {
+          request: {
+            replyAfterReview: english.portal.request.replyAfterReview,
+          },
           navigation: { requests: "My {{term_request_other}}" },
           intake: {
             submissionTitle: "{{term_request_one}} {{ref}}",
@@ -40,6 +44,28 @@ async function isolatedTranslator(noun = "Case", plural = "Cases") {
 }
 
 describe("portal terminology translation", () => {
+  it("provides the reply explanation in every supported language", async () => {
+    for (const locale of supportedLocales.filter((item) => item !== "en-US")) {
+      const translations = (await loadLocale(locale)) as typeof english;
+      expect(translations.portal.request.replyAfterReview, locale).not.toBe(
+        english.portal.request.replyAfterReview,
+      );
+    }
+  });
+
+  it("uses the customer noun in the reply explanation in every locale", async () => {
+    for (const locale of supportedLocales) {
+      const translations = (await loadLocale(locale)) as typeof english;
+      expect(translations.portal.request.replyAfterReview, locale).toContain(
+        "{{term_request_one}}",
+      );
+    }
+    const { t } = await isolatedTranslator();
+    expect(t("portal:request.replyAfterReview")).toBe(
+      "You can reply once your Case has been reviewed or the team asks for more information.",
+    );
+  });
+
   it("injects the active isolated customer noun into one and other forms", async () => {
     const { t } = await isolatedTranslator();
     expect(t("portal:navigation.requests")).toBe("My Cases");

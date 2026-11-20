@@ -14,7 +14,11 @@ import {
   customFieldTable,
 } from "../src/database/migration-schema";
 import { automationTable, webhookTable } from "../src/database/schema";
-import { cycleTable, moduleTable } from "../src/database/schema-p5-agile";
+import {
+  cycleScopeEventTable,
+  cycleTable,
+  moduleTable,
+} from "../src/database/schema-p5-agile";
 import {
   dashboardTable,
   dashboardWidgetTable,
@@ -69,6 +73,14 @@ export async function seedG1Entities(tx: Tx, now: Date) {
     .update(schema.workItemTable)
     .set({ cycleId: "uat-cycle", moduleId: "uat-module" })
     .where(eq(schema.workItemTable.id, "uat-wi-web-3"));
+  await tx.insert(cycleScopeEventTable).values({
+    workspaceId,
+    cycleId: "uat-cycle",
+    workItemId: "uat-wi-web-3",
+    kind: "added",
+    at: date(-2),
+    actorId: "uat-user-manager",
+  });
   await tx
     .insert(customFieldSectionTable)
     .values({ id: "uat-field-section", workspaceId, name: "Delivery details" });

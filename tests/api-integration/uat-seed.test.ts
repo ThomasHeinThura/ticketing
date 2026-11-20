@@ -40,6 +40,7 @@ import * as automationRepo from "../../apps/api/src/automation/repository";
 import { validateRuleDefinition } from "../../apps/api/src/automation/validation";
 import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import { automationTable } from "../../apps/api/src/database/schema";
+import { cycleScopeEventTable } from "../../apps/api/src/database/schema-p5-agile";
 import { kbArticleTable } from "../../apps/api/src/database/schema-p5-kb";
 import { projectPageTable } from "../../apps/api/src/database/schema-p5-pages";
 import { reportExportTable } from "../../apps/api/src/database/schema-p5-reports";
@@ -297,6 +298,13 @@ describe("clean-install seed on a disposable migrated database", () => {
         ),
       );
     expect(approvals).toHaveLength(1);
+    const scopeEvents = await db
+      .select()
+      .from(cycleScopeEventTable)
+      .where(eq(cycleScopeEventTable.cycleId, "uat-cycle"));
+    expect(scopeEvents).toMatchObject([
+      { workItemId: "uat-wi-web-3", kind: "added", afterStart: false },
+    ]);
     const scheduleAvailable = registeredJobCatalog().some(
       (job) => job.name === "automation-schedule" && job.enabled,
     );

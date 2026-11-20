@@ -4282,6 +4282,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
+			"replyAfterReview": "您的{{term_request_one}}经审核后，或团队要求提供更多信息时，您便可以回复。",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",

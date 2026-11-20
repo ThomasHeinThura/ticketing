@@ -161,6 +161,18 @@ describe("customer wording and service target (CP-4, CP-5, CP-6, CP-10)", () => 
   });
 });
 
+it("explains when a new request can receive replies", async () => {
+  mocks.getSubmission.mockResolvedValue({
+    ...accepted,
+    submission: { state: "new", formData: {}, workItemId: null },
+    workItem: null,
+  });
+  renderPage();
+  expect(
+    await screen.findByText(translate("portal:request.replyAfterReview")),
+  ).toBeVisible();
+});
+
 describe("raise priority (CP-7)", () => {
   it("offers only higher priorities and sends the chosen one", async () => {
     renderPage();

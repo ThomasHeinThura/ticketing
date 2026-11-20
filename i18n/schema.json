@@ -17539,6 +17539,9 @@
 								"withdrawn"
 							]
 						},
+						"replyAfterReview": {
+							"type": "string"
+						},
 						"conversationEmpty": {
 							"type": "string"
 						},
@@ -17557,6 +17560,7 @@
 						"errors",
 						"readOnly",
 						"status",
+						"replyAfterReview",
 						"conversationEmpty",
 						"attachmentsEmpty"
 					]
