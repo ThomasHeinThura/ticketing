@@ -132,7 +132,10 @@ Both scripts resolve the named volume actually mounted at `/app/data` on that pr
 existing application container. They refuse a missing/ambiguous container or a bind mount;
 they never fall back to the default SIT volume. Restore resolves its target before stopping
 anything. A scratch stack must already exist before restore. Start it with base Compose plus
-`deploy/compose.restore-drill.yml` and an explicit non-default `-p <name>`; it has its own
+`deploy/compose.restore-drill.yml` and an explicit non-default `-p <name>`, with
+`TASKDESK_DRILL_DATA_MOUNT` set to the backup's recorded attachment mount (from its verified
+mount metadata, `/app/data` or `/app/data/attachments`) before that first start, or restore
+refuses the mount mismatch; it has its own
 internal network with no outbound route, no host ports and no proxy discovery. Restored
 notification and webhook settings therefore cannot contact external destinations. Restore it with
 `scripts/restore.sh --backup <dir> --confirm --mode isolated --project-name <name>`.
