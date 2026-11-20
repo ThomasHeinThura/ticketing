@@ -27,13 +27,19 @@ function storageKey(userId: string, workspaceId: string) {
   return `${KEY_PREFIX}${userId}:${workspaceId}`;
 }
 
-/** Remove every stored recent list (all users and workspaces, plus the legacy un-scoped keys). */
+/** Remove stored recents and drafts when signing out. */
 export function clearRecentItems() {
+  const prefixes = [
+    KEY_PREFIX,
+    "taskdesk:comment-draft:",
+    "taskdesk:intake-draft:",
+  ];
   try {
     const keys: string[] = [];
     for (let index = 0; index < window.localStorage.length; index++) {
       const key = window.localStorage.key(index);
-      if (key?.startsWith(KEY_PREFIX)) keys.push(key);
+      if (key && prefixes.some((prefix) => key.startsWith(prefix)))
+        keys.push(key);
     }
     for (const key of keys) window.localStorage.removeItem(key);
   } catch {
