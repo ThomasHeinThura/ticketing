@@ -33,6 +33,8 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     slug: "settings:history.fields.workspaceSlug",
     logo: "settings:history.fields.logo",
     description: "settings:history.fields.description",
+    defaultSlaPolicyId: "settings:history.fields.defaultSlaPolicy",
+    defaultServiceCalendarId: "settings:history.fields.defaultServiceCalendar",
   },
   project: {
     name: "settings:history.fields.name",
@@ -42,6 +44,8 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     kind: "settings:history.fields.kind",
     supportLevel: "settings:history.fields.supportLevel",
     serviceCalendarId: "settings:history.fields.serviceCalendar",
+    slaPolicy: "settings:history.fields.slaPolicy",
+    serviceCalendar: "settings:history.fields.serviceCalendar",
     defaultCommentVisibility:
       "settings:history.fields.defaultCommentVisibility",
     managerId: "settings:history.fields.manager",

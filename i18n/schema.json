@@ -2365,6 +2365,15 @@
 								"serviceCalendar": {
 									"type": "string"
 								},
+								"defaultSlaPolicy": {
+									"type": "string"
+								},
+								"defaultServiceCalendar": {
+									"type": "string"
+								},
+								"slaPolicy": {
+									"type": "string"
+								},
 								"defaultCommentVisibility": {
 									"type": "string"
 								},
@@ -2421,6 +2430,9 @@
 								"kind",
 								"supportLevel",
 								"serviceCalendar",
+								"defaultSlaPolicy",
+								"defaultServiceCalendar",
+								"slaPolicy",
 								"defaultCommentVisibility",
 								"manager",
 								"startDate",

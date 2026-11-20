@@ -441,6 +441,9 @@ const NEW_FIELDS = [
   "kind",
   "supportLevel",
   "serviceCalendar",
+  "defaultSlaPolicy",
+  "defaultServiceCalendar",
+  "slaPolicy",
   "defaultCommentVisibility",
   "manager",
   "startDate",
@@ -487,6 +490,50 @@ describe("workspace, project and time activity History labels", () => {
             `${locale} ${path}`,
           ).toContain(placeholder);
       }
+    },
+  );
+
+  it.each([
+    [
+      "en-US",
+      "workspace",
+      "workspace.project_settings_updated",
+      ["defaultSlaPolicyId", "defaultServiceCalendarId"],
+      "Default SLA policy, Default service calendar",
+    ],
+    [
+      "de-DE",
+      "workspace",
+      "workspace.project_settings_updated",
+      ["defaultSlaPolicyId", "defaultServiceCalendarId"],
+      "Standard-SLA-Richtlinie, Standard-Servicekalender",
+    ],
+    [
+      "en-US",
+      "project",
+      "project.settings_updated",
+      ["slaPolicy", "serviceCalendar"],
+      "SLA policy, Service calendar",
+    ],
+    [
+      "de-DE",
+      "project",
+      "project.settings_updated",
+      ["slaPolicy", "serviceCalendar"],
+      "SLA-Richtlinie, Servicekalender",
+    ],
+  ] as const)(
+    "%s renders %s inheritance fields",
+    async (locale, type, action, changedFields, labels) => {
+      await renderHistory(locale, type, "x1", {
+        lastChanged: { actor: person, at: when },
+        rows: [{ at: when, actor: person, action, changedFields }],
+      });
+      await screen.findByRole("button", {
+        name: at(read(locale), "settings.history.title"),
+      });
+      open(locale);
+      expect(await screen.findByText(labels)).toBeTruthy();
     },
   );
 
