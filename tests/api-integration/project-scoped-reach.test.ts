@@ -44,6 +44,7 @@ import {
 } from "./helpers/project-reach-world";
 import {
   type App,
+  addMember,
   json,
   MATRIX,
   makeApiKey,
@@ -1204,6 +1205,39 @@ describe("API integration: project reach on project-scoped routes (#720)", () =>
       });
     });
   }
+
+  describe("GET /api/projects/{projectId}/creatable-work-item-types capability", () => {
+    it("denies reachable viewers, customers and read-only keys while allowing a capable member", async () => {
+      const world = await setupProjectWorld();
+      const { app } = createApp();
+      const viewer = await addMember(world.workspaceId, "viewer");
+      await grantProjectRole(viewer.user.id, world.project.id, [
+        "project:read",
+        "work_item:read",
+      ]);
+      const path = `/api/projects/${world.project.id}/creatable-work-item-types`;
+
+      for (const user of [viewer.user, world.customerWithRole.user]) {
+        mockAuthenticatedSession(user);
+        const response = await json(app, "GET", path);
+        expect(response.status, await response.text()).toBe(403);
+      }
+
+      mockAuthenticatedSession(world.projectAdmin.user);
+      const allowed = await json(app, "GET", path);
+      expect(allowed.status, await allowed.text()).toBe(200);
+
+      const readKey = await makeApiKey(
+        world.projectAdmin.user.id,
+        READ_ONLY_KEY_SCOPE,
+      );
+      mockAnonymousSession();
+      setAmbientHeaders({ "x-api-key": readKey });
+      const denied = await json(app, "GET", path);
+      expect(denied.status, await denied.text()).toBe(403);
+      setAmbientHeaders({});
+    });
+  });
 
   describe("PUT /api/project/{id}: reach is decided before the settings-capability check", () => {
     const body = (project: { slug: string }) => ({
