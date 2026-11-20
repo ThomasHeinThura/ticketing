@@ -267,7 +267,12 @@ function SettingsHistoryForSession({
                   type === "project_estimates" ||
                   type === "instance"
                 ? t("common:actions.saved")
-                : auditActionLabel(row.action, t)}{" "}
+                : t(
+                    `settings:history.actions.${row.action.replace(/\./g, "_")}`,
+                    {
+                      defaultValue: auditActionLabel(row.action, t),
+                    },
+                  )}{" "}
             · {actorLabel(row.actor)} · {formatDateTime(row.at)}
           </p>
           {row.changedFields.length > 0 &&

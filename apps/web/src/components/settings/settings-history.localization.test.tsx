@@ -178,6 +178,30 @@ beforeEach(() => get.mockReset());
 afterEach(cleanup);
 
 describe("catalog completeness for the History strings (static, real catalogs)", () => {
+  it.each(all)(
+    "%s: settings actions are complete and absent from work-item actions",
+    (locale) => {
+      const source = read(locale);
+      const settings = ((source.settings as Json).history as Json)
+        .actions as Json;
+      const workItems = ((source.workItems as Json).auditHistory as Json)
+        .actions as Json;
+      const expected = ((english.settings as Json).history as Json)
+        .actions as Json;
+      expect(Object.keys(settings).sort()).toEqual(
+        Object.keys(expected).sort(),
+      );
+      expect(Object.keys(settings)).toHaveLength(24);
+      for (const key of Object.keys(expected)) {
+        expect(at(source, `settings.history.actions.${key}`)).not.toBe("");
+        expect(workItems).not.toHaveProperty(key);
+      }
+      expect(
+        at(source, "workItems.auditHistory.actions.work_item_created"),
+      ).not.toBe("");
+    },
+  );
+
   it.each(nonEnglish)(
     "%s: translated, interpolated, acronym-safe and complete",
     (locale) => {
@@ -186,14 +210,12 @@ describe("catalog completeness for the History strings (static, real catalogs)",
         "common.actions.saved",
         ...HISTORY_KEYS.map((k) => `settings.history.${k}`),
         ...FIELDS.map((f) => `godModeSettings.fields.${f}.label`),
-        ...TEAM_ACTIONS.map(
-          ([, key]) => `workItems.auditHistory.actions.${key}`,
-        ),
+        ...TEAM_ACTIONS.map(([, key]) => `settings.history.actions.${key}`),
       ];
       expect(paths).toHaveLength(33);
       for (const path of paths) {
         const value = at(own, path);
-        const base = path.startsWith("workItems.auditHistory.actions.team_")
+        const base = path.startsWith("settings.history.actions.team_")
           ? TEAM_ACTIONS.find(([, k]) => path.endsWith(k))?.[2]
           : at(english, path);
         expect(value, `${locale} ${path}`).not.toBe("");
@@ -210,7 +232,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
       }
       // The five team labels are pairwise distinct and none is the generic Saved label.
       const team = TEAM_ACTIONS.map(([, key]) =>
-        at(own, `workItems.auditHistory.actions.${key}`),
+        at(own, `settings.history.actions.${key}`),
       );
       expect(new Set(team).size).toBe(5);
       expect(team).not.toContain(at(own, "common.actions.saved"));
@@ -219,7 +241,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
 
   it("en-US keeps its strings and gains exactly the five Team labels", () => {
     for (const [, key, text] of TEAM_ACTIONS)
-      expect(at(english, `workItems.auditHistory.actions.${key}`)).toBe(text);
+      expect(at(english, `settings.history.actions.${key}`)).toBe(text);
     expect(at(english, "common.actions.saved")).toBe("Saved");
   });
 });
@@ -237,17 +259,17 @@ const REVIEWED_WORDING: Array<[string, string, string]> = [
   ["pl-PL", "settings.history.empty", "Brak zarejestrowanych zmian."],
   [
     "es-ES",
-    "workItems.auditHistory.actions.team_member_removed",
+    "settings.history.actions.team_member_removed",
     "Miembro retirado del equipo",
   ],
   [
     "id-ID",
-    "workItems.auditHistory.actions.team_member_removed",
+    "settings.history.actions.team_member_removed",
     "Anggota dikeluarkan dari tim",
   ],
   [
     "vi-VN",
-    "workItems.auditHistory.actions.team_member_removed",
+    "settings.history.actions.team_member_removed",
     "Đã gỡ thành viên khỏi nhóm",
   ],
 ];
@@ -303,6 +325,21 @@ describe("SettingsHistory renders the translated strings (real i18next)", () => 
     ).toBeNull();
   });
 
+  it("falls back to the existing work-item action label and humanizes unknown actions", async () => {
+    await renderHistory("en-US", "workspace", "w1", {
+      lastChanged: null,
+      rows: ["work_item.created", "unknown.action"].map((action) => ({
+        at: when,
+        actor: person,
+        action,
+        changedFields: [],
+      })),
+    });
+    open("en-US");
+    expect(await screen.findByText(/^Created · /)).toBeTruthy();
+    expect(screen.getByText(/^Unknown action · /)).toBeTruthy();
+  });
+
   it.each(all)(
     "%s: five Team action titles, truthfully distinct",
     async (locale) => {
@@ -321,7 +358,7 @@ describe("SettingsHistory renders the translated strings (real i18next)", () => 
       });
       open(locale);
       const titles = TEAM_ACTIONS.map(([, key]) =>
-        at(own, `workItems.auditHistory.actions.${key}`),
+        at(own, `settings.history.actions.${key}`),
       );
       for (const title of titles)
         expect(
@@ -437,7 +474,7 @@ describe("workspace, project and time activity History labels", () => {
       const own = read(locale);
       const paths = [
         ...NEW_FIELDS.map((k) => `settings.history.fields.${k}`),
-        ...NEW_ACTIONS.map((k) => `workItems.auditHistory.actions.${k}`),
+        ...NEW_ACTIONS.map((k) => `settings.history.actions.${k}`),
       ];
       for (const path of paths) {
         const value = at(own, path);

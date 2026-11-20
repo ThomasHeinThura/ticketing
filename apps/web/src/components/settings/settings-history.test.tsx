@@ -515,7 +515,7 @@ describe("SettingsHistory", () => {
           expect(value, `${locale} ${key}`).not.toBe(lookup(en, key));
       }
       for (const action of ["created", "updated", "deleted"]) {
-        const key = `workItems:auditHistory.actions.canned_response_${action}`;
+        const key = `settings:history.actions.canned_response_${action}`;
         expect(lookup(own, key), `${locale} ${key}`).not.toBe(lookup(en, key));
       }
     }
@@ -575,7 +575,7 @@ describe("SettingsHistory", () => {
         expect(await screen.findByText(labels)).toBeTruthy();
         const action = lookup(
           own,
-          "workItems:auditHistory.actions.canned_response_created",
+          "settings:history.actions.canned_response_created",
         );
         expect(action).toBeTruthy();
         expect(screen.getByText(new RegExp(action ?? "missing"))).toBeTruthy();
@@ -656,10 +656,10 @@ describe("SettingsHistory", () => {
       ) as Record<string, unknown>;
     const en = read("en-US");
     const keys = [
-      "workItems:auditHistory.actions.automation_created",
-      "workItems:auditHistory.actions.automation_updated",
-      "workItems:auditHistory.actions.automation_enabled",
-      "workItems:auditHistory.actions.automation_disabled",
+      "settings:history.actions.automation_created",
+      "settings:history.actions.automation_updated",
+      "settings:history.actions.automation_enabled",
+      "settings:history.actions.automation_disabled",
       "automations:list.changeHistory",
       "automations:changes.title",
       "automations:changes.description",
@@ -1023,7 +1023,7 @@ it("provides the provider History labels in all 19 catalogs", () => {
     for (const key of [
       "settings:history.providerConfiguration",
       "settings:history.providerCredential",
-      "workItems:auditHistory.actions.plugin_changed",
+      "settings:history.actions.plugin_changed",
     ]) {
       expect(lookup(data, key), `${locale} ${key}`).toBeTruthy();
     }
@@ -1126,7 +1126,7 @@ it("localizes the time-settings action in all 19 catalogs", () => {
     ) as Record<string, unknown>;
     const value = lookup(
       data,
-      "workItems:auditHistory.actions.time_settings_updated",
+      "settings:history.actions.time_settings_updated",
     );
     expect(value, locale).toBeTruthy();
     return [locale, value] as const;
@@ -1165,7 +1165,7 @@ it.each(["de-DE", "ja-JP", "zh-CN"])(
       fireEvent.click(await screen.findByRole("button", { name: title }));
       const label = lookup(
         data,
-        "workItems:auditHistory.actions.time_settings_updated",
+        "settings:history.actions.time_settings_updated",
       );
       await waitFor(() =>
         expect(screen.getByText(new RegExp(label ?? "missing"))).toBeTruthy(),
