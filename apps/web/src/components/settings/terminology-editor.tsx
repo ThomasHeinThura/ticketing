@@ -24,6 +24,9 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
+import { SettingsHistory } from "@/components/settings/settings-history";
+import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
 import {
   getTerminology,
   previewTerminology,
@@ -34,6 +37,8 @@ import {
   type TerminologyTarget,
   type TerminologyTermKey,
 } from "@/fetchers/terminology";
+import { authClient } from "@/lib/auth-client";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 
 const terminologyKey = (target: TerminologyTarget) =>
   [
@@ -80,6 +85,7 @@ export function sampleCountForCategory(locale: string, category: string) {
 
 export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
   const { t } = useTranslation(["settings", "term"]);
+  const { data: session } = authClient.useSession();
   const queryClient = useQueryClient();
   const queryKey = terminologyKey(target);
   const query = useQuery({ queryKey, queryFn: () => getTerminology(target) });
@@ -96,7 +102,8 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
       item.termKey === termKey &&
       item.locale === locale,
   );
-  const identity = `${audience}:${termKey}:${locale}:${query.data?.etag ?? ""}`;
+  const historyId = `${termKey}:${audience}:${locale}`;
+  const identity = `${target.scope}:${target.scope === "workspace" ? target.workspaceId : "instance"}:${historyId}:${query.data?.etag ?? ""}`;
   const [draftState, setDraftState] = useState<{
     identity: string;
     forms: TerminologyForms;
@@ -125,19 +132,42 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
     }));
   };
   const save = useMutation({
-    mutationFn: (forms: TerminologyForms | null) => {
+    mutationFn: async (forms: TerminologyForms | null) => {
       const snapshot = query.data;
       if (!snapshot) throw new Error("Terminology settings are not loaded");
-      return saveTerminology(target, {
+      const savedTarget = target;
+      const savedId = historyId;
+      const savedUserId = session?.user?.id;
+      const savedSessionId = session?.session?.id;
+      const result = await saveTerminology(savedTarget, {
         expectedEtag: snapshot.etag,
         override: { audience, termKey, locale, forms },
       });
+      return { result, savedTarget, savedId, savedUserId, savedSessionId };
     },
-    onSuccess: (result) => {
-      queryClient.setQueryData(queryKey, result);
+    onSuccess: ({
+      result,
+      savedTarget,
+      savedId,
+      savedUserId,
+      savedSessionId,
+    }) => {
+      queryClient.setQueryData(terminologyKey(savedTarget), result);
       void queryClient.invalidateQueries({
         queryKey: ["terminology-runtime"],
       });
+      if (savedUserId && savedSessionId)
+        refreshSettingsHistory(
+          queryClient,
+          settingsHistoryQueryKey(
+            "terminology_override",
+            savedId,
+            savedUserId,
+            savedSessionId,
+            savedTarget,
+          ),
+          profileSessionGuard(savedUserId, savedSessionId),
+        );
     },
     onError: () => void queryClient.invalidateQueries({ queryKey }),
   });
@@ -331,6 +361,14 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
             </Select>
           </div>
         </div>
+        {session?.user?.id && session.session?.id ? (
+          <SettingsHistory
+            type="terminology_override"
+            id={historyId}
+            userId={session.user.id}
+            selector={target}
+          />
+        ) : null}
         <div className="grid gap-4 sm:grid-cols-2">
           {categories.map((category) => (
             <div key={category} className="space-y-2">

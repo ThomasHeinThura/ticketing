@@ -1,10 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import updateWorkspaceMemberRole from "@/fetchers/workspace-user/update-workspace-member-role";
+import { authClient } from "@/lib/auth-client";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 
 type UpdateWorkspaceUserRoleRequest = {
   workspaceId: string;
   userId: string;
   role: string;
+  workspaceMemberId: string | null;
 };
 
 // S5 (issue #6, retrofit plan §3): native replacement for
@@ -15,9 +19,30 @@ type UpdateWorkspaceUserRoleRequest = {
 // rules around the `"owner"` role.
 function useUpdateWorkspaceUserRole() {
   const queryClient = useQueryClient();
+  const { data: session } = authClient.useSession();
   return useMutation({
-    mutationFn: (request: UpdateWorkspaceUserRoleRequest) =>
-      updateWorkspaceMemberRole(request),
+    mutationFn: async ({
+      workspaceMemberId,
+      ...request
+    }: UpdateWorkspaceUserRoleRequest) => {
+      const userId = session?.user?.id;
+      const sessionId = session?.session?.id;
+      const result = await updateWorkspaceMemberRole(request);
+      if (workspaceMemberId && userId && sessionId)
+        refreshSettingsHistory(
+          queryClient,
+          [
+            "settings-history",
+            "workspace_member",
+            workspaceMemberId,
+            "agent",
+            userId,
+            sessionId,
+          ],
+          profileSessionGuard(userId, sessionId),
+        );
+      return result;
+    },
     onSuccess: (_data, variables) => {
       // The members page reads from useGetFullWorkspace which keys by
       // ["workspace", "full", workspaceId], so invalidate that exact prefix

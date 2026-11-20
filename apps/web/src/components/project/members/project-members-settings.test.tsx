@@ -281,3 +281,101 @@ describe("ProjectMembersSettings", () => {
     ).toHaveLength(0);
   });
 });
+
+const historySession = vi.hoisted(() => ({ id: "session-1" }));
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({
+      data: {
+        user: { id: "current-user" },
+        session: { id: historySession.id },
+      },
+    }),
+  },
+}));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({ type, id }: { type: string; id: string }) => (
+    <div data-testid="history-target">
+      {type}:{id}
+    </div>
+  ),
+}));
+
+it("offers history only for a backed direct membership", async () => {
+  mocks.canManageMembers = false;
+  mocks.members = [
+    { ...direct, membershipId: "project-row" },
+    { ...inherited, membershipId: null },
+    {
+      ...direct,
+      personId: "scim",
+      managedExternally: true,
+      membershipId: null,
+    },
+  ];
+  render(<ProjectMembersSettings projectId="p1" />);
+  const buttons = screen.getAllByRole("button", {
+    name: /settings:history.memberHistory/,
+  });
+  expect(buttons).toHaveLength(1);
+  fireEvent.click(buttons[0] as HTMLElement);
+  expect(await screen.findByTestId("history-target")).toHaveTextContent(
+    "project_membership:project-row",
+  );
+});
+
+it("closes a direct membership history when its row or project changes", async () => {
+  mocks.members = [{ ...direct, membershipId: "project-row" }];
+  const view = render(<ProjectMembersSettings projectId="p1" />);
+  fireEvent.click(
+    screen.getByRole("button", { name: /settings:history.memberHistory/ }),
+  );
+  expect(await screen.findByTestId("history-target")).toBeTruthy();
+  mocks.members = [{ ...direct, membershipId: null }];
+  view.rerender(<ProjectMembersSettings projectId="p1" />);
+  expect(screen.queryByTestId("history-target")).toBeNull();
+  mocks.members = [{ ...direct, membershipId: "project-row" }];
+  view.rerender(<ProjectMembersSettings projectId="p1" />);
+  expect(screen.queryByTestId("history-target")).toBeNull();
+  fireEvent.click(
+    screen.getByRole("button", { name: /settings:history.memberHistory/ }),
+  );
+  view.rerender(<ProjectMembersSettings projectId="p2" />);
+  expect(screen.queryByTestId("history-target")).toBeNull();
+});
+
+it("hides history for invalid row IDs and closes it after a session switch", async () => {
+  mocks.members = [
+    { ...direct, membershipId: "\0bad" },
+    { ...direct, personId: "other", membershipId: "x".repeat(201) },
+  ];
+  const view = render(<ProjectMembersSettings projectId="p1" />);
+  expect(
+    screen.queryByRole("button", { name: /settings:history.memberHistory/ }),
+  ).toBeNull();
+  mocks.members = [{ ...direct, membershipId: "row" }];
+  view.rerender(<ProjectMembersSettings projectId="p1" />);
+  fireEvent.click(
+    screen.getByRole("button", { name: /settings:history.memberHistory/ }),
+  );
+  expect(await screen.findByTestId("history-target")).toBeTruthy();
+  historySession.id = "session-2";
+  view.rerender(<ProjectMembersSettings projectId="p1" />);
+  expect(screen.queryByTestId("history-target")).toBeNull();
+  historySession.id = "session-1";
+});
+
+it("does not submit an unchanged role", async () => {
+  mocks.members = [{ ...direct, membershipId: "project-row" }];
+  mocks.updateRole.mockReset();
+  render(<ProjectMembersSettings projectId="p1" />);
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: /settings:projectMembers.changeRoleFor/,
+    }),
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Project member" }),
+  );
+  expect(mocks.updateRole).not.toHaveBeenCalled();
+});

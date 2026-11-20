@@ -13,6 +13,36 @@ const terminologyMocks = vi.hoisted(() => ({
   preview: vi.fn(),
   save: vi.fn(),
 }));
+const historyMocks = vi.hoisted(() => ({
+  refresh: vi.fn(),
+  session: { user: { id: "u1" }, session: { id: "s1" } } as {
+    user: { id: string };
+    session: { id: string };
+  } | null,
+}));
+
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { useSession: () => ({ data: historyMocks.session }) },
+}));
+vi.mock("@/components/settings/refresh-settings-history", () => ({
+  refreshSettingsHistory: historyMocks.refresh,
+}));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({
+    id,
+    selector,
+  }: {
+    id: string;
+    selector: { scope: string; workspaceId?: string };
+  }) => (
+    <div
+      data-testid="term-history"
+      data-id={id}
+      data-scope={selector.scope}
+      data-workspace={selector.workspaceId}
+    />
+  ),
+}));
 
 vi.mock("@/fetchers/terminology", () => ({
   TERMINOLOGY_TERM_KEYS: [
@@ -33,10 +63,11 @@ vi.mock("@/fetchers/terminology", () => ({
 
 afterEach(() => {
   vi.clearAllMocks();
+  historyMocks.session = { user: { id: "u1" }, session: { id: "s1" } };
 });
 
-async function renderEditor() {
-  terminologyMocks.get.mockResolvedValue({ overrides: [], etag: '"v1"' });
+async function renderEditor(overrides: unknown[] = []) {
+  terminologyMocks.get.mockResolvedValue({ overrides, etag: '"v1"' });
   const i18n = createInstance();
   await i18n.init({
     lng: "en-US",
@@ -86,7 +117,7 @@ async function renderEditor() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <TerminologyEditor
@@ -95,6 +126,7 @@ async function renderEditor() {
       </I18nextProvider>
     </QueryClientProvider>,
   );
+  return { queryClient, ...view };
 }
 
 describe("TerminologyEditor live preview", () => {
@@ -186,4 +218,110 @@ describe("TerminologyEditor live preview", () => {
     expect(terminologyMocks.save).not.toHaveBeenCalled();
     await waitFor(() => expect(terminologyMocks.get).toHaveBeenCalledTimes(1));
   });
+});
+
+it("keeps History on the selected catalogue cell across term, audience and locale switches", async () => {
+  await renderEditor();
+  await screen.findByLabelText("One");
+  expect(screen.getByTestId("term-history")).toHaveAttribute(
+    "data-id",
+    "request:both:en-US",
+  );
+  fireEvent.click(screen.getByRole("combobox", { name: "Term" }));
+  const project = await screen.findByRole("option", { name: "project" });
+  fireEvent.pointerDown(project, { button: 0, pointerType: "mouse" });
+  fireEvent.pointerUp(project, { button: 0, pointerType: "mouse" });
+  fireEvent.click(project);
+  fireEvent.click(screen.getByRole("combobox", { name: "Audience" }));
+  const staff = await screen.findByRole("option", { name: "Staff" });
+  fireEvent.pointerDown(staff, { button: 0, pointerType: "mouse" });
+  fireEvent.pointerUp(staff, { button: 0, pointerType: "mouse" });
+  fireEvent.click(staff);
+  fireEvent.click(screen.getByRole("combobox", { name: "Locale" }));
+  const german = await screen.findByRole("option", { name: /\(de-DE\)/ });
+  fireEvent.pointerDown(german, { button: 0, pointerType: "mouse" });
+  fireEvent.pointerUp(german, { button: 0, pointerType: "mouse" });
+  fireEvent.click(german);
+  await waitFor(() =>
+    expect(screen.getByTestId("term-history")).toHaveAttribute(
+      "data-id",
+      "project:agent:de-DE",
+    ),
+  );
+  expect(screen.getByTestId("term-history")).toHaveAttribute(
+    "data-workspace",
+    "workspace-a",
+  );
+});
+
+it("refreshes only the captured cell after a save even if selection changes", async () => {
+  let finish!: (value: { overrides: unknown[]; etag: string }) => void;
+  terminologyMocks.save.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const { queryClient } = await renderEditor();
+  fireEvent.change(await screen.findByLabelText("One"), {
+    target: { value: "Case" },
+  });
+  fireEvent.change(screen.getByLabelText("Other"), {
+    target: { value: "Cases" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(terminologyMocks.save).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByRole("combobox", { name: "Term" }));
+  fireEvent.click(await screen.findByRole("option", { name: "project" }));
+  finish({ overrides: [], etag: '"v2"' });
+  await waitFor(() => expect(historyMocks.refresh).toHaveBeenCalledOnce());
+  expect(historyMocks.refresh).toHaveBeenCalledWith(
+    queryClient,
+    [
+      "settings-history",
+      "terminology_override",
+      "request:both:en-US",
+      "workspace",
+      "workspace-a",
+      "agent",
+      "u1",
+      "s1",
+    ],
+    expect.any(Function),
+  );
+});
+
+it("retains History after reset and does not refresh it after a failed save", async () => {
+  terminologyMocks.save.mockResolvedValueOnce({ overrides: [], etag: '"v2"' });
+  await renderEditor([
+    {
+      audience: "both",
+      termKey: "request",
+      locale: "en-US",
+      forms: { one: "Case", other: "Cases" },
+    },
+  ]);
+  await screen.findByDisplayValue("Case");
+  fireEvent.click(screen.getByRole("button", { name: "Use default" }));
+  await waitFor(() => expect(historyMocks.refresh).toHaveBeenCalledOnce());
+  expect(screen.getByTestId("term-history")).toHaveAttribute(
+    "data-id",
+    "request:both:en-US",
+  );
+  historyMocks.refresh.mockClear();
+  terminologyMocks.save.mockRejectedValueOnce(new Error("refused"));
+  fireEvent.change(screen.getByLabelText("One"), { target: { value: "New" } });
+  fireEvent.change(screen.getByLabelText("Other"), {
+    target: { value: "News" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await screen.findByRole("alert");
+  expect(historyMocks.refresh).not.toHaveBeenCalled();
+});
+
+it("does not mount History without a session", async () => {
+  historyMocks.session = null;
+  await renderEditor();
+  await screen.findByLabelText("One");
+  expect(screen.queryByTestId("term-history")).toBeNull();
 });

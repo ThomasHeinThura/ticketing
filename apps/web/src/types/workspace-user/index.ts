@@ -11,7 +11,7 @@ import type { InferResponseType } from "hono/client";
 // nested `.user`, and `id` IS the user's own id
 // (apps/api/src/workspace/controllers/get-workspace-members.ts selects
 // `userTable.id`, not a separate membership-row id -- the plugin's
-// `workspace_member.id` primary key has no client-visible equivalent here).
+// `workspaceMemberId` is the separate workspace membership row ID).
 // Native replacement for authClient.organization.listMembers().
 export type WorkspaceUser = InferResponseType<
   (typeof client)["workspace"][":workspaceId"]["members"]["$get"],

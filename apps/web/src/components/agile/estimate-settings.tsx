@@ -19,7 +19,9 @@ import { Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PickerSelect } from "@/components/automation/picker-select";
+import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import { isForbiddenError } from "@/components/settings/settings-access";
+import { SettingsHistory } from "@/components/settings/settings-history";
 import {
   ESTIMATE_SYSTEMS,
   EstimateConfirmationError,
@@ -32,6 +34,9 @@ import {
   updateAgileSettings,
   updateEstimates,
 } from "@/fetchers/agile";
+import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
+import { authClient } from "@/lib/auth-client";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 import { toast } from "@/lib/toast";
 import { EstimatePreviewDialog } from "./estimate-preview-dialog";
 import { ProjectFeatureOff } from "./feature-off";
@@ -44,13 +49,16 @@ type DraftPoint = { key?: string; value: string };
  * planner confirms what maps and what clears (`ES-3`) before it is applied.
  */
 export function EstimateSettings({
+  projectId,
   projectKey,
   canManage,
 }: {
+  projectId: string;
   projectKey: string;
   canManage: boolean;
 }) {
   const { t } = useTranslation("agile");
+  const { data: session } = authClient.useSession();
   const cache = useQueryClient();
   const query = useQuery({
     queryKey: ["agile", "estimate-settings", projectKey],
@@ -115,10 +123,34 @@ export function EstimateSettings({
       ),
   });
   const apply = useMutation({
-    mutationFn: (confirmClear: boolean) =>
-      updateEstimates(projectKey, { ...input(), confirmClear }),
-    onSuccess: async () => {
+    mutationFn: async (confirmClear: boolean) => {
+      const savedProjectId = projectId;
+      const savedUserId = session?.user?.id;
+      const savedSessionId = session?.session?.id;
+      const result = await updateEstimates(projectKey, {
+        ...input(),
+        confirmClear,
+      });
+      return { result, savedProjectId, savedUserId, savedSessionId };
+    },
+    onSuccess: async ({
+      result,
+      savedProjectId,
+      savedUserId,
+      savedSessionId,
+    }) => {
       setPreview(null);
+      if (result.applied && savedUserId && savedSessionId)
+        refreshSettingsHistory(
+          cache,
+          settingsHistoryQueryKey(
+            "project_estimates",
+            savedProjectId,
+            savedUserId,
+            savedSessionId,
+          ),
+          profileSessionGuard(savedUserId, savedSessionId),
+        );
       await refresh();
       toast.success(t("estimates.saved"));
     },
@@ -134,9 +166,31 @@ export function EstimateSettings({
     },
   });
   const policy = useMutation({
-    mutationFn: (value: IncompletePolicy) =>
-      updateAgileSettings(projectKey, { incompletePolicy: value }),
-    onSuccess: async () => {
+    mutationFn: async (value: IncompletePolicy) => {
+      const userId = session?.user?.id;
+      const sessionId = session?.session?.id;
+      await updateAgileSettings(projectKey, { incompletePolicy: value });
+      return { userId, sessionId, projectId };
+    },
+    onSuccess: async ({ userId, sessionId, projectId: savedProjectId }) => {
+      if (userId && sessionId) {
+        const guard = profileSessionGuard(userId, sessionId);
+        refreshSettingsHistory(
+          cache,
+          settingsHistoryQueryKey("project", savedProjectId, userId, sessionId),
+          guard,
+        );
+        refreshSettingsHistory(
+          cache,
+          settingsHistoryQueryKey(
+            "project_estimates",
+            savedProjectId,
+            userId,
+            sessionId,
+          ),
+          guard,
+        );
+      }
       await refresh();
       toast.success(t("estimates.policy.saved"));
     },
@@ -163,6 +217,15 @@ export function EstimateSettings({
       </Alert>
     );
 
+  const history =
+    session?.user?.id && session.session?.id ? (
+      <SettingsHistory
+        type="project_estimates"
+        id={projectId}
+        userId={session.user.id}
+      />
+    ) : null;
+
   if (!canManage) {
     const current = estimate.system ?? "points";
     const values = estimate.system
@@ -184,6 +247,7 @@ export function EstimateSettings({
             </dl>
           </CardContent>
         </Card>
+        {history}
         <Card>
           <CardHeader>
             <CardTitle>{t("estimates.policy.title")}</CardTitle>
@@ -310,6 +374,8 @@ export function EstimateSettings({
           )}
         </CardContent>
       </Card>
+
+      {history}
 
       <Card>
         <CardHeader>

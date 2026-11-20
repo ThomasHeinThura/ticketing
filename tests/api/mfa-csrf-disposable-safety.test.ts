@@ -32,6 +32,37 @@ describe("disposable database safety", () => {
     );
   });
 
+  it("accepts the application role only when explicitly requested on the verified binding", () => {
+    const app = uri.replace("postgres:password@", "taskdesk_e2e_app:password@");
+    expect(isDisposableDatabaseUrl(app, "127.0.0.1", 49152, name)).toBe(false);
+    expect(
+      isDisposableDatabaseUrl(
+        app,
+        "127.0.0.1",
+        49152,
+        name,
+        "taskdesk_e2e_app",
+      ),
+    ).toBe(true);
+    for (const bad of [
+      app.replace("49152", "62870"),
+      app.replace("127.0.0.1", "example.com"),
+      `${app}?x=1`,
+      `${app}#x`,
+      app.replace(name, "taskdesk_browser_journey_1022_test"),
+      app.replace("taskdesk_e2e_app", "other"),
+    ])
+      expect(
+        isDisposableDatabaseUrl(
+          bad,
+          "127.0.0.1",
+          49152,
+          name,
+          "taskdesk_e2e_app",
+        ),
+      ).toBe(false);
+  });
+
   it("requires one dynamically requested and assigned loopback binding", () => {
     const requested = [{ HostIp: "127.0.0.1", HostPort: "0" }];
     const active = [{ HostIp: "127.0.0.1", HostPort: "49152" }];
