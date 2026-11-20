@@ -17,6 +17,7 @@ import {
   customerCommentFact,
   loadWorkItemsByKey,
 } from "../../apps/api/src/automation/facts";
+import * as automationFeature from "../../apps/api/src/automation/feature";
 import {
   type AutomationActor,
   createAutomation,
@@ -281,6 +282,35 @@ async function serviceWorld() {
 
 describe("G-1 service desk automations", () => {
   beforeEach(async () => resetTestDatabase());
+
+  it("resolves the automation feature once per candidate project per sweep", async () => {
+    const w = await world(["work_item:read", "comment:create_internal"]);
+    await w.rows.makeItem("Second item");
+    const rule = await w.rule({
+      name: "Scheduled",
+      trigger: "schedule",
+      scheduleCron: "*/5 * * * *",
+      actions: [
+        { type: "post_comment", visibility: "internal", body: "scheduled" },
+      ],
+    });
+    const feature = vi.spyOn(automationFeature, "automationsEnabled");
+    try {
+      await runAutomationSchedule();
+      const runs = await db
+        .select()
+        .from(automationRunTable)
+        .where(eq(automationRunTable.automationId, rule.id));
+      expect(runs.filter((run) => run.workItemId)).toHaveLength(2);
+      expect(
+        feature.mock.calls.filter(
+          ([, projectId]) => projectId === w.project.id,
+        ),
+      ).toHaveLength(2);
+    } finally {
+      feature.mockRestore();
+    }
+  });
   it("creates and enables both target definitions through the authenticated API", async () => {
     const catalog = vi
       .spyOn(scheduler, "liveRegisteredJobCatalog")

@@ -308,6 +308,7 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
           true,
         );
         let enqueued = 0;
+        const flagCache = new Map<string, boolean>();
         for (const item of items) {
           const loaded = facts.get(item.key);
           if (
@@ -316,8 +317,15 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
               .matched
           )
             continue;
-          if (!(await automationsEnabled(rule.workspaceId, item.projectId)))
-            continue;
+          let enabled = flagCache.get(item.projectId);
+          if (enabled === undefined) {
+            enabled = await automationsEnabled(
+              rule.workspaceId,
+              item.projectId,
+            );
+            flagCache.set(item.projectId, enabled);
+          }
+          if (!enabled) continue;
           await tx
             .insert(automationRunTable)
             .values({

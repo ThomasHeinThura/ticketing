@@ -181,6 +181,17 @@ describe("outbox digest drain", () => {
       degraded: true,
     });
     expect(errorLog).toHaveBeenCalledTimes(2);
+    expect(
+      errorLog.mock.calls.map(([entry]) => JSON.parse(entry as string)),
+    ).toEqual([
+      { job: "notification-digest", phase: "seal", error: "Error" },
+      { job: "notification-digest", phase: "deliver", error: "Error" },
+    ]);
+    const sensitive = new Error("private value");
+    sensitive.name = "private value";
+    mocks.seal.mockRejectedValueOnce(sensitive);
+    await drainNotificationDigests();
+    expect(errorLog.mock.calls[2]?.[0]).not.toContain("private value");
   });
 
   it("stops before a claim when the job reservation is lost", async () => {

@@ -187,6 +187,23 @@ describe("API integration: asset clean-up through the storage repository", () =>
     expect(storage.deleteStorageObject).not.toHaveBeenCalled();
   });
 
+  it("preserves exact references while detaching multiple removed assets", async () => {
+    const { identity, member, task, asset } = await seed();
+    const t = await task(1);
+    for (const id of ["keep", "keep2", "remove"])
+      await asset(t.id, id, `key/${id}`);
+    await db
+      .insert(schema.taskCommentTable)
+      .values({ taskId: t.id, userId: member.user.id, content: url("keep2") });
+    await clean(
+      identity,
+      t.id,
+      [url("keep"), url("keep2"), url("remove")].join(" "),
+      "",
+    );
+    expect(await detachedIds()).toEqual(["keep", "remove"]);
+  });
+
   it("ignores references that live in another task", async () => {
     const { identity, member, task, asset } = await seed();
     const t1 = await task(1);
