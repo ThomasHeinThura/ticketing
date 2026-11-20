@@ -2418,6 +2418,69 @@
 								},
 								"defaultBillable": {
 									"type": "string"
+								},
+								"approvalDefaultExpiryDays": {
+									"type": "string"
+								},
+								"clarificationWindowDays": {
+									"type": "string"
+								},
+								"reopenWindowDays": {
+									"type": "string"
+								},
+								"notificationRetentionDays": {
+									"type": "string"
+								},
+								"cspMode": {
+									"type": "string"
+								},
+								"invitationLifetimeHours": {
+									"type": "string"
+								},
+								"customerInvitationCreateWindowMinutes": {
+									"type": "string"
+								},
+								"customerInvitationPerInviterLimit": {
+									"type": "string"
+								},
+								"customerInvitationPerOrganisationLimit": {
+									"type": "string"
+								},
+								"customerInvitationResendCooldownSeconds": {
+									"type": "string"
+								},
+								"anonymousRateLimitWindowMs": {
+									"type": "string"
+								},
+								"anonymousRateLimitMax": {
+									"type": "string"
+								},
+								"mcpWriteCeilingPerMinute": {
+									"type": "string"
+								},
+								"apiKeyBurstThreshold": {
+									"type": "string"
+								},
+								"timezone": {
+									"type": "string"
+								},
+								"attachmentMaxBytes": {
+									"type": "string"
+								},
+								"attachmentMaxPerItem": {
+									"type": "string"
+								},
+								"attachmentAllowedExtensions": {
+									"type": "string"
+								},
+								"body": {
+									"type": "string"
+								},
+								"visibilityDefault": {
+									"type": "string"
+								},
+								"unknown": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -2447,7 +2510,28 @@
 								"workflowDefinition",
 								"workflowActiveVersion",
 								"backdateLimit",
-								"defaultBillable"
+								"defaultBillable",
+								"approvalDefaultExpiryDays",
+								"clarificationWindowDays",
+								"reopenWindowDays",
+								"notificationRetentionDays",
+								"cspMode",
+								"invitationLifetimeHours",
+								"customerInvitationCreateWindowMinutes",
+								"customerInvitationPerInviterLimit",
+								"customerInvitationPerOrganisationLimit",
+								"customerInvitationResendCooldownSeconds",
+								"anonymousRateLimitWindowMs",
+								"anonymousRateLimitMax",
+								"mcpWriteCeilingPerMinute",
+								"apiKeyBurstThreshold",
+								"timezone",
+								"attachmentMaxBytes",
+								"attachmentMaxPerItem",
+								"attachmentAllowedExtensions",
+								"body",
+								"visibilityDefault",
+								"unknown"
 							]
 						},
 						"actions": {
@@ -2525,6 +2609,45 @@
 								},
 								"time_activity_updated": {
 									"type": "string"
+								},
+								"workspace_created": {
+									"type": "string"
+								},
+								"project_created": {
+									"type": "string"
+								},
+								"project_archived": {
+									"type": "string"
+								},
+								"project_restored": {
+									"type": "string"
+								},
+								"project_summary_updated": {
+									"type": "string"
+								},
+								"project_customer_organisation_linked": {
+									"type": "string"
+								},
+								"project_reach_changed": {
+									"type": "string"
+								},
+								"agile_settings_updated": {
+									"type": "string"
+								},
+								"workflow_cab_template_applied": {
+									"type": "string"
+								},
+								"bulk_performed": {
+									"type": "string"
+								},
+								"kb_settings_changed": {
+									"type": "string"
+								},
+								"instance_settings_changed": {
+									"type": "string"
+								},
+								"unknown": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -2551,7 +2674,20 @@
 								"project_general_settings_updated",
 								"project_states_updated",
 								"time_activity_created",
-								"time_activity_updated"
+								"time_activity_updated",
+								"workspace_created",
+								"project_created",
+								"project_archived",
+								"project_restored",
+								"project_summary_updated",
+								"project_customer_organisation_linked",
+								"project_reach_changed",
+								"agile_settings_updated",
+								"workflow_cab_template_applied",
+								"bulk_performed",
+								"kb_settings_changed",
+								"instance_settings_changed",
+								"unknown"
 							]
 						}
 					},

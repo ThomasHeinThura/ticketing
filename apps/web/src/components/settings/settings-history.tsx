@@ -16,7 +16,6 @@ import {
   type SettingsHistoryTarget,
   settingsHistoryQueryKey,
 } from "@/fetchers/settings/settings-history";
-import { auditActionLabel, auditFieldLabel } from "@/lib/audit-history-format";
 import { authClient } from "@/lib/auth-client";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
@@ -60,41 +59,39 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
   workspace_member: { role: "settings:projectMembers.role" },
   project_membership: { role: "settings:projectMembers.role" },
   canned_response: {
-    name: "settings:cannedResponses.name",
-    body: "settings:cannedResponses.body",
-    visibilityDefault: "settings:cannedResponses.visibility",
+    name: "settings:history.fields.name",
+    body: "settings:history.fields.body",
+    visibilityDefault: "settings:history.fields.visibilityDefault",
   },
-  // The 18 keys the API projects for `instance.settings_changed`, labelled by the General settings form.
+  // The 18 keys the API projects for `instance.settings_changed`.
   instance: {
     approvalDefaultExpiryDays:
-      "godModeSettings:fields.approvalDefaultExpiryDays.label",
-    clarificationWindowDays:
-      "godModeSettings:fields.clarificationWindowDays.label",
-    reopenWindowDays: "godModeSettings:fields.reopenWindowDays.label",
+      "settings:history.fields.approvalDefaultExpiryDays",
+    clarificationWindowDays: "settings:history.fields.clarificationWindowDays",
+    reopenWindowDays: "settings:history.fields.reopenWindowDays",
     notificationRetentionDays:
-      "godModeSettings:fields.notificationRetentionDays.label",
-    cspMode: "godModeSettings:fields.cspMode.label",
-    invitationLifetimeHours:
-      "godModeSettings:fields.invitationLifetimeHours.label",
+      "settings:history.fields.notificationRetentionDays",
+    cspMode: "settings:history.fields.cspMode",
+    invitationLifetimeHours: "settings:history.fields.invitationLifetimeHours",
     customerInvitationCreateWindowMinutes:
-      "godModeSettings:fields.customerInvitationCreateWindowMinutes.label",
+      "settings:history.fields.customerInvitationCreateWindowMinutes",
     customerInvitationPerInviterLimit:
-      "godModeSettings:fields.customerInvitationPerInviterLimit.label",
+      "settings:history.fields.customerInvitationPerInviterLimit",
     customerInvitationPerOrganisationLimit:
-      "godModeSettings:fields.customerInvitationPerOrganisationLimit.label",
+      "settings:history.fields.customerInvitationPerOrganisationLimit",
     customerInvitationResendCooldownSeconds:
-      "godModeSettings:fields.customerInvitationResendCooldownSeconds.label",
+      "settings:history.fields.customerInvitationResendCooldownSeconds",
     anonymousRateLimitWindowMs:
-      "godModeSettings:fields.anonymousRateLimitWindowMinutes.label",
-    anonymousRateLimitMax: "godModeSettings:fields.anonymousRateLimitMax.label",
+      "settings:history.fields.anonymousRateLimitWindowMs",
+    anonymousRateLimitMax: "settings:history.fields.anonymousRateLimitMax",
     mcpWriteCeilingPerMinute:
-      "godModeSettings:fields.mcpWriteCeilingPerMinute.label",
-    apiKeyBurstThreshold: "godModeSettings:fields.apiKeyBurstThreshold.label",
-    timezone: "godModeSettings:fields.timezone.label",
-    attachmentMaxBytes: "godModeSettings:fields.attachmentMaxBytes.label",
-    attachmentMaxPerItem: "godModeSettings:fields.attachmentMaxPerItem.label",
+      "settings:history.fields.mcpWriteCeilingPerMinute",
+    apiKeyBurstThreshold: "settings:history.fields.apiKeyBurstThreshold",
+    timezone: "settings:history.fields.timezone",
+    attachmentMaxBytes: "settings:history.fields.attachmentMaxBytes",
+    attachmentMaxPerItem: "settings:history.fields.attachmentMaxPerItem",
     attachmentAllowedExtensions:
-      "godModeSettings:fields.attachmentAllowedExtensions.label",
+      "settings:history.fields.attachmentAllowedExtensions",
   },
   time_activity: {
     name: "settings:history.fields.activity",
@@ -111,6 +108,41 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     stopProcessing: "automations:editor.stopProcessing",
   },
 };
+
+// Types without their own set show the four general fields.
+const DEFAULT_FIELDS: Record<string, string> = {
+  name: "settings:history.fields.name",
+  slug: "settings:history.fields.workspaceSlug",
+  logo: "settings:history.fields.logo",
+  description: "settings:history.fields.description",
+};
+// The API splits time settings by scope: each scope owns exactly one marker.
+const TIME_SETTINGS_FIELDS: Partial<Record<string, Record<string, string>>> = {
+  workspace: { backdateLimitDays: "settings:history.fields.backdateLimit" },
+  project: {
+    projectDefaultBillable: "settings:history.fields.defaultBillable",
+  },
+};
+const WORKFLOW_FIELDS: Record<string, string> = {
+  definition: "settings:history.fields.workflowDefinition",
+  activeVersion: "settings:history.fields.workflowActiveVersion",
+};
+const UNKNOWN_FIELD = "settings:history.fields.unknown";
+
+/** Catalog key of a changed-field marker; an unmapped marker gets the localized generic label, never its raw key. */
+function fieldLabelKey(
+  type: SettingsHistoryTarget,
+  action: string,
+  field: string,
+): string {
+  const map =
+    action === "time_settings.updated"
+      ? (TIME_SETTINGS_FIELDS[type] ?? {})
+      : type === "workflow"
+        ? WORKFLOW_FIELDS
+        : (LABELLED_FIELDS[type] ?? DEFAULT_FIELDS);
+  return (Object.hasOwn(map, field) ? map[field] : undefined) ?? UNKNOWN_FIELD;
+}
 
 export function SettingsHistory({
   type,
@@ -151,7 +183,7 @@ function SettingsHistoryForSession({
   sessionId: string | undefined;
   selector?: SettingsHistoryScope;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [disclosureReady, setDisclosureReady] = useState(true);
   const disclosureRead = useRef(0);
@@ -202,6 +234,17 @@ function SettingsHistoryForSession({
     !admitted &&
     history.fetchStatus === "idle" &&
     !history.isPending;
+  // Settings label first, then a work-item style label, else the localized generic one (never a raw or humanized key).
+  const actionLabelKey = (action: string) => {
+    const name = action.replace(/\./g, "_");
+    const own = `settings:history.actions.${name}`;
+    const workItem = `workItems:auditHistory.actions.${name}`;
+    return i18n.exists(own)
+      ? own
+      : i18n.exists(workItem)
+        ? workItem
+        : "settings:history.actions.unknown";
+  };
   const actorLabel = (actor: {
     kind: "person" | "api_key" | "automation" | "system";
     name: string | null;
@@ -222,7 +265,6 @@ function SettingsHistoryForSession({
         return t("settings:history.system", { defaultValue: "System" });
     }
   };
-  const labelled = LABELLED_FIELDS[type];
   const occurrences = new Map<string, number>();
   const rows = data?.rows.map((row) => {
     const value = JSON.stringify(row);
@@ -267,54 +309,22 @@ function SettingsHistoryForSession({
           <p>
             {row.action === "membership.changed"
               ? t("settings:history.roleChanged")
-              : type === "terminology_override" ||
-                  type === "project_estimates" ||
-                  type === "instance"
+              : type === "terminology_override" || type === "project_estimates"
                 ? t("common:actions.saved")
-                : t(
-                    `settings:history.actions.${row.action.replace(/\./g, "_")}`,
-                    {
-                      defaultValue: auditActionLabel(row.action, t),
-                    },
-                  )}{" "}
+                : t(actionLabelKey(row.action))}{" "}
             · {actorLabel(row.actor)} · {formatDateTime(row.at)}
           </p>
           {row.changedFields.length > 0 &&
           type !== "terminology_override" &&
           type !== "project_estimates" ? (
             <p className="text-muted-foreground">
-              {row.changedFields
-                .filter((field) =>
-                  row.action === "time_settings.updated"
-                    ? (type === "workspace" && field === "backdateLimitDays") ||
-                      (type === "project" && field === "projectDefaultBillable")
-                    : (type === "workflow"
-                        ? ["definition", "activeVersion"]
-                        : labelled
-                          ? Object.keys(labelled)
-                          : ["name", "slug", "logo", "description"]
-                      ).includes(field),
-                )
-                .map((field) =>
-                  row.action === "time_settings.updated" &&
-                  field === "backdateLimitDays" &&
-                  type === "workspace"
-                    ? t("settings:history.fields.backdateLimit")
-                    : row.action === "time_settings.updated" &&
-                        field === "projectDefaultBillable" &&
-                        type === "project"
-                      ? t("settings:history.fields.defaultBillable")
-                      : type === "workflow"
-                        ? t(
-                            field === "definition"
-                              ? "settings:history.fields.workflowDefinition"
-                              : "settings:history.fields.workflowActiveVersion",
-                          )
-                        : labelled
-                          ? t(labelled[field] ?? "")
-                          : auditFieldLabel(field, t),
-                )
-                .join(", ")}
+              {[
+                ...new Set(
+                  row.changedFields.map((field) =>
+                    t(fieldLabelKey(type, row.action, field)),
+                  ),
+                ),
+              ].join(", ")}
             </p>
           ) : null}
         </div>

@@ -132,7 +132,15 @@ async function i18nFor(locale: string) {
     fallbackLng: locale, // no English fallback: an untranslated key falls to the renderer's defaultValue
     ns: NAMESPACES,
     defaultNS: "common",
-    interpolation: { escapeValue: false, skipOnVariables: true },
+    interpolation: {
+      escapeValue: false,
+      skipOnVariables: true,
+      // The app supplies the project term; fixed here so the rendered title is exact.
+      defaultVariables: {
+        term_project_one: "Project",
+        term_project_other: "Projects",
+      },
+    },
     resources: {
       // Cloned: the instance must never share objects with the module-level catalogs read above.
       [locale]: structuredClone(
@@ -147,7 +155,14 @@ const when = "2026-01-01T00:00:00Z";
 const person = { kind: "person" as const, name: "Alice" };
 async function renderHistory(
   locale: string,
-  type: "instance" | "team" | "workspace" | "project" | "time_activity",
+  type:
+    | "instance"
+    | "team"
+    | "workspace"
+    | "project"
+    | "time_activity"
+    | "workflow"
+    | "canned_response",
   id: string,
   payload: Json,
 ) {
@@ -191,10 +206,11 @@ describe("catalog completeness for the History strings (static, real catalogs)",
       expect(Object.keys(settings).sort()).toEqual(
         Object.keys(expected).sort(),
       );
-      expect(Object.keys(settings)).toHaveLength(24);
+      expect(Object.keys(settings)).toHaveLength(37);
       for (const key of Object.keys(expected)) {
         expect(at(source, `settings.history.actions.${key}`)).not.toBe("");
-        expect(workItems).not.toHaveProperty(key);
+        // `bulk_performed` already had a work-item label ("Bulk change"); the settings panel owns its own.
+        if (key !== "bulk_performed") expect(workItems).not.toHaveProperty(key);
       }
       expect(
         at(source, "workItems.auditHistory.actions.work_item_created"),
@@ -306,26 +322,33 @@ describe("SettingsHistory renders the translated strings (real i18next)", () => 
     expect(at(own, "settings.history.title")).toBe(historyTitle);
     expect(at(own, "common.actions.saved")).toBe(saved);
     open(locale);
-    // Row title: the translated Saved label, never the English fallback, for every locale.
+    // Row title: the dedicated instance label, never the generic Saved label or the English fallback.
+    const instanceTitle = at(
+      own,
+      "settings.history.actions.instance_settings_changed",
+    );
     expect(
-      await screen.findByText(new RegExp(`^${escapeRe(saved ?? "")} · `)),
+      await screen.findByText(new RegExp(`^${escapeRe(instanceTitle)} · `)),
     ).toBeTruthy();
+    expect(instanceTitle).not.toBe(saved);
     expect(screen.getByText(new RegExp(escapeRe(zone ?? "")))).toBeTruthy();
-    // The 18 labels, in the closed order, built independently of the renderer's key map.
+    // The 18 labels, in the closed order (each equal to the General form label), then the generic
+    // label for the unmapped marker.
     expect(
       screen.getByText(
-        FIELDS.map((f) => at(own, `godModeSettings.fields.${f}.label`)).join(
-          ", ",
-        ),
+        [
+          ...FIELDS.map((f) => at(own, `godModeSettings.fields.${f}.label`)),
+          at(own, "settings.history.fields.unknown"),
+        ].join(", "),
       ),
     ).toBeTruthy();
-    // Unknown fields, values and raw keys are never shown.
+    // Unknown field names, values and raw keys are never shown.
     expect(
       screen.queryByText(/secret_raw|hidden-value|approvalDefaultExpiryDays/),
     ).toBeNull();
   });
 
-  it("falls back to the existing work-item action label and humanizes unknown actions", async () => {
+  it("falls back to the existing work-item action label and the localized generic label for unknown actions", async () => {
     await renderHistory("en-US", "workspace", "w1", {
       lastChanged: null,
       rows: ["work_item.created", "unknown.action"].map((action) => ({
@@ -337,7 +360,8 @@ describe("SettingsHistory renders the translated strings (real i18next)", () => 
     });
     open("en-US");
     expect(await screen.findByText(/^Created · /)).toBeTruthy();
-    expect(screen.getByText(/^Unknown action · /)).toBeTruthy();
+    expect(screen.getByText(/^Settings changed · /)).toBeTruthy();
+    expect(screen.queryByText(/unknown/i)).toBeNull();
   });
 
   it.each(all)(
@@ -598,4 +622,309 @@ describe("workspace, project and time activity History labels", () => {
       cleanup();
     }
   });
+});
+
+type Inventory = Array<{
+  type:
+    | "workspace"
+    | "project"
+    | "workflow"
+    | "canned_response"
+    | "time_activity"
+    | "instance";
+  action: string;
+  /** [API marker, settings.history.fields key]; written out here, independent of the renderer. */
+  fields: Array<[string, string]>;
+}>;
+const same = (names: string[]): Array<[string, string]> =>
+  names.map((n) => [n, n]);
+const INSTANCE_FIELDS = same(API_FIELDS);
+const CANNED_FIELDS = same(["name", "body", "visibilityDefault"]);
+/** Every action and marker the settings History panel can show (API: HISTORY_FIELDS, entityHistoryRow, producers). */
+const INVENTORY: Inventory = [
+  { type: "workspace", action: "workspace.created", fields: [] },
+  {
+    type: "workspace",
+    action: "workspace.settings_updated",
+    fields: [
+      ["name", "name"],
+      ["slug", "workspaceSlug"],
+      ["logo", "logo"],
+      ["description", "description"],
+    ],
+  },
+  {
+    type: "workspace",
+    action: "workspace.project_settings_updated",
+    fields: [
+      ["defaultSlaPolicyId", "defaultSlaPolicy"],
+      ["defaultServiceCalendarId", "defaultServiceCalendar"],
+    ],
+  },
+  {
+    type: "workspace",
+    action: "time_settings.updated",
+    fields: [["backdateLimitDays", "backdateLimit"]],
+  },
+  { type: "workspace", action: "kb.settings_changed", fields: [] },
+  { type: "workspace", action: "bulk.performed", fields: [] },
+  { type: "project", action: "project.created", fields: [] },
+  { type: "project", action: "project.archived", fields: [] },
+  { type: "project", action: "project.restored", fields: [] },
+  { type: "project", action: "project.summary_updated", fields: [] },
+  {
+    type: "project",
+    action: "project.customer_organisation_linked",
+    fields: [],
+  },
+  { type: "project", action: "project.reach_changed", fields: [] },
+  { type: "project", action: "agile.settings_updated", fields: [] },
+  {
+    type: "project",
+    action: "project.settings_updated",
+    fields: [
+      ["slaPolicy", "slaPolicy"],
+      ["serviceCalendar", "serviceCalendar"],
+      ["stateSetMode", "stateSetMode"],
+    ],
+  },
+  {
+    type: "project",
+    action: "project.general_settings_updated",
+    fields: [
+      ["name", "name"],
+      ["icon", "icon"],
+      ["slug", "key"],
+      ["description", "description"],
+      ["kind", "kind"],
+      ["supportLevel", "supportLevel"],
+      ["serviceCalendarId", "serviceCalendar"],
+      ["defaultCommentVisibility", "defaultCommentVisibility"],
+      ["managerId", "manager"],
+      ["startDate", "startDate"],
+      ["endDate", "endDate"],
+      ["defaultAssigneeId", "defaultAssignee"],
+      ["health", "health"],
+    ],
+  },
+  {
+    type: "project",
+    action: "project.states_updated",
+    fields: [
+      ["stateSetMode", "stateSetMode"],
+      ["position", "position"],
+      ["isDefault", "isDefault"],
+    ],
+  },
+  {
+    type: "project",
+    action: "time_settings.updated",
+    fields: [["projectDefaultBillable", "defaultBillable"]],
+  },
+  {
+    type: "workflow",
+    action: "workflow.created",
+    fields: [["definition", "workflowDefinition"]],
+  },
+  {
+    type: "workflow",
+    action: "workflow.version_created",
+    fields: [["definition", "workflowDefinition"]],
+  },
+  {
+    type: "workflow",
+    action: "workflow.version_published",
+    fields: [["activeVersion", "workflowActiveVersion"]],
+  },
+  { type: "workflow", action: "workflow.cab_template_applied", fields: [] },
+  {
+    type: "canned_response",
+    action: "canned_response.created",
+    fields: CANNED_FIELDS,
+  },
+  {
+    type: "canned_response",
+    action: "canned_response.updated",
+    fields: CANNED_FIELDS,
+  },
+  {
+    type: "canned_response",
+    action: "canned_response.deleted",
+    fields: CANNED_FIELDS,
+  },
+  {
+    type: "time_activity",
+    action: "time_activity.created",
+    fields: [["name", "activity"]],
+  },
+  {
+    type: "time_activity",
+    action: "time_activity.updated",
+    fields: [
+      ["name", "activity"],
+      ["archived", "archived"],
+    ],
+  },
+  {
+    type: "instance",
+    action: "instance.settings_changed",
+    fields: INSTANCE_FIELDS,
+  },
+];
+const actionKey = (action: string) =>
+  `settings.history.actions.${action.replace(/\./g, "_")}`;
+const INVENTORY_ACTIONS = [...new Set(INVENTORY.map((e) => e.action))];
+const INVENTORY_FIELD_KEYS = [
+  ...new Set(INVENTORY.flatMap((e) => e.fields.map(([, key]) => key))),
+];
+const GENERIC = [
+  "settings.history.actions.unknown",
+  "settings.history.fields.unknown",
+];
+/** Same word is the natural translation (loan words, acronyms, units). */
+const labelSameAsEnglish = new Set<string>([
+  "de-DE:settings.history.fields.name",
+  "de-DE:settings.history.fields.logo",
+  "de-DE:settings.history.fields.position",
+  "fr-FR:settings.history.fields.description",
+  "fr-FR:settings.history.fields.logo",
+  "fr-FR:settings.history.fields.position",
+  "fr-FR:settings.history.fields.workflowDefinition",
+  "id-ID:settings.history.fields.logo",
+  "id-ID:settings.history.fields.isDefault",
+  "it-IT:settings.history.fields.logo",
+  "nl-NL:settings.history.fields.logo",
+  "nl-NL:settings.history.fields.manager",
+  "pl-PL:settings.history.fields.logo",
+  "tr-TR:settings.history.fields.logo",
+  "vi-VN:settings.history.fields.logo",
+]);
+
+describe("full History inventory has dedicated localized labels", () => {
+  it("covers every action and field of the API projection", () => {
+    expect(INVENTORY_ACTIONS).toHaveLength(26);
+    expect(new Set(INVENTORY_ACTIONS.map(actionKey)).size).toBe(26);
+  });
+
+  it.each(all)(
+    "%s: every inventory and generic key exists, is translated and keeps placeholders",
+    (locale) => {
+      const own = read(locale);
+      const keys = [
+        ...INVENTORY_ACTIONS.map(actionKey),
+        ...INVENTORY_FIELD_KEYS.map((k) => `settings.history.fields.${k}`),
+        ...GENERIC,
+      ];
+      for (const path of keys) {
+        const value = at(own, path);
+        expect(value, `${locale} ${path}`).toBe(value.trim());
+        expect(value, `${locale} ${path}`).not.toBe("");
+        const base = at(english, path);
+        if (locale !== "en-US" && !labelSameAsEnglish.has(`${locale}:${path}`))
+          expect(value, `${locale} ${path} is still English`).not.toBe(base);
+        for (const placeholder of value.match(/\{\{[^}]+\}\}/g) ?? [])
+          expect(
+            ["{{term_project_one}}", "{{term_project_other}}"],
+            `${locale} ${path}`,
+          ).toContain(placeholder);
+      }
+      // The generic labels must not collapse into a specific one.
+      const actions = INVENTORY_ACTIONS.map((a) => at(own, actionKey(a)));
+      expect(new Set(actions).size).toBe(actions.length);
+      expect(actions).not.toContain(at(own, GENERIC[0] as string));
+    },
+  );
+
+  it.each(["en-US", "de-DE"])(
+    "%s: each inventory row renders its dedicated action and field labels",
+    async (locale) => {
+      const own = read(locale);
+      const vars = {
+        term_project_one: "Project",
+        term_project_other: "Projects",
+      };
+      const fill = (text: string) =>
+        text.replace(
+          /\{\{(\w+)\}\}/g,
+          (_m, name: string) => vars[name as keyof typeof vars] ?? "",
+        );
+      for (const { type, action, fields } of INVENTORY) {
+        await renderHistory(locale, type, "x1", {
+          lastChanged: { actor: person, at: when },
+          rows: [
+            {
+              at: when,
+              actor: person,
+              action,
+              changedFields: fields.map(([marker]) => marker),
+            },
+          ],
+        });
+        await screen.findByRole("button", {
+          name: at(own, "settings.history.title"),
+        });
+        open(locale);
+        const title = fill(at(own, actionKey(action)));
+        const row = (
+          await screen.findByText(new RegExp(`^${escapeRe(title)} · `))
+        ).closest("div") as HTMLElement;
+        expect(row.textContent, `${type} ${action}`).not.toMatch(
+          /settings:history|workItems:|\w+\.\w+_\w+/,
+        );
+        expect(row.textContent).not.toContain(
+          `${fill(at(own, GENERIC[0] as string))} · `,
+        );
+        if (fields.length > 0) {
+          const labels = [
+            ...new Set(
+              fields.map(([, key]) =>
+                at(own, `settings.history.fields.${key}`),
+              ),
+            ),
+          ];
+          expect(
+            screen.getByText(labels.join(", ")),
+            `${type} ${action} fields`,
+          ).toBeTruthy();
+          expect(row.textContent).not.toContain(at(own, GENERIC[1] as string));
+        } else {
+          expect(row.querySelectorAll("p")).toHaveLength(1);
+        }
+        cleanup();
+      }
+    },
+  );
+
+  it.each(all)(
+    "%s: an unknown action and unknown field render the localized generic labels, never raw keys",
+    async (locale) => {
+      const own = read(locale);
+      await renderHistory(locale, "workspace", "w9", {
+        lastChanged: { actor: person, at: when },
+        rows: [
+          {
+            at: when,
+            actor: person,
+            action: "brand_new.thing_happened",
+            changedFields: ["brandNewField", "anotherNewField"],
+          },
+        ],
+      });
+      await screen.findByRole("button", {
+        name: at(own, "settings.history.title"),
+      });
+      open(locale);
+      const generic = at(own, GENERIC[0] as string);
+      expect(
+        await screen.findByText(new RegExp(`^${escapeRe(generic)} · `)),
+      ).toBeTruthy();
+      // Both unmapped markers collapse into one generic field label.
+      expect(screen.getByText(at(own, GENERIC[1] as string))).toBeTruthy();
+      expect(
+        screen.queryByText(
+          /brand_new|thing_happened|brandNewField|anotherNewField|Brand new/i,
+        ),
+      ).toBeNull();
+    },
+  );
 });

@@ -52,6 +52,11 @@ function lookup(source: Record<string, unknown> | null, key: string) {
 const fromCatalog = (key: string) => lookup(catalog.current, key);
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
+    // No catalog: every key "exists" and renders as its own key; with a catalog only its keys exist.
+    i18n: {
+      exists: (key: string) =>
+        catalog.current === null || fromCatalog(key) !== undefined,
+    },
     t: (
       _key: string,
       options?: { defaultValue?: string; actor?: string; at?: string },
@@ -99,11 +104,15 @@ describe("SettingsHistory", () => {
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
     await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
     expect(
-      screen.queryByText(/Last changed by Alice|Workspace settings updated/),
+      screen.queryByText(
+        /Last changed by Alice|settings:history.actions.workspace_settings_updated/,
+      ),
     ).toBeNull();
     await act(async () => rejectRead(new HttpError(403, "Forbidden")));
     expect(
-      screen.queryByText(/Last changed by Alice|Workspace settings updated/),
+      screen.queryByText(
+        /Last changed by Alice|settings:history.actions.workspace_settings_updated/,
+      ),
     ).toBeNull();
     expect(
       client.getQueryData(
@@ -211,7 +220,9 @@ describe("SettingsHistory", () => {
     fireEvent.click(button);
     expect(button.getAttribute("aria-expanded")).toBe("true");
     await waitFor(() =>
-      expect(screen.getByText(/Workspace settings updated/)).toBeTruthy(),
+      expect(
+        screen.getByText(/settings:history.actions.workspace_settings_updated/),
+      ).toBeTruthy(),
     );
     expect(screen.queryByText(/secret_raw/)).toBeNull();
     expect(
@@ -323,10 +334,14 @@ describe("SettingsHistory", () => {
       expect.any(AbortSignal),
     );
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
-    expect(await screen.findByText(/Canned response updated/)).toBeTruthy();
+    expect(
+      await screen.findByText(
+        /settings:history.actions.canned_response_updated/,
+      ),
+    ).toBeTruthy();
     expect(
       screen.getByText(
-        "settings:cannedResponses.name, settings:cannedResponses.body, settings:cannedResponses.visibility",
+        "settings:history.fields.name, settings:history.fields.body, settings:history.fields.visibilityDefault, settings:history.fields.unknown",
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/secret_raw|hidden-value/)).toBeNull();
@@ -364,7 +379,7 @@ describe("SettingsHistory", () => {
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
     expect(
       await screen.findByText(
-        "settings:history.fields.activity, settings:history.fields.archived",
+        "settings:history.fields.activity, settings:history.fields.archived, settings:history.fields.unknown",
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/position|secret_raw|hidden-value/)).toBeNull();
@@ -422,14 +437,14 @@ describe("SettingsHistory", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
     const expected = projected
-      .map(
-        (field) =>
-          `godModeSettings:fields.${field === "anonymousRateLimitWindowMs" ? "anonymousRateLimitWindowMinutes" : field}.label`,
-      )
+      .map((field) => `settings:history.fields.${field}`)
+      .concat("settings:history.fields.unknown")
       .join(", ");
     expect(await screen.findByText(expected)).toBeTruthy();
-    // The row title is the translated Saved label, never the untranslated English fallback.
-    expect(screen.getByText(/common:actions\.saved/)).toBeTruthy();
+    // The row title is the dedicated instance action label.
+    expect(
+      screen.getByText(/settings:history\.actions\.instance_settings_changed/),
+    ).toBeTruthy();
     expect(screen.queryByText(/Instance settings changed/)).toBeNull();
     expect(
       screen.queryByText(/clientSecret|secret_raw|hidden-value/),
@@ -630,7 +645,9 @@ describe("SettingsHistory", () => {
       expect.any(AbortSignal),
     );
     fireEvent.click(screen.getByRole("button", { name: /History/ }));
-    expect(await screen.findByText(/Automation updated/)).toBeTruthy();
+    expect(
+      await screen.findByText(/settings:history.actions.automation_updated/),
+    ).toBeTruthy();
     expect(
       screen.getByText(
         [
@@ -642,6 +659,7 @@ describe("SettingsHistory", () => {
           "automations:editor.then",
           "automations:editor.runAs",
           "automations:editor.stopProcessing",
+          "settings:history.fields.unknown",
         ].join(", "),
       ),
     ).toBeTruthy();
@@ -715,13 +733,19 @@ describe("SettingsHistory", () => {
       expect(await screen.findByText(/Last changed by Alice/)).toBeTruthy();
       fireEvent.click(screen.getByRole("button", { name: /History/ }));
       expect(
-        await screen.findByText(/Workspace settings updated/),
+        await screen.findByText(
+          /settings:history.actions.workspace_settings_updated/,
+        ),
       ).toBeTruthy();
       get.mockRejectedValueOnce(new HttpError(status, "denied"));
       await client.invalidateQueries({ queryKey: key, exact: true });
       await screen.findByRole("alert");
       expect(screen.queryByText(/Alice/)).toBeNull();
-      expect(screen.queryByText(/Workspace settings updated/)).toBeNull();
+      expect(
+        screen.queryByText(
+          /settings:history.actions.workspace_settings_updated/,
+        ),
+      ).toBeNull();
       expect(client.getQueryData(key)).toBeNull();
       expect(client.getQueryData(other)).toEqual({ private: "other" });
       get.mockResolvedValueOnce({
@@ -876,7 +900,11 @@ it("renders only the closed membership role marker and localized action", async 
   await waitFor(() =>
     expect(screen.getByText(/settings:history.roleChanged/)).toBeTruthy(),
   );
-  expect(screen.getByText("settings:projectMembers.role")).toBeTruthy();
+  expect(
+    screen.getByText(
+      "settings:projectMembers.role, settings:history.fields.unknown",
+    ),
+  ).toBeTruthy();
   expect(screen.queryByText(/private_id/)).toBeNull();
 });
 
@@ -1004,7 +1032,7 @@ it("renders only the provider configuration and credential categories", async ()
   await waitFor(() =>
     expect(
       screen.getByText(
-        "settings:history.providerConfiguration, settings:history.providerCredential",
+        "settings:history.providerConfiguration, settings:history.providerCredential, settings:history.fields.unknown",
       ),
     ).toBeTruthy(),
   );
@@ -1074,7 +1102,11 @@ it.each([
       </QueryClientProvider>,
     );
     fireEvent.click(await screen.findByRole("button", { name: /History/ }));
-    await waitFor(() => expect(screen.getByText(label)).toBeTruthy());
+    await waitFor(() =>
+      expect(
+        screen.getByText(`${label}, settings:history.fields.unknown`),
+      ).toBeTruthy(),
+    );
     expect(
       screen.queryByText(/private-value|private-id|secret_raw/),
     ).toBeNull();
@@ -1108,7 +1140,9 @@ it("keeps legacy time-setting rows to action and time when no verified marker ex
   );
   fireEvent.click(await screen.findByRole("button", { name: /History/ }));
   await waitFor(() =>
-    expect(screen.getByText(/Time settings updated/)).toBeTruthy(),
+    expect(
+      screen.getByText(/settings:history.actions.time_settings_updated/),
+    ).toBeTruthy(),
   );
   expect(
     screen.queryByText("settings:history.fields.backdateLimit"),
@@ -1170,7 +1204,9 @@ it.each(["de-DE", "ja-JP", "zh-CN"])(
       await waitFor(() =>
         expect(screen.getByText(new RegExp(label ?? "missing"))).toBeTruthy(),
       );
-      expect(screen.queryByText(/Time settings updated/)).toBeNull();
+      expect(
+        screen.queryByText(/settings:history.actions.time_settings_updated/),
+      ).toBeNull();
     } finally {
       catalog.current = null;
     }
