@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { PageLoading } from "@/components/page-loading";
+import { projectOverviewOptions } from "@/hooks/queries/project/project-overview-options";
 import { projectOptions } from "@/hooks/queries/project/use-get-project";
 import { resolveRouteProject } from "@/lib/route-project-prefetch";
 
@@ -17,19 +18,13 @@ function startOverviewReads(
   },
   projectKey: string,
 ) {
-  const overviewOptions = import(
-    "@/hooks/queries/project/project-overview-options"
-  ).catch(() => undefined);
   void resolveRouteProject(context.queryClient, context.session, projectKey)
     .then((result) => {
       if (!result) return;
       const { project, workspaceId } = result;
-      void overviewOptions.then((module) => {
-        if (module)
-          void context.queryClient.prefetchQuery(
-            module.projectOverviewOptions(project.id),
-          );
-      });
+      void context.queryClient.prefetchQuery(
+        projectOverviewOptions(project.id),
+      );
       void context.queryClient.prefetchQuery(
         projectOptions(project.id, project.workspaceId ?? workspaceId),
       );

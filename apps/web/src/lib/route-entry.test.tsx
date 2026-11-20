@@ -16,6 +16,7 @@ import {
 import { projectOverviewOptions } from "@/hooks/queries/project/project-overview-options";
 import { projectOptions } from "@/hooks/queries/project/use-get-project";
 import useGetBoardWorkItems from "@/hooks/queries/work-item/use-get-board-work-items";
+import { resolveRouteProject } from "@/lib/route-project-prefetch";
 import portalClient from "@/query-client";
 import { Route as inbox } from "@/routes/agent/_layout/_authenticated/agent/inbox";
 import { Route as overview } from "@/routes/agent/_layout/_authenticated/agent/projects/$projectKey";
@@ -257,7 +258,7 @@ describe("route entry reads", () => {
   });
 });
 
-it("refreshes the overview when returning from a child route", async () => {
+it("starts overview reads immediately when returning from Work", async () => {
   const {
     createMemoryHistory,
     createRootRouteWithContext,
@@ -280,22 +281,27 @@ it("refreshes the overview when returning from a child route", async () => {
   });
   const child = createRoute({
     getParentRoute: () => projectRoute,
-    path: "backlog",
+    path: "work",
   });
   const router = createRouter({
     routeTree: root.addChildren([projectRoute.addChildren([child])]),
     history: createMemoryHistory({
-      initialEntries: ["/agent/projects/OPS/backlog"],
+      initialEntries: ["/agent/projects/OPS/work"],
     }),
     context: context(client),
   });
   await router.load();
   expect(mocks.overview).not.toHaveBeenCalled();
+  await resolveRouteProject(client, session, "OPS");
   await router.navigate({
     to: "/agent/projects/$projectKey",
     params: { projectKey: "OPS" },
   });
   await waitFor(() => expect(mocks.overview).toHaveBeenCalledTimes(1));
+  expect(mocks.detail).toHaveBeenCalledTimes(1);
+  expect(mocks.overview.mock.invocationCallOrder[0]).toBeLessThan(
+    mocks.detail.mock.invocationCallOrder[0],
+  );
 });
 
 describe("project discovery access", () => {
