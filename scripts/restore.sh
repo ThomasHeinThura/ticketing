@@ -22,6 +22,7 @@ BACKUP_ARG=""
 CONFIRMED=0
 MODE="local"
 PROJECT_NAME=""
+LEGACY_MOUNT=""
 
 usage() {
   cat <<'EOF'
@@ -33,6 +34,7 @@ Options:
   --backup <id-or-dir>  Backup identifier under backups/ or path to backup directory
   --confirm             Required confirmation flag before overwriting database and attachments
   --mode <mode>         Compose overlay mode: local (default), sit, uat, production or isolated
+  --legacy-source-mount <path>  Source mount for backups without mount metadata
 EOF
   exit "${1:-1}"
 }
@@ -48,6 +50,12 @@ while [ $# -gt 0 ]; do
     --backup)
       [ $# -ge 2 ] || usage 1
       BACKUP_ARG="$2"
+      shift 2
+      ;;
+    --legacy-source-mount)
+      [ $# -ge 2 ] || usage 1
+      LEGACY_MOUNT="$2"
+      [[ "$LEGACY_MOUNT" = /app/data || "$LEGACY_MOUNT" = /app/data/attachments ]] || { printf 'xx invalid legacy source mount\n' >&2; exit 1; }
       shift 2
       ;;
     --confirm)
@@ -95,8 +103,13 @@ MOUNT_FILE="$TARGET_DIR/attachment-mount.txt"
 
 [ -f "$DUMP_FILE" ] || { printf 'xx missing %s\n' "$DUMP_FILE" >&2; exit 1; }
 [ -f "$ATTACHMENTS_TAR" ] || { printf 'xx missing %s\n' "$ATTACHMENTS_TAR" >&2; exit 1; }
-[ -f "$MOUNT_FILE" ] || { printf 'xx missing attachment mount metadata\n' >&2; exit 1; }
 [ -f "$CHECKSUMS_FILE" ] || { printf 'xx missing %s\n' "$CHECKSUMS_FILE" >&2; exit 1; }
+if [ -e "$MOUNT_FILE" ]; then
+  [ -f "$MOUNT_FILE" ] && [ -z "$LEGACY_MOUNT" ] || { printf 'xx legacy source mount allowed only when metadata is absent\n' >&2; exit 1; }
+  grep -Eq '^[0-9a-fA-F]{64}  attachment-mount[.]txt$' "$CHECKSUMS_FILE" || { printf 'xx attachment mount metadata is not checksummed\n' >&2; exit 1; }
+else
+  [ -n "$LEGACY_MOUNT" ] || { printf 'xx missing attachment mount metadata; specify --legacy-source-mount\n' >&2; exit 1; }
+fi
 
 if [ -f "$ENV_FILE" ]; then
   # shellcheck disable=SC1090
@@ -135,7 +148,6 @@ esac
 
 dc() { docker compose "${COMPOSE_FILES[@]}" "$@"; }
 
-grep -Eq '^[0-9a-fA-F]{64}  attachment-mount[.]txt$' "$CHECKSUMS_FILE" || { printf 'xx attachment mount metadata is not checksummed\n' >&2; exit 1; }
 printf '==> Verifying backup checksums in %s\n' "$TARGET_DIR"
 (
   cd "$TARGET_DIR"
@@ -154,13 +166,15 @@ dc exec -T postgres pg_restore --list < "$DUMP_FILE" >/dev/null
 . "$REPO_ROOT/scripts/lib/compose-data-volume.sh"
 DATA_MOUNT="$(resolve_compose_data_volume)" || exit 1
 DATA_VOLUME="${DATA_MOUNT%%:*}"
-[ "$(cat "$MOUNT_FILE")" = "${DATA_MOUNT#*:}" ] || { printf 'xx attachment mount mismatch; restore refused\n' >&2; exit 1; }
+if [ -f "$MOUNT_FILE" ]; then SOURCE_MOUNT="$(cat "$MOUNT_FILE")"; else SOURCE_MOUNT="$LEGACY_MOUNT"; fi
+[ "$SOURCE_MOUNT" = "${DATA_MOUNT#*:}" ] || { printf 'xx attachment mount mismatch; restore refused\n' >&2; exit 1; }
 
 STAGING_DB="${POSTGRES_DB:0:35}_restore_staging_$$"
 RECOVERY_DB="${POSTGRES_DB:0:35}_restore_recovery_$$"
 STAGING_ACTIVE=0
 PROMOTED=0
-UNDO_FILE=".restore-undo-$$.tar"
+UNDO_DIR=".restore-undo-$$"
+UNDO_FILE="$UNDO_DIR/attachments.tar"
 cleanup_staging_db() {
   if [ "$STAGING_ACTIVE" -eq 1 ]; then
     dc exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
@@ -196,7 +210,7 @@ printf '==> Step 3: Restoring attachment volume (%s)\n' "$DATA_VOLUME"
 docker run --rm -i \
   -v "$DATA_VOLUME:/data" \
   alpine:3.22 \
-  sh -c 'undo="$1"; tar -C /data --exclude="./$undo" -cf "/data/$undo" . && tar -C /data -xf - && chown -R 10001:10001 /data' sh "$UNDO_FILE" < "$ATTACHMENTS_TAR"
+  sh -c 'undo="$1"; mkdir "/data/$undo" && tar -C /data --exclude="./$undo" -cf "/data/$undo/attachments.tar" . && tar -C /data --exclude="./$undo" --exclude="./$undo/*" -xf - && chown -R 10001:10001 /data' sh "$UNDO_DIR" < "$ATTACHMENTS_TAR"
 
 printf '==> Step 4: Running migrations and role grants\n'
 dc run --rm migrate
@@ -211,7 +225,7 @@ for _ in $(seq 1 30); do
     dc exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
       -c "DROP DATABASE \"$RECOVERY_DB\";" >/dev/null
     PROMOTED=0
-    docker run --rm -v "$DATA_VOLUME:/data" alpine:3.22 rm -f "/data/$UNDO_FILE"
+    docker run --rm -v "$DATA_VOLUME:/data" alpine:3.22 sh -c 'rm -f "/data/$1/attachments.tar" && rmdir "/data/$1"' sh "$UNDO_DIR"
     printf ' ok Restore verified and /api/public/health/ready is green\n'
     exit 0
   fi

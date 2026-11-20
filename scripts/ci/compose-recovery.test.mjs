@@ -388,6 +388,83 @@ test("failed readiness retains recovery database and attachment undo", () => {
   }
 });
 
+test("real tar extraction cannot replace the exclusive undo archive", () => {
+  const f = fixture();
+  try {
+    const data = join(f.dir, "data");
+    const old = join(f.dir, "old");
+    mkdirSync(data);
+    mkdirSync(join(old, ".restore-undo-123"), { recursive: true });
+    writeFileSync(join(data, "file"), "current");
+    writeFileSync(join(old, "file"), "backup");
+    writeFileSync(
+      join(old, ".restore-undo-123", "attachments.tar"),
+      "older undo",
+    );
+    const archive = join(f.dir, "input.tar");
+    assert.equal(spawnSync("tar", ["-cf", archive, "-C", old, "."]).status, 0);
+    const source = readFileSync(resolve("scripts/restore.sh"), "utf8");
+    const command = source
+      .match(/sh -c '([^']*mkdir "\/data\/\$undo"[^']*)' sh "\$UNDO_DIR"/)[1]
+      .replaceAll("/data", data)
+      .replace(" && chown -R 10001:10001 " + data, "");
+    const result = spawnSync("sh", ["-c", command, "sh", ".restore-undo-123"], {
+      input: readFileSync(archive),
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(readFileSync(join(data, "file"), "utf8"), "backup");
+    const undo = join(data, ".restore-undo-123", "attachments.tar");
+    const contents = spawnSync("tar", ["-xOf", undo, "./file"], {
+      encoding: "utf8",
+    });
+    assert.equal(contents.status, 0, contents.stderr);
+    assert.equal(contents.stdout, "current");
+  } finally {
+    f.close();
+  }
+});
+
+test("legacy mount must be explicit, match the target, and never override metadata", () => {
+  const f = fixture();
+  try {
+    const args = ["--backup", f.backup, "--confirm"];
+    const recorded = f.run("restore.sh", [
+      ...args,
+      "--legacy-source-mount",
+      "/app/data",
+    ]);
+    assert.notEqual(recorded.status, 0);
+    assert.match(recorded.stderr, /only when metadata is absent/);
+    rmSync(join(f.backup, "attachment-mount.txt"));
+    const sums = readFileSync(join(f.backup, "SHA256SUMS"), "utf8")
+      .split("\n")
+      .filter((line) => !line.endsWith("  attachment-mount.txt"))
+      .join("\n");
+    writeFileSync(join(f.backup, "SHA256SUMS"), sums);
+    for (const extra of [
+      [],
+      ["--legacy-source-mount", "/app/data/attachments"],
+      ["--legacy-source-mount", "/invalid"],
+    ]) {
+      const failed = f.run("restore.sh", [...args, ...extra]);
+      assert.notEqual(failed.status, 0);
+      assert.doesNotMatch(
+        failed.calls,
+        /compose .* stop |pg_terminate_backend|DROP DATABASE|run --rm -i/,
+      );
+    }
+    const ok = f.run("restore.sh", [
+      ...args,
+      "--legacy-source-mount",
+      "/app/data",
+    ]);
+    assert.equal(ok.status, 0, ok.stderr);
+  } finally {
+    f.close();
+  }
+});
+
 test("backup mount metadata prevents restoring to a different mount", () => {
   for (const destination of ["/app/data", "/app/data/attachments"]) {
     const f = fixture();

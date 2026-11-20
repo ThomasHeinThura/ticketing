@@ -134,7 +134,7 @@ The restore script verifies checksums and the dump listing before stopping the a
 then restores the dump into a staging database. Only after restore succeeds does a
 single transaction rename the original database to a recovery name and staging to the
 live name. A failed rename or interrupted transaction rolls both renames back; staging
-is retained for inspection. The recovery database and an attachment undo archive in the selected volume are retained until readiness passes; failures report their names. The archive is removed after readiness, and recovery requires operator inspection. Backups record the attachment mount destination in checksummed metadata; restores refuse missing metadata or a different destination, including older backups without it.
+is retained for inspection. The recovery database and an attachment undo archive in the selected volume are retained until readiness passes; failures report their names. The archive is removed after readiness, and recovery requires operator inspection. Backups record the attachment mount destination in checksummed metadata; restores refuse a different destination. For older backups without metadata, determine the original mount and provide `--legacy-source-mount /app/data` or `--legacy-source-mount /app/data/attachments`; it must match the target mount.
 If commit acknowledgement is lost, inspect the live, staging and recovery names before
 retrying; retain both copies until the result is established. Attachment restoration and
 readiness checks follow database promotion.

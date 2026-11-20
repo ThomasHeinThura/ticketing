@@ -1150,6 +1150,7 @@ for (const target of ["production", "sit"]) {
         );
         await rm(path.join(f.temp, "docker.log"), { force: true });
         await rm(path.join(f.temp, "docker.log.started"), { force: true });
+        const before = await readFile(path.join(f.path, ".env"), "utf8");
         const args =
           mode === "rollback"
             ? [mode, `sha256:${"d".repeat(64)}`, "v1.2.2"]
@@ -1177,6 +1178,16 @@ for (const target of ["production", "sit"]) {
         );
         const output = `${result.stdout}${result.stderr}`;
         assert.equal(result.status === 0, failure === "none", output);
+        if (mode === "upgrade" && failure === "readiness")
+          assert.equal(
+            await readFile(path.join(f.path, ".env"), "utf8"),
+            before,
+          );
+        if (mode === "upgrade" && failure === "none")
+          assert.match(
+            await readFile(path.join(f.path, ".env"), "utf8"),
+            new RegExp(`^TASKDESK_IMAGE_DIGEST=${RAW_DIGEST}$`, "m"),
+          );
         const log = await readFile(
           path.join(f.temp, "docker.log"),
           "utf8",
