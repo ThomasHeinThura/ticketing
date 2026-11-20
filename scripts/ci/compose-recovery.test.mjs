@@ -27,6 +27,33 @@ function fixture() {
     `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s\\n' "$*" >> "$RECOVERY_TEST_LOG"
+if [ "$1" = compose ]; then printf '%s\\n' "\${TASKDESK_DRILL_DATA_MOUNT:-unset}" >> "$RECOVERY_TEST_LOG.mounts"; fi
+DB_ID="${"d".repeat(64)}"
+if [ "$1" = compose ] && [ "$4" = -p ]; then printf '%s' "$5" > "$RECOVERY_TEST_LOG.project"; fi
+PROJECT="$(cat "$RECOVERY_TEST_LOG.project" 2>/dev/null || printf taskdesk)"
+# PTM-08 held-barrier answers for scripts/backup.sh (the barrier is held: only
+# PostgreSQL runs, no data-volume users, no networks, no client sessions).
+if [ "$1" = inspect ] && [[ "$3" != *.Mounts* ]]; then
+  service=taskdesk
+  [ "$4" != "$DB_ID" ] || service=postgres
+  case "$3" in
+    *POSTGRES_DB*|*POSTGRES_USER*) printf '2 taskdesk\\n' ;;
+    *.Config.Env*) ;;
+    '{{.Id}}') printf '%s\\n' "$4" ;;
+    '{{.Id}}|'*) printf '%s|%s|%s\\n' "$4" "$PROJECT" "$service" ;;
+    *com.docker.compose.project*) printf '%s|%s\\n' "$PROJECT" "$service" ;;
+    *NetworkMode*) printf 'default|0\\n' ;;
+    *) exit 99 ;;
+  esac
+  exit 0
+fi
+case "$*" in
+  *'ps -a -q postgres'*) printf '%s\\n' "$DB_ID"; exit 0 ;;
+  'ps -q --no-trunc --filter label='*) printf '%s\\n' "$DB_ID"; exit 0 ;;
+  'ps -q --no-trunc --filter volume='*) exit 0 ;;
+  "exec $DB_ID sh -c"*) exit 0 ;;
+  "exec $DB_ID psql"*) printf 'taskdesk|0\\n'; exit 0 ;;
+esac
 if [ "$1" = inspect ]; then
   if [ -n "\${RECOVERY_TEST_MOUNTS_JSON:-}" ]; then
     node -e '
@@ -125,7 +152,7 @@ esac
 for (const script of ["backup.sh", "restore.sh"]) {
   function args(f) {
     return script === "backup.sh"
-      ? ["--output-dir", f.backup]
+      ? ["--output-dir", join(f.dir, "new-backup")]
       : ["--backup", f.backup, "--confirm"];
   }
   test(`${script} uses the selected project's mounted data volume`, () => {
@@ -222,6 +249,60 @@ test("isolated restore selects only the scratch overlay", () => {
   }
 });
 
+test("isolated restore carries the checked backup mount through every compose call", () => {
+  for (const mount of ["/app/data", "/app/data/attachments", "/invalid"]) {
+    const f = fixture();
+    try {
+      const content = `${mount}\n`;
+      writeFileSync(join(f.backup, "attachment-mount.txt"), content);
+      const sums = readFileSync(join(f.backup, "SHA256SUMS"), "utf8");
+      writeFileSync(
+        join(f.backup, "SHA256SUMS"),
+        sums.replace(
+          /^[a-f0-9]{64} {2}attachment-mount\.txt$/m,
+          `${createHash("sha256").update(content).digest("hex")}  attachment-mount.txt`,
+        ),
+      );
+      const result = f.run(
+        "restore.sh",
+        [
+          "--backup",
+          f.backup,
+          "--confirm",
+          "--mode",
+          "isolated",
+          "--project-name",
+          "drill",
+        ],
+        {
+          RECOVERY_TEST_MOUNT: `volume:drill_taskdesk-data:${mount}`,
+        },
+      );
+      if (mount === "/invalid") {
+        assert.notEqual(result.status, 0);
+        assert.equal(result.calls, "");
+      } else {
+        assert.equal(result.status, 0, result.stderr);
+        const mounts = readFileSync(join(f.dir, "docker.log.mounts"), "utf8")
+          .trim()
+          .split("\n");
+        assert.equal(
+          mounts.length,
+          result.calls.split("\n").filter((line) => line.startsWith("compose "))
+            .length,
+        );
+        assert.ok(mounts.every((value) => value === mount));
+      }
+    } finally {
+      f.close();
+    }
+  }
+  assert.match(
+    readFileSync(resolve("deploy/compose.restore-drill.yml"), "utf8"),
+    /volumes: !override\s+- taskdesk-data:\$\{TASKDESK_DRILL_DATA_MOUNT:-\/app\/data\}/,
+  );
+});
+
 for (const mode of ["sit", "uat"]) {
   test(`restore selects the ${mode} overlay`, () => {
     const f = fixture();
@@ -310,15 +391,19 @@ test("resolve_compose_data_volume supports both /app/data and /app/data/attachme
   for (const destination of ["/app/data", "/app/data/attachments"]) {
     const f = fixture();
     try {
-      const result = f.run("backup.sh", ["--output-dir", f.backup], {
-        RECOVERY_TEST_MOUNTS_JSON: JSON.stringify([
-          {
-            Type: "volume",
-            Name: "sit_attachments_vol",
-            Destination: destination,
-          },
-        ]),
-      });
+      const result = f.run(
+        "backup.sh",
+        ["--output-dir", join(f.dir, "new-backup")],
+        {
+          RECOVERY_TEST_MOUNTS_JSON: JSON.stringify([
+            {
+              Type: "volume",
+              Name: "sit_attachments_vol",
+              Destination: destination,
+            },
+          ]),
+        },
+      );
       assert.equal(result.status, 0, result.stderr);
       assert.match(result.calls, /-v sit_attachments_vol:\/data/);
     } finally {
@@ -330,7 +415,7 @@ test("resolve_compose_data_volume supports both /app/data and /app/data/attachme
   try {
     const result = ambiguous.run(
       "backup.sh",
-      ["--output-dir", ambiguous.backup],
+      ["--output-dir", join(ambiguous.dir, "new-backup")],
       {
         RECOVERY_TEST_MOUNTS_JSON: JSON.stringify([
           { Type: "volume", Name: "vol_a", Destination: "/app/data" },
@@ -473,17 +558,18 @@ test("backup mount metadata prevents restoring to a different mount", () => {
         JSON.stringify([
           { Type: "volume", Name: "test_volume", Destination: d },
         ]);
-      const backup = f.run("backup.sh", ["--output-dir", f.backup], {
+      const backupDir = join(f.dir, "new-backup");
+      const backup = f.run("backup.sh", ["--output-dir", backupDir], {
         RECOVERY_TEST_MOUNTS_JSON: mount(destination),
       });
       assert.equal(backup.status, 0, backup.stderr);
       assert.equal(
-        readFileSync(join(f.backup, "attachment-mount.txt"), "utf8"),
+        readFileSync(join(backupDir, "attachment-mount.txt"), "utf8"),
         `${destination}\n`,
       );
       const other =
         destination === "/app/data" ? "/app/data/attachments" : "/app/data";
-      const result = f.run("restore.sh", ["--backup", f.backup, "--confirm"], {
+      const result = f.run("restore.sh", ["--backup", backupDir, "--confirm"], {
         RECOVERY_TEST_MOUNTS_JSON: mount(other),
       });
       assert.notEqual(result.status, 0);

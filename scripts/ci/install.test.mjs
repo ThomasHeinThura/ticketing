@@ -57,6 +57,7 @@ async function fixture(
     "compose.yml",
     "scripts/deploy.sh",
     "scripts/backup.sh",
+    "scripts/backup-maintenance.sh",
     "scripts/restore.sh",
     "scripts/lib/compose-data-volume.sh",
     "scripts/lib/local-certificate.sh",
@@ -944,6 +945,7 @@ test("release workflow packages only versioned releases and signs checksum plus 
   );
   for (const member of [
     "scripts/backup.sh",
+    "scripts/backup-maintenance.sh",
     "scripts/restore.sh",
     "scripts/lib/compose-data-volume.sh",
   ]) {
