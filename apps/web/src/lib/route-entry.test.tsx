@@ -124,6 +124,18 @@ describe("route entry reads", () => {
     expect(mocks.detail).toHaveBeenCalledTimes(1);
     expect(mocks.overview).toHaveBeenCalledTimes(1);
   });
+  it("does not start overview reads for a project child route", async () => {
+    loader(overview, {
+      context: context(client),
+      params: { projectKey: "OPS" },
+      cause: "enter",
+      location: { pathname: "/agent/projects/OPS/work" },
+    });
+    await Promise.resolve();
+    expect(mocks.workspaces).not.toHaveBeenCalled();
+    expect(mocks.overview).not.toHaveBeenCalled();
+    expect(mocks.detail).not.toHaveBeenCalled();
+  });
   it("starts the backlog read without blocking and reuses it on mount", async () => {
     expect(
       loader(backlog, {
