@@ -18,6 +18,7 @@ import {
 import { ChevronDown, History } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import useGetWorkItemApprovals from "@/hooks/queries/approval/use-get-work-item-approvals";
 import useGetProjectStates from "@/hooks/queries/project/use-get-project-states";
 import {
   useGetWorkItemAuditHistory,
@@ -65,7 +66,11 @@ export default function WorkItemAuditHistory({
   );
   const fields = Object.entries(snapshot.data?.snapshot?.fields ?? {});
   const states = useGetProjectStates(projectId, open);
-  const people = useGetActiveWorkspaceUsers(workspaceId ?? "", open && !!at);
+  const people = useGetActiveWorkspaceUsers(workspaceId ?? "", open);
+  const approvals = useGetWorkItemApprovals({
+    key: workItemKey,
+    enabled: open,
+  });
   const lookups = useMemo(
     () => ({
       states: new Map(
@@ -165,6 +170,31 @@ export default function WorkItemAuditHistory({
                       <TableCell>{formatDateTime(row.createdAt)}</TableCell>
                       <TableCell>
                         {auditActionLabel(row.action, t)}
+                        {row.entityType === "approval" && (
+                          <span className="block text-xs">
+                            {row.actorType === "person"
+                              ? people.data?.members.find(
+                                  (member) => member.personId === row.actorId,
+                                )?.user.name ||
+                                approvals.data?.approvals
+                                  .filter(
+                                    (approval) => approval.id === row.entityId,
+                                  )
+                                  .flatMap((approval) => [
+                                    approval.requester,
+                                    approval.approver,
+                                  ])
+                                  .find((person) => person.id === row.actorId)
+                                  ?.displayName ||
+                                t("common:people.unknown")
+                              : t("common:people.unknown")}
+                            {row.after &&
+                              typeof row.after === "object" &&
+                              "state" in row.after &&
+                              typeof row.after.state === "string" &&
+                              ` · ${t(`workItemExtras:detail.approvals.state.${row.after.state}`, { defaultValue: row.after.state.charAt(0).toUpperCase() + row.after.state.slice(1) })}`}
+                          </span>
+                        )}
                         {auditStateChange(row.before, row.after, lookups) && (
                           <span className="block text-muted-foreground text-xs">
                             {auditStateChange(row.before, row.after, lookups)}

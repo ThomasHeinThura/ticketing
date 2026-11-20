@@ -11,7 +11,12 @@ function useWithdrawApproval() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: withdrawApproval,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["approvals"] }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["approvals"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["work-items", "audit-history"],
+      });
+    },
   });
 }
 
