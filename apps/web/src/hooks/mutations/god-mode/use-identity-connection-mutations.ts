@@ -14,6 +14,21 @@ import {
   identityConnectionsKey,
   scimAdminKey,
 } from "@/hooks/queries/god-mode/use-identity-connections";
+import { auditEntity } from "@/query-client/audit-invalidation";
+
+const instance = { kind: "instance" } as const;
+const byId = {
+  audits: {
+    targets: ({ id }: { id: string }) =>
+      auditEntity("identity_connection", id, instance),
+  },
+};
+const byConnection = {
+  audits: {
+    targets: ({ connectionId }: { connectionId: string }) =>
+      auditEntity("identity_connection", connectionId, instance),
+  },
+};
 
 /**
  * The parent `config_version` is shared by the connection editor, the SCIM settings and the SCIM
@@ -31,11 +46,18 @@ export function useIdentityConnectionMutations(connectionId: string) {
 
   const create = useMutation({
     mutationFn: createIdentityConnection,
+    meta: {
+      audits: {
+        targets: (_: unknown, created: IdentityConnection) =>
+          auditEntity("identity_connection", created.id, instance),
+      },
+    },
     gcTime: 0,
     onSuccess: refreshConnections,
   });
   const configure = useMutation({
     mutationFn: configureIdentityConnection,
+    meta: byId,
     gcTime: 0,
     onSuccess: (connection: IdentityConnection) => {
       queryClient.setQueryData<IdentityConnection[]>(
@@ -56,6 +78,7 @@ export function useIdentityConnectionMutations(connectionId: string) {
   });
   const updateScim = useMutation({
     mutationFn: patchScimAdmin,
+    meta: byId,
     gcTime: 0,
     onSuccess: async (settings: ScimAdminSettings) => {
       cacheScim(settings);
@@ -78,6 +101,7 @@ export function useIdentityConnectionMutations(connectionId: string) {
         tokenRotatedAt: result.tokenRotatedAt,
       };
     },
+    meta: byId,
     gcTime: 0,
     onSuccess: async () => {
       await Promise.all([refreshConnections(), refreshScim()]);
@@ -85,6 +109,7 @@ export function useIdentityConnectionMutations(connectionId: string) {
   });
   const revokeToken = useMutation({
     mutationFn: revokeScimBearer,
+    meta: byId,
     gcTime: 0,
     onSuccess: async () => {
       await Promise.all([refreshConnections(), refreshScim()]);
@@ -92,11 +117,13 @@ export function useIdentityConnectionMutations(connectionId: string) {
   });
   const createOidcMapping = useMutation({
     mutationFn: createOidcGroupMapping,
+    meta: byConnection,
     gcTime: 0,
     onSuccess: refreshConnections,
   });
   const updateOidcMapping = useMutation({
     mutationFn: updateOidcGroupMapping,
+    meta: byConnection,
     gcTime: 0,
     onSuccess: refreshConnections,
   });

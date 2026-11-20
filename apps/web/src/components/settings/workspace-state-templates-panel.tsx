@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -28,6 +28,7 @@ import {
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import {
   isForbiddenError,
   SettingsAccessDenied,
@@ -56,6 +57,37 @@ export function WorkspaceStateTemplatesPanel({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const patchTemplate = useMutation({
+    mutationFn: (v: {
+      workspaceId: string;
+      id: string;
+      body: Parameters<typeof patchWorkspaceStateTemplate>[2];
+    }) => patchWorkspaceStateTemplate(v.workspaceId, v.id, v.body),
+    meta: {
+      audits: {
+        targets: (v: { workspaceId: string; id: string }) =>
+          auditEntity("state_template", v.id, {
+            kind: "workspace",
+            workspaceId: v.workspaceId,
+          }),
+      },
+    },
+  });
+  const addTemplate = useMutation({
+    mutationFn: (v: {
+      workspaceId: string;
+      body: Parameters<typeof createWorkspaceStateTemplate>[1];
+    }) => createWorkspaceStateTemplate(v.workspaceId, v.body),
+    meta: {
+      audits: {
+        targets: (v: { workspaceId: string }, created: { id: string }) =>
+          auditEntity("state_template", created.id, {
+            kind: "workspace",
+            workspaceId: v.workspaceId,
+          }),
+      },
+    },
+  });
   const { canManageWorkspaceSettings, isCheckingPermissions } =
     useWorkspacePermission(workspaceId);
   // Without this the panel stays on its skeleton forever when `/api/capabilities` fails.
@@ -181,10 +213,14 @@ export function WorkspaceStateTemplatesPanel({
     setSavedId(null);
     setFailure(null);
     try {
-      await patchWorkspaceStateTemplate(workspaceId, item.id, {
-        expectedVersion: current.version,
-        ...(draft.name !== item.name ? { name: draft.name } : {}),
-        ...(draft.group !== item.group ? { group: draft.group } : {}),
+      await patchTemplate.mutateAsync({
+        workspaceId,
+        id: item.id,
+        body: {
+          expectedVersion: current.version,
+          ...(draft.name !== item.name ? { name: draft.name } : {}),
+          ...(draft.group !== item.group ? { group: draft.group } : {}),
+        },
       });
       const refreshed = await templatesQuery.refetch();
       if (refreshed.data) await replaceData(refreshed.data);
@@ -203,9 +239,10 @@ export function WorkspaceStateTemplatesPanel({
     setFailure(null);
     setImpact(null);
     try {
-      await patchWorkspaceStateTemplate(workspaceId, item.id, {
-        expectedVersion: current.version,
-        enabled: !item.enabled,
+      await patchTemplate.mutateAsync({
+        workspaceId,
+        id: item.id,
+        body: { expectedVersion: current.version, enabled: !item.enabled },
       });
       const refreshed = await templatesQuery.refetch();
       if (refreshed.data) await replaceData(refreshed.data);
@@ -222,11 +259,14 @@ export function WorkspaceStateTemplatesPanel({
     setCreated(false);
     setFailure(null);
     try {
-      await createWorkspaceStateTemplate(workspaceId, {
-        expectedVersion: current.version,
-        key: newKey.trim(),
-        name: newName.trim(),
-        group: newGroup,
+      await addTemplate.mutateAsync({
+        workspaceId,
+        body: {
+          expectedVersion: current.version,
+          key: newKey.trim(),
+          name: newName.trim(),
+          group: newGroup,
+        },
       });
       const refreshed = await templatesQuery.refetch();
       if (refreshed.data) await replaceData(refreshed.data);

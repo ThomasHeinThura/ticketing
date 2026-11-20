@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Alert,
@@ -40,6 +40,7 @@ import {
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import { FailureAlert, StepUpFields } from "./step-up-fields";
 
 type Audience = keyof LocalAuthMethodsByPortal;
@@ -376,13 +377,34 @@ function SaveDialog({
     ).map((method) => ({ audience, method, on: request[audience][method] })),
   );
 
+  const save = useMutation({
+    mutationFn: (body: LocalAuthConfiguration & { expectedRevision: string }) =>
+      stepUp.run({ operation: "auth_local_methods_update", ...body }, (token) =>
+        updateLocalAuthMethods(body, token),
+      ),
+    // One save writes both rows: the methods config and the self-registration switch.
+    meta: {
+      audits: {
+        targets: () => [
+          ...auditEntity("instance_auth_methods", "auth.local-methods", {
+            kind: "instance",
+          }),
+          ...auditEntity(
+            "staff_self_registration",
+            "staff_self_registration_enabled",
+            { kind: "instance" },
+          ),
+        ],
+      },
+    },
+  });
+
   const submit = async () => {
     // The revision binds the save to what was read: a newer save elsewhere answers 409.
-    const body = { ...request, expectedRevision: revision };
-    const result = await stepUp.run(
-      { operation: "auth_local_methods_update", ...body },
-      (token) => updateLocalAuthMethods(body, token),
-    );
+    const result = await save.mutateAsync({
+      ...request,
+      expectedRevision: revision,
+    });
     if (!result.ok) return;
     queryClient.setQueryData(localAuthMethodsKey, result.value);
     toast.success(t("signInMethods.saved"));

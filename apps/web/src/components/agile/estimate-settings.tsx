@@ -107,6 +107,7 @@ export function EstimateSettings({
   };
 
   const dryRun = useMutation({
+    // no-audits: a dry run writes nothing
     mutationFn: () => updateEstimates(projectKey, { ...input(), dryRun: true }),
     onSuccess: async (result) => {
       const { preview: next } = result;

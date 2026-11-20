@@ -1,6 +1,14 @@
 import type { Query, QueryClient } from "@tanstack/react-query";
 import type { HistoryTarget } from "./settings-history-key";
 
+type EntityTarget = Extract<HistoryTarget, { kind: "entity" }>;
+/** The one-entity target list that most `meta.audits.targets` return. */
+export const auditEntity = (
+  type: EntityTarget["type"],
+  id: string,
+  scope: EntityTarget["scope"],
+): HistoryTarget[] => [{ kind: "entity", type, id, scope }];
+
 // The controller lives in the lazy History chunk and installs these when it loads. Until then no
 // History query exists, so there is nothing to withdraw and the eager graph stays small.
 export const historyHooks: {

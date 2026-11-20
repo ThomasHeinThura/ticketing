@@ -59,7 +59,6 @@ import {
   removeCannedResponse,
   saveCannedResponse,
 } from "@/fetchers/canned-response/manage-canned-responses";
-import type { HistoryTarget } from "@/hooks/queries/settings/use-settings-history";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import {
@@ -67,6 +66,7 @@ import {
   parseCannedResponseSearch,
 } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/workspace/canned-responses",
@@ -308,17 +308,15 @@ function CannedResponsesPageContent() {
       audits: {
         targets: (
           input: { kind: "save" | "delete" },
-          result: { id?: unknown } | undefined,
-        ): HistoryTarget[] =>
-          workspace && input.kind === "save" && typeof result?.id === "string"
-            ? [
-                {
-                  kind: "entity",
-                  type: "canned_response",
-                  id: result.id,
-                  scope: { kind: "workspace", workspaceId: workspace.id },
-                },
-              ]
+          result: { id?: unknown; workspaceId?: unknown } | undefined,
+        ) =>
+          input.kind === "save" &&
+          typeof result?.id === "string" &&
+          typeof result.workspaceId === "string"
+            ? auditEntity("canned_response", result.id, {
+                kind: "workspace",
+                workspaceId: result.workspaceId,
+              })
             : [],
       },
     },

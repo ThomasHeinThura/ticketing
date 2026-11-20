@@ -47,6 +47,7 @@ import useGetWorkItemTypes from "@/hooks/queries/work-item/use-get-work-item-typ
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { resolveIntakeVisibility } from "@/lib/intake-visibility";
 import { parseRequestTypeEditorSearch } from "@/lib/routes";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/workspace/request-types",
@@ -227,6 +228,19 @@ function RequestTypesEditor() {
         version: (detail.data as unknown as RequestType | undefined)?.version,
         data: draft as unknown as Record<string, unknown>,
       }),
+    meta: {
+      audits: {
+        targets: (_: unknown, row: unknown) => {
+          const r = row as { id?: string; workspaceId?: string } | undefined;
+          return r?.id && r.workspaceId
+            ? auditEntity("request_type", r.id, {
+                kind: "workspace",
+                workspaceId: r.workspaceId,
+              })
+            : [];
+        },
+      },
+    },
     onSuccess: async (row) => {
       const saved = row as unknown as RequestType;
       setSelected(saved.id);
@@ -244,6 +258,19 @@ function RequestTypesEditor() {
       if (!selected) return;
       if (kind === "publish") return publishRequestType(selected);
       return unpublishRequestType(selected);
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, row: unknown) => {
+          const r = row as { id?: string; workspaceId?: string } | undefined;
+          return r?.id && r.workspaceId
+            ? auditEntity("request_type", r.id, {
+                kind: "workspace",
+                workspaceId: r.workspaceId,
+              })
+            : [];
+        },
+      },
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["request-types"] });

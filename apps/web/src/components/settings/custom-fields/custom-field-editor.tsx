@@ -66,6 +66,7 @@ import {
 } from "@/lib/custom-field";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 type Access = "hidden" | "visible" | "required";
 const ACCESS: Access[] = ["hidden", "visible", "required"];
@@ -205,6 +206,15 @@ function EditorForm({
       if (isNew) return createCustomField(workspaceId, input);
       const { key: _key, visibility, ...update } = input;
       return updateCustomField(field?.id ?? "", update, visibility);
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, r: { id: string; workspaceId: string }) =>
+          auditEntity("custom_field", r.id, {
+            kind: "workspace",
+            workspaceId: r.workspaceId,
+          }),
+      },
     },
     onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: ["custom-fields"] });

@@ -186,6 +186,7 @@ function ProjectMembersSettings({ projectId }: Props) {
     if (typeof roleKey !== "string" || roleKey === member.roleKey) return;
     try {
       await updateRole({
+        workspaceId: activeWorkspace?.id ?? "",
         projectId,
         personId: member.personId,
         roleKey,
@@ -213,6 +214,7 @@ function ProjectMembersSettings({ projectId }: Props) {
     if (!toRemove) return;
     try {
       await removeMember({
+        workspaceId: activeWorkspace?.id ?? "",
         projectId,
         personId: toRemove.personId,
         membershipId: toRemove.membershipId,
@@ -587,6 +589,7 @@ function AddMemberDialog({
   const [roleKey, setRoleKey] = useState<string>("project-member");
   const candidates = useGetProjectMemberCandidates(projectId, open);
   const { mutateAsync: addMember, isPending } = useAddProjectMember();
+  const { data: workspace } = useActiveWorkspace();
 
   const roleItems = rosterRoleItems(roles);
   const personItems = (candidates.data ?? []).map((candidate) => ({
@@ -608,7 +611,12 @@ function AddMemberDialog({
   const submit = async () => {
     if (!personId) return;
     try {
-      await addMember({ projectId, personId, roleKey });
+      await addMember({
+        workspaceId: workspace?.id ?? "",
+        projectId,
+        personId,
+        roleKey,
+      });
       toast.success(t("settings:projectMembers.added"));
       close();
     } catch (failure) {

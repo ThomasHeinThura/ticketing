@@ -33,6 +33,7 @@ import {
 } from "@/fetchers/god-mode/instance-jobs";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 function runVariant(state: string) {
   if (state === "succeeded") return "success" as const;
@@ -64,6 +65,12 @@ export function InstanceJobsPanel() {
         ...(enabled === undefined ? {} : { enabled }),
         ...(pattern === undefined ? {} : { pattern }),
       }),
+    meta: {
+      audits: {
+        targets: ({ job }: { job: InstanceJob }) =>
+          auditEntity("instance_job", job.name, { kind: "instance" }),
+      },
+    },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["god-mode", "jobs"] }),
   });

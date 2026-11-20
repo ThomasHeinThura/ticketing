@@ -69,6 +69,9 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 vi.mock("@tanstack/react-query", () => ({
+  useMutation: (options: { mutationFn: (v: unknown) => unknown }) => ({
+    mutateAsync: (v: unknown) => options.mutationFn(v),
+  }),
   useQueryClient: () => ({
     invalidateQueries: mocks.invalidate,
     setQueryData: mocks.setQueryData,

@@ -63,7 +63,6 @@ import {
 } from "@/fetchers/workflow";
 import useGetProjectStateTemplates from "@/hooks/queries/project/use-get-project-state-templates";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
-import type { HistoryTarget } from "@/hooks/queries/settings/use-settings-history";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -71,6 +70,7 @@ import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
 import { parseWorkflowSettingsSearch, routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 const SettingsHistory = lazy(() =>
   import("@/components/settings/settings-history").then((m) => ({
@@ -84,6 +84,16 @@ export const Route = createFileRoute(
   validateSearch: parseWorkflowSettingsSearch,
   component: WorkflowSettingsRoute,
 });
+
+/** The workflow a write touched, read from the result so a later navigation cannot change it. */
+const workflowTarget = (
+  _: unknown,
+  r: { workflowId: string; workspaceId: string },
+) =>
+  auditEntity("workflow", r.workflowId, {
+    kind: "workspace",
+    workspaceId: r.workspaceId,
+  });
 
 function versionStatus(
   workflow: WorkflowDetail,
@@ -355,21 +365,18 @@ function CreateWorkflowDialog({
         key: key.trim(),
         name: name.trim(),
       });
-      return { workflow, userId, sessionId };
+      return { workflow, userId, sessionId, workspaceId };
     },
     meta: {
       audits: {
         targets: (
           _: unknown,
-          result: { workflow: { id: string } },
-        ): HistoryTarget[] => [
-          {
-            kind: "entity",
-            type: "workflow",
-            id: result.workflow.id,
-            scope: { kind: "workspace", workspaceId },
-          },
-        ],
+          result: { workflow: { id: string }; workspaceId: string },
+        ) =>
+          auditEntity("workflow", result.workflow.id, {
+            kind: "workspace",
+            workspaceId: result.workspaceId,
+          }),
       },
     },
     onSuccess: async ({ workflow, userId, sessionId }) => {
@@ -545,20 +552,14 @@ function WorkflowDetailView({
         id: workflowId,
         transitions: savedWorking ?? [],
       });
-      return { version, savedWorking };
+      return {
+        version,
+        savedWorking,
+        workflowId,
+        workspaceId: workspaceId ?? "",
+      };
     },
-    meta: {
-      audits: {
-        targets: (): HistoryTarget[] => [
-          {
-            kind: "entity",
-            type: "workflow",
-            id: workflowId,
-            scope: { kind: "workspace", workspaceId: workspaceId ?? "" },
-          },
-        ],
-      },
-    },
+    meta: { audits: { targets: workflowTarget } },
     onSuccess: async ({ version, savedWorking }) => {
       await cache.invalidateQueries({ queryKey: ["workflows"] });
       if (!mounted.current) return;
@@ -573,21 +574,10 @@ function WorkflowDetailView({
   const publish = useMutation({
     mutationFn: async (number: number) => {
       const version = await publishWorkflowVersion({ id: workflowId, number });
-      return version;
+      return { version, workflowId, workspaceId: workspaceId ?? "" };
     },
-    meta: {
-      audits: {
-        targets: (): HistoryTarget[] => [
-          {
-            kind: "entity",
-            type: "workflow",
-            id: workflowId,
-            scope: { kind: "workspace", workspaceId: workspaceId ?? "" },
-          },
-        ],
-      },
-    },
-    onSuccess: async (version) => {
+    meta: { audits: { targets: workflowTarget } },
+    onSuccess: async ({ version }) => {
       await cache.invalidateQueries({ queryKey: ["workflows"] });
       if (!mounted.current) return;
       setValidating(null);

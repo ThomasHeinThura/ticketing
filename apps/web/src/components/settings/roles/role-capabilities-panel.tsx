@@ -41,6 +41,7 @@ import { roleDetailKey } from "@/hooks/queries/workspace-roles/use-role-queries"
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { localizedErrorMessage } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import {
   capabilityClosure,
   ROLE_CAPABILITY_ITEMS,
@@ -154,6 +155,7 @@ export function RoleCapabilitiesPanel({
   // still reaches the role-specific error handling below untouched.
   const stepUp = useStepUpAction();
   const impactPreview = useMutation({
+    // no-audits: a dry run writes nothing
     mutationFn: async (): Promise<RoleImpactPreview> => {
       const result = await updateRole(
         workspaceId,
@@ -193,7 +195,16 @@ export function RoleCapabilitiesPanel({
       );
       if (!outcome.ok)
         throw new Error(t("roles:stepUp.failedTitle"), { cause: "step_up" });
-      return outcome.value;
+      return { value: outcome.value, workspaceId, roleId: role.id };
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, r: { workspaceId: string; roleId: string }) =>
+          auditEntity("role", r.roleId, {
+            kind: "workspace",
+            workspaceId: r.workspaceId,
+          }),
+      },
     },
     onSuccess: async () => {
       setConfirming(false);

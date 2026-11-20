@@ -13,9 +13,6 @@ vi.mock("@/fetchers/project-member/project-members", () => ({
   removeProjectMember: mocks.remove,
   updateProjectMemberRole: mocks.update,
 }));
-vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: { id: "w" } }),
-}));
 
 const target = (id: string) => ({
   kind: "entity",
@@ -46,6 +43,7 @@ it("targets the existing row and the direct row the answered roster shows, and n
     wrapper,
   });
   const variables = {
+    workspaceId: "w",
     projectId: "p",
     personId: "person",
     membershipId: null,
@@ -66,7 +64,12 @@ it("targets the removed row from the variables because the answered roster no lo
   const { wrapper, audits } = setup();
   mocks.remove.mockResolvedValue({ members: [] });
   const { result } = renderHook(() => useRemoveProjectMember(), { wrapper });
-  const variables = { projectId: "p", personId: "person", membershipId: "row" };
+  const variables = {
+    workspaceId: "w",
+    projectId: "p",
+    personId: "person",
+    membershipId: "row",
+  };
   await act(() => result.current.mutateAsync(variables));
   expect(mocks.remove).toHaveBeenCalledWith({
     projectId: "p",

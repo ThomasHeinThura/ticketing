@@ -4,12 +4,12 @@ import {
   removeProjectMember,
   updateProjectMemberRole,
 } from "@/fetchers/project-member/project-members";
-import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { HistoryTarget } from "@/query-client/settings-history-key";
 
 /** The row's own id when the screen knows it, and the direct row the answered roster shows for the
  * person (a new row on add, or the explicit child row that overrides an inherited one). */
 type Audited = {
+  workspaceId: string;
   projectId: string;
   personId: string;
   membershipId?: string | null;
@@ -25,17 +25,21 @@ type Roster = {
 /** Every roster write answers with the updated roster; the roster, the candidate list and the
  * project's assignable people (AS-5) all depend on it. */
 function useRosterMutation<Variables extends Audited>(
-  mutationFn: (variables: Omit<Variables, "membershipId">) => Promise<unknown>,
+  mutationFn: (
+    variables: Omit<Variables, "membershipId" | "workspaceId">,
+  ) => Promise<unknown>,
 ) {
   const queryClient = useQueryClient();
-  const { data: workspace } = useActiveWorkspace();
   return useMutation({
-    mutationFn: ({ membershipId: _membershipId, ...request }: Variables) =>
-      mutationFn(request),
+    mutationFn: ({
+      membershipId: _membershipId,
+      workspaceId: _workspaceId,
+      ...request
+    }: Variables) => mutationFn(request),
     meta: {
       audits: {
         targets: (variables: Variables, result: unknown): HistoryTarget[] => {
-          if (!workspace?.id) return [];
+          if (!variables.workspaceId) return [];
           const direct = (result as Roster).members?.find(
             (member) =>
               member.personId === variables.personId &&
@@ -49,7 +53,7 @@ function useRosterMutation<Variables extends Audited>(
               id,
               scope: {
                 kind: "project",
-                workspaceId: workspace.id,
+                workspaceId: variables.workspaceId,
                 projectId: variables.projectId,
               },
             }));

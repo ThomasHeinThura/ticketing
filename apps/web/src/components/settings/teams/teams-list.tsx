@@ -40,6 +40,7 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 function CreateTeamDialog({
   workspaceId,
@@ -59,6 +60,15 @@ function CreateTeamDialog({
         name: name.trim(),
         capacityDaysPerWeek: capacity === "" ? null : Number(capacity),
       }),
+    meta: {
+      audits: {
+        targets: (_: unknown, t: { id: string; workspaceId: string }) =>
+          auditEntity("team", t.id, {
+            kind: "workspace",
+            workspaceId: t.workspaceId,
+          }),
+      },
+    },
     onSuccess: async (team) => {
       await queryClient.invalidateQueries({ queryKey: teamsKey(workspaceId) });
       toast.success(t("common:actions.saved"));

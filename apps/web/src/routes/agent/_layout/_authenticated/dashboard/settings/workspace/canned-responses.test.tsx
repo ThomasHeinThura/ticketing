@@ -167,7 +167,7 @@ describe("canned responses history", () => {
 
   it("declares the saved snippet as the audited target", async () => {
     mocks.search = { id: "c1" };
-    mocks.save.mockResolvedValue({ id: "c1" });
+    mocks.save.mockResolvedValue({ id: "c1", workspaceId: "ws" });
     const client = mount();
     fireEvent.click(await screen.findByText("settings:cannedResponses.save"));
     await waitFor(() => expect(mocks.toast.success).toHaveBeenCalled());
@@ -183,7 +183,7 @@ describe("canned responses history", () => {
 
   it("declares the created id for a new snippet", async () => {
     mocks.search = { id: "new" };
-    mocks.save.mockResolvedValue({ id: "c9" });
+    mocks.save.mockResolvedValue({ id: "c9", workspaceId: "ws" });
     const client = mount();
     fireEvent.change(
       await screen.findByLabelText("settings:cannedResponses.name"),

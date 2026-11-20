@@ -45,6 +45,7 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { formatMinor, parseMinor } from "@/lib/money-minor";
 import { isoDay, useServerToday } from "@/lib/server-clock";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import { CostTypesSection } from "./cost-types-settings";
 import { DateField } from "./date-field";
 import { useInvalidateTime, useTimeErrorMessage } from "./time-shared";
@@ -90,6 +91,25 @@ function RatesSettingsContent() {
         currency: code,
         effectiveFrom: effectiveFrom || today,
       }),
+    meta: {
+      audits: {
+        targets: (
+          _: unknown,
+          rate: { id: string; workspaceId: string; projectId: string | null },
+        ) =>
+          auditEntity(
+            "hourly_rate",
+            rate.id,
+            rate.projectId
+              ? {
+                  kind: "project",
+                  workspaceId: rate.workspaceId,
+                  projectId: rate.projectId,
+                }
+              : { kind: "workspace", workspaceId: rate.workspaceId },
+          ),
+      },
+    },
     onSuccess: async () => {
       setAmount("");
       toast.success(t("timeTracking:rates.added"));

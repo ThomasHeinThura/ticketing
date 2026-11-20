@@ -36,7 +36,7 @@ describe("Join project", () => {
       const eligible = ["owner", "admin", "manager"].includes(role);
       render(
         <QueryClientProvider client={new QueryClient()}>
-          <JoinProject projectId="p" canJoin={eligible} />
+          <JoinProject projectId="p" workspaceId="w" canJoin={eligible} />
         </QueryClientProvider>,
       );
       expect(Boolean(screen.queryByRole("button"))).toBe(eligible);
@@ -52,7 +52,7 @@ describe("Join project", () => {
     );
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <JoinProject projectId="p" canJoin />
+        <JoinProject projectId="p" workspaceId="w" canJoin />
       </QueryClientProvider>,
     );
     fireEvent.click(screen.getByRole("button"));
@@ -69,7 +69,7 @@ describe("Join project", () => {
     join.mockRejectedValueOnce(new Error("refused")).mockResolvedValueOnce([]);
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <JoinProject projectId="p" canJoin />
+        <JoinProject projectId="p" workspaceId="w" canJoin />
       </QueryClientProvider>,
     );
     fireEvent.click(screen.getByRole("button"));

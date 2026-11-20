@@ -198,6 +198,7 @@ describe("ProjectMembersSettings", () => {
     );
     await waitFor(() =>
       expect(mocks.removeMember).toHaveBeenCalledWith({
+        workspaceId: "w1",
         projectId: "p1",
         personId: "p-direct",
       }),

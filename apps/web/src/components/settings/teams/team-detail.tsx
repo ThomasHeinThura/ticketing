@@ -49,6 +49,7 @@ import { teamsKey, useTeam } from "@/hooks/queries/team/use-teams";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 function useTeamMutation<TInput>(
   team: TeamDetail,
@@ -57,7 +58,21 @@ function useTeamMutation<TInput>(
 ) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: fn,
+    // The team is captured when the write starts, so a later prop change cannot retarget it.
+    mutationFn: async (input: TInput) => {
+      const { id, workspaceId } = team;
+      await fn(input);
+      return { id, workspaceId };
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, r: { id: string; workspaceId: string }) =>
+          auditEntity("team", r.id, {
+            kind: "workspace",
+            workspaceId: r.workspaceId,
+          }),
+      },
+    },
     onSettled: async (_data, error) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["team", team.id] }),
@@ -387,6 +402,7 @@ function DeleteCard({ team }: { team: TeamDetail }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const openPendingAction = useOpenPendingAction();
   const request = useMutation({
+    // no-audits: only requests a pending deletion; the approval records it
     mutationFn: () => requestTeamDeletion(team.id),
     onSuccess: (pending) =>
       openPendingAction({

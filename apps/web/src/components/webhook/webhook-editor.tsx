@@ -55,6 +55,7 @@ import { formatDateTime } from "@/lib/format";
 import { localizedAdminErrorMessage } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import { RotateSecretDialog } from "./rotate-secret-dialog";
 import {
   generateWebhookSecret,
@@ -359,24 +360,39 @@ function RotateDialog({
   onRotated: () => Promise<void>;
 }) {
   const stepUp = useStepUpAction();
+  const rotate = useMutation({
+    mutationFn: (secret: string) =>
+      stepUp.run(
+        {
+          operation: "webhook_rotate_secret",
+          workspaceId: webhook.workspaceId,
+          webhookId: webhook.id,
+        },
+        (token) => rotateWebhookSecret(webhook.id, secret, token),
+      ),
+    meta: {
+      audits: {
+        targets: (
+          _: unknown,
+          r: { ok: boolean; value?: { id: string; workspaceId: string } },
+        ) =>
+          r.ok && r.value
+            ? auditEntity("webhook", r.value.id, {
+                kind: "workspace",
+                workspaceId: r.value.workspaceId,
+              })
+            : [],
+      },
+    },
+    onSuccess: (result) => (result.ok ? onRotated() : undefined),
+  });
   return (
     <RotateSecretDialog
       webhookName={webhook.name}
       pending={stepUp.busy}
       error={null}
       stepUp={stepUp}
-      onRotate={(secret) => {
-        void stepUp
-          .run(
-            {
-              operation: "webhook_rotate_secret",
-              workspaceId: webhook.workspaceId,
-              webhookId: webhook.id,
-            },
-            (token) => rotateWebhookSecret(webhook.id, secret, token),
-          )
-          .then((result) => (result.ok ? onRotated() : undefined));
-      }}
+      onRotate={(secret) => rotate.mutate(secret)}
       onClose={onClose}
     />
   );
@@ -489,6 +505,15 @@ function StatusCard({
       if (!outcome.ok)
         throw new Error(t("stepUp.failedTitle"), { cause: "step_up" });
       return outcome.value;
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, w: { id: string; workspaceId: string }) =>
+          auditEntity("webhook", w.id, {
+            kind: "workspace",
+            workspaceId: w.workspaceId,
+          }),
+      },
     },
     onSuccess: async () => {
       await onChanged();
@@ -644,6 +669,15 @@ function WebhookForm({
       if (!outcome.ok)
         throw new Error(t("stepUp.failedTitle"), { cause: "step_up" });
       return outcome.value;
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, w: { id: string; workspaceId: string }) =>
+          auditEntity("webhook", w.id, {
+            kind: "workspace",
+            workspaceId: w.workspaceId,
+          }),
+      },
     },
     onSuccess: onSaved,
   });

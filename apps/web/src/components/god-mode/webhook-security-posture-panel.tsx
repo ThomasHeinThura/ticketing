@@ -1,4 +1,8 @@
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -42,6 +46,7 @@ import {
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import { FailureAlert, StepUpFields } from "./step-up-fields";
 
 export function WebhookSecurityPosturePanel() {
@@ -242,17 +247,44 @@ function WebhookRotationDialog({ onClose }: { onClose: () => void }) {
     values.every((secret) => secret.length >= 24 && secret.length <= 256) &&
     new Set(values).size === values.length;
 
+  const rotate = useMutation({
+    mutationFn: ({
+      replacementSetDigest,
+      replacements,
+    }: {
+      replacementSetDigest: string;
+      replacements: WebhookSecretReplacement[];
+      targets: WebhookRotationTarget[];
+    }) =>
+      stepUp.run(
+        { operation: "webhook_rotate_all", replacementSetDigest },
+        (token) => rotateAllWebhookSecrets(replacements, token),
+        { writeErrors: "rethrow" },
+      ),
+    meta: {
+      audits: {
+        targets: ({ targets }: { targets: WebhookRotationTarget[] }) =>
+          targets.flatMap((target) =>
+            auditEntity("webhook", target.id, {
+              kind: "workspace",
+              workspaceId: target.workspaceId,
+            }),
+          ),
+      },
+    },
+  });
+
   const submit = async () => {
     if (!validSecrets || stepUp.busy) return;
     setFailed(false);
     try {
       const replacementSetDigest =
         await webhookSecretRotationSetDigest(replacements);
-      const result = await stepUp.run(
-        { operation: "webhook_rotate_all", replacementSetDigest },
-        (token) => rotateAllWebhookSecrets(replacements, token),
-        { writeErrors: "rethrow" },
-      );
+      const result = await rotate.mutateAsync({
+        replacementSetDigest,
+        replacements,
+        targets,
+      });
       if (!result.ok) {
         setSecrets({});
         return;
