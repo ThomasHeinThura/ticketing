@@ -4,6 +4,8 @@ services:
   taskdesk:
     labels:
       traefik.enable: "false"
+    volumes: !override
+      - taskdesk-data:${TASKDESK_DRILL_DATA_MOUNT:-/app/data}
 networks:
   taskdesk:
     name: ${COMPOSE_PROJECT_NAME:?an explicit Compose project is required}-restore

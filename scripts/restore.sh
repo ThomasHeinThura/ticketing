@@ -123,6 +123,18 @@ PORT="${TASKDESK_PORT:-5173}"
 [[ "$POSTGRES_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]{0,62}$ ]] || { printf 'xx invalid POSTGRES_USER identifier\n' >&2; exit 1; }
 [[ "$POSTGRES_DB" =~ ^[A-Za-z_][A-Za-z0-9_-]{0,62}$ ]] || { printf 'xx invalid POSTGRES_DB identifier\n' >&2; exit 1; }
 
+printf '==> Verifying backup checksums in %s\n' "$TARGET_DIR"
+(
+  cd "$TARGET_DIR"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum -c "$CHECKSUMS_FILE"
+  else
+    shasum -a 256 -c "$CHECKSUMS_FILE"
+  fi
+)
+if [ -f "$MOUNT_FILE" ]; then SOURCE_MOUNT="$(cat "$MOUNT_FILE")"; else SOURCE_MOUNT="$LEGACY_MOUNT"; fi
+[[ "$SOURCE_MOUNT" = /app/data || "$SOURCE_MOUNT" = /app/data/attachments ]] || { printf 'xx invalid source mount\n' >&2; exit 1; }
+
 COMPOSE_FILES=(-f compose.yml)
 case "$MODE" in
   local)
@@ -130,6 +142,7 @@ case "$MODE" in
     ;;
   isolated)
     [[ -n "$PROJECT_NAME" && "$PROJECT_NAME" != taskdesk ]] || { printf 'xx isolated restore requires a non-default --project-name\n' >&2; exit 1; }
+    export TASKDESK_DRILL_DATA_MOUNT="$SOURCE_MOUNT"
     COMPOSE_FILES+=(-f deploy/compose.restore-drill.yml)
     ;;
   production)
@@ -148,16 +161,6 @@ esac
 
 dc() { docker compose "${COMPOSE_FILES[@]}" "$@"; }
 
-printf '==> Verifying backup checksums in %s\n' "$TARGET_DIR"
-(
-  cd "$TARGET_DIR"
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum -c "$CHECKSUMS_FILE"
-  else
-    shasum -a 256 -c "$CHECKSUMS_FILE"
-  fi
-)
-
 printf '==> Verifying pg_restore --list on %s\n' "$DUMP_FILE"
 dc exec -T postgres pg_restore --list < "$DUMP_FILE" >/dev/null
 
@@ -166,7 +169,6 @@ dc exec -T postgres pg_restore --list < "$DUMP_FILE" >/dev/null
 . "$REPO_ROOT/scripts/lib/compose-data-volume.sh"
 DATA_MOUNT="$(resolve_compose_data_volume)" || exit 1
 DATA_VOLUME="${DATA_MOUNT%%:*}"
-if [ -f "$MOUNT_FILE" ]; then SOURCE_MOUNT="$(cat "$MOUNT_FILE")"; else SOURCE_MOUNT="$LEGACY_MOUNT"; fi
 [ "$SOURCE_MOUNT" = "${DATA_MOUNT#*:}" ] || { printf 'xx attachment mount mismatch; restore refused\n' >&2; exit 1; }
 
 STAGING_DB="${POSTGRES_DB:0:35}_restore_staging_$$"
