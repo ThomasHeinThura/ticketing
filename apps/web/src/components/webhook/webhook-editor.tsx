@@ -27,7 +27,7 @@ import {
   RefreshCw,
   Send,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import { ErrorReference } from "@/components/errors/error-reference";
@@ -360,16 +360,20 @@ function RotateDialog({
   onRotated: () => Promise<void>;
 }) {
   const stepUp = useStepUpAction();
+  const pendingSecret = useRef<string | null>(null);
   const rotate = useMutation({
-    mutationFn: (secret: string) =>
-      stepUp.run(
+    mutationFn: () => {
+      const secret = pendingSecret.current;
+      if (!secret) throw new Error("No webhook secret pending");
+      return stepUp.run(
         {
           operation: "webhook_rotate_secret",
           workspaceId: webhook.workspaceId,
           webhookId: webhook.id,
         },
         (token) => rotateWebhookSecret(webhook.id, secret, token),
-      ),
+      );
+    },
     meta: {
       audits: {
         targets: (
@@ -392,7 +396,16 @@ function RotateDialog({
       pending={stepUp.busy}
       error={null}
       stepUp={stepUp}
-      onRotate={(secret) => rotate.mutate(secret)}
+      onRotate={(secret) => {
+        if (pendingSecret.current) return;
+        pendingSecret.current = secret;
+        void rotate
+          .mutateAsync()
+          .catch(() => {})
+          .finally(() => {
+            pendingSecret.current = null;
+          });
+      }}
       onClose={onClose}
     />
   );

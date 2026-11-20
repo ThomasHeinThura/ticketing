@@ -10,7 +10,14 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import type { FormEvent } from "react";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { ChangePasswordCard } from "@/components/account/change-password-card";
 import PageTitle from "@/components/page-title";
@@ -44,8 +51,11 @@ type FactorStatus = {
 function AccountSecurity() {
   const { t } = useTranslation();
   const passwordChange = useChangePassword();
+  const pendingCode = useRef<string | null>(null);
   const verifyTotp = useMutation({
-    mutationFn: async (totp: string) => {
+    mutationFn: async () => {
+      const totp = pendingCode.current;
+      if (!totp) throw new Error("No verification code pending");
       const result = await authClient.twoFactor.verifyTotp({ code: totp });
       if (result.error) throw new Error(t("auth:accountSecurity.codeError"));
     },
@@ -114,7 +124,13 @@ function AccountSecurity() {
     setPending(true);
     setError(null);
     try {
-      await verifyTotp.mutateAsync(code);
+      if (pendingCode.current) return;
+      pendingCode.current = code;
+      try {
+        await verifyTotp.mutateAsync();
+      } finally {
+        pendingCode.current = null;
+      }
       setTotpUri(null);
       setBackupCodes(pendingBackupCodes);
       setPendingBackupCodes(null);

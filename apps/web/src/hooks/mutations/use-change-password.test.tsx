@@ -69,13 +69,16 @@ it("declares the security History target and audits only a successful password c
     data: { ok: true },
     error: null,
   });
-  const { result } = mount(useChangePassword);
+  const { result, client } = mount(useChangePassword);
   await act(async () => {
     await result.current.mutateAsync(password);
   });
   expect(mocks.audited).toHaveBeenCalledWith([
     { kind: "self", audience: "staff", section: "security" },
   ]);
+  expect(
+    client.getMutationCache().getAll()[0]?.state.variables,
+  ).toBeUndefined();
   mocks.audited.mockClear();
   mocks.changePassword.mockResolvedValueOnce({
     data: null,

@@ -203,7 +203,38 @@ function importedAs(file: string, text: string, fetcher: string, fn: string) {
   return names;
 }
 
+// Direct Better Auth writes that produce personal History entries.
+const directAuthWrite =
+  /\b(?:authClient\.(?:updateUser|changePassword|twoFactor\.verifyTotp)|portalAuthClient\.\$fetch\(\s*["']\/change-password["'])/;
+function directAuthProblems(file: string, text: string): string[] {
+  const blocks = mutationBlocks(text).filter((block) =>
+    directAuthWrite.test(block),
+  );
+  if (blocks.length === 0) return [];
+  if (!mutationFiles.has(file))
+    return [`${file} has an unregistered auth mutation`];
+  return blocks
+    .filter((block) => !hasAudits(block))
+    .map(() => `${file} has an auth mutation without audits`);
+}
+
 describe("audited web mutations", () => {
+  it("registers direct auth mutations and checks each audit declaration", () => {
+    expect(
+      walk(WEB)
+        .filter(isSource)
+        .flatMap((file) => directAuthProblems(relative(WEB, file), read(file))),
+    ).toEqual([]);
+  });
+
+  it("rejects a locale mutation with its audits removed", () => {
+    const file = "hooks/use-locale.ts";
+    const source = read(join(WEB, file)).replace(/audits:/g, "removed:");
+    expect(directAuthProblems(file, source)).toEqual([
+      `${file} has an auth mutation without audits`,
+    ]);
+  });
+
   it("lists a web caller or a reason for none", () => {
     expect(
       AUDITED_ROUTES.filter(

@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   ChangePasswordCard,
   type PasswordChange,
@@ -61,8 +61,11 @@ function PortalAccountRoute() {
 
 function PortalPasswordSettings() {
   const { t } = usePortalTranslation("portal");
+  const pendingPassword = useRef<PasswordChange | null>(null);
   const passwordChange = useMutation({
-    mutationFn: async (input: PasswordChange) => {
+    mutationFn: async () => {
+      const input = pendingPassword.current;
+      if (!input) throw new Error("No password change pending");
       const result = await portalAuthClient.$fetch("/change-password", {
         method: "POST",
         body: input,
@@ -108,7 +111,16 @@ function PortalPasswordSettings() {
       ) : (
         <ChangePasswordCard
           hasLocalPassword={hasLocalPassword}
-          changePassword={passwordChange.mutateAsync}
+          changePassword={async (input) => {
+            if (pendingPassword.current)
+              throw new Error("Password change already pending");
+            pendingPassword.current = input;
+            try {
+              await passwordChange.mutateAsync();
+            } finally {
+              pendingPassword.current = null;
+            }
+          }}
         />
       )}
     </div>

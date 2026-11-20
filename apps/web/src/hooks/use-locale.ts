@@ -16,10 +16,8 @@ export function useLocale() {
     [i18n.resolvedLanguage],
   );
 
-  const check = profileSessionGuard(session?.user?.id, session?.session?.id);
   const save = useMutation({
     mutationFn: async (nextLocale: AppLocale) => {
-      await check();
       const { error } = await authClient.updateUser({ locale: nextLocale });
       if (error) {
         throw new Error(error.message || "Failed to update locale");
@@ -35,6 +33,8 @@ export function useLocale() {
   });
 
   const setLocale = async (nextLocale: AppLocale) => {
+    const check = profileSessionGuard(session?.user?.id, session?.session?.id);
+    await check();
     await save.mutateAsync(nextLocale);
     await check(true);
     const resolved = resolveLocale(nextLocale, null);

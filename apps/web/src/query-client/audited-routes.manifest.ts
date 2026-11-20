@@ -1089,6 +1089,7 @@ export const AUDIT_WRITERS: AuditWriter[] = [
       "user.profile_updated",
     ],
     mutations: [
+      "hooks/use-locale.ts",
       `${H}use-change-password.ts`,
       `${H}use-remove-user-avatar.ts`,
       `${H}use-update-user-avatar.ts`,

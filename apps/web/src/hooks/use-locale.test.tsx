@@ -13,6 +13,7 @@ const mock = vi.hoisted(() => ({
   change: vi.fn(),
   audited: vi.fn(),
   identity: { id: "u1", session: "s1" },
+  missingSession: false,
 }));
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
@@ -25,10 +26,12 @@ vi.mock("@/lib/auth-client", () => ({
       error: null,
     }),
     useSession: () => ({
-      data: {
-        user: { id: mock.identity.id },
-        session: { id: mock.identity.session },
-      },
+      data: mock.missingSession
+        ? undefined
+        : {
+            user: { id: mock.identity.id },
+            session: { id: mock.identity.session },
+          },
     }),
   },
 }));
@@ -116,4 +119,17 @@ it("audits the profile, invalidates the session and changes language on success"
   ]);
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ["session"] });
   expect(mock.change).toHaveBeenCalledWith("en-US");
+});
+
+it("renders without a session and rejects only when saving", async () => {
+  mock.missingSession = true;
+  try {
+    const { hook } = mount();
+    expect(hook.result.current.locale).toBe("en-US");
+    await expect(hook.result.current.setLocale("en-US")).rejects.toThrow(
+      "session unavailable",
+    );
+  } finally {
+    mock.missingSession = false;
+  }
 });

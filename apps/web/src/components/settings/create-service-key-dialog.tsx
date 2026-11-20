@@ -23,7 +23,7 @@ import {
   Separator,
   Switch,
 } from "@taskdesk/ui";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorReference } from "@/components/errors/error-reference";
 import {
@@ -144,6 +144,7 @@ export function CreateServiceKeyDialog({
     onClose();
   }
 
+  const pendingCreated = useRef<PendingHandoff | null>(null);
   const mutation = useMutation({
     mutationFn: async () => {
       const captured = userId && sessionId ? { host, userId, sessionId } : null;
@@ -168,33 +169,35 @@ export function CreateServiceKeyDialog({
         throw new Error(t("settings:serviceKeys.stepUpFailed"), {
           cause: "step_up",
         });
-      return {
+      pendingCreated.current = {
         created: outcome.value,
         captured,
         savedWorkspaceId,
         intent,
       };
+      return { id: outcome.value.id, savedWorkspaceId };
     },
     meta: {
       audits: {
         targets: (
           _: unknown,
-          {
-            created,
-            savedWorkspaceId,
-          }: { created: { id: string }; savedWorkspaceId: string },
+          { id, savedWorkspaceId }: { id: string; savedWorkspaceId: string },
         ) => [
           {
             kind: "entity",
             type: "service_api_key",
-            id: created.id,
+            id,
             scope: { kind: "workspace", workspaceId: savedWorkspaceId },
           },
         ],
       },
     },
-    onSuccess: async ({ created, captured, savedWorkspaceId, intent }) => {
-      await handOff({ created, captured, savedWorkspaceId, intent });
+    onSuccess: async () => {
+      const created = pendingCreated.current;
+      if (created) await handOff(created);
+    },
+    onSettled: () => {
+      pendingCreated.current = null;
     },
   });
 

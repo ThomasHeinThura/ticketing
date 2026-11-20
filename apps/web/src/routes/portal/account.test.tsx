@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   history: vi.fn(),
   audited: vi.fn(),
   historyDenied: false,
+  client: null as QueryClient | null,
 }));
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
@@ -63,6 +64,7 @@ function Account() {
         }),
       }),
   );
+  mocks.client = client;
   return (
     <QueryClientProvider client={client}>
       <Page />
@@ -176,4 +178,26 @@ describe("portal account password section", () => {
       0,
     );
   });
+});
+
+it("does not retain passwords in the mutation cache after saving", async () => {
+  status(true);
+  mocks.change.mockResolvedValue({ error: null });
+  render(<Account />);
+  await screen.findByLabelText("auth:changePassword.currentPassword");
+  fillAndSubmit();
+  await waitFor(() => expect(mocks.change).toHaveBeenCalled());
+  await waitFor(() =>
+    expect(mocks.client?.getMutationCache().getAll()[0]?.state.status).toBe(
+      "success",
+    ),
+  );
+  const cache = JSON.stringify(
+    mocks.client
+      ?.getMutationCache()
+      .getAll()
+      .map((mutation) => ({ state: mutation.state, meta: mutation.meta })),
+  );
+  expect(cache).not.toContain("current-password");
+  expect(cache).not.toContain("new-password");
 });

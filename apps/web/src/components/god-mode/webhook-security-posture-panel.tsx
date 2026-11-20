@@ -33,7 +33,7 @@ import {
   TableRow,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   listAllWebhookRotationTargets,
@@ -247,20 +247,22 @@ function WebhookRotationDialog({ onClose }: { onClose: () => void }) {
     values.every((secret) => secret.length >= 24 && secret.length <= 256) &&
     new Set(values).size === values.length;
 
+  const pendingReplacements = useRef<WebhookSecretReplacement[] | null>(null);
   const rotate = useMutation({
     mutationFn: ({
       replacementSetDigest,
-      replacements,
     }: {
       replacementSetDigest: string;
-      replacements: WebhookSecretReplacement[];
       targets: WebhookRotationTarget[];
-    }) =>
-      stepUp.run(
+    }) => {
+      const replacements = pendingReplacements.current;
+      if (!replacements) throw new Error("No webhook secrets pending");
+      return stepUp.run(
         { operation: "webhook_rotate_all", replacementSetDigest },
         (token) => rotateAllWebhookSecrets(replacements, token),
         { writeErrors: "rethrow" },
-      ),
+      );
+    },
     meta: {
       audits: {
         targets: ({ targets }: { targets: WebhookRotationTarget[] }) =>
@@ -275,14 +277,14 @@ function WebhookRotationDialog({ onClose }: { onClose: () => void }) {
   });
 
   const submit = async () => {
-    if (!validSecrets || stepUp.busy) return;
+    if (!validSecrets || stepUp.busy || pendingReplacements.current) return;
+    pendingReplacements.current = replacements;
     setFailed(false);
     try {
       const replacementSetDigest =
         await webhookSecretRotationSetDigest(replacements);
       const result = await rotate.mutateAsync({
         replacementSetDigest,
-        replacements,
         targets,
       });
       if (!result.ok) {
@@ -301,6 +303,8 @@ function WebhookRotationDialog({ onClose }: { onClose: () => void }) {
         return;
       }
       setFailed(true);
+    } finally {
+      pendingReplacements.current = null;
     }
   };
 
