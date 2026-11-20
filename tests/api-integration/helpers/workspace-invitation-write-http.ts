@@ -18,16 +18,8 @@ import {
 // database state and status codes rather than on a response shape.
 
 /**
- * A unique `x-forwarded-for` per call, by default. `requireInviteRateLimit()`
- * (`apps/api/src/utils/require-invite-rate-limit.ts`) keys its bucket on the
- * resolved client address, and the integration test harness's `app.request`
- * exposes no real socket (`resolveClientIp` then falls back to a single
- * shared `"no-trusted-ip"` bucket) -- so, exactly like `signUpUser` and
- * `inviteAndAcceptAsNewMember` in `organization-http.ts`, ordinary calls here
- * must each present their own address or they will silently share ONE
- * caller's rate-limit budget across an entire test file. A caller that
- * deliberately wants to test the rate limit passes its own fixed IP in
- * `overrides.clientIp` instead (see `workspace-invite-rate-limit.test.ts`).
+ * The invite limit is keyed by the signed-in user. The client address remains
+ * configurable for tests that exercise other address-based guards.
  */
 export async function inviteWorkspaceMemberNative(
   app: App,

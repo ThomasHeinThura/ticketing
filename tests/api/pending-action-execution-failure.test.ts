@@ -3,7 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 
 // The recorder's default writes through the database; these tests inject their own
 // recorder, so the database module is replaced to guarantee no connection is made.
-vi.mock("../../apps/api/src/database", () => ({ default: {}, schema: {} }));
+vi.mock("../../apps/api/src/database", async () => ({
+  default: {},
+  schema: {
+    ...(await import("../../apps/api/src/database/schema")),
+    ...(await import("../../apps/api/src/database/schema-imports")),
+  },
+}));
 
 const {
   failOnExecutorError,

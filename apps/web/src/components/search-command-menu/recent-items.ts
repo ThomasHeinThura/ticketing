@@ -1,4 +1,5 @@
 import globalSearch from "@/fetchers/search/global-search";
+import { clearStoredKeys, DRAFT_KEY_PREFIXES } from "@/lib/clear-stored-keys";
 import {
   PALETTE_RESULT_TYPES,
   type PaletteResultType,
@@ -27,18 +28,9 @@ function storageKey(userId: string, workspaceId: string) {
   return `${KEY_PREFIX}${userId}:${workspaceId}`;
 }
 
-/** Remove every stored recent list (all users and workspaces, plus the legacy un-scoped keys). */
+/** Remove stored recents and drafts when signing out. */
 export function clearRecentItems() {
-  try {
-    const keys: string[] = [];
-    for (let index = 0; index < window.localStorage.length; index++) {
-      const key = window.localStorage.key(index);
-      if (key?.startsWith(KEY_PREFIX)) keys.push(key);
-    }
-    for (const key of keys) window.localStorage.removeItem(key);
-  } catch {
-    // Storage can be unavailable; nothing to clear.
-  }
+  clearStoredKeys([KEY_PREFIX, ...DRAFT_KEY_PREFIXES]);
 }
 
 function isRecentItem(value: unknown): value is RecentItem {

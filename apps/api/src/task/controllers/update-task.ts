@@ -19,7 +19,11 @@ import {
   validateDateRange,
 } from "../../utils/validate-dates";
 import { lockTaskAndAssertProjectLiveForIdentity } from "../assert-task-project-live";
-import { findColumnBySlugForIdentity, updateTaskRow } from "../repository";
+import {
+  clearTaskReminders,
+  findColumnBySlugForIdentity,
+  updateTaskRow,
+} from "../repository";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 export class TaskVersionConflictError extends Error {
@@ -130,6 +134,9 @@ async function updateTask(
         notification: null,
         changes,
       };
+    }
+    if (dateValue(lockedTask.dueDate) !== dateValue(nextDueDate)) {
+      await clearTaskReminders(tx, identity, id);
     }
     const updatedTask = await updateTaskRow(tx, identity, id, {
       title,

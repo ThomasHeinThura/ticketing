@@ -62,7 +62,8 @@ function captureCacheError(error: unknown, context: "query" | "mutation") {
     networkErrorCooldowns.set(dedupeKey, now);
     // ponytail: hard cap with full clear; entries older than the cooldown are
     // useless to keep, and `error.message` can vary across fetchers/CORS
-    // failures so the keyspace is unbounded in practice.
+    // failures so the keyspace is unbounded in practice. Ceiling: 50 keys with a full clear.
+    // Revisit bounded eviction if >50 distinct errors cause duplicate reports in one cooldown.
     if (networkErrorCooldowns.size > 50) networkErrorCooldowns.clear();
   }
 

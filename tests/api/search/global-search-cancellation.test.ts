@@ -127,8 +127,9 @@ describe("global search cancellation", () => {
       server: ReturnType<typeof serve>;
       port: number;
     }>((resolve) => {
-      const listeningServer = serve({ fetch: app.fetch, port: 0 }, (info) =>
-        resolve({ server: listeningServer, port: info.port }),
+      const listeningServer = serve(
+        { fetch: app.fetch, hostname: "127.0.0.1", port: 0 },
+        (info) => resolve({ server: listeningServer, port: info.port }),
       );
     });
     const req = httpRequest(

@@ -22,6 +22,7 @@ BACKUP_ARG=""
 CONFIRMED=0
 MODE="local"
 PROJECT_NAME=""
+LEGACY_MOUNT=""
 
 usage() {
   cat <<'EOF'
@@ -32,7 +33,8 @@ Options:
   --project-name <name>  Select an isolated Compose project (default: Compose configuration)
   --backup <id-or-dir>  Backup identifier under backups/ or path to backup directory
   --confirm             Required confirmation flag before overwriting database and attachments
-  --mode <mode>         Compose overlay mode: local (default), production or isolated
+  --mode <mode>         Compose overlay mode: local (default), sit, uat, production or isolated
+  --legacy-source-mount <path>  Source mount for backups without mount metadata
 EOF
   exit "${1:-1}"
 }
@@ -48,6 +50,12 @@ while [ $# -gt 0 ]; do
     --backup)
       [ $# -ge 2 ] || usage 1
       BACKUP_ARG="$2"
+      shift 2
+      ;;
+    --legacy-source-mount)
+      [ $# -ge 2 ] || usage 1
+      LEGACY_MOUNT="$2"
+      [[ "$LEGACY_MOUNT" = /app/data || "$LEGACY_MOUNT" = /app/data/attachments ]] || { printf 'xx invalid legacy source mount\n' >&2; exit 1; }
       shift 2
       ;;
     --confirm)
@@ -91,10 +99,17 @@ fi
 DUMP_FILE="$TARGET_DIR/postgres.dump"
 ATTACHMENTS_TAR="$TARGET_DIR/attachments.tar"
 CHECKSUMS_FILE="$TARGET_DIR/SHA256SUMS"
+MOUNT_FILE="$TARGET_DIR/attachment-mount.txt"
 
 [ -f "$DUMP_FILE" ] || { printf 'xx missing %s\n' "$DUMP_FILE" >&2; exit 1; }
 [ -f "$ATTACHMENTS_TAR" ] || { printf 'xx missing %s\n' "$ATTACHMENTS_TAR" >&2; exit 1; }
 [ -f "$CHECKSUMS_FILE" ] || { printf 'xx missing %s\n' "$CHECKSUMS_FILE" >&2; exit 1; }
+if [ -e "$MOUNT_FILE" ]; then
+  [ -f "$MOUNT_FILE" ] && [ -z "$LEGACY_MOUNT" ] || { printf 'xx legacy source mount allowed only when metadata is absent\n' >&2; exit 1; }
+  grep -Eq '^[0-9a-fA-F]{64}  attachment-mount[.]txt$' "$CHECKSUMS_FILE" || { printf 'xx attachment mount metadata is not checksummed\n' >&2; exit 1; }
+else
+  [ -n "$LEGACY_MOUNT" ] || { printf 'xx missing attachment mount metadata; specify --legacy-source-mount\n' >&2; exit 1; }
+fi
 
 if [ -f "$ENV_FILE" ]; then
   # shellcheck disable=SC1090
@@ -120,8 +135,11 @@ case "$MODE" in
   production)
     COMPOSE_FILES+=(-f deploy/compose.prod.yml)
     ;;
+  sit|uat)
+    COMPOSE_FILES+=(-f "deploy/compose.$MODE.yml")
+    ;;
   *)
-    printf 'xx unknown mode: %s (expected local, production or isolated)\n' "$MODE" >&2
+    printf 'xx unknown mode: %s (expected local, sit, uat, production or isolated)\n' "$MODE" >&2
     exit 1
     ;;
 esac
@@ -146,16 +164,26 @@ dc exec -T postgres pg_restore --list < "$DUMP_FILE" >/dev/null
 # Resolve before the first mutation. A missing/ambiguous/bind-mounted target fails closed.
 # shellcheck source=scripts/lib/compose-data-volume.sh
 . "$REPO_ROOT/scripts/lib/compose-data-volume.sh"
-DATA_VOLUME="$(resolve_compose_data_volume)" || exit 1
+DATA_MOUNT="$(resolve_compose_data_volume)" || exit 1
+DATA_VOLUME="${DATA_MOUNT%%:*}"
+if [ -f "$MOUNT_FILE" ]; then SOURCE_MOUNT="$(cat "$MOUNT_FILE")"; else SOURCE_MOUNT="$LEGACY_MOUNT"; fi
+[ "$SOURCE_MOUNT" = "${DATA_MOUNT#*:}" ] || { printf 'xx attachment mount mismatch; restore refused\n' >&2; exit 1; }
 
 STAGING_DB="${POSTGRES_DB:0:35}_restore_staging_$$"
 RECOVERY_DB="${POSTGRES_DB:0:35}_restore_recovery_$$"
 STAGING_ACTIVE=0
+PROMOTED=0
+UNDO_DIR=".restore-undo-$$"
+UNDO_FILE="$UNDO_DIR/attachments.tar"
 cleanup_staging_db() {
   if [ "$STAGING_ACTIVE" -eq 1 ]; then
     dc exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
       -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$STAGING_DB' AND pid <> pg_backend_pid();" \
       -c "DROP DATABASE IF EXISTS \"$STAGING_DB\";" >/dev/null 2>&1 || true
+    dc up -d --wait taskdesk || printf 'xx Could not restart taskdesk after staging failure\n' >&2
+  fi
+  if [ "$PROMOTED" -eq 1 ]; then
+    printf 'xx Restore incomplete; recovery database: %s; attachment undo archive in volume %s: %s\n' "$RECOVERY_DB" "$DATA_VOLUME" "$UNDO_FILE" >&2
   fi
 }
 trap cleanup_staging_db EXIT
@@ -176,14 +204,13 @@ dc exec -T postgres psql --single-transaction -v ON_ERROR_STOP=1 -U "$POSTGRES_U
   -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('$POSTGRES_DB', '$STAGING_DB') AND pid <> pg_backend_pid();" \
   -c "ALTER DATABASE \"$POSTGRES_DB\" RENAME TO \"$RECOVERY_DB\";" \
   -c "ALTER DATABASE \"$STAGING_DB\" RENAME TO \"$POSTGRES_DB\";" >/dev/null
-dc exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
-  -c "DROP DATABASE \"$RECOVERY_DB\";" >/dev/null
+PROMOTED=1
 
 printf '==> Step 3: Restoring attachment volume (%s)\n' "$DATA_VOLUME"
 docker run --rm -i \
   -v "$DATA_VOLUME:/data" \
   alpine:3.22 \
-  sh -c 'stage="/data/.restore-staging-$$"; cleanup() { rm -rf -- "$stage"; }; trap cleanup EXIT; mkdir -p "$stage" && tar -C "$stage" -xf - && find /data -mindepth 1 -maxdepth 1 ! -name ".restore-staging-$$" -exec rm -rf -- {} + && find "$stage" -mindepth 1 -maxdepth 1 -exec mv -- {} /data/ \; && rm -rf -- "$stage" && chown -R 10001:10001 /data' < "$ATTACHMENTS_TAR"
+  sh -c 'undo="$1"; mkdir "/data/$undo" && tar -C /data --exclude="./$undo" -cf "/data/$undo/attachments.tar" . && tar -C /data --exclude="./$undo" --exclude="./$undo/*" -xf - && chown -R 10001:10001 /data' sh "$UNDO_DIR" < "$ATTACHMENTS_TAR"
 
 printf '==> Step 4: Running migrations and role grants\n'
 dc run --rm migrate
@@ -195,6 +222,10 @@ printf '==> Step 6: Probing /api/public/health/ready\n'
 for _ in $(seq 1 30); do
   # The image ships no wget or curl; Node is the one HTTP client it has.
   if dc exec -T taskdesk node -e "fetch('http://127.0.0.1:${PORT}/api/public/health/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))" >/dev/null 2>&1; then
+    dc exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
+      -c "DROP DATABASE \"$RECOVERY_DB\";" >/dev/null
+    PROMOTED=0
+    docker run --rm -v "$DATA_VOLUME:/data" alpine:3.22 sh -c 'rm -f "/data/$1/attachments.tar" && rmdir "/data/$1"' sh "$UNDO_DIR"
     printf ' ok Restore verified and /api/public/health/ready is green\n'
     exit 0
   fi

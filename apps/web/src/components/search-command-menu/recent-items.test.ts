@@ -51,7 +51,15 @@ describe("palette recent items (SV-6)", () => {
     expect(readRecentItems("u2", "w1")).toEqual([]);
     window.localStorage.setItem("taskdesk:palette-recent:w1", "[]");
     window.localStorage.setItem("unrelated", "keep");
+    window.localStorage.setItem("taskdesk:comment-draft:u1:item", "private");
+    window.localStorage.setItem("taskdesk:intake-draft:u1:form", "answers");
     clearRecentItems();
+    expect(
+      window.localStorage.getItem("taskdesk:comment-draft:u1:item"),
+    ).toBeNull();
+    expect(
+      window.localStorage.getItem("taskdesk:intake-draft:u1:form"),
+    ).toBeNull();
     expect(readRecentItems("u1", "w1")).toEqual([]);
     expect(
       window.localStorage.getItem("taskdesk:palette-recent:w1"),

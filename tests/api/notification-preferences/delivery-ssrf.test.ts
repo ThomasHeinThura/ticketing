@@ -81,7 +81,10 @@ vi.mock("../../../apps/api/src/database", async () => {
         return chain;
       },
     },
-    schema,
+    schema: {
+      ...schema,
+      ...(await import("../../../apps/api/src/database/schema-imports")),
+    },
   };
 });
 

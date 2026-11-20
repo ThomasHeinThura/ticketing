@@ -20,12 +20,6 @@ import { currentImpersonatorId } from "../auth/impersonation-context";
 import type { Executor } from "../database/executor";
 import { EVENT_KEYS } from "../events/event-keys";
 import { AUDIT_ACTIONS_NOT_YET_WIRED, AUDIT_ONLY_ACTIONS } from "./actions";
-import {
-  insertAuditRow,
-  lockAuditChain,
-  readAuditChainHeadHash,
-  readDatabaseNow,
-} from "./repository";
 
 type DbOrTx = Executor;
 
@@ -340,6 +334,16 @@ export async function appendAuditLog(
 
   assertNoObviousSecret(normalizedBefore, "before");
   assertNoObviousSecret(normalizedAfter, "after");
+
+  // Dynamic on purpose: a static `./repository` import closes the cycle credential-invalidation ->
+  // audit-writer -> repository -> scheduler -> auth -> credential-invalidation, so auth built its
+  // adapter before the credential module finished initialising.
+  const {
+    insertAuditRow,
+    lockAuditChain,
+    readAuditChainHeadHash,
+    readDatabaseNow,
+  } = await import("./repository");
 
   // Everything below runs inside ONE transaction, on ONE session -- load-bearing, not
   // a style choice. `pg_advisory_xact_lock` is scoped to the session/transaction that

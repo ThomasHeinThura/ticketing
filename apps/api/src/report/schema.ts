@@ -1,5 +1,14 @@
 import { z } from "../openapi";
-import { CUSTOM_CHART_TYPES, customQuerySchema } from "./custom";
+
+export const CUSTOM_ENTITIES = ["work_item", "time_entry"] as const;
+export const CUSTOM_CHART_TYPES = ["bar", "line", "table", "number"] as const;
+
+export const customQuerySchema = z.object({
+  entity: z.enum(CUSTOM_ENTITIES).default("work_item"),
+  filter: z.record(z.string(), z.unknown()).optional(),
+  groupBy: z.string().min(1).max(120).optional(),
+  aggregate: z.record(z.string(), z.unknown()).optional(),
+});
 
 export const workspaceIdQuery = z.object({ workspaceId: z.string().min(1) });
 export const reportKeyParam = z.object({ key: z.string().min(1).max(80) });

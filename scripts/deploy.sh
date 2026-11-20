@@ -618,7 +618,6 @@ case "$MODE" in
     fi
     export TASKDESK_IMAGE_TAG TASKDESK_IMAGE_DIGEST
     resolve_and_verify_image
-    persist_image_selection "${TASKDESK_IMAGE_TAG:-v2.0.0}" "$TASKDESK_IMAGE_DIGEST"
     say "pulling"
     dc pull migrate taskdesk
     # issue #296: `migrate` and `taskdesk` share an image tag, but a completed
@@ -627,6 +626,14 @@ case "$MODE" in
     # PREVIOUS version's run. Naming `migrate` explicitly here is what makes the
     # new image's migrations (and any grant changes) apply before the new
     # `taskdesk` container starts.
+    ROLLBACK_OVERLAY_FLAG="--target ${TARGET}"
+    [ "$OVERLAY_SET" -eq 0 ] || ROLLBACK_OVERLAY_FLAG="--overlay ${OVERLAY}"
+    if [ -n "$CURRENT" ] && [[ "$CURRENT_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+      CURRENT_DIGEST="${CURRENT##*@}"
+      warn "rollback command: scripts/deploy.sh rollback ${CURRENT_DIGEST} ${CURRENT_TAG} ${ROLLBACK_OVERLAY_FLAG}"
+    else
+      warn "previous digest or signed tag unavailable; identify both before rollback"
+    fi
     say "running migrations for the new image"
     # issue #296, D1 (independent Opus 5.5 delta review of PR #308, BLOCKING):
     # `dc up -d --wait migrate` aimed at a one-shot service returned exit 1 even
@@ -651,6 +658,7 @@ case "$MODE" in
     dc up -d --wait taskdesk
     assert_port_unpublished
     probe_api
+    persist_image_selection "${TASKDESK_IMAGE_TAG:-v2.0.0}" "$TASKDESK_IMAGE_DIGEST"
     ROLLBACK_OVERLAY_FLAG="--target ${TARGET}"
     [ "$OVERLAY_SET" -eq 0 ] || ROLLBACK_OVERLAY_FLAG="--overlay ${OVERLAY}"
     if [ -n "$CURRENT" ] && [[ "$CURRENT_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then

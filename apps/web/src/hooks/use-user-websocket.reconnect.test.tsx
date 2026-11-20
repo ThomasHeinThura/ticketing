@@ -66,6 +66,27 @@ afterEach(() => {
 });
 
 describe("useUserWebSocket inbox refresh", () => {
+  it("keeps retrying with capped jitter and stops after unmount", () => {
+    vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const client = new QueryClient();
+    function Socket() {
+      useUserWebSocket();
+      return null;
+    }
+    const view = render(<Socket />, { wrapper: wrapperFor(client) });
+    for (const delay of [500, 1000, 2000, 4000, 8000, 15000, 15000]) {
+      act(() => MockWebSocket.instances.at(-1)?.close());
+      const count = MockWebSocket.instances.length;
+      act(() => vi.advanceTimersByTime(delay - 1));
+      expect(MockWebSocket.instances).toHaveLength(count);
+      act(() => vi.advanceTimersByTime(1));
+      expect(MockWebSocket.instances).toHaveLength(count + 1);
+    }
+    view.unmount();
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(MockWebSocket.instances).toHaveLength(8);
+  });
   it("reads the inbox once per load, refreshing it only on a reconnect or a new notification", async () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
