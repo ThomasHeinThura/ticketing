@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import type { Transaction } from "../database/executor";
 import { appendAuditSavepoint } from "../events/audit-savepoint";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
@@ -31,7 +32,7 @@ export async function staffNotificationAuditContext(
     credential: "session",
   });
   if (identity?.side !== "staff")
-    throw new Error("Staff notification audit person unavailable");
+    throw new HTTPException(403, { message: "Forbidden" });
   return { actor: requestAuditActor(c), personId: identity.personId };
 }
 

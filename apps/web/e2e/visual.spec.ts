@@ -7641,6 +7641,7 @@ test("project prerequisites screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Customer VPN access", { exact: true }),
   ).toBeVisible();
+  await expect(page.locator('[data-project-view="overview"]')).toBeVisible();
   await expect(page).toHaveScreenshot("project-prerequisites.png", {
     animations: "disabled",
     caret: "hide",
