@@ -8067,9 +8067,9 @@ test("workspace settings states screen @visual", async ({ page }) => {
     page.getByText("Northstar Support", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "History", exact: true }),
-  ).toHaveCount(5);
-  await expect(page.getByRole("status", { name: /loading/i })).toHaveCount(0);
+    // Fifth state row's History read finished (no skeleton left in the shot).
+    page.locator(':nth-match(:text-is("No recorded changes yet."), 5)'),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("workspace-settings-states.png", {
     animations: "disabled",
     caret: "hide",
