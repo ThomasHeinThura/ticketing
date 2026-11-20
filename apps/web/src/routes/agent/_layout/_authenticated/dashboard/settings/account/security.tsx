@@ -1,3 +1,4 @@
+import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
@@ -9,7 +10,14 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import type { FormEvent } from "react";
-import { useCallback, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { ChangePasswordCard } from "@/components/account/change-password-card";
 import PageTitle from "@/components/page-title";
@@ -18,6 +26,12 @@ import { getApiUrl } from "@/fetchers/get-api-url";
 import useChangePassword from "@/hooks/mutations/use-change-password";
 import { authClient } from "@/lib/auth-client";
 import { parseAccountSecuritySearch, routes } from "@/lib/routes";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/account/security",
@@ -37,6 +51,26 @@ type FactorStatus = {
 function AccountSecurity() {
   const { t } = useTranslation();
   const passwordChange = useChangePassword();
+  const pendingCode = useRef<string | null>(null);
+  const verifyTotp = useMutation({
+    mutationFn: async () => {
+      const totp = pendingCode.current;
+      if (!totp) throw new Error("No verification code pending");
+      const result = await authClient.twoFactor.verifyTotp({ code: totp });
+      if (result.error) throw new Error(t("auth:accountSecurity.codeError"));
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          {
+            kind: "self",
+            audience: "staff",
+            section: "security",
+          },
+        ],
+      },
+    },
+  });
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const { enrollmentRequired, identityLinkIntent } = search;
@@ -90,8 +124,13 @@ function AccountSecurity() {
     setPending(true);
     setError(null);
     try {
-      const result = await authClient.twoFactor.verifyTotp({ code });
-      if (result.error) throw new Error(t("auth:accountSecurity.codeError"));
+      if (pendingCode.current) return;
+      pendingCode.current = code;
+      try {
+        await verifyTotp.mutateAsync();
+      } finally {
+        pendingCode.current = null;
+      }
       setTotpUri(null);
       setBackupCodes(pendingBackupCodes);
       setPendingBackupCodes(null);
@@ -116,6 +155,11 @@ function AccountSecurity() {
             {t("auth:accountSecurity.description")}
           </p>
         </header>
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{ kind: "self", audience: "staff", section: "security" }}
+          />
+        </Suspense>
         {status && (!status.required || status.enabled) ? (
           <>
             <ChangePasswordCard

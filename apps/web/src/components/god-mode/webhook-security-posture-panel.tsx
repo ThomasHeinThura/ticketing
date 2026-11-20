@@ -1,4 +1,8 @@
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -29,7 +33,7 @@ import {
   TableRow,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   listAllWebhookRotationTargets,
@@ -42,6 +46,7 @@ import {
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import { FailureAlert, StepUpFields } from "./step-up-fields";
 
 export function WebhookSecurityPosturePanel() {
@@ -242,17 +247,46 @@ function WebhookRotationDialog({ onClose }: { onClose: () => void }) {
     values.every((secret) => secret.length >= 24 && secret.length <= 256) &&
     new Set(values).size === values.length;
 
-  const submit = async () => {
-    if (!validSecrets || stepUp.busy) return;
-    setFailed(false);
-    try {
-      const replacementSetDigest =
-        await webhookSecretRotationSetDigest(replacements);
-      const result = await stepUp.run(
+  const pendingReplacements = useRef<WebhookSecretReplacement[] | null>(null);
+  const rotate = useMutation({
+    mutationFn: ({
+      replacementSetDigest,
+    }: {
+      replacementSetDigest: string;
+      targets: WebhookRotationTarget[];
+    }) => {
+      const replacements = pendingReplacements.current;
+      if (!replacements) throw new Error("No webhook secrets pending");
+      return stepUp.run(
         { operation: "webhook_rotate_all", replacementSetDigest },
         (token) => rotateAllWebhookSecrets(replacements, token),
         { writeErrors: "rethrow" },
       );
+    },
+    meta: {
+      audits: {
+        targets: ({ targets }: { targets: WebhookRotationTarget[] }) =>
+          targets.flatMap((target) =>
+            auditEntity("webhook", target.id, {
+              kind: "workspace",
+              workspaceId: target.workspaceId,
+            }),
+          ),
+      },
+    },
+  });
+
+  const submit = async () => {
+    if (!validSecrets || stepUp.busy || pendingReplacements.current) return;
+    pendingReplacements.current = replacements;
+    setFailed(false);
+    try {
+      const replacementSetDigest =
+        await webhookSecretRotationSetDigest(replacements);
+      const result = await rotate.mutateAsync({
+        replacementSetDigest,
+        targets,
+      });
       if (!result.ok) {
         setSecrets({});
         return;
@@ -269,6 +303,8 @@ function WebhookRotationDialog({ onClose }: { onClose: () => void }) {
         return;
       }
       setFailed(true);
+    } finally {
+      pendingReplacements.current = null;
     }
   };
 

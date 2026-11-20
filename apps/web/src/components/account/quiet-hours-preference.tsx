@@ -102,10 +102,12 @@ export function QuietHoursForm({
   save = saveQuietHours,
   cacheKey = ["notification-preferences"],
   note,
+  historyAudience = "staff",
 }: {
   save?: (value: QuietHours | null) => Promise<unknown>;
   cacheKey?: readonly unknown[];
   note?: string;
+  historyAudience?: "staff" | "portal";
   saved: QuietHours | null;
   completed: boolean;
   onStart: () => void;
@@ -121,7 +123,14 @@ export function QuietHoursForm({
   const [noticeIsSave, setNoticeIsSave] = useState(false);
   const zones = useMemo(() => timeZones(timezone), [timezone]);
   const mutation = useMutation({
-    mutationFn: save,
+    mutationFn: (value: QuietHours | null) => save(value),
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: historyAudience, section: "notifications" },
+        ],
+      },
+    },
     onSuccess: async (_data, variables) => {
       setNoticeIsSave(Boolean(variables));
       setNotice(variables ? t("quietHours.saved") : t("quietHours.cleared"));

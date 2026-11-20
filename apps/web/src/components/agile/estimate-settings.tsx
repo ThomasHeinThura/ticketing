@@ -16,7 +16,7 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PickerSelect } from "@/components/automation/picker-select";
 import { isForbiddenError } from "@/components/settings/settings-access";
@@ -32,9 +32,17 @@ import {
   updateAgileSettings,
   updateEstimates,
 } from "@/fetchers/agile";
+import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { toast } from "@/lib/toast";
+import type { HistoryTarget } from "@/query-client/settings-history-key";
 import { EstimatePreviewDialog } from "./estimate-preview-dialog";
 import { ProjectFeatureOff } from "./feature-off";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 type DraftPoint = { key?: string; value: string };
 
@@ -44,13 +52,16 @@ type DraftPoint = { key?: string; value: string };
  * planner confirms what maps and what clears (`ES-3`) before it is applied.
  */
 export function EstimateSettings({
+  projectId,
   projectKey,
   canManage,
 }: {
+  projectId: string;
   projectKey: string;
   canManage: boolean;
 }) {
   const { t } = useTranslation("agile");
+  const { data: workspace } = useActiveWorkspace();
   const cache = useQueryClient();
   const query = useQuery({
     queryKey: ["agile", "estimate-settings", projectKey],
@@ -96,6 +107,7 @@ export function EstimateSettings({
   };
 
   const dryRun = useMutation({
+    // no-audits: a dry run writes nothing
     mutationFn: () => updateEstimates(projectKey, { ...input(), dryRun: true }),
     onSuccess: async (result) => {
       const { preview: next } = result;
@@ -114,9 +126,28 @@ export function EstimateSettings({
         error instanceof Error ? error.message : t("estimates.failed"),
       ),
   });
+  const historyTarget = (
+    type: "project" | "project_estimates",
+  ): HistoryTarget[] =>
+    workspace?.id
+      ? [
+          {
+            kind: "entity",
+            type,
+            id: projectId,
+            scope: { kind: "project", workspaceId: workspace.id, projectId },
+          },
+        ]
+      : [];
   const apply = useMutation({
     mutationFn: (confirmClear: boolean) =>
       updateEstimates(projectKey, { ...input(), confirmClear }),
+    meta: {
+      audits: {
+        targets: (_confirmClear: boolean, result: { applied?: boolean }) =>
+          result.applied ? historyTarget("project_estimates") : [],
+      },
+    },
     onSuccess: async () => {
       setPreview(null);
       await refresh();
@@ -136,6 +167,14 @@ export function EstimateSettings({
   const policy = useMutation({
     mutationFn: (value: IncompletePolicy) =>
       updateAgileSettings(projectKey, { incompletePolicy: value }),
+    meta: {
+      audits: {
+        targets: () => [
+          ...historyTarget("project"),
+          ...historyTarget("project_estimates"),
+        ],
+      },
+    },
     onSuccess: async () => {
       await refresh();
       toast.success(t("estimates.policy.saved"));
@@ -163,6 +202,15 @@ export function EstimateSettings({
       </Alert>
     );
 
+  const history = (type: "project" | "project_estimates") => {
+    const [target] = historyTarget(type);
+    return target ? (
+      <Suspense fallback={null}>
+        <SettingsHistory target={target} />
+      </Suspense>
+    ) : null;
+  };
+
   if (!canManage) {
     const current = estimate.system ?? "points";
     const values = estimate.system
@@ -184,6 +232,7 @@ export function EstimateSettings({
             </dl>
           </CardContent>
         </Card>
+        {history("project_estimates")}
         <Card>
           <CardHeader>
             <CardTitle>{t("estimates.policy.title")}</CardTitle>
@@ -198,6 +247,7 @@ export function EstimateSettings({
             </p>
           </CardContent>
         </Card>
+        {history("project")}
       </div>
     );
   }
@@ -311,6 +361,8 @@ export function EstimateSettings({
         </CardContent>
       </Card>
 
+      {history("project_estimates")}
+
       <Card>
         <CardHeader>
           <CardTitle>{t("estimates.policy.title")}</CardTitle>
@@ -346,6 +398,8 @@ export function EstimateSettings({
           </RadioGroup>
         </CardContent>
       </Card>
+
+      {history("project")}
 
       {preview ? (
         <EstimatePreviewDialog

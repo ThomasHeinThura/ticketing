@@ -1,5 +1,6 @@
 import { client } from "@taskdesk/libs";
 import type { InferResponseType } from "hono/client";
+import { z } from "zod";
 import { HttpError } from "@/lib/http-error";
 
 export type SettingsHistory = InferResponseType<typeof client.audit.$get, 200>;
@@ -11,26 +12,23 @@ export type SettingsHistoryScope =
   | { scope: "instance" }
   | { scope: "workspace"; workspaceId: string };
 
-export function settingsHistoryQueryKey(
-  type: SettingsHistoryTarget,
-  id: string,
-  userId: string,
-  sessionId: string,
-  selector?: SettingsHistoryScope,
-) {
-  return selector
-    ? [
-        "settings-history",
-        type,
-        id,
-        selector.scope,
-        selector.scope === "workspace" ? selector.workspaceId : null,
-        "agent",
-        userId,
-        sessionId,
-      ]
-    : ["settings-history", type, id, "agent", userId, sessionId];
-}
+const actor = z.strictObject({
+  kind: z.enum(["person", "api_key", "automation", "system"]),
+  name: z.string().nullable(),
+});
+const responseSchema = z.strictObject({
+  entityType: z.string(),
+  entityId: z.string(),
+  lastChanged: z.strictObject({ actor, at: z.string().datetime() }).nullable(),
+  rows: z.array(
+    z.strictObject({
+      at: z.string().datetime(),
+      actor,
+      action: z.string(),
+      changedFields: z.array(z.string()),
+    }),
+  ),
+});
 
 export async function getSettingsHistory(
   type: SettingsHistoryTarget,
@@ -57,9 +55,9 @@ export async function getSettingsHistory(
   );
   if (!response.ok)
     throw new HttpError(response.status, "Failed to load settings history");
-  const data = await response.json();
+  const data = responseSchema.parse(await response.json());
   if (data.entityType !== type || data.entityId !== id) {
     throw new Error("Unexpected settings history target");
   }
-  return data;
+  return data as SettingsHistory;
 }

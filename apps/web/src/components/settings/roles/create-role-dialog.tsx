@@ -36,6 +36,7 @@ import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { localizedErrorMessage } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 const NOTHING = "__nothing__";
 
@@ -91,7 +92,16 @@ export function CreateRoleDialog({
       );
       if (!outcome.ok)
         throw new Error(t("roles:stepUp.failedTitle"), { cause: "step_up" });
-      return outcome.value;
+      return { ...outcome.value, workspaceId };
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, r: { id: string; workspaceId: string }) =>
+          auditEntity("role", r.id, {
+            kind: "workspace",
+            workspaceId: r.workspaceId,
+          }),
+      },
     },
     onSuccess: async (created) => {
       await queryClient.invalidateQueries({

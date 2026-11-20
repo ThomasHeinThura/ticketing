@@ -1,5 +1,6 @@
+import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   ChangePasswordCard,
   type PasswordChange,
@@ -14,6 +15,12 @@ import {
   portalProjectSearchMiddlewares,
 } from "@/lib/portal-route-search";
 
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
 export const Route = createFileRoute("/account")({
   validateSearch: parsePortalProjectSearch,
   search: { middlewares: portalProjectSearchMiddlewares },
@@ -26,7 +33,27 @@ function PortalAccountRoute() {
   return (
     <>
       <PortalPageTitle title={t("navigation.settings")} />
-      <PortalCanonicalPreferencesPage portalUserId={portalUserId} />
+      <PortalCanonicalPreferencesPage
+        portalUserId={portalUserId}
+        history={
+          <Suspense fallback={null}>
+            <SettingsHistory
+              target={{
+                kind: "self",
+                audience: "portal",
+                section: "notifications",
+              }}
+            />
+          </Suspense>
+        }
+      />
+      <div className="mx-auto w-full max-w-4xl px-6">
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{ kind: "self", audience: "portal", section: "security" }}
+          />
+        </Suspense>
+      </div>
       <PortalPasswordSettings key={portalUserId} />
     </>
   );
@@ -34,6 +61,25 @@ function PortalAccountRoute() {
 
 function PortalPasswordSettings() {
   const { t } = usePortalTranslation("portal");
+  const pendingPassword = useRef<PasswordChange | null>(null);
+  const passwordChange = useMutation({
+    mutationFn: async () => {
+      const input = pendingPassword.current;
+      if (!input) throw new Error("No password change pending");
+      const result = await portalAuthClient.$fetch("/change-password", {
+        method: "POST",
+        body: input,
+      });
+      if (result.error) throw new Error(result.error.code ?? "UNKNOWN");
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "portal", section: "security" },
+        ],
+      },
+    },
+  });
   const [hasLocalPassword, setHasLocalPassword] = useState(false);
   const [securityUnavailable, setSecurityUnavailable] = useState(false);
   useEffect(() => {
@@ -58,13 +104,6 @@ function PortalPasswordSettings() {
       active = false;
     };
   }, []);
-  async function changePassword(input: PasswordChange) {
-    const result = await portalAuthClient.$fetch("/change-password", {
-      method: "POST",
-      body: input,
-    });
-    if (result.error) throw new Error(result.error.code ?? "UNKNOWN");
-  }
   return (
     <div className="mx-auto w-full max-w-4xl px-6 pb-6">
       {securityUnavailable ? (
@@ -72,7 +111,16 @@ function PortalPasswordSettings() {
       ) : (
         <ChangePasswordCard
           hasLocalPassword={hasLocalPassword}
-          changePassword={changePassword}
+          changePassword={async (input) => {
+            if (pendingPassword.current)
+              throw new Error("Password change already pending");
+            pendingPassword.current = input;
+            try {
+              await passwordChange.mutateAsync();
+            } finally {
+              pendingPassword.current = null;
+            }
+          }}
         />
       )}
     </div>

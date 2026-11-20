@@ -1,4 +1,5 @@
 import { z } from "../openapi";
+import { HISTORY_ENTITY_TYPES } from "./history-actions";
 
 /** One audit row as the API returns it (`data-model.md` §11's columns, ids only —
  * the writer already guarantees no secret, body, header, email or name is stored). */
@@ -32,42 +33,7 @@ export const auditEntityHistorySchema = z.object({
 
 const entitySettingsHistoryResponseSchema = z
   .object({
-    entityType: z.enum([
-      "instance",
-      "workspace",
-      "project",
-      "role",
-      "workflow",
-      "team",
-      "service_calendar",
-      "sla_policy",
-      "request_type",
-      "custom_field",
-      "custom_field_section",
-      "state_template",
-      "webhook",
-      "canned_response",
-      "workspace_label",
-      "project_label",
-      "automation",
-      "state",
-      "time_activity",
-      "cost_type",
-      "hourly_rate",
-      "budget",
-      "workspace_member",
-      "project_membership",
-      "instance_notification_provider",
-      "instance_storage_draft",
-      "instance_auth_methods",
-      "staff_self_registration",
-      "instance_job",
-      "identity_connection",
-      "import_source_connection",
-      "terminology_override",
-      "project_estimates",
-      "service_api_key",
-    ]),
+    entityType: z.enum(HISTORY_ENTITY_TYPES),
     entityId: z.string(),
     lastChanged: z
       .object({

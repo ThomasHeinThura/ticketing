@@ -1,5 +1,9 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
   Input,
   Label,
   SaveButton,
@@ -17,10 +21,11 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   createAvailableHours,
+  TimeTrackingDisabledError,
   updateTimeSettings,
 } from "@/fetchers/time-tracking";
 import {
@@ -28,6 +33,9 @@ import {
   useTimeSettings,
 } from "@/hooks/queries/time-tracking/use-time-tracking";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
+import { authClient } from "@/lib/auth-client";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 import { isoDay, useServerToday } from "@/lib/server-clock";
 import { formatMinutes } from "@/lib/time-minutes";
 import { toast } from "@/lib/toast";
@@ -35,79 +43,205 @@ import { parseHoursPerWeek, useAvailableHours } from "./cost-queries";
 import { DateField } from "./date-field";
 import { useInvalidateTime, useTimeErrorMessage } from "./time-shared";
 
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
 /** TC-4: how many days back people may log time without `time_entry:log_backdated`. */
 export function BackdateLimitSetting() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
+  const { data: session } = authClient.useSession();
+  const client = useQueryClient();
+  const host = window.location.host;
+  const userId = session?.user?.id;
+  const sessionId = session?.session?.id;
+  const sessionScope = session?.session as
+    | { portal?: string | null; impersonatedBy?: string | null }
+    | undefined;
   const settings = useTimeSettings(workspace?.id);
   const invalidate = useInvalidateTime();
   const message = useTimeErrorMessage();
   const [draft, setDraft] = useState<string | null>(null);
+  const [savedRevision, setSavedRevision] = useState<number | null>(null);
+  const revision = useRef(0);
   const value = draft ?? String(settings.data?.backdateLimitDays ?? "");
   const days = /^\d{1,4}$/u.test(value) ? Number(value) : null;
   const valid = days !== null && days <= 3650;
-  const save = useMutation({
-    mutationFn: () =>
-      updateTimeSettings({
-        workspaceId: workspace?.id as string,
-        backdateLimitDays: days as number,
-      }),
-    onSuccess: async () => {
+  const lifecycle = useIntentLifecycle(
+    JSON.stringify([
+      host,
+      userId,
+      sessionId,
+      sessionScope?.portal,
+      sessionScope?.impersonatedBy,
+      workspace?.id,
+    ]),
+    () => {
+      revision.current += 1;
       setDraft(null);
-      toast.success(t("timeTracking:settings.saved"));
+      setSavedRevision(null);
+      save.reset();
+    },
+  );
+  const save = useMutation({
+    mutationFn: ({
+      workspaceId,
+      days,
+    }: {
+      workspaceId: string;
+      days: number;
+      identity: { userId: string; sessionId: string } | null;
+      intent: number;
+      revision: number;
+    }) => updateTimeSettings({ workspaceId, backdateLimitDays: days }),
+    meta: {
+      audits: {
+        targets: ({ workspaceId }: { workspaceId: string }) => [
+          {
+            kind: "time-settings",
+            scope: { kind: "workspace", workspaceId },
+          } as const,
+          {
+            kind: "entity",
+            type: "workspace",
+            id: workspaceId,
+            scope: { kind: "workspace", workspaceId },
+          } as const,
+        ],
+      },
+    },
+    onSuccess: async (
+      result,
+      { workspaceId, identity, intent, revision: saved },
+    ) => {
+      if (!lifecycle.isCurrent(intent) || !identity) return;
+      // Seed the settings only for the session that saved: confirm it around the cancel.
+      const confirmSession = profileSessionGuard(
+        identity.userId,
+        identity.sessionId,
+      );
+      try {
+        await confirmSession();
+        if (!lifecycle.isCurrent(intent)) return;
+        const settingsKey = [
+          "time-tracking",
+          "settings",
+          workspaceId,
+          "",
+        ] as const;
+        await client.cancelQueries({ queryKey: settingsKey, exact: true });
+        await confirmSession();
+        if (!lifecycle.isCurrent(intent)) return;
+        client.setQueryData(settingsKey, result);
+      } catch {
+        return;
+      }
+      if (revision.current === saved) {
+        setDraft(null);
+        setSavedRevision(saved);
+        toast.success(t("timeTracking:settings.saved"));
+      }
       await invalidate();
     },
-    onError: (error) => toast.error(message(error)),
+    onError: (error, { intent }) => {
+      if (lifecycle.isCurrent(intent)) toast.error(message(error));
+    },
   });
-  if (!settings.data) return null;
-  const dirty = draft !== null && days !== settings.data.backdateLimitDays;
+  const dirty = draft !== null && days !== settings.data?.backdateLimitDays;
+  const canEdit = Boolean(
+    settings.data?.canManage && !sessionScope?.impersonatedBy,
+  );
   return (
-    <form
-      className="flex flex-wrap items-end gap-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (dirty && valid && !save.isPending) save.mutate();
-      }}
-    >
-      <div className="w-56 space-y-1">
-        {settings.data.canManage ? (
-          <>
-            <Label htmlFor="backdate-limit" className="text-xs">
-              {t("timeTracking:settings.backdateLimit")}
-            </Label>
-            <Input
-              id="backdate-limit"
-              inputMode="numeric"
-              value={value}
-              aria-invalid={!valid}
-              disabled={save.isPending}
-              onChange={(event) => setDraft(event.target.value)}
-            />
-          </>
-        ) : (
-          <p>
-            {t("timeTracking:settings.backdateLimit")}:{" "}
-            {settings.data.backdateLimitDays}
-          </p>
-        )}
-      </div>
-      {settings.data.canManage ? (
-        <SaveButton
-          type="submit"
-          disabled={(!dirty || !valid) && !save.isPending}
-          pending={save.isPending}
-          success={save.isSuccess}
-          savedLabel={t("common:actions.saved")}
-          workingLabel={t("common:actions.saving")}
-          announceSuccess={false}
-        >
-          {t("timeTracking:actions.save")}
-        </SaveButton>
+    <>
+      {settings.isError ? (
+        <Alert variant="error">
+          <AlertDescription>{message(settings.error)}</AlertDescription>
+          <Button variant="outline" onClick={() => void settings.refetch()}>
+            {t("common:actions.retry")}
+          </Button>
+        </Alert>
       ) : null}
-      <p className="basis-full text-muted-foreground text-xs">
-        {t("timeTracking:settings.backdateHelp")}
-      </p>
-    </form>
+      {settings.data ? (
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (
+              canEdit &&
+              dirty &&
+              valid &&
+              !save.isPending &&
+              workspace?.id &&
+              days !== null
+            )
+              save.mutate({
+                workspaceId: workspace.id,
+                days,
+                identity: userId && sessionId ? { userId, sessionId } : null,
+                intent: lifecycle.capture(),
+                revision: revision.current,
+              });
+          }}
+        >
+          <div className="w-56 space-y-1">
+            {canEdit ? (
+              <>
+                <Label htmlFor="backdate-limit" className="text-xs">
+                  {t("timeTracking:settings.backdateLimit")}
+                </Label>
+                <Input
+                  id="backdate-limit"
+                  inputMode="numeric"
+                  value={value}
+                  aria-invalid={!valid}
+                  disabled={save.isPending}
+                  onChange={(event) => {
+                    revision.current += 1;
+                    setSavedRevision(null);
+                    setDraft(event.target.value);
+                    if (!save.isPending) save.reset();
+                  }}
+                />
+              </>
+            ) : (
+              <p>
+                {t("timeTracking:settings.backdateLimit")}:{" "}
+                {settings.data.backdateLimitDays}
+              </p>
+            )}
+          </div>
+          {canEdit ? (
+            <SaveButton
+              type="submit"
+              disabled={(!dirty || !valid) && !save.isPending}
+              pending={save.isPending}
+              success={save.isSuccess && savedRevision === revision.current}
+              savedLabel={t("common:actions.saved")}
+              workingLabel={t("common:actions.saving")}
+              announceSuccess={false}
+            >
+              {t("timeTracking:actions.save")}
+            </SaveButton>
+          ) : null}
+          <p className="basis-full text-muted-foreground text-xs">
+            {t("timeTracking:settings.backdateHelp")}
+          </p>
+        </form>
+      ) : null}
+      {workspace?.id ? (
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{
+              kind: "time-settings",
+              scope: { kind: "workspace", workspaceId: workspace.id },
+            }}
+          />
+        </Suspense>
+      ) : null}
+    </>
   );
 }
 
@@ -115,54 +249,151 @@ export function BackdateLimitSetting() {
 export function ProjectBillableSetting({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
+  const { data: session } = authClient.useSession();
+  const host = window.location.host;
+  const userId = session?.user?.id;
+  const sessionId = session?.session?.id;
+  const sessionScope = session?.session as
+    | { portal?: string | null; impersonatedBy?: string | null }
+    | undefined;
   const settings = useTimeSettings(workspace?.id, projectId);
   const invalidate = useInvalidateTime();
   const message = useTimeErrorMessage();
+  const lifecycle = useIntentLifecycle(
+    JSON.stringify([
+      host,
+      userId,
+      sessionId,
+      sessionScope?.portal,
+      sessionScope?.impersonatedBy,
+      workspace?.id,
+      projectId,
+    ]),
+    () => save.reset(),
+  );
   const save = useMutation({
-    mutationFn: (defaultBillable: boolean) =>
+    mutationFn: ({
+      workspaceId,
+      targetProjectId,
+      defaultBillable,
+    }: {
+      workspaceId: string;
+      targetProjectId: string;
+      defaultBillable: boolean;
+      intent: number;
+    }) =>
       updateTimeSettings({
-        workspaceId: workspace?.id as string,
-        project: { id: projectId, defaultBillable },
+        workspaceId,
+        project: { id: targetProjectId, defaultBillable },
       }),
-    onSuccess: async () => {
+    meta: {
+      audits: {
+        targets: ({
+          workspaceId,
+          targetProjectId,
+        }: {
+          workspaceId: string;
+          targetProjectId: string;
+        }) => [
+          {
+            kind: "time-settings",
+            scope: {
+              kind: "project",
+              workspaceId,
+              projectId: targetProjectId,
+            },
+          } as const,
+          {
+            kind: "entity",
+            type: "project",
+            id: targetProjectId,
+            scope: { kind: "project", workspaceId, projectId: targetProjectId },
+          } as const,
+        ],
+      },
+    },
+    onSuccess: async (_result, { intent }) => {
+      if (!lifecycle.isCurrent(intent)) return;
       toast.success(t("timeTracking:settings.saved"));
       await invalidate();
     },
-    onError: (error) => toast.error(message(error)),
+    onError: (error, { intent }) => {
+      if (lifecycle.isCurrent(intent)) toast.error(message(error));
+    },
   });
+  const disabled = settings.error instanceof TimeTrackingDisabledError;
   const project = settings.data?.project;
-  if (!settings.data || !project) return null;
+  const canEdit = Boolean(
+    settings.data?.canManage && !sessionScope?.impersonatedBy,
+  );
   return (
-    <div className="flex items-center gap-3">
-      {settings.data.canManage ? (
-        <Switch
-          id="project-default-billable"
-          checked={project.defaultBillable}
-          disabled={save.isPending}
-          onCheckedChange={(next) => save.mutate(next)}
-        />
-      ) : (
-        <span>
-          {t(
-            project.defaultBillable
-              ? "featureFlags:stateOn"
-              : "featureFlags:stateOff",
+    <>
+      {disabled ? (
+        <Alert>
+          <AlertTitle>{t("timeTracking:timesheet.disabledTitle")}</AlertTitle>
+          <AlertDescription>
+            {t("timeTracking:timesheet.disabledDescription")}
+          </AlertDescription>
+        </Alert>
+      ) : settings.isError ? (
+        <Alert variant="error">
+          <AlertDescription>{message(settings.error)}</AlertDescription>
+          <Button variant="outline" onClick={() => void settings.refetch()}>
+            {t("common:actions.retry")}
+          </Button>
+        </Alert>
+      ) : null}
+      {settings.data && project ? (
+        <div className="flex items-center gap-3">
+          {canEdit ? (
+            <Switch
+              id="project-default-billable"
+              checked={project.defaultBillable}
+              disabled={save.isPending}
+              onCheckedChange={(next) => {
+                if (canEdit && workspace?.id)
+                  save.mutate({
+                    workspaceId: workspace.id,
+                    targetProjectId: projectId,
+                    defaultBillable: next,
+                    intent: lifecycle.capture(),
+                  });
+              }}
+            />
+          ) : (
+            <span>
+              {t(
+                project.defaultBillable
+                  ? "featureFlags:stateOn"
+                  : "featureFlags:stateOff",
+              )}
+            </span>
           )}
-        </span>
-      )}
-      <div className="space-y-0.5">
-        {settings.data.canManage ? (
-          <Label htmlFor="project-default-billable">
-            {t("timeTracking:settings.defaultBillable")}
-          </Label>
-        ) : (
-          <p>{t("timeTracking:settings.defaultBillable")}</p>
-        )}
-        <p className="text-muted-foreground text-xs">
-          {t("timeTracking:settings.defaultBillableHelp")}
-        </p>
-      </div>
-    </div>
+          <div className="space-y-0.5">
+            {canEdit ? (
+              <Label htmlFor="project-default-billable">
+                {t("timeTracking:settings.defaultBillable")}
+              </Label>
+            ) : (
+              <p>{t("timeTracking:settings.defaultBillable")}</p>
+            )}
+            <p className="text-muted-foreground text-xs">
+              {t("timeTracking:settings.defaultBillableHelp")}
+            </p>
+          </div>
+        </div>
+      ) : null}
+      {workspace?.id && !disabled ? (
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{
+              kind: "time-settings",
+              scope: { kind: "project", workspaceId: workspace.id, projectId },
+            }}
+          />
+        </Suspense>
+      ) : null}
+    </>
   );
 }
 
@@ -174,6 +405,11 @@ export function ProjectBillableSetting({ projectId }: { projectId: string }) {
 export function AvailableHoursSetting() {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
+  const { data: session } = authClient.useSession();
+  const impersonating = Boolean(
+    (session?.session as { impersonatedBy?: string | null } | undefined)
+      ?.impersonatedBy,
+  );
   const settings = useTimeSettings(workspace?.id);
   const allowed = settings.data?.canManage === true;
   const hours = useAvailableHours(workspace?.id, allowed);
@@ -243,77 +479,79 @@ export function AvailableHoursSetting() {
           {t("timeTracking:availableHours.description")}
         </p>
       </div>
-      <form
-        className="flex flex-wrap items-end gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (canSubmit && !add.isPending) add.mutate();
-        }}
-      >
-        <div className="w-48 space-y-1">
-          <Label htmlFor="available-hours-person" className="text-xs">
-            {t("timeTracking:fields.person")}
-          </Label>
-          <Select
-            value={personId}
-            disabled={add.isPending}
-            onValueChange={(next) => next && setPersonPick(next)}
-          >
-            <SelectTrigger
-              id="available-hours-person"
-              aria-label={t("timeTracking:fields.person")}
-            >
-              <SelectValue>
-                {chosen?.name ?? t("timeTracking:rates.choosePerson")}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {people.map((person) => (
-                <SelectItem key={person.personId} value={person.personId}>
-                  {person.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="w-32 space-y-1">
-          <Label htmlFor="available-hours-amount" className="text-xs">
-            {t("timeTracking:availableHours.hoursPerWeek")}
-          </Label>
-          <Input
-            id="available-hours-amount"
-            inputMode="decimal"
-            placeholder="40"
-            value={amount}
-            aria-invalid={amount !== "" && minutes === null}
-            disabled={add.isPending}
-            onChange={(event) => setAmount(event.target.value)}
-          />
-        </div>
-        <div className="w-44 space-y-1">
-          <Label htmlFor="available-hours-from" className="text-xs">
-            {t("timeTracking:rates.effectiveFrom")}
-          </Label>
-          <DateField
-            id="available-hours-from"
-            value={effectiveFrom || today}
-            disabled={add.isPending}
-            onChange={setEffectiveFrom}
-          />
-        </div>
-        <SaveButton
-          type="submit"
-          disabled={!canSubmit && !add.isPending}
-          pending={add.isPending}
-          success={add.isSuccess}
-          savedLabel={t("common:actions.saved")}
-          workingLabel={t("common:actions.saving")}
-          announceSuccess={false}
+      {!impersonating ? (
+        <form
+          className="flex flex-wrap items-end gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!impersonating && canSubmit && !add.isPending) add.mutate();
+          }}
         >
-          <Plus aria-hidden="true" />
-          {t("timeTracking:availableHours.add")}
-        </SaveButton>
-      </form>
+          <div className="w-48 space-y-1">
+            <Label htmlFor="available-hours-person" className="text-xs">
+              {t("timeTracking:fields.person")}
+            </Label>
+            <Select
+              value={personId}
+              disabled={add.isPending}
+              onValueChange={(next) => next && setPersonPick(next)}
+            >
+              <SelectTrigger
+                id="available-hours-person"
+                aria-label={t("timeTracking:fields.person")}
+              >
+                <SelectValue>
+                  {chosen?.name ?? t("timeTracking:rates.choosePerson")}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {people.map((person) => (
+                  <SelectItem key={person.personId} value={person.personId}>
+                    {person.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-32 space-y-1">
+            <Label htmlFor="available-hours-amount" className="text-xs">
+              {t("timeTracking:availableHours.hoursPerWeek")}
+            </Label>
+            <Input
+              id="available-hours-amount"
+              inputMode="decimal"
+              placeholder="40"
+              value={amount}
+              aria-invalid={amount !== "" && minutes === null}
+              disabled={add.isPending}
+              onChange={(event) => setAmount(event.target.value)}
+            />
+          </div>
+          <div className="w-44 space-y-1">
+            <Label htmlFor="available-hours-from" className="text-xs">
+              {t("timeTracking:rates.effectiveFrom")}
+            </Label>
+            <DateField
+              id="available-hours-from"
+              value={effectiveFrom || today}
+              disabled={add.isPending}
+              onChange={setEffectiveFrom}
+            />
+          </div>
+          <SaveButton
+            type="submit"
+            disabled={!canSubmit && !add.isPending}
+            pending={add.isPending}
+            success={add.isSuccess}
+            savedLabel={t("common:actions.saved")}
+            workingLabel={t("common:actions.saving")}
+            announceSuccess={false}
+          >
+            <Plus aria-hidden="true" />
+            {t("timeTracking:availableHours.add")}
+          </SaveButton>
+        </form>
+      ) : null}
       {rows.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           {t("timeTracking:availableHours.empty")}

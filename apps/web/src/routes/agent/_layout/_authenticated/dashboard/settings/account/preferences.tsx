@@ -16,6 +16,7 @@ import {
   Switch,
 } from "@taskdesk/ui";
 import { RotateCcw } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { useDensityPreference } from "@/hooks/use-density-preference";
@@ -26,6 +27,12 @@ import {
   WEEK_START_DAYS,
   type WeekStartDay,
 } from "@/store/user-preferences";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/account/preferences",
@@ -106,6 +113,11 @@ function RouteComponent() {
         </p>
       </div>
 
+      <Suspense fallback={null}>
+        <SettingsHistory
+          target={{ kind: "self", audience: "staff", section: "preferences" }}
+        />
+      </Suspense>
       <div className="space-y-6">
         <div className="space-y-1">
           <h2 className="text-md font-medium">

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CreateLabelRequest } from "@/fetchers/label/create-label";
 import createLabel from "@/fetchers/label/create-label";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import { addLabelToTaskInTasksCache } from "./sync-task-labels-cache";
 
 function useCreateLabel() {
@@ -8,6 +9,15 @@ function useCreateLabel() {
 
   return useMutation({
     mutationFn: createLabel,
+    meta: {
+      audits: {
+        targets: (v: CreateLabelRequest, label: { id: string }) =>
+          auditEntity("workspace_label", label.id, {
+            kind: "workspace",
+            workspaceId: v.workspaceId,
+          }),
+      },
+    },
     onSuccess: (createdLabel, variables: CreateLabelRequest) => {
       queryClient.setQueryData(
         ["labels", variables.workspaceId],

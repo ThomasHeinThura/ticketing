@@ -12,6 +12,7 @@ import {
 import { ProjectBudget } from "@/components/time-tracking/project-budget";
 import { ProjectBillableSetting } from "@/components/time-tracking/time-settings";
 import { useProjectBudget } from "@/hooks/queries/time-tracking/use-time-tracking";
+import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/projects/$projectId/budget",
@@ -26,6 +27,7 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { t } = useTranslation();
   const { projectId } = Route.useParams();
+  const { data: workspace } = useActiveWorkspace();
   // Each section asks only for what its read route allows: the budget needs `budget:read` at this
   // project, the billable default reads `/api/time-settings`, which needs `time_entry:create`.
   const budgetAccess = useSettingsAccess(
@@ -63,7 +65,7 @@ function RouteComponent() {
             <ProjectBillableSetting projectId={projectId} />
           ) : null}
           {budgetAccess === "allowed" ? (
-            <ProjectBudget projectId={projectId} />
+            <ProjectBudget projectId={projectId} workspaceId={workspace?.id} />
           ) : null}
         </div>
       )}

@@ -5872,6 +5872,24 @@ async function installAuthenticatedFixture(page: Page) {
         },
         rows: [],
       };
+    } else if (
+      path === "/api/me/settings/history" ||
+      path === "/api/portal/account/settings-history"
+    ) {
+      body = {
+        section:
+          url.search === "?section=profile"
+            ? "profile"
+            : url.search === "?section=preferences"
+              ? "preferences"
+              : url.search === "?section=notifications"
+                ? "notifications"
+                : url.search === "?section=security"
+                  ? "security"
+                  : "apiKeys",
+        lastChanged: null,
+        rows: [],
+      };
     } else if (path.endsWith("/api/auth/get-session")) body = session;
     // Shell reads every authenticated page makes: profile settings sync, terminology, the
     // resolved feature switches that drive navigation, the bell, and pending invitations.
@@ -6994,6 +7012,7 @@ test("account security enrollment-ready screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Set up authenticator" }),
   ).toBeEnabled();
+  await expect(page.getByText("No recorded changes yet.")).toBeVisible();
   await expect(page).toHaveScreenshot("account-security-setup.png", {
     animations: "disabled",
     caret: "hide",
@@ -7702,6 +7721,9 @@ test("project documents screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/documents");
   await expect(
+    page.getByRole("button", { name: "Work items", exact: true }),
+  ).toBeVisible();
+  await expect(
     page.getByRole("button", { name: "Help Desk", exact: true }),
   ).toBeVisible();
   await expect(
@@ -7913,6 +7935,7 @@ test("profile settings general screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { level: 1, name: "Personal Information" }),
   ).toBeVisible();
+  await expect(page.getByText("No recorded changes yet.")).toBeVisible();
   await expect(page).toHaveScreenshot("profile-settings-general.png", {
     animations: "disabled",
     caret: "hide",
@@ -7931,6 +7954,7 @@ test("profile settings appearance screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { level: 1, name: "Preferences" }),
   ).toBeVisible();
+  await expect(page.getByText("No recorded changes yet.")).toBeVisible();
   await expect(page).toHaveScreenshot("profile-settings-appearance.png", {
     animations: "disabled",
     caret: "hide",
@@ -9050,6 +9074,7 @@ test("profile notifications screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Report exports", exact: true }),
   ).toBeVisible();
+  await expect(page.getByText("No recorded changes yet.")).toBeVisible();
   await expect(page).toHaveScreenshot("profile-notifications.png", {
     animations: "disabled",
     caret: "hide",
@@ -9764,6 +9789,9 @@ test("portal account preferences screen @visual", async ({ page }) => {
   // The lazy shell is ready: navigation and the top bar have both painted.
   await expect(page.getByText("Dashboard", { exact: true })).toBeVisible();
   await expect(page.getByText("Get help", { exact: true })).toBeVisible();
+  await expect(
+    page.locator(':nth-match(:text-is("No recorded changes yet."), 2)'),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("portal-account.png", {
     animations: "disabled",
     caret: "hide",

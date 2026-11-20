@@ -27,7 +27,7 @@ import {
   RefreshCw,
   Send,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import { ErrorReference } from "@/components/errors/error-reference";
@@ -55,6 +55,7 @@ import { formatDateTime } from "@/lib/format";
 import { localizedAdminErrorMessage } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import { RotateSecretDialog } from "./rotate-secret-dialog";
 import {
   generateWebhookSecret,
@@ -359,6 +360,36 @@ function RotateDialog({
   onRotated: () => Promise<void>;
 }) {
   const stepUp = useStepUpAction();
+  const pendingSecret = useRef<string | null>(null);
+  const rotate = useMutation({
+    mutationFn: () => {
+      const secret = pendingSecret.current;
+      if (!secret) throw new Error("No webhook secret pending");
+      return stepUp.run(
+        {
+          operation: "webhook_rotate_secret",
+          workspaceId: webhook.workspaceId,
+          webhookId: webhook.id,
+        },
+        (token) => rotateWebhookSecret(webhook.id, secret, token),
+      );
+    },
+    meta: {
+      audits: {
+        targets: (
+          _: unknown,
+          r: { ok: boolean; value?: { id: string; workspaceId: string } },
+        ) =>
+          r.ok && r.value
+            ? auditEntity("webhook", r.value.id, {
+                kind: "workspace",
+                workspaceId: r.value.workspaceId,
+              })
+            : [],
+      },
+    },
+    onSuccess: (result) => (result.ok ? onRotated() : undefined),
+  });
   return (
     <RotateSecretDialog
       webhookName={webhook.name}
@@ -366,16 +397,14 @@ function RotateDialog({
       error={null}
       stepUp={stepUp}
       onRotate={(secret) => {
-        void stepUp
-          .run(
-            {
-              operation: "webhook_rotate_secret",
-              workspaceId: webhook.workspaceId,
-              webhookId: webhook.id,
-            },
-            (token) => rotateWebhookSecret(webhook.id, secret, token),
-          )
-          .then((result) => (result.ok ? onRotated() : undefined));
+        if (pendingSecret.current) return;
+        pendingSecret.current = secret;
+        void rotate
+          .mutateAsync()
+          .catch(() => {})
+          .finally(() => {
+            pendingSecret.current = null;
+          });
       }}
       onClose={onClose}
     />
@@ -489,6 +518,15 @@ function StatusCard({
       if (!outcome.ok)
         throw new Error(t("stepUp.failedTitle"), { cause: "step_up" });
       return outcome.value;
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, w: { id: string; workspaceId: string }) =>
+          auditEntity("webhook", w.id, {
+            kind: "workspace",
+            workspaceId: w.workspaceId,
+          }),
+      },
     },
     onSuccess: async () => {
       await onChanged();
@@ -644,6 +682,15 @@ function WebhookForm({
       if (!outcome.ok)
         throw new Error(t("stepUp.failedTitle"), { cause: "step_up" });
       return outcome.value;
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, w: { id: string; workspaceId: string }) =>
+          auditEntity("webhook", w.id, {
+            kind: "workspace",
+            workspaceId: w.workspaceId,
+          }),
+      },
     },
     onSuccess: onSaved,
   });

@@ -25,7 +25,7 @@ import {
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
@@ -44,6 +44,7 @@ import {
 } from "@/fetchers/god-mode/plugins";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
+import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
 import {
   TestResultAlert,
@@ -56,7 +57,7 @@ import {
 } from "./plugins/schema-settings-form";
 import { FailureAlert, StepUpFields } from "./step-up-fields";
 
-const queryKey = ["instance", "notification-provider", "email"];
+const providerQueryKey = ["instance", "notification-provider", "email"];
 const emptyConfig: EmailProviderConfig = {
   provider: "smtp",
   region: null,
@@ -90,8 +91,19 @@ function isEmailSettingsForm(
   );
 }
 
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
 export function NotificationProviderEditor() {
   const { t } = useTranslation("notificationProvider");
+  const { data: session } = authClient.useSession();
+  const userId = session?.user?.id;
+  const sessionId = session?.session?.id;
+  const host = window.location.host;
+  const queryKey = [...providerQueryKey, host, userId, sessionId];
   const [completed, setCompleted] = useState(false);
   useEffect(() => {
     if (!completed) return;
@@ -155,7 +167,7 @@ export function NotificationProviderEditor() {
         {completed ? t("saved") : ""}
       </span>
       <ProviderForm
-        key={query.data.version}
+        key={`${host}:${userId ?? ""}:${sessionId ?? ""}:${query.data.id ?? ""}:${query.data.version}`}
         provider={query.data}
         settingsForm={plugin.settingsForm}
         localMailpitCaptureAvailable={query.data.localMailpitCaptureAvailable}
@@ -163,7 +175,20 @@ export function NotificationProviderEditor() {
         onStart={() => setCompleted(false)}
         onSaved={() => setCompleted(true)}
         onReload={() => void query.refetch()}
+        queryKey={queryKey}
       />
+      {query.data.id ? (
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{
+              kind: "entity",
+              type: "instance_notification_provider",
+              id: query.data.id,
+              scope: { kind: "instance" },
+            }}
+          />
+        </Suspense>
+      ) : null}
     </>
   );
 }
@@ -175,6 +200,7 @@ function ProviderForm({
   onStart,
   onSaved,
   onReload,
+  queryKey,
 }: {
   provider: EmailProvider;
   settingsForm: Extract<SupportedPlugin["settingsForm"], { available: true }>;
@@ -183,6 +209,7 @@ function ProviderForm({
   onStart: () => void;
   onSaved: () => void;
   onReload: () => void;
+  queryKey: (string | undefined)[];
 }) {
   const { t } = useTranslation("notificationProvider");
   const queryClient = useQueryClient();
@@ -209,7 +236,41 @@ function ProviderForm({
     setError(null);
     setTestResult(null);
   });
-  const verify = useMutation({ mutationFn: sendEmailProviderTest });
+  const pendingTest = useRef<
+    Parameters<typeof sendEmailProviderTest>[0] | null
+  >(null);
+  const verify = useMutation({
+    mutationFn: () => {
+      if (!pendingTest.current) throw new Error("No provider test pending");
+      return sendEmailProviderTest(pendingTest.current);
+    },
+  });
+  // The request carries the mail password: it travels by ref, never through mutation variables.
+  const pending = useRef<{
+    request: Parameters<typeof saveEmailProvider>[0];
+    token: string;
+  } | null>(null);
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      if (!pending.current) throw new Error("No provider to save");
+      return saveEmailProvider(pending.current.request, pending.current.token);
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, saved: EmailProvider) =>
+          saved.id
+            ? [
+                {
+                  kind: "entity",
+                  type: "instance_notification_provider",
+                  id: saved.id,
+                  scope: { kind: "instance" },
+                },
+              ]
+            : [],
+      },
+    },
+  });
   const busy = step.busy || verify.isPending;
   const kind = kindOf(config);
   const sesSelected = kind === "ses";
@@ -406,6 +467,8 @@ function ProviderForm({
     }
     onStart();
     const intent = lifecycle.capture();
+    const capturedId = provider.id;
+    const capturedQueryKey = queryKey;
     setError(null);
     setNotice(null);
     const request = {
@@ -418,7 +481,12 @@ function ProviderForm({
     // single-use proof is bound to exactly this request.
     const result = await step.run(
       { operation: "notification_provider_save", request },
-      (token) => saveEmailProvider(request, token),
+      (token) => {
+        pending.current = { request, token };
+        return saveMutation.mutateAsync().finally(() => {
+          pending.current = null;
+        });
+      },
     );
     if (!result.ok) {
       // A failed write never leaves the typed password behind; the failure itself is shown by
@@ -427,7 +495,10 @@ function ProviderForm({
       return;
     }
     if (lifecycle.isCurrent(intent)) onSaved();
-    await queryClient.invalidateQueries({ queryKey });
+    if (result.value.id && (!capturedId || capturedId === result.value.id)) {
+      queryClient.setQueryData(capturedQueryKey, result.value);
+    }
+    await queryClient.invalidateQueries({ queryKey: capturedQueryKey });
     if (lifecycle.isCurrent(intent)) {
       setPassword("");
       setClearPassword(false);
@@ -435,7 +506,7 @@ function ProviderForm({
     }
   }
   async function sendTest() {
-    if (busy) return;
+    if (busy || pendingTest.current) return;
     const address = recipient.trim();
     if (!looksLikeAddress(address)) {
       setError(t("testSend.recipientRequired"));
@@ -459,11 +530,14 @@ function ProviderForm({
     setNotice(null);
     setTestResult(null);
     try {
-      const result = await verify.mutateAsync({
+      pendingTest.current = {
         version: provider.version,
         ...(requireConfig ? { config } : {}),
         ...secret,
         recipient: address,
+      };
+      const result = await verify.mutateAsync().finally(() => {
+        pendingTest.current = null;
       });
       if (!lifecycle.isCurrent(intent)) return;
       setTestResult(result);

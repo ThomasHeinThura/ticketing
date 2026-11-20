@@ -49,6 +49,13 @@ export function useProjectViewPreference<T>({
       patch: Record<string, unknown>;
       seed: boolean;
     }) => patchUserSettings(patch),
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "preferences" },
+        ],
+      },
+    },
     onSuccess: (response, { seed }) => {
       // The write answers with the person's full settings. When there was nothing cached to
       // update optimistically, that answer is what the screen shows; otherwise the cache
@@ -87,7 +94,10 @@ export function useProjectViewPreference<T>({
         } as UserSettings);
       }
       mutate(
-        { patch: { [settingKey]: next }, seed: !cached },
+        {
+          patch: { [settingKey]: next },
+          seed: !cached,
+        },
         {
           onSuccess: () => callbacks?.onSuccess?.(),
           onError: (error) => callbacks?.onError?.(error),

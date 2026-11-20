@@ -36,6 +36,9 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({ canUpdateProjects: () => mocks.canUpdate }),
 }));
+vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
+  default: () => ({ data: { id: "w1" } }),
+}));
 vi.mock("@/hooks/queries/project-member/use-get-project-members", () => ({
   default: () => ({
     data: {
@@ -195,6 +198,7 @@ describe("ProjectMembersSettings", () => {
     );
     await waitFor(() =>
       expect(mocks.removeMember).toHaveBeenCalledWith({
+        workspaceId: "w1",
         projectId: "p1",
         personId: "p-direct",
       }),
@@ -280,4 +284,81 @@ describe("ProjectMembersSettings", () => {
       screen.queryAllByRole("button", { name: /actionsFor/ }),
     ).toHaveLength(0);
   });
+});
+
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({
+    target,
+  }: {
+    target: { type: string; id: string; scope: Record<string, string> };
+  }) => (
+    <div data-testid="history-target">
+      {target.type}:{target.id}:{target.scope.workspaceId}:
+      {target.scope.projectId}
+    </div>
+  ),
+}));
+
+it("offers history only for a backed direct membership", async () => {
+  mocks.canManageMembers = false;
+  mocks.members = [
+    { ...direct, membershipId: "project-row" },
+    { ...inherited, membershipId: null },
+    {
+      ...direct,
+      personId: "scim",
+      managedExternally: true,
+      membershipId: null,
+    },
+  ];
+  render(<ProjectMembersSettings projectId="p1" />);
+  const buttons = screen.getAllByRole("button", {
+    name: /settings:history.memberHistory/,
+  });
+  expect(buttons).toHaveLength(1);
+  fireEvent.click(buttons[0] as HTMLElement);
+  expect(await screen.findByTestId("history-target")).toHaveTextContent(
+    "project_membership:project-row:w1:p1",
+  );
+});
+
+it("closes a direct membership history when its row is no longer a backed direct row", async () => {
+  mocks.members = [{ ...direct, membershipId: "project-row" }];
+  const view = render(<ProjectMembersSettings projectId="p1" />);
+  fireEvent.click(
+    screen.getByRole("button", { name: /settings:history.memberHistory/ }),
+  );
+  expect(await screen.findByTestId("history-target")).toBeTruthy();
+  mocks.members = [{ ...direct, membershipId: null }];
+  view.rerender(<ProjectMembersSettings projectId="p1" />);
+  expect(screen.queryByTestId("history-target")).toBeNull();
+  mocks.members = [{ ...direct, membershipId: "project-row" }];
+  view.rerender(<ProjectMembersSettings projectId="p1" />);
+  expect(screen.queryByTestId("history-target")).toBeNull();
+});
+
+it("hides history for invalid row IDs", () => {
+  mocks.members = [
+    { ...direct, membershipId: "\0bad" },
+    { ...direct, personId: "other", membershipId: "x".repeat(201) },
+  ];
+  render(<ProjectMembersSettings projectId="p1" />);
+  expect(
+    screen.queryByRole("button", { name: /settings:history.memberHistory/ }),
+  ).toBeNull();
+});
+
+it("does not submit an unchanged role", async () => {
+  mocks.members = [{ ...direct, membershipId: "project-row" }];
+  mocks.updateRole.mockReset();
+  render(<ProjectMembersSettings projectId="p1" />);
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: /settings:projectMembers.changeRoleFor/,
+    }),
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Project member" }),
+  );
+  expect(mocks.updateRole).not.toHaveBeenCalled();
 });

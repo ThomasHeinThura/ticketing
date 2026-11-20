@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -10,9 +14,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
+  audited: vi.fn(),
+  session: { user: { id: "user-1" }, session: { id: "session-1" } },
   save: vi.fn(),
   test: vi.fn(),
   prove: vi.fn(),
+}));
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { useSession: () => ({ data: mocks.session }) },
+}));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({ target }: { target: { id: string } }) => (
+    <div data-testid="storage-history">{target.id}</div>
+  ),
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -37,6 +51,7 @@ import { IdentityAdminError } from "@/fetchers/god-mode/identity-admin-error";
 import { S3DraftPanel } from "./s3-draft-panel";
 
 const data = {
+  id: "storage-row",
   version: 3,
   config: {
     connector: "external",
@@ -55,6 +70,7 @@ const data = {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.session = { user: { id: "user-1" }, session: { id: "session-1" } };
   mocks.get.mockResolvedValue(data);
   mocks.save.mockResolvedValue({ ...data, version: 4 });
   mocks.test.mockResolvedValue({
@@ -69,6 +85,12 @@ afterEach(cleanup);
 function setup() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
+    mutationCache: new MutationCache({
+      onSuccess: (data, variables, _context, mutation) =>
+        mocks.audited(
+          mutation.meta?.audits?.targets(variables as never, data as never),
+        ),
+    }),
   });
   render(
     <QueryClientProvider client={client}>
@@ -453,4 +475,98 @@ describe("S3DraftPanel", () => {
       expect(screen.getByRole("button", { name: "draft.save" })).toBeEnabled();
     });
   });
+});
+
+const storageTarget = [
+  {
+    kind: "entity",
+    type: "instance_storage_draft",
+    id: "storage-row",
+    scope: { kind: "instance" },
+  },
+];
+
+it("shows History for the persisted draft and audits its id after save", async () => {
+  setup();
+  expect(await screen.findByTestId("storage-history")).toHaveTextContent(
+    "storage-row",
+  );
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+  await waitFor(() =>
+    expect(mocks.audited).toHaveBeenCalledWith(storageTarget),
+  );
+});
+
+it("mounts first-save History only after receiving the persisted ID", async () => {
+  mocks.get.mockResolvedValue({ ...data, id: null });
+  setup();
+  await screen.findByText("draft.inactive");
+  expect(screen.queryByTestId("storage-history")).toBeNull();
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+  expect(await screen.findByTestId("storage-history")).toHaveTextContent(
+    "storage-row",
+  );
+  expect(mocks.audited).toHaveBeenCalledWith(storageTarget);
+});
+
+it("does not audit a refused save or a storage probe", async () => {
+  mocks.save.mockRejectedValueOnce(
+    new IdentityAdminError(403, "failed", "step_up", null),
+  );
+  setup();
+  await screen.findByText("draft.inactive");
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+  await screen.findByText("draft.operationFailed");
+  expect(mocks.audited).not.toHaveBeenCalled();
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.test" }));
+  await waitFor(() => expect(mocks.test).toHaveBeenCalled());
+  expect(mocks.audited).not.toHaveBeenCalled();
+});
+
+it("persists the save response into the canonical cache and keeps credentials out of the mutation", async () => {
+  const client = setup();
+  fireEvent.change(await screen.findByLabelText("draft.bucket"), {
+    target: { value: "other-bucket" },
+  });
+  fireEvent.change(await screen.findByLabelText("draft.accessValue"), {
+    target: { value: "AKIA-synthetic" },
+  });
+  fireEvent.change(await screen.findByLabelText("draft.secretValue"), {
+    target: { value: "shh-synthetic" },
+  });
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+  await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(
+      client.getQueryData([
+        "god-mode",
+        "s3-draft",
+        window.location.host,
+        "user-1",
+        "session-1",
+      ]),
+    ).toEqual({ ...data, version: 4 }),
+  );
+  const mutations = client.getMutationCache().getAll();
+  expect(mutations.length).toBeGreaterThan(0);
+  for (const mutation of mutations) {
+    expect(mutation.state.variables).toBeUndefined();
+    expect(
+      JSON.stringify([mutation.options.meta, mutation.state.data]),
+    ).not.toMatch(/AKIA-synthetic|shh-synthetic/);
+  }
+});
+
+it("hides History when the source read is refused", async () => {
+  mocks.get.mockRejectedValueOnce(
+    new IdentityAdminError(403, "refused", "step_up", null),
+  );
+  setup();
+  await screen.findByText("draft.loadFailed");
+  expect(screen.queryByTestId("storage-history")).toBeNull();
 });

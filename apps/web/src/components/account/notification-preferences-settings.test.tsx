@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -9,6 +13,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationPreferencesSettings } from "./notification-preferences-settings";
 
+const mocks = vi.hoisted(() => ({ audited: vi.fn() }));
 const updatePreferences = vi.fn();
 const preferenceToast = vi.fn();
 const preferences = {
@@ -67,7 +72,18 @@ function renderSettings() {
   return render(
     <QueryClientProvider
       client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        new QueryClient({
+          defaultOptions: { queries: { retry: false } },
+          mutationCache: new MutationCache({
+            onSuccess: (data, variables, _context, mutation) =>
+              mocks.audited(
+                mutation.meta?.audits?.targets(
+                  variables as never,
+                  data as never,
+                ),
+              ),
+          }),
+        })
       }
     >
       <NotificationPreferencesSettings />
@@ -229,6 +245,7 @@ describe("NotificationPreferencesSettings", () => {
   });
 
   it("offers the report.export_ready email preference and saves it on its own (P5-R3-02)", async () => {
+    mocks.audited.mockClear();
     renderSettings();
     const block = screen.getByTestId("report-export-email-preference");
     const save = screen.getByRole("button", {
@@ -244,6 +261,11 @@ describe("NotificationPreferencesSettings", () => {
     fireEvent.click(save);
     await waitFor(() =>
       expect(canonical.saveReportExport).toHaveBeenCalledTimes(1),
+    );
+    await waitFor(() =>
+      expect(mocks.audited).toHaveBeenCalledWith([
+        { kind: "self", audience: "staff", section: "notifications" },
+      ]),
     );
     expect(canonical.saveReportExport.mock.calls[0]?.[0]).toEqual({
       enabled: false,

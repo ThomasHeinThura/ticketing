@@ -69,6 +69,9 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 vi.mock("@tanstack/react-query", () => ({
+  useMutation: (options: { mutationFn: (v: unknown) => unknown }) => ({
+    mutateAsync: (v: unknown) => options.mutationFn(v),
+  }),
   useQueryClient: () => ({
     invalidateQueries: mocks.invalidate,
     setQueryData: mocks.setQueryData,
@@ -161,6 +164,7 @@ describe("project states editor reorder (PR-17)", () => {
     mocks.onDragEnd?.({ active: { id: "c" }, over: { id: "a" } });
     await waitFor(() =>
       expect(mocks.updateState).toHaveBeenCalledWith({
+        workspaceId: "w1",
         projectId: "p1",
         stateId: "c",
         position: 0,

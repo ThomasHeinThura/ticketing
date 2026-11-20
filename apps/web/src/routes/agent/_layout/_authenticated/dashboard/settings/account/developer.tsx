@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@taskdesk/ui";
 import { KeyRound, Plus } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { ApiKeyCreatedModal } from "@/components/settings/api-key-created-modal";
@@ -19,6 +19,12 @@ import { CreateApiKeyDialog } from "@/components/settings/create-api-key-dialog"
 import { ServiceKeysCard } from "@/components/settings/service-keys-card";
 import useGetApiKeys from "@/hooks/queries/use-get-api-keys";
 import type { CreateApiKeyResponse } from "@/types/api-key";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/account/developer",
@@ -84,6 +90,19 @@ function RouteComponent() {
           <Card className="!rounded-none">
             <CardPanel>
               <ApiKeyTable apiKeys={apiKeys} isLoading={isLoading} />
+            </CardPanel>
+          </Card>
+          <Card className="!rounded-none">
+            <CardPanel>
+              <Suspense fallback={null}>
+                <SettingsHistory
+                  target={{
+                    kind: "self",
+                    audience: "staff",
+                    section: "apiKeys",
+                  }}
+                />
+              </Suspense>
             </CardPanel>
           </Card>
         </CardFrame>

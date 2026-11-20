@@ -37,6 +37,7 @@ import {
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatMinor, parseMinor } from "@/lib/money-minor";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import { isRefused, plainMajor, useCostTypes } from "./cost-queries";
 import { useInvalidateTime, useTimeErrorMessage } from "./time-shared";
 
@@ -196,6 +197,15 @@ function CostTypeEditDialog({
   const dirty = Object.keys(changes).length > 0;
   const save = useMutation({
     mutationFn: () => updateCostType(costType.id, workspaceId, changes),
+    meta: {
+      audits: {
+        targets: (_: unknown, ct: CostType) =>
+          auditEntity("cost_type", ct.id, {
+            kind: "workspace",
+            workspaceId: ct.workspaceId,
+          }),
+      },
+    },
     onSuccess: async () => {
       await invalidate();
       toast.success(t("common:actions.saved"));
@@ -277,6 +287,15 @@ function CostTypeRow({
   const archive = useMutation({
     mutationFn: (archived: boolean) =>
       updateCostType(costType.id, workspaceId, { archived }),
+    meta: {
+      audits: {
+        targets: (_: unknown, ct: CostType) =>
+          auditEntity("cost_type", ct.id, {
+            kind: "workspace",
+            workspaceId: ct.workspaceId,
+          }),
+      },
+    },
     onSuccess: invalidate,
     onError: (error) => toast.error(message(error)),
   });
@@ -361,6 +380,15 @@ function CostTypeAddForm({ workspaceId }: { workspaceId: string }) {
         currency: draft.currency,
         billable: draft.billable,
       }),
+    meta: {
+      audits: {
+        targets: (_: unknown, ct: CostType) =>
+          auditEntity("cost_type", ct.id, {
+            kind: "workspace",
+            workspaceId: ct.workspaceId,
+          }),
+      },
+    },
     onSuccess: async () => {
       setDraft((current) => ({
         ...current,

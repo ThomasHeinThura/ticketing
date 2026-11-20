@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -15,7 +15,6 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import {
   getWorkspaceProjectSettings,
   patchWorkspaceProjectSettings,
@@ -27,10 +26,9 @@ import {
 } from "@/fetchers/service-calendar";
 import { getSlaPolicies } from "@/fetchers/sla-policy";
 import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
+import type { HistoryTarget } from "@/hooks/queries/settings/use-settings-history";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
-import { profileSessionGuard } from "@/lib/profile-session-guard";
 
 const isForbidden = (error: unknown) =>
   error instanceof HttpError && error.status === 403;
@@ -61,7 +59,22 @@ export function WorkspaceProjectDefaultsPanel({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
+  const patch = useMutation({
+    mutationFn: (body: Parameters<typeof patchWorkspaceProjectSettings>[1]) =>
+      patchWorkspaceProjectSettings(workspaceId, body),
+    meta: {
+      audits: {
+        targets: (): HistoryTarget[] => [
+          {
+            kind: "entity",
+            type: "workspace",
+            id: workspaceId,
+            scope: { kind: "workspace", workspaceId },
+          },
+        ],
+      },
+    },
+  });
   const { canManageWorkspaceSettings, isCheckingPermissions } =
     useWorkspacePermission(workspaceId);
   const canEdit = canManageWorkspaceSettings();
@@ -175,30 +188,15 @@ export function WorkspaceProjectDefaultsPanel({
   );
   const save = async () => {
     if (!current || !dirty || saving || !canEdit) return;
-    const userId = session?.user?.id;
-    const sessionId = session?.session?.id;
     setFailure(null);
     setSaving(true);
     setSaveSuccess(false);
     try {
-      const updated = await patchWorkspaceProjectSettings(workspaceId, {
+      const updated = await patch.mutateAsync({
         expectedVersion: current.version,
         defaultSlaPolicyId: slaId === NONE ? null : slaId,
         defaultServiceCalendarId: calendarId === NONE ? null : calendarId,
       });
-      if (userId && sessionId)
-        refreshSettingsHistory(
-          queryClient,
-          [
-            "settings-history",
-            "workspace",
-            workspaceId,
-            "agent",
-            userId,
-            sessionId,
-          ],
-          profileSessionGuard(userId, sessionId),
-        );
       queryClient.setQueryData(queryKey, updated);
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
       setDraftVersion(`${workspaceId}:${updated.version}`);

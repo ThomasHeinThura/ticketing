@@ -4,7 +4,7 @@ import {
   handleUnauthorized,
   isUnauthorizedError,
 } from "@/lib/http-error";
-import { followAuditInvalidation } from "./audit-invalidation";
+import { followAuditInvalidation, historyHooks } from "./audit-invalidation";
 import { configureNotifyScheduler } from "./notify-scheduler";
 
 configureNotifyScheduler();
@@ -105,72 +105,93 @@ export function shouldRetryQuery(failureCount: number, error: unknown) {
 
 /** The portal root's cached session read (`routes/portal/__root.tsx`). */
 export const portalSessionQueryKey = ["portal", "session"] as const;
-let verifiedPortalUserId: string | undefined;
+export function createQueryClient() {
+  let verifiedPortalUserId: string | undefined;
+  const auditWrites = new WeakMap<
+    object,
+    {
+      meta: import("./audit-invalidation").AuditMutationMeta | undefined;
+      variables: unknown;
+    }
+  >();
+  const client: QueryClient = new QueryClient({
+    queryCache: new QueryCache({
+      onSuccess: (data, query) => {
+        const key = query.queryKey;
+        if (key.length !== 2 || key[0] !== "portal" || key[1] !== "session")
+          return;
+        const user =
+          data && typeof data === "object" && "user" in data
+            ? data.user
+            : undefined;
+        const hasSession = Boolean(
+          data && typeof data === "object" && "session" in data && data.session,
+        );
+        const userId =
+          hasSession &&
+          user &&
+          typeof user === "object" &&
+          "id" in user &&
+          typeof user.id === "string"
+            ? user.id
+            : undefined;
+        // Remove and cancel old reads before a different verified identity can use shared keys.
+        if (
+          verifiedPortalUserId !== undefined &&
+          verifiedPortalUserId !== userId
+        ) {
+          client.removeQueries({
+            predicate: ({ queryKey }) =>
+              (queryKey[0] === "portal" &&
+                !(
+                  queryKey.length === 2 &&
+                  (queryKey[1] === "session" || queryKey[1] === "auth-methods")
+                )) ||
+              (queryKey[0] === "terminology-runtime" &&
+                queryKey[1] === "customer"),
+          });
+        }
+        verifiedPortalUserId = userId;
+      },
+      onError: (error, query) => {
+        if (isUnauthorizedError(error)) {
+          client.removeQueries({ queryKey: portalSessionQueryKey });
+          handleUnauthorized();
+          return;
+        }
+        historyHooks.onRefusal?.(client, query, error);
+        captureCacheError(error, "query");
+      },
+    }),
+    mutationCache: new MutationCache({
+      onMutate: (variables, mutation) => {
+        auditWrites.set(mutation, { meta: mutation.meta, variables });
+      },
+      onSuccess: (data, _variables, _context, mutation) => {
+        const captured = auditWrites.get(mutation);
+        if (captured)
+          historyHooks.onMutation?.(
+            client,
+            captured.meta,
+            captured.variables,
+            data,
+          );
+      },
+      onError: (error) => captureCacheError(error, "mutation"),
+    }),
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        retry: shouldRetryQuery,
+      },
+      mutations: { retry: false },
+    },
+  });
+  followAuditInvalidation(client);
+  return client;
+}
 
-const queryClient = new QueryClient({
-  queryCache: new QueryCache({
-    onSuccess: (data, query) => {
-      const key = query.queryKey;
-      if (key.length !== 2 || key[0] !== "portal" || key[1] !== "session")
-        return;
-      const user =
-        data && typeof data === "object" && "user" in data
-          ? data.user
-          : undefined;
-      const hasSession = Boolean(
-        data && typeof data === "object" && "session" in data && data.session,
-      );
-      const userId =
-        hasSession &&
-        user &&
-        typeof user === "object" &&
-        "id" in user &&
-        typeof user.id === "string"
-          ? user.id
-          : undefined;
-      // Remove and cancel old reads before a different verified identity can use shared keys.
-      if (
-        verifiedPortalUserId !== undefined &&
-        verifiedPortalUserId !== userId
-      ) {
-        queryClient.removeQueries({
-          predicate: ({ queryKey }) =>
-            (queryKey[0] === "portal" &&
-              !(
-                queryKey.length === 2 &&
-                (queryKey[1] === "session" || queryKey[1] === "auth-methods")
-              )) ||
-            (queryKey[0] === "terminology-runtime" &&
-              queryKey[1] === "customer"),
-        });
-      }
-      verifiedPortalUserId = userId;
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        // The session is gone: never answer the next navigation from the cached session.
-        queryClient.removeQueries({ queryKey: portalSessionQueryKey });
-        handleUnauthorized();
-        return;
-      }
-      captureCacheError(error, "query");
-    },
-  }),
-  mutationCache: new MutationCache({
-    onError: (error) => captureCacheError(error, "mutation"),
-  }),
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-      retry: shouldRetryQuery,
-    },
-    mutations: {
-      retry: false,
-    },
-  },
-});
-
-followAuditInvalidation(queryClient);
+const queryClient = createQueryClient();
 
 export default queryClient;

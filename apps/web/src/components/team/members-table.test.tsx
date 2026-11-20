@@ -117,10 +117,11 @@ vi.mock("@/hooks/queries/workspace/use-workspace-roles", () => ({
 }));
 
 const canInviteUsers = vi.fn(() => true);
+const canManageTeam = vi.fn(() => true);
 
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
-    canManageTeam: () => true,
+    canManageTeam: () => canManageTeam(),
     canRemoveMembers: () => true,
     canInviteUsers: () => canInviteUsers(),
   }),
@@ -132,6 +133,7 @@ vi.mock("../providers/auth-provider/hooks/use-auth", () => ({
 
 beforeEach(() => {
   canInviteUsers.mockReturnValue(true);
+  canManageTeam.mockReturnValue(true);
   workspaceRolesData.mockReturnValue([]);
   copyWorkspaceInvitationLink.mockResolvedValue({
     link: `${window.location.origin}/invitation/accept/invite-1`,
@@ -707,4 +709,72 @@ it("offers email settings to an instance admin when email is missing", () => {
   expect(
     screen.getByRole("link", { name: "team:invitations.configureEmail" }),
   ).toHaveAttribute("href", "/god-mode/notifications");
+});
+
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({
+    target,
+  }: {
+    target: { type: string; id: string; scope: { workspaceId: string } };
+  }) => (
+    <div data-testid="history-target">
+      {target.type}:{target.id}:{target.scope.workspaceId}
+    </div>
+  ),
+}));
+
+it("opens history for the membership row rather than the user", async () => {
+  render(
+    <MembersTable
+      workspaceId="workspace-1"
+      invitations={[]}
+      users={[{ ...member, workspaceMemberId: "membership-row" }]}
+    />,
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: /settings:history.memberHistory/ }),
+  );
+  expect(await screen.findByTestId("history-target")).toHaveTextContent(
+    "workspace_member:membership-row:workspace-1",
+  );
+});
+
+it("closes history when its row disappears and refuses malformed IDs", async () => {
+  const valid = { ...member, workspaceMemberId: "membership-row" };
+  const view = render(
+    <MembersTable workspaceId="w1" invitations={[]} users={[valid]} />,
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: /settings:history.memberHistory/ }),
+  );
+  expect(await screen.findByTestId("history-target")).toBeTruthy();
+  view.rerender(<MembersTable workspaceId="w1" invitations={[]} users={[]} />);
+  expect(screen.queryByTestId("history-target")).toBeNull();
+  view.rerender(
+    <MembersTable
+      workspaceId="w1"
+      invitations={[]}
+      users={[{ ...valid, workspaceMemberId: "" }]}
+    />,
+  );
+  expect(
+    screen.queryByRole("button", { name: /settings:history.memberHistory/ }),
+  ).toBeNull();
+});
+
+it("exposes history to a reader without role edit authority", async () => {
+  canManageTeam.mockReturnValue(false);
+  render(
+    <MembersTable
+      workspaceId="w1"
+      invitations={[]}
+      users={[{ ...member, workspaceMemberId: "row" }]}
+    />,
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: /settings:history.memberHistory/ }),
+  );
+  expect(await screen.findByTestId("history-target")).toHaveTextContent(
+    "workspace_member:row:w1",
+  );
 });

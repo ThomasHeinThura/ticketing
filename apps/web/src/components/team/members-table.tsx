@@ -34,7 +34,7 @@ import {
   ShieldIcon,
   TrashIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PickerPopover } from "@/components/common/picker-popover";
 import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
@@ -58,6 +58,21 @@ import type {
 } from "@/types/workspace-user";
 import { Avatar, AvatarFallback, AvatarImage } from "../avatar";
 import { useAuth } from "../providers/auth-provider/hooks/use-auth";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
+function validHistoryId(id: unknown): id is string {
+  return (
+    typeof id === "string" &&
+    id.trim().length > 0 &&
+    id.length <= 200 &&
+    !id.includes("\0")
+  );
+}
 
 type Props = {
   workspaceId: string;
@@ -99,6 +114,10 @@ function capitalize(value: string): string {
 
 function MembersTable({ workspaceId, invitations, users }: Props) {
   const { t } = useTranslation();
+  const [history, setHistory] = useState<{
+    id: string;
+    targetUserId: string;
+  } | null>(null);
   const [memberToDelete, setMemberToDelete] = useState<WorkspaceUser | null>(
     null,
   );
@@ -111,6 +130,17 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
   const [resendingId, setResendingId] = useState<string | null>(null);
 
   const { user: currentUser } = useAuth();
+  const historyOpen = Boolean(
+    history &&
+      users.some(
+        (member) =>
+          member.id === history.targetUserId &&
+          member.workspaceMemberId === history.id,
+      ),
+  );
+  useEffect(() => {
+    if (history && !historyOpen) setHistory(null);
+  }, [history, historyOpen]);
   const { mutateAsync: deleteWorkspaceUser, isPending: isDeleting } =
     useDeleteWorkspaceUser();
   const { mutateAsync: cancelInvitation, isPending: isCancelling } =
@@ -158,7 +188,14 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
   const handleChangeRole = async (member: WorkspaceUser, role: string) => {
     if (role === member.role) return;
     try {
-      await updateMemberRole({ workspaceId, userId: member.id, role });
+      await updateMemberRole({
+        workspaceId,
+        userId: member.id,
+        role,
+        workspaceMemberId: validHistoryId(member.workspaceMemberId)
+          ? member.workspaceMemberId
+          : null,
+      });
       toast.success(t("team:membersTable.roleUpdateSuccess"));
     } catch (error) {
       toast.error(
@@ -347,6 +384,31 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
 
   return (
     <>
+      <Dialog
+        open={historyOpen}
+        onOpenChange={(open) => !open && setHistory(null)}
+      >
+        <DialogPopup closeLabel={t("common:actions.close")}>
+          <DialogHeader>
+            <DialogTitle>{t("settings:history.title")}</DialogTitle>
+          </DialogHeader>
+          <DialogPanel>
+            {history && historyOpen ? (
+              <Suspense fallback={null}>
+                <SettingsHistory
+                  key={`${history.id}:${workspaceId}`}
+                  target={{
+                    kind: "entity",
+                    type: "workspace_member",
+                    id: history.id,
+                    scope: { kind: "workspace", workspaceId },
+                  }}
+                />
+              </Suspense>
+            ) : null}
+          </DialogPanel>
+        </DialogPopup>
+      </Dialog>
       {canInvite && pendingInvitations.length > 0 ? <NoEmailNotice /> : null}
       <Table>
         <TableHeader>
@@ -434,6 +496,24 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                   {member.joinedAt ? formatDateMedium(member.joinedAt) : "–"}
                 </TableCell>
                 <TableCell className="pe-6 py-3 text-right">
+                  {validHistoryId(member.workspaceMemberId) ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={t("settings:history.memberHistory", {
+                        name: member.name || member.email,
+                        number: sortedUsers.indexOf(member) + 1,
+                      })}
+                      onClick={() =>
+                        setHistory({
+                          id: member.workspaceMemberId,
+                          targetUserId: member.id,
+                        })
+                      }
+                    >
+                      {t("settings:history.title")}
+                    </Button>
+                  ) : null}
                   {!isSelf && canRemove ? (
                     <Menu>
                       <MenuTrigger

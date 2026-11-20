@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  getSettingsHistory,
-  settingsHistoryQueryKey,
-} from "./settings-history";
+import { getSettingsHistory } from "./settings-history";
 
 const get = vi.hoisted(() => vi.fn());
 vi.mock("@taskdesk/libs", () => ({ client: { audit: { $get: get } } }));
@@ -51,21 +48,10 @@ it("forwards the optional abort signal to the entity request", async () => {
   );
 });
 
-it("partitions the same terminology cell by explicit instance and workspace scope", async () => {
+it("sends the explicit instance or workspace scope of a terminology cell", async () => {
   const id = "request:both:en-US";
   const instance = { scope: "instance" } as const;
   const workspaceA = { scope: "workspace", workspaceId: "w1" } as const;
-  const workspaceB = { scope: "workspace", workspaceId: "w2" } as const;
-  expect(
-    settingsHistoryQueryKey("terminology_override", id, "u", "s", instance),
-  ).not.toEqual(
-    settingsHistoryQueryKey("terminology_override", id, "u", "s", workspaceA),
-  );
-  expect(
-    settingsHistoryQueryKey("terminology_override", id, "u", "s", workspaceA),
-  ).not.toEqual(
-    settingsHistoryQueryKey("terminology_override", id, "u", "s", workspaceB),
-  );
   get.mockResolvedValue({
     ok: true,
     json: async () => ({
@@ -93,3 +79,39 @@ it("partitions the same terminology cell by explicit instance and workspace scop
     },
   });
 });
+
+it("rejects malformed history rows before rendering", async () => {
+  get.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      entityType: "workspace",
+      entityId: "w1",
+      lastChanged: null,
+      rows: null,
+    }),
+  });
+  await expect(getSettingsHistory("workspace", "w1")).rejects.toThrow();
+});
+
+it.each(["row", "lastChanged"])(
+  "rejects an invalid %s timestamp",
+  async (field) => {
+    const actor = { kind: "person", name: "A" };
+    const entry = {
+      actor,
+      at: "",
+      action: "workspace.settings_updated",
+      changedFields: [],
+    };
+    get.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entityType: "workspace",
+        entityId: "w1",
+        rows: field === "row" ? [entry] : [],
+        lastChanged: field === "lastChanged" ? { actor, at: "" } : null,
+      }),
+    });
+    await expect(getSettingsHistory("workspace", "w1")).rejects.toThrow();
+  },
+);

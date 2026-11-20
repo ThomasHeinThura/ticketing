@@ -716,6 +716,7 @@ export default function ProjectsPage({
                             {project.seenOnlyViaWorkspaceRole ? (
                               <JoinProject
                                 projectId={project.id}
+                                workspaceId={project.workspaceId}
                                 canJoin={project?.canJoin === true}
                               />
                             ) : null}

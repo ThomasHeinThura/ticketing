@@ -99,15 +99,15 @@ beforeEach(() => {
 afterEach(cleanup);
 
 function renderPanel() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
+    <QueryClientProvider client={client}>
       <WebhookSecurityPosturePanel />
     </QueryClientProvider>,
   );
+  return client;
 }
 
 describe("WebhookSecurityPosturePanel", () => {
@@ -142,7 +142,7 @@ describe("WebhookSecurityPosturePanel", () => {
   });
 
   it("binds step-up to a digest and sends distinct replacements only with the rotate request", async () => {
-    renderPanel();
+    const client = renderPanel();
     fireEvent.click(
       await screen.findByRole("button", { name: "rotateAllAction" }),
     );
@@ -177,5 +177,12 @@ describe("WebhookSecurityPosturePanel", () => {
       "single-use-token",
     );
     expect(await screen.findByText("rotateAllSuccess")).toBeInTheDocument();
+    const cache = JSON.stringify(
+      client
+        .getMutationCache()
+        .getAll()
+        .map((mutation) => ({ state: mutation.state, meta: mutation.meta })),
+    );
+    for (const secret of secrets) expect(cache).not.toContain(secret);
   });
 });

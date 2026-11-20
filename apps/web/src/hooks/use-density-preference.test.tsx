@@ -13,7 +13,21 @@ import {
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   put: vi.fn(),
+  userId: null as string | null,
 }));
+
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({ data: session() }),
+    getSession: async () => ({ data: session(), error: null }),
+  },
+}));
+
+function session() {
+  return mocks.userId
+    ? { user: { id: mocks.userId }, session: { id: `session-${mocks.userId}` } }
+    : null;
+}
 
 vi.mock("@/fetchers/user-settings/user-settings", () => ({
   getUserSettings: mocks.get,
@@ -33,6 +47,7 @@ function switchableWrapper(initial: string | null) {
   });
   const current = { userId: initial };
   function Wrapper({ children }: { children: ReactNode }) {
+    mocks.userId = current.userId;
     return (
       <QueryClientProvider client={queryClient}>
         <AuthContext.Provider
@@ -55,6 +70,7 @@ function wrapper(userId = "user-1") {
     defaultOptions: { queries: { retry: false } },
   });
   return function Wrapper({ children }: { children: ReactNode }) {
+    mocks.userId = userId;
     return (
       <QueryClientProvider client={queryClient}>
         <AuthContext.Provider
@@ -76,6 +92,7 @@ describe("density preference sync (VW-6, ST-17)", () => {
     localStorage.clear();
     mocks.get.mockReset();
     mocks.put.mockReset();
+    mocks.userId = null;
     mocks.put.mockResolvedValue({});
     useUserPreferencesStore.setState({ compactMode: false });
   });

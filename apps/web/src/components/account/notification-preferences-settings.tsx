@@ -522,7 +522,16 @@ function ReportExportEmailPreference() {
     }
   }, [linked, stored]);
   const mutation = useMutation({
-    mutationFn: saveReportExportEmailPreference,
+    mutationFn: (
+      input: Parameters<typeof saveReportExportEmailPreference>[0],
+    ) => saveReportExportEmailPreference(input),
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "notifications" },
+        ],
+      },
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["notification-preferences"],

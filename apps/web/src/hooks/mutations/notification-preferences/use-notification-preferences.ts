@@ -13,8 +13,16 @@ export function useUpdateNotificationPreferences() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (json: UpdateNotificationPreferencesRequest) =>
-      updateNotificationPreferences(json),
+    mutationFn: (json: UpdateNotificationPreferencesRequest) => {
+      return updateNotificationPreferences(json);
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "notifications" },
+        ],
+      },
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["notification-preferences"],
@@ -35,13 +43,22 @@ export function useUpsertNotificationWorkspaceRule() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       workspaceId,
       json,
     }: {
       workspaceId: string;
       json: UpsertNotificationWorkspaceRuleRequest;
-    }) => upsertNotificationWorkspaceRule(workspaceId, json),
+    }) => {
+      return upsertNotificationWorkspaceRule(workspaceId, json);
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "notifications" },
+        ],
+      },
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["notification-preferences"],
@@ -62,8 +79,16 @@ export function useDeleteNotificationWorkspaceRule() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (workspaceId: string) =>
-      deleteNotificationWorkspaceRule(workspaceId),
+    mutationFn: async (workspaceId: string) => {
+      return deleteNotificationWorkspaceRule(workspaceId);
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "notifications" },
+        ],
+      },
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["notification-preferences"],

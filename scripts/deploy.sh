@@ -584,7 +584,7 @@ case "$MODE" in
     ;;
 
   upgrade)
-    say "before an upgrade: take a database backup and note the current digest."
+    say "before an upgrade: run scripts/backup-maintenance.sh (operations runbook) and note the current digest."
     CURRENT="$(docker inspect --format '{{index .RepoDigests 0}}' "$(dc images -q taskdesk 2>/dev/null | head -1)" 2>/dev/null || true)"
     CURRENT_CONTAINER="$(dc ps -q taskdesk 2>/dev/null | head -1)"
     CURRENT_IMAGE_REF="$(docker inspect --format '{{.Config.Image}}' "$CURRENT_CONTAINER" 2>/dev/null || true)"

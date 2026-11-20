@@ -298,7 +298,17 @@ function MentionEmailForm({
       : preference.eventKind === "automation.notification_sent"
         ? saveTeamNotificationEmailPreference
         : saveMentionEmailPreference;
-  const mutation = useMutation({ mutationFn: savePreference });
+  const mutation = useMutation({
+    mutationFn: (input: Parameters<typeof savePreference>[0]) =>
+      savePreference(input),
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "notifications" },
+        ],
+      },
+    },
+  });
   return (
     <form
       className="space-y-4"

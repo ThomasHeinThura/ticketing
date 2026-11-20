@@ -24,7 +24,7 @@ import {
   Switch,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   getPortalCanonicalPreferences,
   getPortalEmailLinkHandoff,
@@ -36,7 +36,6 @@ import {
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { consumeNotificationPreferenceHandoffAttempted } from "@/lib/notification-preference-handoff";
 import { routes } from "@/lib/routes";
-
 import { QuietHoursForm } from "./quiet-hours-preference";
 
 const PREFERENCE_CARDS = [
@@ -53,8 +52,10 @@ const PREFERENCE_CARDS = [
 
 export function PortalCanonicalPreferencesPage({
   portalUserId,
+  history,
 }: {
   portalUserId: string;
+  history?: ReactNode;
 }) {
   const { t } = usePortalTranslation(["portal", "common"]);
   const [emailLinkAttempted] = useState(
@@ -115,6 +116,7 @@ export function PortalCanonicalPreferencesPage({
           {t("portal:account.notifications.inAppAlways")}
         </p>
       </header>
+      {history}
       <p className="text-sm text-muted-foreground">
         <Link
           className="underline underline-offset-4"
@@ -260,6 +262,7 @@ function PortalQuietHoursPreference({
             onStart={() => setCompleted(false)}
             onSaved={() => setCompleted(true)}
             save={savePortalQuietHours}
+            historyAudience="portal"
             cacheKey={cacheKey}
             note={t("portal:account.notifications.quietHoursNote")}
           />
@@ -285,7 +288,17 @@ function PreferenceCard({
   const [enabled, setEnabled] = useState(preference.enabled);
   const [digest, setDigest] = useState(preference.digest);
   const [saved, setSaved] = useState(false);
-  const mutation = useMutation({ mutationFn: savePortalCanonicalPreference });
+  const mutation = useMutation({
+    mutationFn: (input: Parameters<typeof savePortalCanonicalPreference>[0]) =>
+      savePortalCanonicalPreference(input),
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "portal", section: "notifications" },
+        ],
+      },
+    },
+  });
   const title = t(`portal:account.notifications.${kind}.title`);
   return (
     <Card>

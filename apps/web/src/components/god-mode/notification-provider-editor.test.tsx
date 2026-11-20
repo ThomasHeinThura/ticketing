@@ -23,9 +23,15 @@ const sesConfig = {
   replyTo: null,
 };
 const mocks = vi.hoisted(() => ({
+  cache: null as null | import("@tanstack/react-query").MutationCache,
   save: vi.fn(),
+  audited: vi.fn(),
+  id: null as string | null,
+  sourceError: false,
+  session: { user: { id: "user-1" }, session: { id: "session-1" } },
   verify: vi.fn(),
   invalidate: vi.fn(),
+  setData: vi.fn(),
   stepBinding: vi.fn(),
   stepFailure: null as null | { kind: string },
   version: 3,
@@ -163,6 +169,14 @@ const mocks = vi.hoisted(() => ({
     ],
   },
 }));
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { useSession: () => ({ data: mocks.session }) },
+}));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({ target }: { target: { id: string } }) => (
+    <div data-testid="provider-history">{target.id}</div>
+  ),
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
@@ -216,61 +230,83 @@ vi.mock("@/fetchers/god-mode/notification-provider", () => ({
     mocks.save(value, token),
   sendEmailProviderTest: (value: unknown) => mocks.verify(value),
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: ({ queryKey }: { queryKey: string[] }) =>
-    queryKey[0] === "god-mode"
-      ? {
-          isPending: false,
-          isError: false,
-          data: {
-            plugins: [
-              {
-                id: "notify.email",
-                settingsForm: mocks.settingsForm,
-              },
-            ],
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  const client = new actual.QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+    mutationCache: new actual.MutationCache({
+      onSuccess: (data, variables, _context, mutation) => {
+        if (mutation.meta?.audits)
+          mocks.audited(
+            mutation.meta.audits.targets(variables as never, data as never),
+          );
+      },
+    }),
+  });
+  mocks.cache = client.getMutationCache();
+  return {
+    useQuery: ({ queryKey }: { queryKey: string[] }) =>
+      queryKey[0] === "god-mode"
+        ? {
+            isPending: false,
+            isError: false,
+            data: {
+              plugins: [
+                {
+                  id: "notify.email",
+                  settingsForm: mocks.settingsForm,
+                },
+              ],
+            },
+            refetch: vi.fn(),
+          }
+        : {
+            isPending: false,
+            isError: mocks.sourceError,
+            data: {
+              id: mocks.id,
+              version: mocks.version,
+              source: "runtime",
+              localMailpitCaptureAvailable: mocks.localMailpitCaptureAvailable,
+              enabled: !mocks.unconfigured,
+              passwordConfigured: true,
+              passwordPreview: "••••••••",
+              testStatus: mocks.testStatus,
+              sesRegions,
+              config: mocks.unconfigured
+                ? null
+                : (mocks.savedConfig ?? {
+                    host: "smtp.example.com",
+                    port: 587,
+                    secure: false,
+                    requireTLS: true,
+                    username: "service",
+                    fromAddress: "service@example.com",
+                    replyTo: null,
+                    captureToMailpit: mocks.persistedCaptureSelected,
+                  }),
+            },
+            refetch: vi.fn(),
           },
-          refetch: vi.fn(),
-        }
-      : {
-          isPending: false,
-          isError: false,
-          data: {
-            version: mocks.version,
-            source: "runtime",
-            localMailpitCaptureAvailable: mocks.localMailpitCaptureAvailable,
-            enabled: !mocks.unconfigured,
-            passwordConfigured: true,
-            passwordPreview: "••••••••",
-            testStatus: mocks.testStatus,
-            sesRegions,
-            config: mocks.unconfigured
-              ? null
-              : (mocks.savedConfig ?? {
-                  host: "smtp.example.com",
-                  port: 587,
-                  secure: false,
-                  requireTLS: true,
-                  username: "service",
-                  fromAddress: "service@example.com",
-                  replyTo: null,
-                  captureToMailpit: mocks.persistedCaptureSelected,
-                }),
-          },
-          refetch: vi.fn(),
-        },
-  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
-  useMutation: ({
-    mutationFn,
-  }: {
-    mutationFn: (value: unknown) => Promise<unknown>;
-  }) => ({ isPending: false, mutateAsync: mutationFn }),
-}));
+    useQueryClient: () => ({
+      invalidateQueries: mocks.invalidate,
+      setQueryData: mocks.setData,
+    }),
+    useMutation: (options: Parameters<typeof actual.useMutation>[0]) =>
+      actual.useMutation(options, client),
+  };
+});
 
 import { NotificationProviderEditor } from "./notification-provider-editor";
 
 afterEach(cleanup);
 beforeEach(() => {
+  mocks.cache?.clear();
+  mocks.id = null;
+  mocks.sourceError = false;
+  mocks.session = { user: { id: "user-1" }, session: { id: "session-1" } };
+  mocks.audited.mockReset();
+  mocks.setData.mockReset();
   mocks.version = 3;
   mocks.unconfigured = false;
   mocks.localMailpitCaptureAvailable = true;
@@ -294,6 +330,31 @@ beforeEach(() => {
   mocks.invalidate.mockReset().mockResolvedValue(undefined);
 });
 describe("runtime email configuration", () => {
+  it("does not cache the test password when the request is rejected", async () => {
+    mocks.verify.mockRejectedValueOnce(new Error("failed"));
+    render(<NotificationProviderEditor />);
+    fireEvent.change(screen.getByLabelText("password"), {
+      target: { value: "synthetic-test-secret" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "testSend.button" }));
+    await waitFor(() =>
+      expect(screen.getByText("operationFailed")).toBeInTheDocument(),
+    );
+    expect(mocks.verify).toHaveBeenCalledWith(
+      expect.objectContaining({ password: "synthetic-test-secret" }),
+    );
+    const mutations = mocks.cache?.getAll() ?? [];
+    expect(mutations).toHaveLength(1);
+    expect(
+      JSON.stringify(
+        mutations.map((mutation) => ({
+          state: mutation.state,
+          meta: mutation.meta,
+        })),
+      ),
+    ).not.toContain("synthetic-test-secret");
+  });
+
   it("keeps the existing secret when the password field is untouched", async () => {
     render(<NotificationProviderEditor />);
     expect(screen.getByLabelText("password")).toHaveValue("");
@@ -832,4 +893,73 @@ describe("Amazon SES", () => {
     expect(mocks.verify).not.toHaveBeenCalled();
     expect(mocks.save).not.toHaveBeenCalled();
   });
+});
+
+const providerTarget = (id: string) => [
+  {
+    kind: "entity",
+    type: "instance_notification_provider",
+    id,
+    scope: { kind: "instance" },
+  },
+];
+
+it("shows History only for a persisted provider and audits its id after save", async () => {
+  mocks.id = "provider-row";
+  mocks.save.mockResolvedValue({ id: "provider-row" });
+  render(<NotificationProviderEditor />);
+  expect(await screen.findByTestId("provider-history")).toHaveTextContent(
+    "provider-row",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "save" }));
+  await waitFor(() =>
+    expect(mocks.audited).toHaveBeenCalledWith(providerTarget("provider-row")),
+  );
+});
+
+it("does not mount History before the first persisted provider", () => {
+  render(<NotificationProviderEditor />);
+  expect(screen.queryByTestId("provider-history")).toBeNull();
+});
+
+it("audits the returned ID for the first save and mounts History for it", async () => {
+  mocks.save.mockResolvedValue({ id: "new-provider", version: 4 });
+  mocks.setData.mockImplementationOnce((_key, result) => {
+    mocks.id = result.id;
+  });
+  const view = render(<NotificationProviderEditor />);
+  fireEvent.click(screen.getByRole("button", { name: "save" }));
+  await waitFor(() =>
+    expect(mocks.setData).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ id: "new-provider" }),
+    ),
+  );
+  view.rerender(<NotificationProviderEditor />);
+  expect(await screen.findByTestId("provider-history")).toHaveTextContent(
+    "new-provider",
+  );
+  expect(mocks.audited).toHaveBeenCalledWith(providerTarget("new-provider"));
+  expect(
+    await screen.findByText("saved", { selector: '[role="status"]' }),
+  ).toBeTruthy();
+});
+
+it("does not audit a failed save or test email", async () => {
+  mocks.id = "provider-row";
+  mocks.save.mockRejectedValueOnce(new Error("refused"));
+  render(<NotificationProviderEditor />);
+  fireEvent.click(screen.getByRole("button", { name: "save" }));
+  await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole("button", { name: "testSend.button" }));
+  await waitFor(() => expect(mocks.verify).toHaveBeenCalled());
+  expect(mocks.audited).not.toHaveBeenCalled();
+});
+
+it("hides provider History when its source read is refused", () => {
+  mocks.id = "provider-row";
+  mocks.sourceError = true;
+  render(<NotificationProviderEditor />);
+  expect(screen.getByText("unavailable")).toBeTruthy();
+  expect(screen.queryByTestId("provider-history")).toBeNull();
 });

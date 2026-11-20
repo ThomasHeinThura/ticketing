@@ -31,6 +31,7 @@ import {
 } from "@/fetchers/god-mode/imports";
 import getProjects from "@/fetchers/project/get-projects";
 import { HttpError } from "@/lib/http-error";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import { useIdempotencyKey } from "./use-idempotency-key";
 import { MAX_FILE_BYTES, SOURCE_PLUGINS } from "./wizard-model";
 
@@ -131,9 +132,18 @@ export function ConnectStep({
       );
       sourceKey.reset();
       runKey.reset();
-      return run;
+      return { run, sourceId: source.id };
     },
-    onSuccess: (run) => {
+    // Creating the source records its own History row, an instance-level target.
+    meta: {
+      audits: {
+        targets: (_: unknown, { sourceId }: { sourceId: string }) =>
+          auditEntity("import_source_connection", sourceId, {
+            kind: "instance",
+          }),
+      },
+    },
+    onSuccess: ({ run }) => {
       setCredential("");
       onCreated(run);
     },

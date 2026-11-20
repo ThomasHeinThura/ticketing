@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { useRef } from "react";
 import { authClient } from "@/lib/auth-client";
 
 type ChangePasswordRequest = {
@@ -8,13 +9,13 @@ type ChangePasswordRequest = {
 };
 
 function useChangePassword() {
-  return useMutation({
-    mutationFn: async ({
-      currentPassword,
-      newPassword,
-      revokeOtherSessions,
-    }: ChangePasswordRequest) => {
-      const { data, error } = await authClient.changePassword({
+  const pending = useRef<ChangePasswordRequest | null>(null);
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!pending.current) throw new Error("No password change pending");
+      const { currentPassword, newPassword, revokeOtherSessions } =
+        pending.current;
+      const { error } = await authClient.changePassword({
         currentPassword,
         newPassword,
         revokeOtherSessions,
@@ -23,10 +24,27 @@ function useChangePassword() {
       if (error) {
         throw new Error(error.code || "UNKNOWN");
       }
-
-      return data;
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "security" },
+        ],
+      },
     },
   });
+  return {
+    ...mutation,
+    mutateAsync: async (input: ChangePasswordRequest) => {
+      if (pending.current) throw new Error("Password change already pending");
+      pending.current = input;
+      try {
+        return await mutation.mutateAsync();
+      } finally {
+        pending.current = null;
+      }
+    },
+  };
 }
 
 export default useChangePassword;

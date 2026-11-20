@@ -431,9 +431,7 @@ describe("closed personal settings history", () => {
     );
     expect(query.sql).toContain(`"audit_log"."actor_type" = 'person'`);
     expect(query.sql).toContain(`"audit_log"."entity_type" = 'api_key'`);
-    expect(query.sql).toContain(
-      `"audit_log"."action" IN ('api_key.created', 'api_key.revoked')`,
-    );
+    expect(query.sql).toContain(`"audit_log"."action" in ($2, $3)`);
     expect(query.sql).toContain(`"audit_log"."after" ->> 'kind' = 'personal'`);
     expect(query.sql).not.toContain('"audit_log"."entity_id" =');
     expect(query.sql).not.toContain('from "apikey"');

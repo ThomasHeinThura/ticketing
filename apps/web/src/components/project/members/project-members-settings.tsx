@@ -39,7 +39,7 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { EllipsisIcon, TrashIcon, TriangleAlert, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/avatar";
 import { PickerPopover } from "@/components/common/picker-popover";
@@ -50,6 +50,7 @@ import {
 } from "@/hooks/mutations/project-member/use-project-member-mutations";
 import useGetProjectMemberCandidates from "@/hooks/queries/project-member/use-get-project-member-candidates";
 import useGetProjectMembers from "@/hooks/queries/project-member/use-get-project-members";
+import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getInitials } from "@/lib/get-initials";
 import { toast } from "@/lib/toast";
@@ -62,6 +63,21 @@ import {
   type RosterRoleView,
   rosterRoleItems,
 } from "./project-members-model";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
+function validHistoryId(id: unknown): id is string {
+  return (
+    typeof id === "string" &&
+    id.trim().length > 0 &&
+    id.length <= 200 &&
+    !id.includes("\0")
+  );
+}
 
 type Props = { projectId: string };
 
@@ -77,6 +93,11 @@ type Props = { projectId: string };
 function ProjectMembersSettings({ projectId }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { data: activeWorkspace } = useActiveWorkspace();
+  const [history, setHistory] = useState<{
+    id: string;
+    personId: string;
+  } | null>(null);
   const { canUpdateProjects } = useWorkspacePermission();
   const { data, isLoading, isError, error, refetch } =
     useGetProjectMembers(projectId);
@@ -89,6 +110,20 @@ function ProjectMembersSettings({ projectId }: Props) {
   const [toRemove, setToRemove] = useState<RosterMemberView | null>(null);
   const [inheritedNotice, setInheritedNotice] =
     useState<RosterMemberView | null>(null);
+
+  const historyOpen = Boolean(
+    history &&
+      data?.members.some(
+        (member) =>
+          member.personId === history.personId &&
+          member.membershipId === history.id &&
+          member.source === "direct" &&
+          !member.managedExternally,
+      ),
+  );
+  useEffect(() => {
+    if (history && !historyOpen) setHistory(null);
+  }, [history, historyOpen]);
 
   const placeholderVisible = useDelayedPending(isLoading, {
     releaseNow: !isLoading && !isError && data?.members.length === 0,
@@ -150,7 +185,18 @@ function ProjectMembersSettings({ projectId }: Props) {
   ) => {
     if (typeof roleKey !== "string" || roleKey === member.roleKey) return;
     try {
-      await updateRole({ projectId, personId: member.personId, roleKey });
+      await updateRole({
+        workspaceId: activeWorkspace?.id ?? "",
+        projectId,
+        personId: member.personId,
+        roleKey,
+        membershipId:
+          member.source === "direct" &&
+          !member.managedExternally &&
+          validHistoryId(member.membershipId)
+            ? member.membershipId
+            : null,
+      });
       toast.success(t("settings:projectMembers.roleUpdated"));
     } catch (failure) {
       toast.error(
@@ -167,7 +213,12 @@ function ProjectMembersSettings({ projectId }: Props) {
   const handleRemove = async () => {
     if (!toRemove) return;
     try {
-      await removeMember({ projectId, personId: toRemove.personId });
+      await removeMember({
+        workspaceId: activeWorkspace?.id ?? "",
+        projectId,
+        personId: toRemove.personId,
+        membershipId: toRemove.membershipId,
+      });
       toast.success(t("settings:projectMembers.removed"));
     } catch (failure) {
       toast.error(
@@ -231,8 +282,9 @@ function ProjectMembersSettings({ projectId }: Props) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.members.map((member) => {
+            {data.members.map((member, index) => {
               const inherited = member.source === "inherited";
+              const membershipId = member.membershipId;
               return (
                 <TableRow key={member.personId}>
                   <TableCell className="ps-6 py-3">
@@ -309,6 +361,28 @@ function ProjectMembersSettings({ projectId }: Props) {
                     </div>
                   </TableCell>
                   <TableCell className="pe-6 py-3 text-right">
+                    {validHistoryId(membershipId) &&
+                    member.source === "direct" &&
+                    !member.managedExternally ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={t("settings:history.memberHistory", {
+                          name:
+                            member.displayName ||
+                            t("settings:history.personUnavailable"),
+                          number: index + 1,
+                        })}
+                        onClick={() =>
+                          setHistory({
+                            id: membershipId,
+                            personId: member.personId,
+                          })
+                        }
+                      >
+                        {t("settings:history.title")}
+                      </Button>
+                    ) : null}
                     {canManage ? (
                       <Menu>
                         <MenuTrigger
@@ -365,6 +439,35 @@ function ProjectMembersSettings({ projectId }: Props) {
         </Table>
       </div>
 
+      <Dialog
+        open={historyOpen}
+        onOpenChange={(open) => !open && setHistory(null)}
+      >
+        <DialogPopup closeLabel={t("common:actions.close")}>
+          <DialogHeader>
+            <DialogTitle>{t("settings:history.title")}</DialogTitle>
+          </DialogHeader>
+          <DialogPanel>
+            {history && historyOpen && activeWorkspace?.id ? (
+              <Suspense fallback={null}>
+                <SettingsHistory
+                  key={`${history.id}:${projectId}`}
+                  target={{
+                    kind: "entity",
+                    type: "project_membership",
+                    id: history.id,
+                    scope: {
+                      kind: "project",
+                      workspaceId: activeWorkspace.id,
+                      projectId,
+                    },
+                  }}
+                />
+              </Suspense>
+            ) : null}
+          </DialogPanel>
+        </DialogPopup>
+      </Dialog>
       <AddMemberDialog
         projectId={projectId}
         open={addOpen}
@@ -486,6 +589,7 @@ function AddMemberDialog({
   const [roleKey, setRoleKey] = useState<string>("project-member");
   const candidates = useGetProjectMemberCandidates(projectId, open);
   const { mutateAsync: addMember, isPending } = useAddProjectMember();
+  const { data: workspace } = useActiveWorkspace();
 
   const roleItems = rosterRoleItems(roles);
   const personItems = (candidates.data ?? []).map((candidate) => ({
@@ -507,7 +611,12 @@ function AddMemberDialog({
   const submit = async () => {
     if (!personId) return;
     try {
-      await addMember({ projectId, personId, roleKey });
+      await addMember({
+        workspaceId: workspace?.id ?? "",
+        projectId,
+        personId,
+        roleKey,
+      });
       toast.success(t("settings:projectMembers.added"));
       close();
     } catch (failure) {
