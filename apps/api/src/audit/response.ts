@@ -35,6 +35,8 @@ const entitySettingsHistoryResponseSchema = z
   .object({
     entityType: z.enum(HISTORY_ENTITY_TYPES),
     entityId: z.string(),
+    workspaceId: z.string().nullable(),
+    projectId: z.string().nullable(),
     lastChanged: z
       .object({
         actor: z.strictObject({

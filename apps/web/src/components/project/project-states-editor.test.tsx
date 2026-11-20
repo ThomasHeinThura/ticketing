@@ -48,6 +48,12 @@ const { mocks } = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("@/components/settings/entity-history-button", () => ({
+  EntityHistoryButton: ({ target }: { target: unknown }) => (
+    <span data-testid="history-target">{JSON.stringify(target)}</span>
+  ),
+}));
+
 // The per-state limit field has its own tests and its own queries.
 vi.mock("./state-wip-limit-field", () => ({ default: () => null }));
 
@@ -231,4 +237,18 @@ it("shows an inheritance error immediately when states resolve during retention"
   expect(
     screen.queryByText("settings:projectStates.loading"),
   ).not.toBeInTheDocument();
+});
+
+it("shows project-scoped state history without edit permission", () => {
+  mocks.canManage = false;
+  render(<ProjectStatesEditor projectId="p1" workspaceId="w1" />);
+  expect(screen.getAllByTestId("history-target")).toHaveLength(3);
+  expect(
+    JSON.parse(screen.getAllByTestId("history-target")[0].textContent ?? ""),
+  ).toEqual({
+    kind: "entity",
+    type: "state",
+    id: "a",
+    scope: { kind: "project", workspaceId: "w1", projectId: "p1" },
+  });
 });

@@ -16,6 +16,8 @@ describe("GET /audit response", () => {
     readSettingsHistory.mockResolvedValueOnce({
       entityType: "workspace",
       entityId: "workspace-1",
+      workspaceId: null,
+      projectId: null,
       rows: [
         {
           at: "2026-11-16T10:00:00Z",
@@ -41,6 +43,8 @@ describe("GET /audit response", () => {
     readSettingsHistory.mockResolvedValueOnce({
       entityType: "workspace",
       entityId: "workspace-1",
+      workspaceId: null,
+      projectId: null,
       rows: [],
     });
     const response = await app.request(
@@ -52,6 +56,8 @@ describe("GET /audit response", () => {
     expect(body).toEqual({
       entityType: "workspace",
       entityId: "workspace-1",
+      workspaceId: null,
+      projectId: null,
       lastChanged: null,
       rows: [],
     });
@@ -61,6 +67,8 @@ describe("GET /audit response", () => {
     readSettingsHistory.mockResolvedValueOnce({
       entityType: "hourly_rate",
       entityId: "rate-1",
+      workspaceId: null,
+      projectId: null,
       rows: [
         {
           at: "2026-11-17T10:00:00Z",
@@ -87,6 +95,8 @@ describe("GET /audit response", () => {
     readSettingsHistory.mockResolvedValueOnce({
       entityType: "project_membership",
       entityId: "membership-row-1",
+      workspaceId: null,
+      projectId: null,
       rows: [
         {
           at: "2026-11-17T10:00:00Z",
@@ -106,6 +116,8 @@ describe("GET /audit response", () => {
     expect(body).toMatchObject({
       entityType: "project_membership",
       entityId: "membership-row-1",
+      workspaceId: null,
+      projectId: null,
       rows: [{ changedFields: ["role"] }],
     });
     expect(body.rows[0]).not.toHaveProperty("auditId");
@@ -115,6 +127,8 @@ describe("GET /audit response", () => {
     readSettingsHistory.mockResolvedValueOnce({
       entityType: "instance_storage_draft",
       entityId: "storage-row-1",
+      workspaceId: null,
+      projectId: null,
       rows: [
         {
           at: "2026-11-17T10:00:00Z",

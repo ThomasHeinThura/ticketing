@@ -7,7 +7,6 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { EntityHistoryButton } from "@/components/settings/entity-history-button";
 import { setWipLimit } from "@/fetchers/agile";
 import useWipLimits from "@/hooks/queries/agile/use-wip-limits";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -104,15 +103,6 @@ export default function StateWipLimitField({
           ? t("settings:projectStates.wip.clear")
           : t("settings:projectStates.wip.save")}
       </Button>
-      <EntityHistoryButton
-        name={stateName}
-        target={{
-          kind: "entity",
-          type: "state",
-          id: stateId,
-          scope: { kind: "project", workspaceId, projectId },
-        }}
-      />
     </div>
   );
 }

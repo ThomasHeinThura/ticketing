@@ -1226,6 +1226,8 @@ export async function readSettingsHistory(c: Context) {
   return {
     entityType: scope.type,
     entityId: scope.id,
+    workspaceId: scope.workspaceId,
+    projectId: scope.projectId ?? null,
     rows: rows.map((row) =>
       entityHistoryRow(
         row,

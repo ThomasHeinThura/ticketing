@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, useSyncExternalStore } from "react";
-import getProject from "@/fetchers/project/get-project";
 import {
   getSelfHistory,
   type SelfHistory,
@@ -88,17 +87,6 @@ async function readTarget(
   if (target.kind === "entity") {
     // Only terminology cells are addressed by a scope selector; the API rejects it elsewhere.
     const { scope } = target;
-    if (scope.kind === "project") {
-      const project = await getProject({
-        id: scope.projectId,
-        workspaceId: scope.workspaceId,
-      });
-      if (
-        project.id !== scope.projectId ||
-        project.workspaceId !== scope.workspaceId
-      )
-        throw new HttpError(404, "Project unavailable");
-    }
     if (
       scope.kind === "workspace" &&
       target.type === "workspace" &&
@@ -111,9 +99,20 @@ async function readTarget(
         : scope.kind === "workspace"
           ? ({ scope: "workspace", workspaceId: scope.workspaceId } as const)
           : ({ scope: "instance" } as const);
-    return selector
-      ? getSettingsHistory(target.type, target.id, signal, selector)
-      : getSettingsHistory(target.type, target.id, signal);
+    const history = selector
+      ? await getSettingsHistory(target.type, target.id, signal, selector)
+      : await getSettingsHistory(target.type, target.id, signal);
+    if (scope.kind === "workspace" && history.workspaceId !== scope.workspaceId)
+      throw new HttpError(404, "Workspace unavailable");
+    if (
+      scope.kind === "project" &&
+      (history.entityType !== target.type ||
+        history.entityId !== target.id ||
+        history.workspaceId !== scope.workspaceId ||
+        history.projectId !== scope.projectId)
+    )
+      throw new HttpError(404, "Project unavailable");
+    return history;
   }
   const { workspaceId } = target.scope;
   const projectId =
