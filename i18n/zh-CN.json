@@ -645,7 +645,14 @@
 				"schedule": "计划",
 				"unknown": "其他设置",
 				"group": "分组",
-				"created": "已创建"
+				"created": "已创建",
+				"color": "颜色",
+				"wipLimit": "在制工作上限",
+				"unit": "单位",
+				"currency": "货币",
+				"billable": "可计费",
+				"hasDefaultRate": "默认费率",
+				"rateSet": "已设置费率"
 			},
 			"actions": {
 				"workflow_created": "已创建工作流",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "已更新自定义字段分区",
 				"custom_field_section_deleted": "已删除自定义字段分区",
 				"state_template_created": "已创建状态模板",
-				"state_template_updated": "已更新状态模板"
-			}
+				"state_template_updated": "已更新状态模板",
+				"label_catalogue_created": "已创建标签",
+				"label_catalogue_updated": "已更新标签",
+				"label_catalogue_deleted": "已删除标签",
+				"cost_type_created": "已创建成本类型",
+				"cost_type_updated": "已更新成本类型",
+				"hourly_rate_created": "已添加每小时费率",
+				"budget_created": "已创建预算",
+				"state_wip_limit_changed": "已更改在制工作上限"
+			},
+			"entityLabel": "{{name}}的历史记录"
 		},
 		"account": "账户",
 		"developer": "开发者",

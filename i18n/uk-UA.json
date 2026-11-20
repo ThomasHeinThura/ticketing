@@ -645,7 +645,14 @@
 				"schedule": "Розклад",
 				"unknown": "Інше налаштування",
 				"group": "Група",
-				"created": "Створено"
+				"created": "Створено",
+				"color": "Колір",
+				"wipLimit": "Ліміт незавершеної роботи",
+				"unit": "Одиниця",
+				"currency": "Валюта",
+				"billable": "Оплачуване",
+				"hasDefaultRate": "Ставка за замовчуванням",
+				"rateSet": "Ставку задано"
 			},
 			"actions": {
 				"workflow_created": "Робочий процес створено",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "Розділ користувацьких полів оновлено",
 				"custom_field_section_deleted": "Розділ користувацьких полів видалено",
 				"state_template_created": "Шаблон стану створено",
-				"state_template_updated": "Шаблон стану оновлено"
-			}
+				"state_template_updated": "Шаблон стану оновлено",
+				"label_catalogue_created": "Мітку створено",
+				"label_catalogue_updated": "Мітку оновлено",
+				"label_catalogue_deleted": "Мітку видалено",
+				"cost_type_created": "Тип витрат створено",
+				"cost_type_updated": "Тип витрат оновлено",
+				"hourly_rate_created": "Погодинну ставку додано",
+				"budget_created": "Бюджет створено",
+				"state_wip_limit_changed": "Ліміт незавершеної роботи змінено"
+			},
+			"entityLabel": "Історія: {{name}}"
 		},
 		"account": "Обліковий запис",
 		"developer": "Розробник",

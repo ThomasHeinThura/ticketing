@@ -75,6 +75,14 @@ vi.mock("@/lib/toast", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock("@/components/settings/entity-history-button", () => ({
+  EntityHistoryButton: (props: { name: string; target: unknown }) => (
+    <span data-testid="history-target" data-name={props.name}>
+      {JSON.stringify(props.target)}
+    </span>
+  ),
+}));
+
 import { LabelCatalogue } from "./label-catalogue";
 
 function TestCatalogue({ projectId }: { projectId?: string }) {
@@ -298,5 +306,41 @@ describe("LabelCatalogue stable keys", () => {
       }),
     );
     expect(mocks.updateLabel.mock.calls[0]?.[0]).not.toHaveProperty("key");
+  });
+});
+
+describe("LabelCatalogue History", () => {
+  it("offers each workspace label its own workspace-scoped History", () => {
+    mocks.workspaceLabels = [
+      { id: "label-1", name: "Support", color: "blue", key: "s", taskId: null },
+    ];
+    renderCatalogue();
+    expect(screen.getByTestId("history-target").textContent).toBe(
+      JSON.stringify({
+        kind: "entity",
+        type: "workspace_label",
+        id: "label-1",
+        scope: { kind: "workspace", workspaceId: "workspace-1" },
+      }),
+    );
+  });
+
+  it("offers each project label a project-scoped History", async () => {
+    mocks.projectLabels.mockResolvedValue([
+      { id: "pl-1", name: "Local", color: "blue", key: null, taskId: null },
+    ]);
+    renderCatalogue("project-1");
+    expect((await screen.findByTestId("history-target")).textContent).toBe(
+      JSON.stringify({
+        kind: "entity",
+        type: "project_label",
+        id: "pl-1",
+        scope: {
+          kind: "project",
+          workspaceId: "workspace-1",
+          projectId: "project-1",
+        },
+      }),
+    );
   });
 });

@@ -645,7 +645,14 @@
 				"schedule": "Agendamento",
 				"unknown": "Outra configuração",
 				"group": "Grupo",
-				"created": "Criado"
+				"created": "Criado",
+				"color": "Cor",
+				"wipLimit": "Limite de trabalho em andamento",
+				"unit": "Unidade",
+				"currency": "Moeda",
+				"billable": "Faturável",
+				"hasDefaultRate": "Taxa padrão",
+				"rateSet": "Taxa definida"
 			},
 			"actions": {
 				"workflow_created": "Fluxo de trabalho criado",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "Seção de campos personalizados atualizada",
 				"custom_field_section_deleted": "Seção de campos personalizados excluída",
 				"state_template_created": "Modelo de estado criado",
-				"state_template_updated": "Modelo de estado atualizado"
-			}
+				"state_template_updated": "Modelo de estado atualizado",
+				"label_catalogue_created": "Etiqueta criada",
+				"label_catalogue_updated": "Etiqueta atualizada",
+				"label_catalogue_deleted": "Etiqueta excluída",
+				"cost_type_created": "Tipo de custo criado",
+				"cost_type_updated": "Tipo de custo atualizado",
+				"hourly_rate_created": "Taxa horária adicionada",
+				"budget_created": "Orçamento criado",
+				"state_wip_limit_changed": "Limite de trabalho em andamento alterado"
+			},
+			"entityLabel": "Histórico de {{name}}"
 		},
 		"account": "Conta",
 		"developer": "Desenvolvedor",

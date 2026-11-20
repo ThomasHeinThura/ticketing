@@ -1363,7 +1363,14 @@
 				"schedule": "Harmonogram",
 				"unknown": "Inne ustawienie",
 				"group": "Grupa",
-				"created": "Utworzono"
+				"created": "Utworzono",
+				"color": "Kolor",
+				"wipLimit": "Limit pracy w toku",
+				"unit": "Jednostka",
+				"currency": "Waluta",
+				"billable": "Fakturowalne",
+				"hasDefaultRate": "Stawka domyślna",
+				"rateSet": "Ustawiona stawka"
 			},
 			"actions": {
 				"workflow_created": "Utworzono przepływ pracy",
@@ -1431,8 +1438,17 @@
 				"custom_field_section_updated": "Zaktualizowano sekcję pól niestandardowych",
 				"custom_field_section_deleted": "Usunięto sekcję pól niestandardowych",
 				"state_template_created": "Utworzono szablon stanu",
-				"state_template_updated": "Zaktualizowano szablon stanu"
-			}
+				"state_template_updated": "Zaktualizowano szablon stanu",
+				"label_catalogue_created": "Utworzono etykietę",
+				"label_catalogue_updated": "Zaktualizowano etykietę",
+				"label_catalogue_deleted": "Usunięto etykietę",
+				"cost_type_created": "Utworzono typ kosztu",
+				"cost_type_updated": "Zaktualizowano typ kosztu",
+				"hourly_rate_created": "Dodano stawkę godzinową",
+				"budget_created": "Utworzono budżet",
+				"state_wip_limit_changed": "Zmieniono limit pracy w toku"
+			},
+			"entityLabel": "Historia: {{name}}"
 		},
 		"account": "Konto",
 		"apiKey": {

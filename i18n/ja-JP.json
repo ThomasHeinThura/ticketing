@@ -645,7 +645,14 @@
 				"schedule": "スケジュール",
 				"unknown": "その他の設定",
 				"group": "グループ",
-				"created": "作成"
+				"created": "作成",
+				"color": "色",
+				"wipLimit": "仕掛かり作業の上限",
+				"unit": "単位",
+				"currency": "通貨",
+				"billable": "請求可能",
+				"hasDefaultRate": "既定の単価",
+				"rateSet": "単価の設定"
 			},
 			"actions": {
 				"workflow_created": "ワークフローを作成",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "カスタムフィールドのセクションを更新",
 				"custom_field_section_deleted": "カスタムフィールドのセクションを削除",
 				"state_template_created": "ステータステンプレートを作成",
-				"state_template_updated": "ステータステンプレートを更新"
-			}
+				"state_template_updated": "ステータステンプレートを更新",
+				"label_catalogue_created": "ラベルを作成",
+				"label_catalogue_updated": "ラベルを更新",
+				"label_catalogue_deleted": "ラベルを削除",
+				"cost_type_created": "コスト種別を作成",
+				"cost_type_updated": "コスト種別を更新",
+				"hourly_rate_created": "時間単価を追加",
+				"budget_created": "予算を作成",
+				"state_wip_limit_changed": "仕掛かり作業の上限を変更"
+			},
+			"entityLabel": "{{name}}の履歴"
 		},
 		"account": "アカウント",
 		"developer": "開発者",

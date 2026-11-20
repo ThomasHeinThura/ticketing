@@ -37,6 +37,7 @@ import {
 import { GripVertical, Plus } from "lucide-react";
 import { type CSSProperties, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { EntityHistoryButton } from "@/components/settings/entity-history-button";
 import {
   getProjectSettingsInheritance,
   inheritProjectStateSet,
@@ -471,6 +472,15 @@ export default function ProjectStatesEditor({
                     stateName={state.name}
                   />
                 ) : null}
+                <EntityHistoryButton
+                  name={state.name}
+                  target={{
+                    kind: "entity",
+                    type: "state",
+                    id: state.id,
+                    scope: { kind: "project", workspaceId, projectId },
+                  }}
+                />
                 <Badge variant="outline">
                   {t(`settings:projectStates.groups.${state.group}`)}
                 </Badge>

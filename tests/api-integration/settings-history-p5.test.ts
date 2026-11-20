@@ -311,7 +311,9 @@ describe("P5 personal and service-key history on a fresh test database", () => {
       "entityId",
       "entityType",
       "lastChanged",
+      "projectId",
       "rows",
+      "workspaceId",
     ]);
     expect(body.entityType).toBe("service_api_key");
     expect(body.entityId).toBe(keyId);

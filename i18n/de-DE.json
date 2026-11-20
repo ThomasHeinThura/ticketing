@@ -645,7 +645,14 @@
 				"schedule": "Zeitplan",
 				"unknown": "Weitere Einstellung",
 				"group": "Gruppe",
-				"created": "Erstellt"
+				"created": "Erstellt",
+				"color": "Farbe",
+				"wipLimit": "Limit für laufende Arbeit",
+				"unit": "Einheit",
+				"currency": "Währung",
+				"billable": "Abrechenbar",
+				"hasDefaultRate": "Standardsatz",
+				"rateSet": "Satz festgelegt"
 			},
 			"actions": {
 				"workflow_created": "Workflow erstellt",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "Abschnitt für benutzerdefinierte Felder aktualisiert",
 				"custom_field_section_deleted": "Abschnitt für benutzerdefinierte Felder gelöscht",
 				"state_template_created": "Statusvorlage erstellt",
-				"state_template_updated": "Statusvorlage aktualisiert"
-			}
+				"state_template_updated": "Statusvorlage aktualisiert",
+				"label_catalogue_created": "Label erstellt",
+				"label_catalogue_updated": "Label aktualisiert",
+				"label_catalogue_deleted": "Label gelöscht",
+				"cost_type_created": "Kostenart erstellt",
+				"cost_type_updated": "Kostenart aktualisiert",
+				"hourly_rate_created": "Stundensatz hinzugefügt",
+				"budget_created": "Budget erstellt",
+				"state_wip_limit_changed": "Limit für laufende Arbeit geändert"
+			},
+			"entityLabel": "Verlauf für {{name}}"
 		},
 		"account": "Konto",
 		"developer": "Entwicklung",

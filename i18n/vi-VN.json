@@ -645,7 +645,14 @@
 				"schedule": "Lịch chạy",
 				"unknown": "Cài đặt khác",
 				"group": "Nhóm",
-				"created": "Đã tạo"
+				"created": "Đã tạo",
+				"color": "Màu sắc",
+				"wipLimit": "Giới hạn công việc đang thực hiện",
+				"unit": "Đơn vị",
+				"currency": "Tiền tệ",
+				"billable": "Có thể tính phí",
+				"hasDefaultRate": "Đơn giá mặc định",
+				"rateSet": "Đã đặt đơn giá"
 			},
 			"actions": {
 				"workflow_created": "Đã tạo quy trình làm việc",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "Đã cập nhật phần trường tùy chỉnh",
 				"custom_field_section_deleted": "Đã xóa phần trường tùy chỉnh",
 				"state_template_created": "Đã tạo mẫu trạng thái",
-				"state_template_updated": "Đã cập nhật mẫu trạng thái"
-			}
+				"state_template_updated": "Đã cập nhật mẫu trạng thái",
+				"label_catalogue_created": "Đã tạo nhãn",
+				"label_catalogue_updated": "Đã cập nhật nhãn",
+				"label_catalogue_deleted": "Đã xóa nhãn",
+				"cost_type_created": "Đã tạo loại chi phí",
+				"cost_type_updated": "Đã cập nhật loại chi phí",
+				"hourly_rate_created": "Đã thêm đơn giá theo giờ",
+				"budget_created": "Đã tạo ngân sách",
+				"state_wip_limit_changed": "Đã đổi giới hạn công việc đang thực hiện"
+			},
+			"entityLabel": "Lịch sử của {{name}}"
 		},
 		"account": "Tài khoản",
 		"developer": "Nhà phát triển",

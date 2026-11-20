@@ -777,6 +777,8 @@ it("isolates one terminology cell across instance and workspaces", async () => {
     ) => ({
       entityType: "terminology_override",
       entityId: id,
+      workspaceId: selector.workspaceId ?? null,
+      projectId: null,
       lastChanged: {
         actor: {
           kind: "person",

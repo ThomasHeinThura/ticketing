@@ -37,6 +37,14 @@ vi.mock("@/fetchers/time-tracking", () => ({
   stopTimer: vi.fn(),
 }));
 
+vi.mock("@/components/settings/entity-history-button", () => ({
+  EntityHistoryButton: (props: { name: string; target: unknown }) => (
+    <span data-testid="history-target" data-name={props.name}>
+      {JSON.stringify(props.target)}
+    </span>
+  ),
+}));
+
 import { CostTypesSection } from "./cost-types-settings";
 
 const seat = {
@@ -181,6 +189,20 @@ describe("CostTypesSection", () => {
     await waitFor(() =>
       expect(mocks.updateCostType).toHaveBeenCalledWith("ct1", "w1", {
         defaultRateMinor: 1500,
+      }),
+    );
+  });
+});
+
+describe("CostTypesSection History", () => {
+  it("gives each cost type a workspace-scoped History", async () => {
+    renderSection();
+    expect((await screen.findByTestId("history-target")).textContent).toBe(
+      JSON.stringify({
+        kind: "entity",
+        type: "cost_type",
+        id: "ct1",
+        scope: { kind: "workspace", workspaceId: "w1" },
       }),
     );
   });

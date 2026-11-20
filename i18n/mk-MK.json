@@ -645,7 +645,14 @@
 				"schedule": "Распоред",
 				"unknown": "Друга поставка",
 				"group": "Група",
-				"created": "Создадено"
+				"created": "Создадено",
+				"color": "Боја",
+				"wipLimit": "Ограничување на работа во тек",
+				"unit": "Единица",
+				"currency": "Валута",
+				"billable": "Наплатливо",
+				"hasDefaultRate": "Стандардна тарифа",
+				"rateSet": "Поставена тарифа"
 			},
 			"actions": {
 				"workflow_created": "Работниот тек е создаден",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "Делот за прилагодени полиња е ажуриран",
 				"custom_field_section_deleted": "Делот за прилагодени полиња е избришан",
 				"state_template_created": "Шаблонот за статус е создаден",
-				"state_template_updated": "Шаблонот за статус е ажуриран"
-			}
+				"state_template_updated": "Шаблонот за статус е ажуриран",
+				"label_catalogue_created": "Ознаката е создадена",
+				"label_catalogue_updated": "Ознаката е ажурирана",
+				"label_catalogue_deleted": "Ознаката е избришана",
+				"cost_type_created": "Типот на трошок е создаден",
+				"cost_type_updated": "Типот на трошок е ажуриран",
+				"hourly_rate_created": "Додадена е часовна тарифа",
+				"budget_created": "Буџетот е создаден",
+				"state_wip_limit_changed": "Ограничувањето на работа во тек е променето"
+			},
+			"entityLabel": "Историја за {{name}}"
 		},
 		"account": "Сметка",
 		"developer": "Програмер",

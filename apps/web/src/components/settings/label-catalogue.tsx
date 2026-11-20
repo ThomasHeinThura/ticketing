@@ -35,6 +35,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActionTooltip } from "@/components/common/action-tooltip";
 import PageTitle from "@/components/page-title";
+import { EntityHistoryButton } from "@/components/settings/entity-history-button";
 import labelColors from "@/constants/label-colors";
 import {
   createProjectLabel,
@@ -508,51 +509,64 @@ export function LabelCatalogue({
                         />
                         <span className="text-sm truncate">{label.name}</span>
                       </div>
-                      {(canUpdate || canDelete) && (
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          {canUpdate && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label={t(
-                                "settings:workspaceLabels.editLabel",
-                                { defaultValue: "Edit Label" },
-                              )}
-                              className="h-8 w-8"
-                              onClick={() =>
-                                openEdit({
-                                  id: label.id,
-                                  name: label.name,
-                                  color: label.color,
-                                  key: label.key,
-                                })
-                              }
-                            >
-                              <Pencil className="size-3.5" />
-                            </Button>
-                          )}
-                          {canDelete && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label={t(
-                                "settings:workspaceLabels.deleteLabel",
-                                { defaultValue: "Delete" },
-                              )}
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                              disabled={deleteLabel.isPending}
-                              onClick={() =>
-                                void handleDelete({
-                                  id: label.id,
-                                  name: label.name,
-                                })
-                              }
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {workspaceId && (
+                          <EntityHistoryButton
+                            name={label.name}
+                            target={{
+                              kind: "entity",
+                              type: projectId
+                                ? "project_label"
+                                : "workspace_label",
+                              id: label.id,
+                              scope: projectId
+                                ? { kind: "project", workspaceId, projectId }
+                                : { kind: "workspace", workspaceId },
+                            }}
+                          />
+                        )}
+                        {canUpdate && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t(
+                              "settings:workspaceLabels.editLabel",
+                              { defaultValue: "Edit Label" },
+                            )}
+                            className="h-8 w-8"
+                            onClick={() =>
+                              openEdit({
+                                id: label.id,
+                                name: label.name,
+                                color: label.color,
+                                key: label.key,
+                              })
+                            }
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t(
+                              "settings:workspaceLabels.deleteLabel",
+                              { defaultValue: "Delete" },
+                            )}
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            disabled={deleteLabel.isPending}
+                            onClick={() =>
+                              void handleDelete({
+                                id: label.id,
+                                name: label.name,
+                              })
+                            }
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

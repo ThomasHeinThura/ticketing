@@ -124,6 +124,7 @@ const HISTORY_KEYS = [
   "apiKey",
   "automation",
   "personUnavailable",
+  "entityLabel",
 ] as const;
 const TEAM_ACTIONS = [
   ["team.created", "team_created", "Team created"],
@@ -232,7 +233,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
       expect(Object.keys(settings).sort()).toEqual(
         Object.keys(expected).sort(),
       );
-      expect(Object.keys(settings)).toHaveLength(66);
+      expect(Object.keys(settings)).toHaveLength(74);
       for (const key of Object.keys(expected)) {
         expect(at(source, `settings.history.actions.${key}`)).not.toBe("");
         // `bulk_performed` already had a work-item label ("Bulk change"); the settings panel owns its own.
@@ -254,7 +255,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
         ...FIELDS.map((f) => `godModeSettings.fields.${f}.label`),
         ...TEAM_ACTIONS.map(([, key]) => `settings.history.actions.${key}`),
       ];
-      expect(paths).toHaveLength(33);
+      expect(paths).toHaveLength(34);
       for (const path of paths) {
         const value = at(own, path);
         const base = path.startsWith("settings.history.actions.team_")
@@ -669,7 +670,13 @@ type Inventory = Array<{
     | "instance_auth_methods"
     | "staff_self_registration"
     | "instance_job"
-    | "identity_connection";
+    | "identity_connection"
+    | "workspace_label"
+    | "project_label"
+    | "state"
+    | "cost_type"
+    | "hourly_rate"
+    | "budget";
   action: string;
   /** [API marker, settings.history.fields key]; written out here, independent of the renderer. */
   fields: Array<[string, string]>;
@@ -678,6 +685,13 @@ const same = (names: string[]): Array<[string, string]> =>
   names.map((n) => [n, n]);
 const INSTANCE_FIELDS = same(API_FIELDS);
 const CANNED_FIELDS = same(["name", "body", "visibilityDefault"]);
+const LABEL_FIELDS = same(["name", "color"]);
+const labelRows = (type: "workspace_label" | "project_label") =>
+  ["created", "updated", "deleted"].map((verb) => ({
+    type,
+    action: `label.catalogue_${verb}`,
+    fields: LABEL_FIELDS,
+  }));
 /** Every action and marker the settings History panel can show (API: HISTORY_FIELDS, entityHistoryRow, producers). */
 const INVENTORY: Inventory = [
   { type: "workspace", action: "workspace.created", fields: [] },
@@ -908,6 +922,7 @@ const labelSameAsEnglish = new Set<string>([
   "de-DE:settings.history.fields.name",
   "de-DE:settings.history.fields.logo",
   "de-DE:settings.history.fields.position",
+  "es-ES:settings.history.fields.color",
   "fr-FR:settings.history.fields.description",
   "fr-FR:settings.history.fields.logo",
   "fr-FR:settings.history.fields.position",

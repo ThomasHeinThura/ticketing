@@ -19,6 +19,8 @@ const actor = z.strictObject({
 const responseSchema = z.strictObject({
   entityType: z.string(),
   entityId: z.string(),
+  workspaceId: z.string().nullable(),
+  projectId: z.string().nullable(),
   lastChanged: z.strictObject({ actor, at: z.string().datetime() }).nullable(),
   rows: z.array(
     z.strictObject({

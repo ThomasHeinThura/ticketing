@@ -645,7 +645,14 @@
 				"schedule": "일정",
 				"unknown": "기타 설정",
 				"group": "그룹",
-				"created": "생성됨"
+				"created": "생성됨",
+				"color": "색상",
+				"wipLimit": "진행 중 작업 한도",
+				"unit": "단위",
+				"currency": "통화",
+				"billable": "청구 가능",
+				"hasDefaultRate": "기본 요율",
+				"rateSet": "요율 설정됨"
 			},
 			"actions": {
 				"workflow_created": "워크플로 생성됨",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "사용자 지정 필드 섹션 업데이트됨",
 				"custom_field_section_deleted": "사용자 지정 필드 섹션 삭제됨",
 				"state_template_created": "상태 템플릿 생성됨",
-				"state_template_updated": "상태 템플릿 업데이트됨"
-			}
+				"state_template_updated": "상태 템플릿 업데이트됨",
+				"label_catalogue_created": "라벨 생성됨",
+				"label_catalogue_updated": "라벨 업데이트됨",
+				"label_catalogue_deleted": "라벨 삭제됨",
+				"cost_type_created": "비용 유형 생성됨",
+				"cost_type_updated": "비용 유형 업데이트됨",
+				"hourly_rate_created": "시간당 요율 추가됨",
+				"budget_created": "예산 생성됨",
+				"state_wip_limit_changed": "진행 중 작업 한도 변경됨"
+			},
+			"entityLabel": "{{name}} 기록"
 		},
 		"account": "계정",
 		"developer": "개발자",

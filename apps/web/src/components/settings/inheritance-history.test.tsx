@@ -165,6 +165,8 @@ it.each(["workspace", "project"] as const)(
     mocks.history.mockImplementation(async () => ({
       entityType: type,
       entityId: id,
+      workspaceId: "w1",
+      projectId: type === "project" ? "p1" : null,
       lastChanged: { actor: { kind: "person", name }, at: "2026-01-01" },
       rows: [],
     }));
@@ -224,6 +226,8 @@ it("refreshes open project History after changing health", async () => {
   mocks.history.mockImplementation(async () => ({
     entityType: "project",
     entityId: "p1",
+    workspaceId: "w1",
+    projectId: "p1",
     lastChanged: { actor: { kind: "person", name }, at: "2026-01-01" },
     rows: [],
   }));

@@ -2514,6 +2514,27 @@
 								},
 								"created": {
 									"type": "string"
+								},
+								"color": {
+									"type": "string"
+								},
+								"wipLimit": {
+									"type": "string"
+								},
+								"unit": {
+									"type": "string"
+								},
+								"currency": {
+									"type": "string"
+								},
+								"billable": {
+									"type": "string"
+								},
+								"hasDefaultRate": {
+									"type": "string"
+								},
+								"rateSet": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -2575,7 +2596,14 @@
 								"schedule",
 								"unknown",
 								"group",
-								"created"
+								"created",
+								"color",
+								"wipLimit",
+								"unit",
+								"currency",
+								"billable",
+								"hasDefaultRate",
+								"rateSet"
 							]
 						},
 						"actions": {
@@ -2779,6 +2807,30 @@
 								},
 								"state_template_updated": {
 									"type": "string"
+								},
+								"label_catalogue_created": {
+									"type": "string"
+								},
+								"label_catalogue_updated": {
+									"type": "string"
+								},
+								"label_catalogue_deleted": {
+									"type": "string"
+								},
+								"cost_type_created": {
+									"type": "string"
+								},
+								"cost_type_updated": {
+									"type": "string"
+								},
+								"hourly_rate_created": {
+									"type": "string"
+								},
+								"budget_created": {
+									"type": "string"
+								},
+								"state_wip_limit_changed": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -2847,8 +2899,19 @@
 								"custom_field_section_updated",
 								"custom_field_section_deleted",
 								"state_template_created",
-								"state_template_updated"
+								"state_template_updated",
+								"label_catalogue_created",
+								"label_catalogue_updated",
+								"label_catalogue_deleted",
+								"cost_type_created",
+								"cost_type_updated",
+								"hourly_rate_created",
+								"budget_created",
+								"state_wip_limit_changed"
 							]
+						},
+						"entityLabel": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -2876,7 +2939,8 @@
 						"automation",
 						"system",
 						"fields",
-						"actions"
+						"actions",
+						"entityLabel"
 					]
 				},
 				"account": {

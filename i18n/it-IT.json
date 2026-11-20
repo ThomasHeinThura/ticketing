@@ -645,7 +645,14 @@
 				"schedule": "Pianificazione",
 				"unknown": "Altra impostazione",
 				"group": "Gruppo",
-				"created": "Creato"
+				"created": "Creato",
+				"color": "Colore",
+				"wipLimit": "Limite di lavori in corso",
+				"unit": "Unità",
+				"currency": "Valuta",
+				"billable": "Fatturabile",
+				"hasDefaultRate": "Tariffa predefinita",
+				"rateSet": "Tariffa impostata"
 			},
 			"actions": {
 				"workflow_created": "Flusso di lavoro creato",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "Sezione dei campi personalizzati aggiornata",
 				"custom_field_section_deleted": "Sezione dei campi personalizzati eliminata",
 				"state_template_created": "Modello di stato creato",
-				"state_template_updated": "Modello di stato aggiornato"
-			}
+				"state_template_updated": "Modello di stato aggiornato",
+				"label_catalogue_created": "Etichetta creata",
+				"label_catalogue_updated": "Etichetta aggiornata",
+				"label_catalogue_deleted": "Etichetta eliminata",
+				"cost_type_created": "Tipo di costo creato",
+				"cost_type_updated": "Tipo di costo aggiornato",
+				"hourly_rate_created": "Tariffa oraria aggiunta",
+				"budget_created": "Budget creato",
+				"state_wip_limit_changed": "Limite di lavori in corso modificato"
+			},
+			"entityLabel": "Cronologia di {{name}}"
 		},
 		"account": "Account",
 		"developer": "Sviluppatore",

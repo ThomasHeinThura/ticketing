@@ -645,7 +645,14 @@
 				"schedule": "Πρόγραμμα",
 				"unknown": "Άλλη ρύθμιση",
 				"group": "Ομάδα",
-				"created": "Δημιουργήθηκε"
+				"created": "Δημιουργήθηκε",
+				"color": "Χρώμα",
+				"wipLimit": "Όριο εργασιών σε εξέλιξη",
+				"unit": "Μονάδα",
+				"currency": "Νόμισμα",
+				"billable": "Χρεώσιμο",
+				"hasDefaultRate": "Προεπιλεγμένη χρέωση",
+				"rateSet": "Ορίστηκε χρέωση"
 			},
 			"actions": {
 				"workflow_created": "Η ροή εργασίας δημιουργήθηκε",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "Η ενότητα προσαρμοσμένων πεδίων ενημερώθηκε",
 				"custom_field_section_deleted": "Η ενότητα προσαρμοσμένων πεδίων διαγράφηκε",
 				"state_template_created": "Το πρότυπο κατάστασης δημιουργήθηκε",
-				"state_template_updated": "Το πρότυπο κατάστασης ενημερώθηκε"
-			}
+				"state_template_updated": "Το πρότυπο κατάστασης ενημερώθηκε",
+				"label_catalogue_created": "Η ετικέτα δημιουργήθηκε",
+				"label_catalogue_updated": "Η ετικέτα ενημερώθηκε",
+				"label_catalogue_deleted": "Η ετικέτα διαγράφηκε",
+				"cost_type_created": "Ο τύπος κόστους δημιουργήθηκε",
+				"cost_type_updated": "Ο τύπος κόστους ενημερώθηκε",
+				"hourly_rate_created": "Προστέθηκε ωριαία χρέωση",
+				"budget_created": "Ο προϋπολογισμός δημιουργήθηκε",
+				"state_wip_limit_changed": "Το όριο εργασιών σε εξέλιξη άλλαξε"
+			},
+			"entityLabel": "Ιστορικό για {{name}}"
 		},
 		"account": "Λογαριασμός",
 		"developer": "Προγραμματιστής",

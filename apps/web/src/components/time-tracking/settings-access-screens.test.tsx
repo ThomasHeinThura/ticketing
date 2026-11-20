@@ -14,6 +14,14 @@ const mocks = vi.hoisted(() => ({
   canManageWorkspaceSettings: false,
   checking: false,
   rateError: null as Error | null,
+  rates: [] as Array<{
+    id: string;
+    personId: string;
+    projectId: string | null;
+    rateMinor: number;
+    currency: string;
+    effectiveFrom: string;
+  }>,
   activities: [] as Array<{ id: string; name: string; archived: boolean }>,
   useTimeEntries: vi.fn(),
   useTimeActivities: vi.fn(),
@@ -64,7 +72,7 @@ vi.mock("@/hooks/queries/time-tracking/use-time-tracking", () => ({
   useHourlyRates: (...args: unknown[]) => {
     mocks.useHourlyRates(...args);
     return {
-      data: { data: [], people: [] },
+      data: { data: mocks.rates, people: [] },
       isLoading: false,
       isError: mocks.rateError !== null,
       error: mocks.rateError,
@@ -78,6 +86,11 @@ vi.mock("@/hooks/queries/time-tracking/use-time-tracking", () => ({
 vi.mock("./time-settings", () => ({
   BackdateLimitSetting: () => null,
   AvailableHoursSetting: () => null,
+}));
+vi.mock("@/components/settings/entity-history-button", () => ({
+  EntityHistoryButton: (props: { target: unknown }) => (
+    <span data-testid="history-target">{JSON.stringify(props.target)}</span>
+  ),
 }));
 vi.mock("./cost-types-settings", () => ({ CostTypesSection: () => null }));
 
@@ -98,6 +111,7 @@ beforeEach(() => {
   mocks.canManageWorkspaceSettings = false;
   mocks.checking = false;
   mocks.rateError = null;
+  mocks.rates = [];
   mocks.activities = [];
 });
 afterEach(() => {
@@ -175,5 +189,46 @@ describe("Time activities settings access", () => {
     renderWithClient(<TimeActivitiesSettings />);
     expect(screen.queryByTestId("settings-access-denied")).toBeNull();
     expect(mocks.useTimeActivities).toHaveBeenCalledWith("ws-1", true);
+  });
+});
+
+describe("Rates settings History", () => {
+  it("scopes each rate's History to its project, or to the workspace for a default rate", () => {
+    mocks.canManageRates = true;
+    mocks.rates = [
+      {
+        id: "r1",
+        personId: "u1",
+        projectId: null,
+        rateMinor: 5000,
+        currency: "EUR",
+        effectiveFrom: "2026-11-01",
+      },
+      {
+        id: "r2",
+        personId: "u2",
+        projectId: "p9",
+        rateMinor: 6000,
+        currency: "EUR",
+        effectiveFrom: "2026-11-01",
+      },
+    ];
+    renderWithClient(<RatesSettings />);
+    expect(
+      screen.getAllByTestId("history-target").map((el) => el.textContent),
+    ).toEqual([
+      JSON.stringify({
+        kind: "entity",
+        type: "hourly_rate",
+        id: "r1",
+        scope: { kind: "workspace", workspaceId: "ws-1" },
+      }),
+      JSON.stringify({
+        kind: "entity",
+        type: "hourly_rate",
+        id: "r2",
+        scope: { kind: "project", workspaceId: "ws-1", projectId: "p9" },
+      }),
+    ]);
   });
 });

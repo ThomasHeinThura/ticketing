@@ -645,7 +645,14 @@
 				"schedule": "Schedule",
 				"unknown": "Other setting",
 				"group": "Group",
-				"created": "Created"
+				"created": "Created",
+				"color": "Color",
+				"wipLimit": "Work-in-progress limit",
+				"unit": "Unit",
+				"currency": "Currency",
+				"billable": "Billable",
+				"hasDefaultRate": "Default rate",
+				"rateSet": "Rate set"
 			},
 			"actions": {
 				"workflow_created": "Workflow created",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "Custom field section updated",
 				"custom_field_section_deleted": "Custom field section deleted",
 				"state_template_created": "State template created",
-				"state_template_updated": "State template updated"
-			}
+				"state_template_updated": "State template updated",
+				"label_catalogue_created": "Label created",
+				"label_catalogue_updated": "Label updated",
+				"label_catalogue_deleted": "Label deleted",
+				"cost_type_created": "Cost type created",
+				"cost_type_updated": "Cost type updated",
+				"hourly_rate_created": "Hourly rate added",
+				"budget_created": "Budget created",
+				"state_wip_limit_changed": "Work-in-progress limit changed"
+			},
+			"entityLabel": "History for {{name}}"
 		},
 		"account": "Account",
 		"developer": "Developer",

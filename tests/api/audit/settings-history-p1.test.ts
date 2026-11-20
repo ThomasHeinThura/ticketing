@@ -106,6 +106,8 @@ describe("P1 closed settings history projection", () => {
       settingsHistoryResponseSchema.safeParse({
         entityType: "hourly_rate",
         entityId: "r1",
+        workspaceId: null,
+        projectId: null,
         lastChanged: { at, actor: rate.actor },
         rows: [rate],
       }).success,
@@ -114,6 +116,8 @@ describe("P1 closed settings history projection", () => {
       settingsHistoryResponseSchema.safeParse({
         entityType: "budget",
         entityId: "b1",
+        workspaceId: null,
+        projectId: null,
         lastChanged: { at, actor: budget.actor },
         rows: [budget],
       }).success,

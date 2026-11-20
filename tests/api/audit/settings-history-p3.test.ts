@@ -216,6 +216,8 @@ describe("P3 closed instance settings history", () => {
       settingsHistoryResponseSchema.safeParse({
         entityType: "instance_job",
         entityId: "job-1",
+        workspaceId: null,
+        projectId: null,
         lastChanged: null,
         rows: [],
       }).success,

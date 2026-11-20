@@ -645,7 +645,14 @@
 				"schedule": "शेड्यूल",
 				"unknown": "अन्य सेटिंग",
 				"group": "समूह",
-				"created": "बनाया गया"
+				"created": "बनाया गया",
+				"color": "रंग",
+				"wipLimit": "कार्य-प्रगति सीमा",
+				"unit": "इकाई",
+				"currency": "मुद्रा",
+				"billable": "बिल योग्य",
+				"hasDefaultRate": "डिफ़ॉल्ट दर",
+				"rateSet": "दर निर्धारित"
 			},
 			"actions": {
 				"workflow_created": "कार्यप्रवाह बनाया गया",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "कस्टम फ़ील्ड अनुभाग अपडेट किया गया",
 				"custom_field_section_deleted": "कस्टम फ़ील्ड अनुभाग हटाया गया",
 				"state_template_created": "स्थिति टेम्पलेट बनाया गया",
-				"state_template_updated": "स्थिति टेम्पलेट अपडेट किया गया"
-			}
+				"state_template_updated": "स्थिति टेम्पलेट अपडेट किया गया",
+				"label_catalogue_created": "लेबल बनाया गया",
+				"label_catalogue_updated": "लेबल अपडेट किया गया",
+				"label_catalogue_deleted": "लेबल हटाया गया",
+				"cost_type_created": "लागत प्रकार बनाया गया",
+				"cost_type_updated": "लागत प्रकार अपडेट किया गया",
+				"hourly_rate_created": "प्रति घंटा दर जोड़ी गई",
+				"budget_created": "बजट बनाया गया",
+				"state_wip_limit_changed": "कार्य-प्रगति सीमा बदली गई"
+			},
+			"entityLabel": "{{name}} का इतिहास"
 		},
 		"account": "खाता",
 		"developer": "डेवलपर",

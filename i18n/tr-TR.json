@@ -645,7 +645,14 @@
 				"schedule": "Zamanlama",
 				"unknown": "Diğer ayar",
 				"group": "Grup",
-				"created": "Oluşturuldu"
+				"created": "Oluşturuldu",
+				"color": "Renk",
+				"wipLimit": "Devam eden iş sınırı",
+				"unit": "Birim",
+				"currency": "Para birimi",
+				"billable": "Faturalandırılabilir",
+				"hasDefaultRate": "Varsayılan ücret",
+				"rateSet": "Ücret belirlendi"
 			},
 			"actions": {
 				"workflow_created": "İş akışı oluşturuldu",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "Özel alan bölümü güncellendi",
 				"custom_field_section_deleted": "Özel alan bölümü silindi",
 				"state_template_created": "Durum şablonu oluşturuldu",
-				"state_template_updated": "Durum şablonu güncellendi"
-			}
+				"state_template_updated": "Durum şablonu güncellendi",
+				"label_catalogue_created": "Etiket oluşturuldu",
+				"label_catalogue_updated": "Etiket güncellendi",
+				"label_catalogue_deleted": "Etiket silindi",
+				"cost_type_created": "Maliyet türü oluşturuldu",
+				"cost_type_updated": "Maliyet türü güncellendi",
+				"hourly_rate_created": "Saatlik ücret eklendi",
+				"budget_created": "Bütçe oluşturuldu",
+				"state_wip_limit_changed": "Devam eden iş sınırı değiştirildi"
+			},
+			"entityLabel": "{{name}} geçmişi"
 		},
 		"account": "Hesap",
 		"developer": "Geliştirici",

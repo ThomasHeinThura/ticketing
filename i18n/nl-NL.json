@@ -645,7 +645,14 @@
 				"schedule": "Schema",
 				"unknown": "Overige instelling",
 				"group": "Groep",
-				"created": "Aangemaakt"
+				"created": "Aangemaakt",
+				"color": "Kleur",
+				"wipLimit": "Limiet voor lopend werk",
+				"unit": "Eenheid",
+				"currency": "Valuta",
+				"billable": "Factureerbaar",
+				"hasDefaultRate": "Standaardtarief",
+				"rateSet": "Tarief ingesteld"
 			},
 			"actions": {
 				"workflow_created": "Workflow aangemaakt",
@@ -713,8 +720,17 @@
 				"custom_field_section_updated": "Sectie voor aangepaste velden bijgewerkt",
 				"custom_field_section_deleted": "Sectie voor aangepaste velden verwijderd",
 				"state_template_created": "Statussjabloon aangemaakt",
-				"state_template_updated": "Statussjabloon bijgewerkt"
-			}
+				"state_template_updated": "Statussjabloon bijgewerkt",
+				"label_catalogue_created": "Label aangemaakt",
+				"label_catalogue_updated": "Label bijgewerkt",
+				"label_catalogue_deleted": "Label verwijderd",
+				"cost_type_created": "Kostensoort aangemaakt",
+				"cost_type_updated": "Kostensoort bijgewerkt",
+				"hourly_rate_created": "Uurtarief toegevoegd",
+				"budget_created": "Budget aangemaakt",
+				"state_wip_limit_changed": "Limiet voor lopend werk gewijzigd"
+			},
+			"entityLabel": "Geschiedenis van {{name}}"
 		},
 		"account": "Account",
 		"developer": "Ontwikkelaar",
