@@ -11,7 +11,7 @@ Phases ended after P6. All P0–P6 features are implemented, independently AI-re
 3. **Build** a complete, visible, integrated slice: API + UI + persistence + permissions + i18n + tests. No half-wired UI, no mock data in the app.
 4. **Test in the order below** (code → feature → design → browser). Fix and repeat until all pass.
 5. **Open a PR** from a feature branch (`feat/…`, `fix/…`) with the template filled in, real check output and browser evidence. GitHub CI is a required gate again: all required checks must be green; never weaken, skip or exempt a gate.
-6. **Review.** Low-risk changes: self-review against this file plus one Terra review. High-risk changes (auth, permissions, tenant isolation, migrations, money/time data, security headers, import, deletion, MCP/API keys, performance budgets): one independent **Sol high-effort** review that did not write the code, given a neutral packet (requirement, diff, test output, browser evidence). Fix high/medium findings and re-review; after three failing rounds stop and ask Thomas.
+6. **Review.** Low-risk changes: self-review against this file plus one Terra review. High-risk changes (auth, permissions, tenant isolation, migrations, money/time data, security headers, import, deletion, MCP/API keys, performance budgets): one independent **Sol high-effort** review that did not write the code, given a neutral packet (requirement, diff, test output, browser evidence). Fix high/medium findings and re-review, up to six rounds (see "Fleet rules").
 7. **Merge only with Thomas's approval**, then the release workflow builds, scans, signs and publishes the image. Update [status](docs/status.md), the backlog row and the report, close the issue with evidence.
 
 Never call an item done without tests, browser evidence and green CI. Blocked items are reported as blocked, never marked done.
@@ -36,6 +36,17 @@ Codex fixes bugs, adjusts implementation, corrects stale docs and chooses design
 Use the tier, not a vendor: any high-tier model may review work written by any other model, never its own.
 
 A reviewer never reviews its own work. Subagents edit only explicitly disjoint paths, one owner per file ([agent-work](docs/agent-work.md)); they never commit, push, merge, deploy, add dependencies or delete data. A subagent's "passed" is evidence to inspect, not acceptance.
+
+## Fleet rules (Thomas, 20 Nov 2026)
+
+These override older fleet notes in docs and memory.
+
+- **Models.** Claude subagents run on **Sonnet only, never Opus**. Codex workers run through Orca (`orca orchestration worker-start --agent codex --model <id> --effort <level>`): `gpt-6.1-terra` builds and tests, `gpt-6.1-luna` does mechanical work (docs, baselines, cleanup), `gpt-6.1-sol` (high) reviews, plans risky changes and votes in councils. At most three heavy workers at a time.
+- **Reviews.** Up to six rounds per PR. Every round must clearly shrink the findings; if one does not, stop and hold a council (Sol, a Sonnet subagent and the coordinator) instead of spending another round. Do not spend rounds or tokens for nothing.
+- **Skills.** Every task uses the matching skill, ponytail (smallest complete change; push back on scope the need does not justify) and humanizer for prose.
+- **Environments.** Local SIT is the coordinator's job: test builds of `main` there with no signed-image gate. Thomas tests signed images on UAT only, after all planned work is finished. UAT gets signed images only.
+- **Housekeeping.** Remove worktrees and branches only when merged or their PR is closed; list and keep anything with unique work.
+- **Autonomy.** Follow the coordinator's recommendation; use a council when unsure; continue until every planned task is implemented, reviewed, fully tested (code and browser, every screen and journey on local SIT) and deployed to UAT. The safety rules below still apply.
 
 ## Testing order — all must pass before a PR is ready
 
