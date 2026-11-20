@@ -17,7 +17,7 @@ vi.mock("../../apps/api/src/storage", async (importOriginal) => ({
   deleteStorageObject: storage.deleteStorageObject,
 }));
 
-import db, { schema } from "../../apps/api/src/database";
+import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import {
   getTaskAssetKeys,
   syncInlineAssetReferences,
@@ -195,12 +195,30 @@ describe("API integration: asset clean-up through the storage repository", () =>
     await db
       .insert(schema.taskCommentTable)
       .values({ taskId: t.id, userId: member.user.id, content: url("keep2") });
-    await clean(
-      identity,
-      t.id,
-      [url("keep"), url("keep2"), url("remove")].join(" "),
-      "",
-    );
+    const client = await getDatabasePool().connect();
+    const prototype = Object.getPrototypeOf(client) as {
+      query: (...args: unknown[]) => unknown;
+    };
+    client.release();
+    const spy = vi.spyOn(prototype, "query");
+    try {
+      await clean(
+        identity,
+        t.id,
+        [url("keep"), url("keep2"), url("remove")].join(" "),
+        "",
+      );
+      const contentQueries = spy.mock.calls
+        .map(([query]) =>
+          typeof query === "string"
+            ? query
+            : ((query as { text?: string })?.text ?? ""),
+        )
+        .filter((query) => /\blike\b/i.test(query));
+      expect(contentQueries).toHaveLength(3);
+    } finally {
+      spy.mockRestore();
+    }
     expect(await detachedIds()).toEqual(["keep", "remove"]);
   });
 

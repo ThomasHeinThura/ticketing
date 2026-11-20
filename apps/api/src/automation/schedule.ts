@@ -9,10 +9,11 @@ import {
   stateTemplateTable,
   workItemTable,
 } from "../database/schema";
+import { projectsWithFeature } from "../feature-flag/repository";
 import { withJobLease } from "../scheduler/leader-lock";
 import { type AutomationCondition, evaluateConditions } from "./conditions";
 import { loadWorkItemsByKey, resolvedEntrySql } from "./facts";
-import { automationsEnabled } from "./feature";
+import { AUTOMATIONS_FEATURE_KEY, automationsEnabled } from "./feature";
 import { scheduleOccurrence } from "./schedule-occurrence";
 
 export { scheduleOccurrence } from "./schedule-occurrence";
@@ -31,7 +32,11 @@ export const SCHEDULE_RETRY_MS = 24 * 60 * 60 * 1000;
  * The per-rule transaction lock fences cursor advances even if the outer job lease expires.
  * Candidate insert and cursor advance commit together; the existing run claim fences actions.
  */
-async function scanRule(ruleId: string, now: Date): Promise<number> {
+async function scanRule(
+  ruleId: string,
+  now: Date,
+  flagCache: Map<string, Map<string, boolean>>,
+): Promise<number> {
   return withJobLease(
     `automation:${ruleId}`,
     () =>
@@ -308,7 +313,24 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
           true,
         );
         let enqueued = 0;
-        const flagCache = new Map<string, boolean>();
+        let workspaceFlags = flagCache.get(rule.workspaceId);
+        if (!workspaceFlags) {
+          workspaceFlags = new Map();
+          flagCache.set(rule.workspaceId, workspaceFlags);
+        }
+        const missing = [
+          ...new Set(items.map((item) => item.projectId)),
+        ].filter((id) => !workspaceFlags.has(id));
+        if (missing.length) {
+          const enabled = new Set(
+            await projectsWithFeature(
+              AUTOMATIONS_FEATURE_KEY,
+              rule.workspaceId,
+              missing,
+            ),
+          );
+          for (const id of missing) workspaceFlags.set(id, enabled.has(id));
+        }
         for (const item of items) {
           const loaded = facts.get(item.key);
           if (
@@ -317,15 +339,7 @@ async function scanRule(ruleId: string, now: Date): Promise<number> {
               .matched
           )
             continue;
-          let enabled = flagCache.get(item.projectId);
-          if (enabled === undefined) {
-            enabled = await automationsEnabled(
-              rule.workspaceId,
-              item.projectId,
-            );
-            flagCache.set(item.projectId, enabled);
-          }
-          if (!enabled) continue;
+          if (!workspaceFlags.get(item.projectId)) continue;
           await tx
             .insert(automationRunTable)
             .values({
@@ -413,9 +427,10 @@ export async function runAutomationSchedule(now = new Date()) {
     .limit(100);
   let candidates = 0;
   let degraded = false;
+  const flagCache = new Map<string, Map<string, boolean>>();
   for (const rule of rules) {
     try {
-      candidates += await scanRule(rule.id, now);
+      candidates += await scanRule(rule.id, now, flagCache);
     } catch {
       degraded = true;
     }
