@@ -154,12 +154,12 @@ describe("PagesList", () => {
     const deletedParent = {
       ...page("parent", null, "Deleted parent"),
       deletedAt: "2026-10-20T00:00:00.000Z",
-      purgeAfter: "2026-11-19T00:00:00.000Z",
+      purgeAfter: "2099-01-01T00:00:00.000Z",
     };
     const deletedChild = {
       ...page("child", "parent", "Deleted child"),
       deletedAt: "2026-10-20T00:00:00.000Z",
-      purgeAfter: "2026-11-19T00:00:00.000Z",
+      purgeAfter: "2099-01-01T00:00:00.000Z",
     };
     const expired = {
       ...page("expired", null, "Expired page"),
