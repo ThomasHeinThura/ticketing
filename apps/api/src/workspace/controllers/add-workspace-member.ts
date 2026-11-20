@@ -22,6 +22,7 @@ export type AddWorkspaceMemberInput = {
 
 export type AddedWorkspaceMember = {
   id: string;
+  workspaceMemberId: string;
   name: string;
   email: string;
   image: string | null;
@@ -107,15 +108,24 @@ async function addWorkspaceMember(
     }
 
     const joinedAt = new Date();
-    await tx.insert(schema.workspaceUserTable).values({
-      workspaceId: input.workspaceId,
-      userId: input.userId,
-      role: input.role,
-      joinedAt,
-    });
+    const [member] = await tx
+      .insert(schema.workspaceUserTable)
+      .values({
+        workspaceId: input.workspaceId,
+        userId: input.userId,
+        role: input.role,
+        joinedAt,
+      })
+      .returning({ id: schema.workspaceUserTable.id });
+    if (!member) throw new Error("Workspace member insert returned no row");
     await syncWorkspaceAdminReach(tx, input.workspaceId, input.userId);
 
-    return { ...user, role: input.role, joinedAt };
+    return {
+      ...user,
+      workspaceMemberId: member.id,
+      role: input.role,
+      joinedAt,
+    };
   });
 }
 

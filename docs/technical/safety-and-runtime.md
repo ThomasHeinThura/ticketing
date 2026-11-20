@@ -114,6 +114,7 @@ from the spec — see [Typed client](#api-design-typed-client).
 | `/api/public/*` | Unauthenticated: branding, `health/live` and `health/ready`, the login page's provider **buttons only** (label + id — never discovery URLs, tenant ids or domain restrictions), terminology, CSP reports, and the two origin-specific `POST /api/public/{agent|portal}/notification-preference-handoffs` routes (one-purpose signed email token; short-lived selector handoff only) | `public` with reason — **no exceptions**, so the router's blanket kind is true of every route under it |
 | `/api/instance/*` | God Mode. `instance:*` capabilities. Includes the dependency-enumerating deep health check, `GET /api/instance/health/deep` — capability `instance:admin`, scope `instance`; it is **not** on the public router, and the `/metrics` bearer token is not an alternative credential for it | capability |
 | `/api/portal/*` | Customer portal — a deliberately narrow, separate router | `portal` with predicate |
+| Exact `GET /api/portal/account/settings-history` | Closed personal metadata only, sections `profile`/`notifications`; customer session and portal host only, no keys or impersonation (Thomas, 16 Nov 2026). Generic `/api/audit` remains portal-closed. | `authenticated + self`, session-only |
 | `/auth/*` | better-auth handler | `delegated: better-auth` |
 | `/ws` | WebSocket upgrade | `delegated: websocket` (Origin-checked — [realtime.md](#realtime)) |
 | `/metrics` | Exact `GET /metrics` Prometheus scrape on its own Node listener, bearer-guarded | `delegated: metrics` |

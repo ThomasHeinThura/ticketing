@@ -1,6 +1,7 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { requestAuditActor } from "../audit/controllers/audit-read-common";
 import {
   apiRouter,
   type BaseVariables,
@@ -161,6 +162,7 @@ export const projectLabelRoutes = apiRouter()
         await identity(c),
         c.req.valid("param").projectId,
         c.req.valid("json"),
+        requestAuditActor(c),
       ),
       200,
     ),
@@ -173,6 +175,7 @@ export const projectLabelRoutes = apiRouter()
         projectId,
         id,
         c.req.valid("json"),
+        requestAuditActor(c),
       ),
       200,
     );

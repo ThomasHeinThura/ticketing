@@ -1,4 +1,5 @@
 import { HTTPException } from "hono/http-exception";
+import { staffNotificationAuditContext } from "../audit/notification-settings";
 import {
   getCanonicalPreferences,
   saveCanonicalPreference,
@@ -122,6 +123,7 @@ const notificationPreferences = apiRouter()
     );
   })
   .openapi(updatePreferencesRoute, async (c) => {
+    const audit = await staffNotificationAuditContext(c);
     const { canonicalPreference, quietHours, ...legacy } = c.req.valid("json");
     if (
       (canonicalPreference || quietHours !== undefined) &&
@@ -133,9 +135,13 @@ const notificationPreferences = apiRouter()
           "Save canonical preferences, quiet hours and legacy preferences separately",
       });
     if (canonicalPreference)
-      await saveCanonicalPreference(c.get("userId"), canonicalPreference);
+      await saveCanonicalPreference(
+        c.get("userId"),
+        canonicalPreference,
+        audit,
+      );
     if (quietHours !== undefined)
-      await saveQuietHours(c.get("userId"), quietHours);
+      await saveQuietHours(c.get("userId"), quietHours, audit);
     const preferences =
       canonicalPreference || quietHours !== undefined
         ? await getNotificationPreferences(
@@ -146,6 +152,7 @@ const notificationPreferences = apiRouter()
             c.get("userId"),
             c.get("userEmail") || null,
             legacy,
+            audit,
           );
     return c.json(
       {
@@ -156,26 +163,30 @@ const notificationPreferences = apiRouter()
       200,
     );
   })
-  .openapi(upsertWorkspaceRuleRoute, async (c) =>
-    c.json(
+  .openapi(upsertWorkspaceRuleRoute, async (c) => {
+    const audit = await staffNotificationAuditContext(c);
+    return c.json(
       await upsertWorkspaceRule(
         c.get("userId"),
         c.req.valid("param").workspaceId,
         c.get("userEmail") || null,
         c.req.valid("json"),
+        audit,
       ),
       200,
-    ),
-  )
-  .openapi(deleteWorkspaceRuleRoute, async (c) =>
-    c.json(
+    );
+  })
+  .openapi(deleteWorkspaceRuleRoute, async (c) => {
+    const audit = await staffNotificationAuditContext(c);
+    return c.json(
       await deleteWorkspaceRule(
         c.get("userId"),
         c.req.valid("param").workspaceId,
         c.get("userEmail") || null,
+        audit,
       ),
       200,
-    ),
-  );
+    );
+  });
 
 export default notificationPreferences;

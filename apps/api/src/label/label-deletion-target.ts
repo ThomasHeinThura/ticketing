@@ -1,6 +1,8 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { schema } from "../database";
+import { appendAuditSavepoint } from "../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import {
   type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
@@ -146,7 +148,29 @@ export const labelDeletionTarget: RegisteredDeletionTarget = {
       },
       input.userId,
     );
-    return { afterCommit: () => publishLabelDeletion(result, input.userId) };
+    const auditFailed =
+      !label.taskId && !label.projectId
+        ? await appendAuditSavepoint(tx, {
+            actorId: input.userId,
+            actorType: "person",
+            traceId: input.traceId,
+            workspaceId: loaded.workspaceId,
+            action: "label.catalogue_deleted",
+            entityType: "label",
+            entityId: label.id,
+            after: { changedFields: ["name", "color"] },
+          })
+        : false;
+    return {
+      afterCommit: async () => {
+        try {
+          await publishLabelDeletion(result, input.userId);
+        } finally {
+          if (auditFailed)
+            await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+        }
+      },
+    };
   },
 };
 
@@ -260,6 +284,26 @@ export const projectLabelDeletionTarget: RegisteredDeletionTarget = {
       throw new HTTPException(409, {
         message: "pending_action_target_changed",
       });
-    return { afterCommit: () => publishCatalogueLabelChanges(changes) };
+    const auditFailed = await appendAuditSavepoint(tx, {
+      actorId: input.userId,
+      actorType: "person",
+      traceId: input.traceId,
+      workspaceId: loaded.workspaceId,
+      projectId: loaded.projectId,
+      action: "label.catalogue_deleted",
+      entityType: "label",
+      entityId: loaded.id,
+      after: { changedFields: ["name", "color"] },
+    });
+    return {
+      afterCommit: async () => {
+        try {
+          await publishCatalogueLabelChanges(changes);
+        } finally {
+          if (auditFailed)
+            await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+        }
+      },
+    };
   },
 };

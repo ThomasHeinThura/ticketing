@@ -29,7 +29,10 @@ import { hasElevatedEnforcementClassification } from "../auth/elevated-enforceme
 import db, { schema } from "../database";
 import { timeEntryTable } from "../database/schema-p5-time";
 import type { RegisteredHttpRoute } from "../observability/metrics.js";
-import { policyRegistry } from "../policy-registry";
+import {
+  policyRegistry,
+  selectSettingsHistoryPolicy,
+} from "../policy-registry";
 import {
   loadProjectAncestorIdsFor,
   loadProjectOwnerTeamIdFor,
@@ -788,7 +791,20 @@ export async function enforceRegisteredPolicy(
     refuse(500);
   }
 
-  const entry = policyRegistry.get(routeKey);
+  const entry =
+    routeKey === "GET /api/audit"
+      ? selectSettingsHistoryPolicy(
+          c.req.query("entity_type") ?? "",
+          c.req.query("entity_id"),
+          c.get("settingsHistoryScope"),
+          {
+            workspaceId: c.get("workspaceId"),
+            workspaceIdSource: c.get("workspaceIdSource"),
+            projectId: c.get("projectId"),
+            resource: c.get("policyScopeResource"),
+          },
+        )
+      : policyRegistry.get(routeKey);
   if (!entry) refuse(500);
   const assertElevatedClassification = () => {
     if (

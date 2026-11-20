@@ -19,11 +19,13 @@ import { writeAuditRead } from "./controllers/audit-read-common";
 import { exportInstanceAudit } from "./controllers/export-instance-audit";
 import { listInstanceAudit } from "./controllers/list-instance-audit";
 import { listWorkspaceAudit } from "./controllers/list-workspace-audit";
+import { personalSettingsHistory } from "./personal-history";
 import {
   auditEntityHistorySchema,
   auditExportResponseSchema,
   auditListSchema,
   type auditRowSchema,
+  settingsHistoryResponseSchema,
   workItemReconstructionSchema,
 } from "./response";
 import {
@@ -31,8 +33,10 @@ import {
   auditExportBody,
   auditQuery,
   reconstructQuery,
+  settingsHistoryQuery,
   workspaceIdParam,
 } from "./schema";
+import { readSettingsHistory, settingsHistoryScope } from "./settings-history";
 import {
   listActivityForReconstruction,
   listEntityAuditRows,
@@ -113,6 +117,26 @@ const listWorkspaceAuditRoute = createRoute({
     400: errorResponse("Workspace id undetermined, NUL byte, or invalid query"),
     401: errorResponse("No credential"),
     403: errorResponse("Not a workspace administrator"),
+  },
+});
+
+const getSettingsHistoryRoute = createRoute({
+  method: "get",
+  operationId: "getSettingsHistory",
+  path: "/audit",
+  tags: ["Audit"],
+  summary: "Read one persisted settings entity history",
+  middleware: [settingsHistoryScope] as const,
+  request: { query: settingsHistoryQuery },
+  responses: {
+    200: jsonResponse(
+      "Settings history, newest first",
+      settingsHistoryResponseSchema,
+    ),
+    400: errorResponse("Invalid history target"),
+    401: errorResponse("No credential"),
+    403: errorResponse("Missing settings capability"),
+    404: errorResponse("Settings entity not found or out of reach"),
   },
 });
 
@@ -213,6 +237,20 @@ const audit = apiRouter<
     const rows = await listWorkspaceAudit(c, workspaceId, c.req.valid("query"));
     return c.json({ rows: rows.map(toRowResponse) }, 200);
   })
+  .openapi(getSettingsHistoryRoute, async (c) => {
+    c.header("Cache-Control", "no-store");
+    const result = await readSettingsHistory(c);
+    const latest = result.rows[0];
+    return c.json(
+      {
+        entityType: result.entityType,
+        entityId: result.entityId,
+        lastChanged: latest ? { actor: latest.actor, at: latest.at } : null,
+        rows: result.rows,
+      },
+      200,
+    );
+  })
   .openapi(getWorkItemAuditHistoryRoute, async (c) => {
     const { type, id } = c.req.valid("param");
     const workItemId = c.get("workItemId");
@@ -251,6 +289,7 @@ const audit = apiRouter<
       },
       200,
     );
-  });
+  })
+  .route("/", personalSettingsHistory);
 
 export default audit;

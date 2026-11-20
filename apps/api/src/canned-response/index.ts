@@ -1,4 +1,5 @@
 import { HTTPException } from "hono/http-exception";
+import { requestAuditActor } from "../audit/controllers/audit-read-common";
 import {
   apiRouter,
   type BaseVariables,
@@ -174,13 +175,17 @@ const cannedResponse = apiRouter<BaseVariables & { workspaceId: string }>()
     const { workspaceId, name, body, visibilityDefault } = c.req.valid("json");
     const identity = await resolveCallerIdentity(c, c.get("userId"));
     if (!identity) throw new HTTPException(401, { message: "Unauthorized" });
-    const created = await createCannedResponse(identity, {
-      workspaceId,
-      name,
-      body,
-      visibilityDefault,
-      createdBy: c.get("userId"),
-    });
+    const created = await createCannedResponse(
+      identity,
+      {
+        workspaceId,
+        name,
+        body,
+        visibilityDefault,
+        createdBy: c.get("userId"),
+      },
+      requestAuditActor(c),
+    );
     return c.json(created, 200);
   })
   .openapi(updateCannedResponseRoute, async (c) => {
@@ -194,6 +199,7 @@ const cannedResponse = apiRouter<BaseVariables & { workspaceId: string }>()
       id,
       workspaceId,
       input,
+      requestAuditActor(c),
     );
     return c.json(updated, 200);
   })

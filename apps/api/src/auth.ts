@@ -114,6 +114,7 @@ import {
 } from "./instance/setup-token";
 import {
   afterTotpEnrollmentCommit,
+  authorizeSelfProfileMutation,
   createCredentialAwareDrizzleAdapter,
   currentAccountDeletionTransaction,
   currentFirstUserAdmissionTransaction,
@@ -1116,6 +1117,17 @@ function createAuth(
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === "/update-user") {
+          const current = await getAuthoritativeSessionFromCtx(ctx);
+          if (
+            !current?.session ||
+            current.session.portal !== portal ||
+            (current.session as { impersonatedBy?: string | null })
+              .impersonatedBy
+          )
+            throw new APIError("UNAUTHORIZED", { message: "Unauthorized" });
+          authorizeSelfProfileMutation(current.user.id, portal);
+        }
         if (
           ctx.path === "/request-password-reset" &&
           typeof ctx.body?.email === "string"

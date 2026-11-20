@@ -4808,6 +4808,9 @@
           "id": {
             "type": "string"
           },
+          "workspaceMemberId": {
+            "type": "string"
+          },
           "personId": {
             "type": [
               "string",
@@ -4839,6 +4842,7 @@
         },
         "required": [
           "id",
+          "workspaceMemberId",
           "name",
           "email",
           "image",
@@ -13674,6 +13678,12 @@
                           "roleRank": {
                             "type": "integer"
                           },
+                          "membershipId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "source": {
                             "type": "string",
                             "enum": [
@@ -13737,6 +13747,7 @@
                           "roleKey",
                           "roleName",
                           "roleRank",
+                          "membershipId",
                           "source",
                           "inheritedFrom",
                           "overridesInherited",
@@ -13913,6 +13924,12 @@
                       "roleRank": {
                         "type": "integer"
                       },
+                      "membershipId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "source": {
                         "type": "string",
                         "enum": [
@@ -13976,6 +13993,7 @@
                       "roleKey",
                       "roleName",
                       "roleRank",
+                      "membershipId",
                       "source",
                       "inheritedFrom",
                       "overridesInherited",
@@ -14185,6 +14203,12 @@
                       "roleRank": {
                         "type": "integer"
                       },
+                      "membershipId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "source": {
                         "type": "string",
                         "enum": [
@@ -14248,6 +14272,7 @@
                       "roleKey",
                       "roleName",
                       "roleRank",
+                      "membershipId",
                       "source",
                       "inheritedFrom",
                       "overridesInherited",
@@ -14612,6 +14637,12 @@
                       "roleRank": {
                         "type": "integer"
                       },
+                      "membershipId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "source": {
                         "type": "string",
                         "enum": [
@@ -14675,6 +14706,7 @@
                       "roleKey",
                       "roleName",
                       "roleRank",
+                      "membershipId",
                       "source",
                       "inheritedFrom",
                       "overridesInherited",
@@ -14798,6 +14830,12 @@
                       "roleRank": {
                         "type": "integer"
                       },
+                      "membershipId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "source": {
                         "type": "string",
                         "enum": [
@@ -14861,6 +14899,7 @@
                       "roleKey",
                       "roleName",
                       "roleRank",
+                      "membershipId",
                       "source",
                       "inheritedFrom",
                       "overridesInherited",
@@ -25825,6 +25864,289 @@
         }
       }
     },
+    "/audit": {
+      "get": {
+        "operationId": "getSettingsHistory",
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Read one persisted settings entity history",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "instance",
+                "workspace",
+                "project",
+                "role",
+                "workflow",
+                "team",
+                "service_calendar",
+                "sla_policy",
+                "request_type",
+                "custom_field",
+                "custom_field_section",
+                "state_template",
+                "webhook",
+                "canned_response",
+                "workspace_label",
+                "project_label",
+                "automation",
+                "state",
+                "time_activity",
+                "cost_type",
+                "hourly_rate",
+                "budget",
+                "workspace_member",
+                "project_membership",
+                "instance_notification_provider",
+                "instance_storage_draft",
+                "instance_auth_methods",
+                "staff_self_registration",
+                "instance_job",
+                "identity_connection",
+                "import_source_connection",
+                "terminology_override",
+                "project_estimates",
+                "service_api_key"
+              ]
+            },
+            "required": true,
+            "name": "entity_type",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "entity_id",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "instance",
+                "workspace"
+              ]
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "workspace_id",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Settings history, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "entityType": {
+                      "type": "string",
+                      "enum": [
+                        "instance",
+                        "workspace",
+                        "project",
+                        "role",
+                        "workflow",
+                        "team",
+                        "service_calendar",
+                        "sla_policy",
+                        "request_type",
+                        "custom_field",
+                        "custom_field_section",
+                        "state_template",
+                        "webhook",
+                        "canned_response",
+                        "workspace_label",
+                        "project_label",
+                        "automation",
+                        "state",
+                        "time_activity",
+                        "cost_type",
+                        "hourly_rate",
+                        "budget",
+                        "workspace_member",
+                        "project_membership",
+                        "instance_notification_provider",
+                        "instance_storage_draft",
+                        "instance_auth_methods",
+                        "staff_self_registration",
+                        "instance_job",
+                        "identity_connection",
+                        "import_source_connection",
+                        "terminology_override",
+                        "project_estimates",
+                        "service_api_key"
+                      ]
+                    },
+                    "entityId": {
+                      "type": "string"
+                    },
+                    "lastChanged": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "actor": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "person",
+                                "api_key",
+                                "automation",
+                                "system"
+                              ]
+                            },
+                            "name": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "actor",
+                        "at"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "person",
+                                  "api_key",
+                                  "automation",
+                                  "system"
+                                ]
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "changedFields": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "actor",
+                          "action",
+                          "changedFields"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "entityType",
+                    "entityId",
+                    "lastChanged",
+                    "rows"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid history target",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing settings capability",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Settings entity not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/audit/entity/{type}/{id}": {
       "get": {
         "operationId": "getAuditEntityHistory",
@@ -26095,6 +26417,312 @@
           },
           "422": {
             "description": "Journal too long to replay in one request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/settings/history": {
+      "get": {
+        "operationId": "getOwnSettingsHistory",
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Read the current staff person's settings metadata",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "profile",
+                "preferences",
+                "notifications",
+                "security",
+                "apiKeys"
+              ]
+            },
+            "required": true,
+            "name": "section",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Closed personal settings history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "section": {
+                      "type": "string",
+                      "enum": [
+                        "profile",
+                        "preferences",
+                        "notifications",
+                        "security",
+                        "apiKeys"
+                      ]
+                    },
+                    "lastChanged": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "at": {
+                          "type": "string"
+                        },
+                        "actor": {
+                          "type": "string",
+                          "enum": [
+                            "you"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "at",
+                        "actor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "you"
+                            ]
+                          },
+                          "changedFields": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "name",
+                                "locale",
+                                "image",
+                                "density",
+                                "layout",
+                                "listGroups",
+                                "columns",
+                                "columnWidths"
+                              ]
+                            }
+                          },
+                          "changedCategories": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "delivery",
+                                "digest",
+                                "quietHours",
+                                "workspaceRule",
+                                "password",
+                                "mfa",
+                                "personalKey"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "actor"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "section",
+                    "lastChanged",
+                    "rows"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Session required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portal/account/settings-history": {
+      "get": {
+        "operationId": "getPortalOwnSettingsHistory",
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Read the current customer's settings metadata",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "profile",
+                "notifications",
+                "security"
+              ]
+            },
+            "required": true,
+            "name": "section",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Closed personal settings history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "section": {
+                      "type": "string",
+                      "enum": [
+                        "profile",
+                        "preferences",
+                        "notifications",
+                        "security",
+                        "apiKeys"
+                      ]
+                    },
+                    "lastChanged": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "at": {
+                          "type": "string"
+                        },
+                        "actor": {
+                          "type": "string",
+                          "enum": [
+                            "you"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "at",
+                        "actor"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "enum": [
+                              "you"
+                            ]
+                          },
+                          "changedFields": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "name",
+                                "locale",
+                                "image",
+                                "density",
+                                "layout",
+                                "listGroups",
+                                "columns",
+                                "columnWidths"
+                              ]
+                            }
+                          },
+                          "changedCategories": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "delivery",
+                                "digest",
+                                "quietHours",
+                                "workspaceRule",
+                                "password",
+                                "mfa",
+                                "personalKey"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "actor"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "section",
+                    "lastChanged",
+                    "rows"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Session required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "text/plain": {
                 "schema": {
@@ -79593,6 +80221,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": 0
@@ -79862,6 +80496,7 @@
                     }
                   },
                   "required": [
+                    "id",
                     "version",
                     "source",
                     "enabled",
@@ -80091,6 +80726,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": 0
@@ -80360,6 +81001,7 @@
                     }
                   },
                   "required": [
+                    "id",
                     "version",
                     "source",
                     "enabled",
@@ -92961,6 +93603,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": 0
@@ -93100,6 +93748,7 @@
                     }
                   },
                   "required": [
+                    "id",
                     "version",
                     "config",
                     "credentialConfigured",
@@ -93346,6 +93995,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "id": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "version": {
                       "type": "integer",
                       "minimum": 0
@@ -93485,6 +94140,7 @@
                     }
                   },
                   "required": [
+                    "id",
                     "version",
                     "config",
                     "credentialConfigured",

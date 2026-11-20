@@ -1934,7 +1934,13 @@ Borrowed from OpenProject's journal design.
 - `AU-10` Workspace administrators see audit rows for their workspace, filtered to their project reach: rows that are not project-scoped, plus rows for projects the reader can reach — a project-scoped `membership` for their person, or the per-workspace `sees_all` grant (#319/#334). They never see rows for projects outside their reach (#344; decision log 2026-09-23). Soft-deleting a project freezes its one-hop child routes (`project.deleted_at IS NULL` returning `404` to ordinary callers while preserving underlying rows for the 30-day restore window; decision log 2026-10-19 D3 / #205).
 - `AU-11` Instance administrators see everything.
 - `AU-12` Customers never see the audit log. They see the public portion of `activity` on
-  their own requests.
+  their own requests. Thomas approved one closed personal-settings metadata projection on
+  16 November 2026: `GET /api/portal/account/settings-history`, with `section=profile` or
+  `section=notifications`. It returns only timestamps, `you` for self-authored changes and
+  closed field/category labels for the authenticated caller's own settings. No raw audit
+  rows, IDs, values or other people's records are returned. Keys, impersonation and
+  wrong-host access are refused; AU-13 read auditing remains. Generic `/api/audit` stays
+  closed on the portal host. See [personal settings history](feature-contracts-p4.md#settings-hierarchy-personal-history).
 - `AU-13` Reading the audit log is itself audited, as is exporting it. `audit.read` rows
   are **not** exempt from the retention purge — they are ordinary audited events, subject
   to the same configurable window (12 months by default) as every other row, one row per
@@ -2033,6 +2039,15 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `identity.placeholder_claimed` | TaskDesk-verified email claims an imported, userless person; fixed method and person/import-run/organisation IDs only, never an email address |
 | `identity.linked` | Explicit current-session consent after proof of another connection; person and source/target connection/identity IDs only, never email, subject or tokens. No grants or new sessions. |
 | `workspace.project_settings_updated` · `project.settings_updated` | Live project-default/inheritance changes; actor, changed field names, scope IDs and integer versions only. |
+| `workspace.settings_updated` | Ordinary workspace fields change; record actor, target/scope IDs and closed changed-field names only. Never record setting values, secrets or the raw request. Audit-only; no domain event or permission change. Thomas approved this addition for ST-5/ST-6 on 16 November 2026. |
+| `user_preference.updated` | Persisted personal preferences change or clear; record actor, target/scope IDs and closed changed-field names only. Never record setting values, secrets or the raw request. Browser-only appearance is exempt. Audit-only; no domain event or permission change. Thomas approved this addition for ST-5/ST-6 on 16 November 2026. |
+| `project.general_settings_updated` | Successful project general or health save; actor and target/scope IDs plus `changedFields` limited to `name`, `icon`, `slug`, `description`, `kind`, `supportLevel`, `serviceCalendarId`, `defaultCommentVisibility`, `managerId`, `startDate`, `endDate`, `defaultAssigneeId`, `health`. Field names only; never values. Audit-only; Thomas approved 16 November 2026. |
+| `project.states_updated` | Successful project state configuration save; actor and target/scope IDs, addressed state ID and `changedFields` limited to `stateSetMode`, `position`, `isDefault`. No field values. Audit-only; Thomas approved 16 November 2026. |
+| `workflow.created` · `workflow.version_created` · `workflow.version_published` | Successful workflow creation, version creation or publication; actor, target/scope and workflow/version IDs plus `changedFields` limited to `definition`, `activeVersion`. Never definitions, content or values. Audit-only; Thomas approved 16 November 2026. |
+| `label.catalogue_created` · `label.catalogue_updated` · `label.catalogue_deleted` | Successful workspace/project label catalogue mutation; deletion records only on execution. Actor and target label/project/workspace IDs plus `changedFields` limited to `name`, `color`; never values. Excludes task label assignment. Audit-only; Thomas approved 16 November 2026. |
+| `canned_response.created` · `canned_response.updated` · `canned_response.deleted` | Successful snippet mutation; deletion records only on execution. Actor and target/workspace IDs plus `changedFields` limited to `name`, `body`, `visibilityDefault`; never text or values. Audit-only; Thomas approved 16 November 2026. |
+| `user.profile_updated` | Successful authenticated self-profile update; actor and person target ID plus `changedFields` limited to `name`, `locale`, `image`. Never names, locale values, image URLs or raw requests. Audit-only; Thomas approved 16 November 2026. |
+| `notification.settings_updated` | Effective changes to the caller's delivery/digest preferences, quiet hours or personal workspace rules, including portal saves. Record actor/trace/person target and only `changedCategories` from `delivery`, `digest`, `quietHours`, `workspaceRule`; workspace scope is null for these personal records. Never values, addresses, URLs, secrets, event/channel identifiers or raw requests. No domain/outbox event; preserve no-op and transaction/rollback behavior. Thomas approved 16 November 2026. |
 | `state_template.created` · `state_template.updated` | Workspace enabled-state vocabulary changes; template/workspace IDs, changed field names and versions only. |
 | `job.configuration_changed` | Atomic runtime job cadence/enable configuration change; records the actor, registered job name and old/new configuration version. Audit only; not a published domain event. |
 | `instance.delivery.requeued` | Atomic operator retry of a dead event envelope or standalone notification child; records only actor, opaque target, kind, prior state and prior attempt count. Audit only; not a published domain event. |
@@ -2047,6 +2062,11 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `pending_action.viewed` | The one pending-action transition that is not an event (`PA-11`) |
 | `sla_policy.created` · `sla_policy.updated` · `sla_policy.published` | SLA policy creation, draft edits and publication |
 
+The twelve ST-5/ST-6 additions approved on 16 November record normal request actor/trace
+metadata only after successful writes, preserving transaction/rollback and pending-deletion
+execution semantics. They add no domain/outbox event or permission, do not broaden the
+inheritance actions above, and do not cover browser-only appearance or notification settings.
+
 <a id="audit-trail-permissions"></a>
 ### Permissions
 
@@ -2057,7 +2077,7 @@ them; register a new audit-only action in the maintained catalogue before implem
 | Read one entity's history | that entity's own read capability, resolved by `{type}` from the policy registry (kind 1) |
 | Export the audit log | `instance:read_audit` **and** step-up re-authentication (`AU-13`, elevated) |
 | Reconstruct a work item at an instant | `work_item:read` |
-| Customers | never — they see the public portion of `activity` on their own requests only (`AU-12`) |
+| Customers | no raw audit access; public request activity and only the exact closed personal-settings metadata projection approved under `AU-12` |
 
 <a id="audit-trail-screens"></a>
 ### Screens
@@ -2163,3 +2183,22 @@ Mappings to existing technical references provide maintained entrypoints; they d
 - **Pending product-decision/scope extraction (historical process is inactive):** `docs/07-planning/decision-log.md`.
 <a id="pending-07-planningroadmap"></a>
 - **Pending product-decision/scope extraction (historical process is inactive):** `docs/07-planning/roadmap.md`.
+
+
+### 17 Nov 2026 — approved closed settings History extensions (#899/#900)
+
+Thomas approved the recommended P1–P5 extension packages on17 Nov. This is additive History metadata admission, not a permission grant or feature acceptance. Verify each source row, producer binding and existing read capability before implementing; unverified fields remain omitted or action/time only. Retain current session/host/reach checks, SQL-current target/workspace/project predicates, AU-13 read auditing, bounded no-store reads, closed labels and no values/secrets/raw audit IDs in returned rows. Generic `/api/audit` remains portal-closed. Existing write semantics remain unchanged except the explicitly approved time-settings audit split.
+
+- **P1, live workspace/project rows:** selectors `automation`, `state`, `time_activity`, `cost_type`, `hourly_rate`, `budget`. Mirror each source GET capability and key admission; exact current row/reach and scoped audit binding are mandatory. Automation workspace rules require workspace manage-settings; project rules require live project reach/read and must never fall through to workspace-rule history. State history is WIP-limit metadata only. Time activity and cost type expose only verified closed field markers. Hourly rate and budget expose action/time or a closed rate-set marker; never rate, currency, effective-date, person or budget values.
+- **P2, membership role changes only:** `workspace_member` and `project_membership` resolve the current real row and exact user/person audit binding, scoped workspace/project and current source-read admission. Project roster records require their exact source binding. Removals, deleted rows, inherited membership and SCIM changes are excluded from this slice.
+  P2 response addressability is additive: workspace member rows retain `id` as user ID and `personId`, adding required `workspaceMemberId` as the actual workspace-member row ID. The add-member POST uses the same response schema and returns that field from the inserted row in the existing transaction; `id` remains the user ID. Project roster rows retain all existing fields and add required nullable `membershipId`; it is the actual project membership row ID only for a current active direct grant backing that direct roster row. Inherited, IdP/SCIM-only, expired, revoked or unbacked rows return null. History resolves and revalidates these row IDs independently; response IDs never grant authority. No user/person ID substitution is permitted.
+- **P3, session-only God Mode targets:** `instance_notification_provider`, `instance_storage_draft`, `instance_auth_methods`, `staff_self_registration`, `instance_job`, `identity_connection`, `import_source_connection`. Preserve each existing instance capability, plus workspace reach for scoped import connections. Notification provider labels collapse config/password to configuration/credential; never values. Storage, identity and import initially show action/time only. Auth methods use only the closed registered method/audience set and logical target `auth.local-methods`; self-registration uses registered logical target `staff_self_registration_enabled`. Jobs require both registered job name and current configuration row, with enabled/pattern markers only. No job run data or cron values.
+  P3 provider/storage response addressability is additive: email-provider GET/PATCH and S3 draft GET/PUT retain their prior response fields and add required nullable `id`, containing the actual persisted `instance_plugin_config.id`, or null before a row exists. This is request plumbing only; each History read independently resolves and authorizes the exact live target. It must not expose credentials or change writes/probes.
+- **P4a, terminology:** selector `terminology_override` resolves a validated catalogue cell `(termKey,audience,locale,scope[,workspace])`, not merely a live override row; this explicitly permits its closed History to survive reset. Use existing terminology capability and workspace reach, closed forms marker only, no noun text, no portal admission.
+- **P4b, project estimate configuration:** logical selector `project_estimates` resolves the live project and current project read/reach. Bind exact workspace/project and only configuration/system-change actions across replaced configuration rows; exclude work-item estimates. Closed system/points markers or action/time only, no values or counts.
+- **P4c, time settings:** split future audit attribution between the workspace `backdateLimitDays` setting and project `projectDefaultBillable` setting. Workspace settings must not become visible through project read. Historical mixed rows remain hidden. This high-risk time-data producer change requires independent Sol High review; no mixed-history aggregation or altered data-write permissions is approved.
+- **P5a, personal security:** add `section=security` to staff and portal self-history routes, session-only, correct host, no key/impersonation, self-authored only. Staff actions: password changed and MFA enrolled; portal: password changed only. Closed password/mfa categories, binding authenticated user and live self identity. Password reset, administrator MFA reset and session revocation are excluded.
+- **P5b, personal keys:** staff-only `section=apiKeys`, self-authored personal-key create/revoke actions with null workspace/project and verified personal kind. Closed personalKey category and timestamps only; no key ID/name/scope/capability/IP/expiry. This explicit bounded self-audit exception survives personal-key revocation/deletion. No portal admission.
+- **P5c, service keys:** selector `service_api_key` is session-only, resolves a live service-key row with non-null workspace, current workspace reach and existing key-manage capability; exact scoped create/revoke/reattest/ownership-transfer actions, action/time only. A deleted service key has no History.
+
+No other automatic tombstones, deletion-surviving target history, inherited/SCIM membership, dynamic plugin metadata or mixed time/estimate trail is approved. Source uncertainties are engineering investigations, not permission to widen these projections. Each implemented slice still requires tests, independent review, current CI and persisted browser/signed acceptance.

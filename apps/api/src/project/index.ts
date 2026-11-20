@@ -2,6 +2,7 @@ import type { ProjectReachFacts } from "@taskdesk/permissions";
 import { workspaceRoleSeesAllProjects } from "@taskdesk/permissions";
 import { and, eq, exists, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { requestAuditActor } from "../audit/controllers/audit-read-common";
 import db from "../database";
 import {
   organisationProjectDefaultTable,
@@ -10,7 +11,11 @@ import {
   serviceCalendarTable,
   workspaceTable,
 } from "../database/schema";
-import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
+import { appendAuditSavepoint } from "../events/audit-savepoint";
+import {
+  isCurrentInstanceAdmin,
+  notifyCurrentInstanceAdminsOfAuditFailure,
+} from "../instance/observability/audit-failure-notifier";
 import {
   apiRouter,
   type BaseVariables,
@@ -1230,20 +1235,54 @@ const project = apiRouter<
   .openapi(updateProjectHealthRoute, async (c) => {
     const { id } = c.req.valid("param");
     const { health } = c.req.valid("json");
-    const [updated] = await db
-      .update(projectTable)
-      .set({ health })
-      .where(
-        and(
-          eq(projectTable.id, id),
-          eq(projectTable.workspaceId, c.get("workspaceId")),
-          isNull(projectTable.deletedAt),
-        ),
-      )
-      .returning({ health: projectTable.health });
-    if (!updated)
-      throw new HTTPException(404, { message: "Project not found" });
-    return c.json(projectHealthSchema.parse(updated), 200);
+    const workspaceId = c.get("workspaceId");
+    const result = await db.transaction(async (tx) => {
+      const [before] = await tx
+        .select({
+          health: projectTable.health,
+          organisationId: projectTable.organisationId,
+        })
+        .from(projectTable)
+        .where(
+          and(
+            eq(projectTable.id, id),
+            eq(projectTable.workspaceId, workspaceId),
+            isNull(projectTable.deletedAt),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!before)
+        throw new HTTPException(404, { message: "Project not found" });
+      if (before.health === health) return { health, auditFailed: false };
+      const [updated] = await tx
+        .update(projectTable)
+        .set({ health })
+        .where(
+          and(
+            eq(projectTable.id, id),
+            eq(projectTable.workspaceId, workspaceId),
+            isNull(projectTable.deletedAt),
+          ),
+        )
+        .returning({ health: projectTable.health });
+      if (!updated)
+        throw new HTTPException(404, { message: "Project not found" });
+      const auditFailed = await appendAuditSavepoint(tx, {
+        ...requestAuditActor(c),
+        workspaceId,
+        projectId: id,
+        organisationId: before.organisationId,
+        action: "project.general_settings_updated",
+        entityType: "project",
+        entityId: id,
+        after: { changedFields: ["health"] },
+      });
+      return { health: updated.health, auditFailed };
+    });
+    if (result.auditFailed)
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    return c.json(projectHealthSchema.parse({ health: result.health }), 200);
   })
   .openapi(reorderProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
@@ -1386,6 +1425,7 @@ const project = apiRouter<
           endDate: body.endDate,
           defaultAssigneeId: body.defaultAssigneeId,
         },
+        requestAuditActor(c),
       );
       return c.json(updatedProject, 200);
     } catch (error) {
@@ -1982,14 +2022,25 @@ export const projectStates = apiRouter<
     const { projectId } = c.req.valid("param");
     const { stateTemplateId } = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
-    await createProjectState(projectId, workspaceId, stateTemplateId);
+    await createProjectState(
+      projectId,
+      workspaceId,
+      stateTemplateId,
+      requestAuditActor(c),
+    );
     return c.json(await listProjectStatesCtrl(projectId, workspaceId), 200);
   })
   .openapi(updateProjectStateRoute, async (c) => {
     const { projectId, stateId } = c.req.valid("param");
     const body = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
-    await updateProjectState(projectId, workspaceId, stateId, body);
+    await updateProjectState(
+      projectId,
+      workspaceId,
+      stateId,
+      body,
+      requestAuditActor(c),
+    );
     return c.json(await listProjectStatesCtrl(projectId, workspaceId), 200);
   })
   .openapi(listProjectMembersRoute, async (c) => {

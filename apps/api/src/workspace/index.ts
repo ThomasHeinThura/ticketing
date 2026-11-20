@@ -1,5 +1,6 @@
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { writeAuditRead } from "../audit/controllers/audit-read-common";
 import { auditRequestContext } from "../audit/request-context";
 import { runWithStepUp, stepUpTokenHeader } from "../auth/step-up-spend";
 import db from "../database";
@@ -1133,10 +1134,14 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     }
 
     try {
-      const updated = await updateWorkspaceCtrl(c.get("workspaceId"), {
-        ...body,
-        name: body.name?.trim(),
-      });
+      const updated = await updateWorkspaceCtrl(
+        c.get("workspaceId"),
+        {
+          ...body,
+          name: body.name?.trim(),
+        },
+        { userId: c.get("userId") ?? null, audit: auditRequestContext(c) },
+      );
       if (!updated) {
         throw new HTTPException(404, { message: "Workspace not found" });
       }
@@ -1422,10 +1427,13 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(getWorkspaceRoleHistoryRoute, async (c) => {
     try {
-      return c.json(
-        await getRoleHistory(c.get("workspaceId"), c.req.valid("param").roleId),
-        200,
+      const history = await getRoleHistory(
+        c.get("workspaceId"),
+        c.req.valid("param").roleId,
       );
+      // AU-13: reading the audit log is itself audited, including an empty result.
+      await writeAuditRead(c, { workspaceId: c.get("workspaceId") });
+      return c.json(history, 200);
     } catch (error) {
       return roleErrorToHttp(error);
     }

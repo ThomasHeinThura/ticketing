@@ -5,8 +5,13 @@ import {
   type WorkflowTransition,
 } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import type { AppendAuditLogInput } from "../../audit/audit-writer";
 import db from "../../database";
+import { workflowTable } from "../../database/schema";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import type { z } from "../../openapi";
 import {
   findWorkflowWorkspaceId,
@@ -33,6 +38,16 @@ async function createWorkflowVersion(
   identity: ResolvedIdentity,
   workflowId: string,
   transitions: readonly TransitionInput[],
+  actor: Pick<
+    AppendAuditLogInput,
+    | "actorId"
+    | "actorType"
+    | "apiKeyId"
+    | "impersonatorId"
+    | "actorIp"
+    | "userAgent"
+    | "traceId"
+  >,
 ) {
   if (
     transitions.some((transition) =>
@@ -126,14 +141,27 @@ async function createWorkflowVersion(
     }),
   );
 
-  const result = validateWorkflowVersion(states, domainTransitions);
-  if (!result.valid) {
+  const validation = validateWorkflowVersion(states, domainTransitions);
+  if (!validation.valid) {
     throw new HTTPException(400, {
-      message: `Invalid workflow version: ${result.errors.join("; ")}`,
+      message: `Invalid workflow version: ${validation.errors.join("; ")}`,
     });
   }
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ id: workflowTable.id })
+      .from(workflowTable)
+      .where(
+        and(
+          eq(workflowTable.id, workflowId),
+          eq(workflowTable.workspaceId, workflow.workspaceId),
+        ),
+      )
+      .for("share")
+      .limit(1);
+    if (!current)
+      throw new HTTPException(404, { message: "Workflow not found" });
     const maxRow = await getMaxVersionNumber(tx, workflowId);
 
     const version = await insertWorkflowVersion(tx, {
@@ -165,8 +193,22 @@ async function createWorkflowVersion(
         )
       : [];
 
-    return { ...version, transitions: insertedTransitions };
+    const auditFailed = await appendAuditSavepoint(tx, {
+      ...actor,
+      workspaceId: workflow.workspaceId,
+      action: "workflow.version_created",
+      entityType: "workflow",
+      entityId: workflowId,
+      after: { versionId: version.id, changedFields: ["definition"] },
+    });
+    return {
+      version: { ...version, transitions: insertedTransitions },
+      auditFailed,
+    };
   });
+  if (result.auditFailed)
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  return result.version;
 }
 
 export default createWorkflowVersion;

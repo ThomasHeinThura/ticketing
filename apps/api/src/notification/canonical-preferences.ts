@@ -1,6 +1,13 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import {
+  appendPersonalNotificationAudit,
+  type NotificationCategory,
+  notifyPersonalNotificationAuditFailure,
+  type PersonalNotificationAudit,
+} from "../audit/notification-settings";
 import db from "../database";
+import { personTable } from "../database/schema";
 import { z } from "../openapi";
 import { resolveIdentity } from "../permissions/resolve-identity";
 
@@ -99,11 +106,37 @@ export async function getCanonicalPreferences(userId: string) {
 export async function saveCanonicalPreference(
   userId: string,
   input: CanonicalPreferenceWrite,
+  audit?: PersonalNotificationAudit,
 ) {
   const personId = await staffPersonId(userId);
   const value = canonicalPreferenceWriteSchema.parse(input);
-  await db.execute(sql`INSERT INTO notification_preference
-    (person_id, scope, scope_id, channel, event_kind, enabled, digest)
-    VALUES (${personId}, 'global', NULL, 'notify.email', ${value.eventKind}, ${value.enabled}, ${value.digest})
-    ON CONFLICT (person_id, scope, scope_id, channel, event_kind) DO UPDATE SET enabled = EXCLUDED.enabled, digest = EXCLUDED.digest`);
+  const failed = await db.transaction(async (tx) => {
+    const [person] = await tx
+      .select({ id: personTable.id })
+      .from(personTable)
+      .where(eq(personTable.id, personId))
+      .for("update")
+      .limit(1);
+    if (!person) throw new HTTPException(404, { message: "Person not found" });
+    const prior =
+      await tx.execute(sql`SELECT enabled, digest FROM notification_preference
+      WHERE person_id = ${personId} AND event_kind = ${value.eventKind}
+      AND channel = 'notify.email' AND scope = 'global' AND scope_id IS NULL`);
+    const previous = prior.rows[0] as
+      | { enabled: boolean; digest: string }
+      | undefined;
+    const categories: NotificationCategory[] = [];
+    if (
+      (previous?.enabled ?? canonicalEmailDefaultEnabled(value.eventKind)) !==
+      value.enabled
+    )
+      categories.push("delivery");
+    if ((previous?.digest ?? "off") !== value.digest) categories.push("digest");
+    await tx.execute(sql`INSERT INTO notification_preference
+      (person_id, scope, scope_id, channel, event_kind, enabled, digest)
+      VALUES (${personId}, 'global', NULL, 'notify.email', ${value.eventKind}, ${value.enabled}, ${value.digest})
+      ON CONFLICT (person_id, scope, scope_id, channel, event_kind) DO UPDATE SET enabled = EXCLUDED.enabled, digest = EXCLUDED.digest`);
+    return appendPersonalNotificationAudit(tx, audit, categories);
+  });
+  await notifyPersonalNotificationAuditFailure(failed);
 }

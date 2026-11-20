@@ -3,6 +3,7 @@ import { responseTimestamp, z } from "../openapi";
 export const workspaceMemberSchema = z
   .object({
     id: z.string(),
+    workspaceMemberId: z.string(),
     personId: z.string().nullable().optional().openapi({
       description:
         "Active staff person identifier, distinct from the login user id.",

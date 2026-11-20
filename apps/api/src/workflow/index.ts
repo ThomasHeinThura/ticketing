@@ -1,6 +1,7 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { requestAuditActor } from "../audit/controllers/audit-read-common";
 import {
   apiRouter,
   type BaseVariables,
@@ -244,7 +245,12 @@ const workflow = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(createWorkflowRoute, async (c) => {
     const { workspaceId, key, name } = c.req.valid("json");
     try {
-      const created = await createWorkflow(workspaceId, key, name);
+      const created = await createWorkflow(
+        workspaceId,
+        key,
+        name,
+        requestAuditActor(c),
+      );
       return c.json(
         workflowWithVersionsSchema.parse({ ...created, versions: [] }),
         200,
@@ -270,6 +276,7 @@ const workflow = apiRouter<BaseVariables & { workspaceId: string }>()
       await requestIdentity(c),
       id,
       transitions,
+      requestAuditActor(c),
     );
     return c.json(workflowVersionSchema.parse(created), 200);
   })
@@ -287,6 +294,7 @@ const workflow = apiRouter<BaseVariables & { workspaceId: string }>()
       requestIdentityInput(c),
       id,
       number,
+      requestAuditActor(c),
     );
     return c.json(workflowVersionSchema.parse(published), 200);
   })

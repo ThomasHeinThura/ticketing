@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -41,6 +41,19 @@ async function rowsFor(userId: string) {
     .where(eq(schema.userPreferenceTable.personId, await personIdOf(userId)));
 }
 
+async function preferenceAuditCount(userId: string) {
+  const rows = await db
+    .select({ id: schema.auditLogTable.id })
+    .from(schema.auditLogTable)
+    .where(
+      and(
+        eq(schema.auditLogTable.action, "user_preference.updated"),
+        eq(schema.auditLogTable.entityId, await personIdOf(userId)),
+      ),
+    );
+  return rows.length;
+}
+
 const patch = (app: App, body: unknown) =>
   app.request("/api/me/settings", {
     method: "PATCH",
@@ -74,12 +87,19 @@ describe("API integration: GET/PATCH /api/me/settings (settings-hierarchy.md ST-
     expect(await get(app)).toEqual({ settings: {} });
 
     expect((await patch(app, { density: "compact" })).status).toBe(200);
+    const first = (await rowsFor(member.user.id))[0];
+    expect(await preferenceAuditCount(member.user.id)).toBe(1);
     expect((await patch(app, { density: "compact" })).status).toBe(200);
+    expect((await rowsFor(member.user.id))[0]?.updatedAt).toEqual(
+      first?.updatedAt,
+    );
+    expect(await preferenceAuditCount(member.user.id)).toBe(1);
     const replaced = await patch(app, { density: "comfortable" });
     expect(replaced.status).toBe(200);
     expect(await replaced.json()).toEqual({
       settings: { density: "comfortable" },
     });
+    expect(await preferenceAuditCount(member.user.id)).toBe(2);
 
     const rows = await rowsFor(member.user.id);
     expect(rows).toHaveLength(1);
@@ -222,6 +242,15 @@ describe("API integration: GET/PATCH /api/me/settings (settings-hierarchy.md ST-
       scopeId: project.id,
       value: { title: 320, priority: 96 },
     });
+    const auditCount = await preferenceAuditCount(owner.user.id);
+    expect(
+      (await patch(app, { [key]: { priority: 96, title: 320 } })).status,
+    ).toBe(200);
+    const unchanged = (await rowsFor(owner.user.id)).find(
+      (entry) => entry.key === "columnWidths",
+    );
+    expect(unchanged?.updatedAt).toEqual(row?.updatedAt);
+    expect(await preferenceAuditCount(owner.user.id)).toBe(auditCount);
     for (const bad of [
       { title: 63 },
       { title: 801 },

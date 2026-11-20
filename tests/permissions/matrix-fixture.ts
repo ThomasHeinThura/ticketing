@@ -26,6 +26,7 @@ import {
   type PolicyRegistry,
   projectScopeFromRequest,
   projectScopeFromRow,
+  type RegistryEntry,
   type ResolvedIdentity,
   type ResolvedScope,
   type RoleGrant,
@@ -193,9 +194,24 @@ function outcome(
 }
 
 /** Role × route, evaluated twice: in reach and out of reach. */
-export function routeGrid(registry: PolicyRegistry): RouteGrid {
+export function routeGrid(
+  registry: PolicyRegistry,
+  historyVariants: readonly {
+    entityType: string;
+    variantLabel: string;
+    entry: RegistryEntry;
+  }[] = [],
+): RouteGrid {
   const grid: RouteGrid = {};
-  for (const entry of registry.entries) {
+  // Query labels expose each policy in the fixture without registering extra HTTP routes.
+  const cases = [
+    ...registry.entries,
+    ...historyVariants.map(({ variantLabel, entry }) => ({
+      routeKey: `${entry.routeKey}?entity_type=${variantLabel}`,
+      policy: entry.policy,
+    })),
+  ];
+  for (const entry of cases) {
     const row = {} as RouteGrid[string];
     for (const key of BUILT_IN_ROLE_KEYS) {
       row[key] = {

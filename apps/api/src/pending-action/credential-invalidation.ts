@@ -20,6 +20,7 @@ import {
   userTable,
   verificationTable,
 } from "../database/schema";
+import { appendAuditSavepoint } from "../events/audit-savepoint";
 import { enqueueOutboxEvent, eventScope } from "../events/outbox";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "../instance/observability/runtime";
@@ -77,6 +78,47 @@ const explicitMutationStorage =
 const transactionStorage = new AsyncLocalStorage<PendingActionTransaction>();
 const firstUserAdmissionStorage =
   new AsyncLocalStorage<PendingActionTransaction>();
+
+type SelfProfileMutation = {
+  userId: string;
+  portal: "agent" | "customer";
+  actorIp: string | null;
+  userAgent: string | null;
+  traceId: string;
+  authorizedUserId?: string;
+  pendingAuditFailures: number;
+};
+const selfProfileMutationStorage = new AsyncLocalStorage<SelfProfileMutation>();
+
+export function withSelfProfileMutation<T>(
+  actor: Omit<SelfProfileMutation, "authorizedUserId" | "pendingAuditFailures">,
+  callback: () => Promise<T>,
+): Promise<T> {
+  return selfProfileMutationStorage.run(
+    { ...actor, pendingAuditFailures: 0 },
+    callback,
+  );
+}
+
+async function notifyProfileAuditFailures(count: number) {
+  for (let index = 0; index < count; index += 1) {
+    try {
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    } catch {
+      // A committed profile edit must not become a failed response if alert delivery fails.
+    }
+  }
+}
+
+export function authorizeSelfProfileMutation(
+  userId: string,
+  portal: "agent" | "customer",
+) {
+  const state = selfProfileMutationStorage.getStore();
+  if (!state || state.userId !== userId || state.portal !== portal)
+    throw new Error("Self-profile update requires its authorized request");
+  state.authorizedUserId = userId;
+}
 
 class FirstUserAdmissionRollback extends Error {
   constructor(readonly response: Response) {
@@ -890,7 +932,7 @@ function isExplicitSessionMutation(
   return state?.kind === "session";
 }
 
-/** Build the installed Drizzle adapter and wrap only explicit PA-9 revocation writes. */
+/** Build the installed Drizzle adapter and wrap PA-9 revocation and self-profile writes. */
 export function createCredentialAwareDrizzleAdapter() {
   return (options: BetterAuthOptions): DBAdapter<BetterAuthOptions> => {
     const base = drizzleAdapter(credentialDatabase, {
@@ -917,14 +959,30 @@ export function createCredentialAwareDrizzleAdapter() {
     const wrapped = withCredentialRevocationWrites(base, base);
     return {
       ...wrapped,
-      transaction: <R>(
+      transaction: async <R>(
         callback: (
           txAdapter: DBTransactionAdapter<BetterAuthOptions>,
         ) => Promise<R>,
-      ) =>
-        base.transaction<R>((txAdapter) =>
-          callback(withCredentialRevocationWrites(txAdapter, base)),
-        ),
+      ) => {
+        const profile = selfProfileMutationStorage.getStore();
+        const pendingBefore = profile?.pendingAuditFailures ?? 0;
+        // A committed child savepoint may still be rolled back by its parent.
+        const hasParent = transactionStorage.getStore() !== undefined;
+        try {
+          const result = await base.transaction<R>((txAdapter) =>
+            callback(withCredentialRevocationWrites(txAdapter, base)),
+          );
+          if (profile && !hasParent) {
+            const committed = profile.pendingAuditFailures - pendingBefore;
+            profile.pendingAuditFailures = pendingBefore;
+            await notifyProfileAuditFailures(committed);
+          }
+          return result;
+        } catch (error) {
+          if (profile) profile.pendingAuditFailures = pendingBefore;
+          throw error;
+        }
+      },
     };
   };
 }
@@ -998,6 +1056,91 @@ function withCredentialRevocationWrites<
       });
     },
     update: async <T>(input: AdapterUpdateInput) => {
+      const profile = selfProfileMutationStorage.getStore();
+      if (profile && input.model === "user") {
+        const selector = exactSelector(input.where, "id");
+        const userId = profile.authorizedUserId;
+        if (
+          !userId ||
+          selector?.value !== userId ||
+          Object.keys(input.update).some(
+            (field) =>
+              !["name", "locale", "image", "updatedAt"].includes(field),
+          )
+        )
+          throw new Error("Unexpected self-profile update");
+
+        const write = async (
+          tx: PendingActionTransaction,
+          update: DBTransactionAdapter<BetterAuthOptions>["update"],
+        ) => {
+          const [before] = await tx
+            .select({
+              name: userTable.name,
+              locale: userTable.locale,
+              image: userTable.image,
+            })
+            .from(userTable)
+            .where(eq(userTable.id, userId))
+            .for("update");
+          if (!before) throw new Error("Self-profile user is unavailable");
+          const result = await update<T>(input);
+          if (!result) return { result, auditFailed: false };
+          const [after] = await tx
+            .select({
+              name: userTable.name,
+              locale: userTable.locale,
+              image: userTable.image,
+            })
+            .from(userTable)
+            .where(eq(userTable.id, userId))
+            .limit(1);
+          if (!after) throw new Error("Self-profile user disappeared");
+          const changedFields = (["name", "locale", "image"] as const).filter(
+            (field) => before[field] !== after[field],
+          );
+          if (changedFields.length === 0) return { result, auditFailed: false };
+          const [person] = await tx
+            .select({
+              id: personTable.id,
+              side: personTable.side,
+              active: personTable.active,
+            })
+            .from(personTable)
+            .where(eq(personTable.userId, userId))
+            .limit(1);
+          if (
+            !person?.active ||
+            person.side !== (profile.portal === "agent" ? "staff" : "customer")
+          )
+            throw new Error("Self-profile person is unavailable");
+          const auditFailed = await appendAuditSavepoint(tx, {
+            action: "user.profile_updated",
+            actorId: userId,
+            actorType: "person",
+            actorIp: profile.actorIp,
+            userAgent: profile.userAgent,
+            traceId: profile.traceId,
+            workspaceId: null,
+            projectId: null,
+            entityType: "user_profile",
+            entityId: person.id,
+            after: { changedFields },
+          });
+          return { result, auditFailed };
+        };
+        const existing = transactionStorage.getStore();
+        if (existing) {
+          const outcome = await write(existing, target.update.bind(target));
+          if (outcome.auditFailed) profile.pendingAuditFailures += 1;
+          return outcome.result;
+        }
+        const outcome = await base.transaction((txAdapter) =>
+          write(currentTransaction(), txAdapter.update.bind(txAdapter)),
+        );
+        if (outcome.auditFailed) await notifyProfileAuditFailures(1);
+        return outcome.result;
+      }
       if (input.model === "account" && input.update.password !== undefined) {
         const selector = exactSelector(input.where, "id");
         if (!selector || typeof selector.value !== "string")

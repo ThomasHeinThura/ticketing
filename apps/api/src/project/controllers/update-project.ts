@@ -1,15 +1,45 @@
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import type { AppendAuditLogInput } from "../../audit/audit-writer";
 import db from "../../database";
 import {
   projectSlugClaimTable,
   projectTable,
   workspaceTable,
 } from "../../database/schema";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { resolveProjectServiceCalendarId } from "../effective-settings";
 import { PROJECT_KEY_MESSAGE, PROJECT_KEY_PATTERN } from "../schema";
 import { ProjectSlugTakenError } from "./create-project";
+
+const GENERAL_FIELDS = [
+  "name",
+  "icon",
+  "slug",
+  "description",
+  "kind",
+  "supportLevel",
+  "serviceCalendarId",
+  "defaultCommentVisibility",
+  "managerId",
+  "startDate",
+  "endDate",
+  "defaultAssigneeId",
+] as const;
+
+export function changedProjectGeneralFields(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+) {
+  return GENERAL_FIELDS.filter(
+    (field) =>
+      before[field] !== after[field] ||
+      (field === "serviceCalendarId" &&
+        before.serviceCalendarMode !== after.serviceCalendarMode),
+  );
+}
 
 async function updateProject(
   id: string,
@@ -29,6 +59,16 @@ async function updateProject(
     endDate?: string | null;
     defaultAssigneeId?: string | null;
   },
+  actor: Pick<
+    AppendAuditLogInput,
+    | "actorId"
+    | "actorType"
+    | "apiKeyId"
+    | "impersonatorId"
+    | "actorIp"
+    | "userAgent"
+    | "traceId"
+  >,
 ) {
   // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
   // 2026-09-22): the claim check and the claim write for the NEW slug now have to commit
@@ -36,7 +76,7 @@ async function updateProject(
   // permanently claimed by a project that never actually got it (or, worse, leave it
   // unclaimed after a rename that did succeed). Wrapped in a transaction for exactly that
   // reason -- `create-project.ts`'s own create path is the same shape.
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [workspace] = await tx
       .select({
         id: workspaceTable.id,
@@ -211,7 +251,23 @@ async function updateProject(
         }
       }
 
-      return updatedProject;
+      const changedFields = updatedProject
+        ? changedProjectGeneralFields(existingProject, updatedProject)
+        : [];
+      const auditFailed =
+        updatedProject && changedFields.length
+          ? await appendAuditSavepoint(tx, {
+              ...actor,
+              workspaceId,
+              projectId: id,
+              organisationId: existingProject.organisationId,
+              action: "project.general_settings_updated",
+              entityType: "project",
+              entityId: id,
+              after: { changedFields },
+            })
+          : false;
+      return { updatedProject, auditFailed };
     } catch (error) {
       // Exact constraint name, not a substring match on `"slug"` (issue #269): the
       // rename above can only raise `project`'s own `project_slug_unique` --
@@ -224,6 +280,9 @@ async function updateProject(
       throw error;
     }
   });
+  if (result.auditFailed)
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  return result.updatedProject;
 }
 
 export default updateProject;

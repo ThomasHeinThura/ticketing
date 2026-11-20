@@ -1,6 +1,9 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import type { AppendAuditLogInput } from "../../audit/audit-writer";
 import db from "../../database";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import {
   lockLegacyTaskRowIfPresent,
   lockProjectsAndAssertLive,
@@ -21,13 +24,23 @@ async function updateLabel(
   id: string,
   name: string,
   color: string,
+  actor: Pick<
+    AppendAuditLogInput,
+    | "actorId"
+    | "actorType"
+    | "apiKeyId"
+    | "impersonatorId"
+    | "actorIp"
+    | "userAgent"
+    | "traceId"
+  >,
 ) {
   const labelSnapshot = await findLabelById(identity, id);
   if (!labelSnapshot) {
     throw new HTTPException(404, { message: "Label not found" });
   }
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     await lockWorkspaceLabelNames(tx, labelSnapshot.workspaceId, [
       labelSnapshot.name,
       name,
@@ -52,6 +65,13 @@ async function updateLabel(
         message: "Label changed; retry the request",
       });
     }
+
+    const changedFields = [
+      ...(label.name === name ? [] : ["name"]),
+      ...(label.color === color ? [] : ["color"]),
+    ];
+    if (!changedFields.length)
+      return { updatedLabel: label, auditFailed: false };
 
     let remainingCopyIds: string[] = [];
     if (!label.taskId && label.workspaceId) {
@@ -97,8 +117,22 @@ async function updateLabel(
       await updateLabelsByIds(tx, remainingCopyIds, { name, color });
     }
 
-    return updatedLabel;
+    const auditFailed =
+      updatedLabel && !label.taskId && !label.projectId
+        ? await appendAuditSavepoint(tx, {
+            ...actor,
+            workspaceId: label.workspaceId,
+            action: "label.catalogue_updated",
+            entityType: "label",
+            entityId: id,
+            after: { changedFields },
+          })
+        : false;
+    return { updatedLabel, auditFailed };
   });
+  if (result.auditFailed)
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  return result.updatedLabel;
 }
 
 export default updateLabel;

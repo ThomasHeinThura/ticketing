@@ -30,6 +30,9 @@ import {
   createPolicyRegistry,
   type PolicyMap,
   type PolicyRegistry,
+  policyKind,
+  type RegistryEntry,
+  validatePolicy,
 } from "@taskdesk/permissions";
 import { activityPolicies } from "./activity/policy";
 import { agilePolicies } from "./agile/policy";
@@ -38,7 +41,13 @@ import { apiKeyPolicies } from "./api-key/policy";
 import { approvalPolicies } from "./approval/policy";
 import { assetPolicies } from "./asset/policy";
 import { attachmentPolicies } from "./attachment/policy";
-import { auditPolicies } from "./audit/policy";
+import {
+  auditPolicies,
+  instanceTerminologyHistoryPolicy,
+  projectAutomationHistoryPolicy,
+  settingsHistoryPolicies,
+} from "./audit/policy";
+import type { SettingsHistoryEntityType } from "./audit/schema";
 import { factorStatusPolicies } from "./auth/factor-status-policy";
 import { automationPolicies } from "./automation/policy";
 import { cannedResponsePolicies } from "./canned-response/policy";
@@ -543,3 +552,138 @@ export const POLICY_SOURCES = [
  */
 export const policyRegistry: PolicyRegistry =
   createPolicyRegistry(POLICY_SOURCES);
+
+const historyRouteKey = "GET /api/audit";
+export const settingsHistoryPolicyVariants: readonly Readonly<{
+  entityType: SettingsHistoryEntityType;
+  variantLabel: string;
+  entry: RegistryEntry;
+}>[] = Object.freeze(
+  [
+    ...Object.entries(settingsHistoryPolicies).map(([entityType, policy]) => ({
+      entityType,
+      policy,
+      variantLabel:
+        entityType === "automation"
+          ? "automation:workspace"
+          : entityType === "terminology_override"
+            ? "terminology_override:workspace"
+            : entityType,
+    })),
+    {
+      entityType: "automation",
+      policy: projectAutomationHistoryPolicy,
+      variantLabel: "automation:project",
+    },
+    {
+      entityType: "terminology_override",
+      policy: instanceTerminologyHistoryPolicy,
+      variantLabel: "terminology_override:instance",
+    },
+  ].map(({ entityType, policy, variantLabel }) => {
+    const errors = validatePolicy(historyRouteKey, policy);
+    if (errors.length) throw new Error(errors.join("; "));
+    return Object.freeze({
+      entityType: entityType as SettingsHistoryEntityType,
+      variantLabel,
+      entry: {
+        routeKey: historyRouteKey,
+        source: "apps/api/src/audit/policy.ts",
+        kind: policyKind(policy),
+        policy,
+      },
+    });
+  }),
+);
+
+/** Select an already validated ordinary policy; unknown entity types have no fallback. */
+export function selectSettingsHistoryPolicy(
+  type: string,
+  entityId?: string,
+  scope?: unknown,
+  evidence?: unknown,
+): RegistryEntry | undefined {
+  if (type === "terminology_override") {
+    if (
+      typeof entityId !== "string" ||
+      !scope ||
+      typeof scope !== "object" ||
+      !evidence ||
+      typeof evidence !== "object"
+    )
+      return undefined;
+    const row = scope as Record<string, unknown>;
+    const proof = evidence as Record<string, unknown>;
+    if (row.type !== type || row.id !== entityId || row.projectId !== null)
+      return undefined;
+    if (row.workspaceId === null) {
+      if (
+        proof.workspaceId != null ||
+        proof.projectId != null ||
+        (proof.resource != null && proof.resource !== "instance")
+      )
+        return undefined;
+      return settingsHistoryPolicyVariants.find(
+        (variant) => variant.variantLabel === "terminology_override:instance",
+      )?.entry;
+    }
+    if (
+      typeof row.workspaceId !== "string" ||
+      !row.workspaceId ||
+      row.workspaceId !== proof.workspaceId ||
+      proof.workspaceIdSource !== "row" ||
+      proof.projectId != null ||
+      (proof.resource != null && proof.resource !== "workspace")
+    )
+      return undefined;
+    return settingsHistoryPolicyVariants.find(
+      (variant) => variant.variantLabel === "terminology_override:workspace",
+    )?.entry;
+  }
+  if (type === "automation") {
+    if (
+      typeof entityId !== "string" ||
+      !entityId ||
+      !scope ||
+      typeof scope !== "object" ||
+      !evidence ||
+      typeof evidence !== "object"
+    )
+      return undefined;
+    const row = scope as Record<string, unknown>;
+    const proof = evidence as Record<string, unknown>;
+    if (
+      row.type !== "automation" ||
+      row.id !== entityId ||
+      typeof row.workspaceId !== "string" ||
+      !row.workspaceId ||
+      row.workspaceId !== proof.workspaceId ||
+      proof.workspaceIdSource !== "row"
+    )
+      return undefined;
+    const project = row.projectId;
+    if (project === null) {
+      if (
+        proof.projectId != null ||
+        (proof.resource != null && proof.resource !== "workspace")
+      )
+        return undefined;
+      return settingsHistoryPolicyVariants.find(
+        (variant) => variant.variantLabel === "automation:workspace",
+      )?.entry;
+    }
+    if (
+      typeof project !== "string" ||
+      !project ||
+      project !== proof.projectId ||
+      proof.resource !== "project"
+    )
+      return undefined;
+    return settingsHistoryPolicyVariants.find(
+      (variant) => variant.variantLabel === "automation:project",
+    )?.entry;
+  }
+  return settingsHistoryPolicyVariants.find(
+    (variant) => variant.entityType === type,
+  )?.entry;
+}

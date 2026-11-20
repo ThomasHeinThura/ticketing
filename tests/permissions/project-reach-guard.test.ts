@@ -115,6 +115,8 @@ function findDerivedProjectLookupProblems(
  * A stale entry, or one that also carries the declaration, fails.
  */
 const LIST_REACH_EXEMPT: Readonly<Record<string, string>> = {
+  "GET /api/audit":
+    "one closed settings entity is loaded before policy evaluation; project history requires project reach and filters by its tenant and project ID",
   "GET /api/workspace/{workspaceId}/project-settings":
     "workspace-owned SLA/calendar defaults and enabled state-template ids, gated by current workspace access and workspace:manage_settings; no project or work-item rows",
   "GET /api/workspace/{workspaceId}/state-templates":

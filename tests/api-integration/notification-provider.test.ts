@@ -294,6 +294,10 @@ describe("persisted SMTP provider backend", () => {
       passwordPreview: "••••••••",
     });
     const row = await providerRow();
+    expect(JSON.parse(text).id).toBe(row.id);
+    const read = await f.app.request(route, { headers: { cookie: f.cookie } });
+    expect(read.status).toBe(200);
+    expect(((await read.json()) as { id: string | null }).id).toBe(row.id);
     expect(row.secrets).not.toBeNull();
     if (!row.secrets) throw new Error("Fixture ciphertext missing");
     const ciphertext = row.secrets;
@@ -302,20 +306,19 @@ describe("persisted SMTP provider backend", () => {
     expect(() =>
       decryptIdentityClientSecret(`wrong-${row.id}`, ciphertext),
     ).toThrow();
-    expect(
-      (
-        await patch(f, {
-          version: 1,
-          enabled: true,
-          config: { ...config, port: 465, secure: true },
-        })
-      ).status,
-    ).toBe(200);
+    const updated = await patch(f, {
+      version: 1,
+      enabled: true,
+      config: { ...config, port: 465, secure: true },
+    });
+    expect(updated.status).toBe(200);
+    expect(((await updated.json()) as { id: string | null }).id).toBe(row.id);
     expect((await providerRow()).secrets).toEqual(row.secrets);
     expect(
       (await patch(f, { version: 2, enabled: false, password: null })).status,
     ).toBe(200);
     expect(await getEmailProvider()).toMatchObject({
+      id: row.id,
       version: 3,
       enabled: false,
       passwordConfigured: false,
@@ -387,7 +390,10 @@ describe("persisted SMTP provider backend", () => {
     vi.stubEnv("SMTP_HOST", "bootstrap.example.test");
     vi.stubEnv("SMTP_FROM", "sender@example.test");
     expect(bootstrapSmtpConfiguration()).not.toBeNull();
-    expect((await getEmailProvider()).source).toBe("bootstrap");
+    expect(await getEmailProvider()).toMatchObject({
+      source: "bootstrap",
+      id: null,
+    });
     await saveProvider({ version: 0, enabled: false }, f.actor);
     expect(await resolveSmtpConfiguration()).toBeNull();
     expect(await providerRuntime.resolveRuntimeSmtp()).toBeNull();
