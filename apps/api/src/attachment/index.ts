@@ -213,7 +213,12 @@ const completeAttachmentRoute = createRoute({
     ),
     403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Attachment not found"),
-    409: errorResponse("Attachment is not pending"),
+    409: errorResponse(
+      "Attachment is not pending or its upload cannot be confirmed",
+    ),
+    503: errorResponse(
+      "Upload completion or storage outcome could not be confirmed",
+    ),
   },
 });
 
@@ -413,7 +418,12 @@ const portalSubmissionCompleteRoute = createRoute({
     ),
     400: errorResponse("Upload bytes are invalid"),
     404: errorResponse("Attachment not found"),
-    409: errorResponse("Attachment is no longer pending"),
+    409: errorResponse(
+      "Attachment is no longer pending or its upload cannot be confirmed",
+    ),
+    503: errorResponse(
+      "Upload completion or storage outcome could not be confirmed",
+    ),
   },
 });
 const portalSubmissionListRoute = createRoute({

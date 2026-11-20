@@ -12,6 +12,8 @@
  * from `./s3` or `./filesystem` directly, so a caller never hardcodes which backend is active.
  */
 
+import { createHash } from "node:crypto";
+import { parseTaskDeskRole } from "../runtime-role";
 import * as filesystemDriver from "./filesystem";
 import * as s3Driver from "./s3";
 import {
@@ -36,6 +38,7 @@ export type {
   TaskImageUploadUrl,
   UploadSurface,
 } from "./shared";
+export { FinalizeOutcomeUnknownError } from "./shared";
 
 // Driver-agnostic pure helpers — identical behaviour regardless of which backend is active, so
 // there is nothing to dispatch on. Re-exported here so callers have one import surface.
@@ -145,6 +148,26 @@ export function getStorageDriver(): StorageDriverName {
   throw new Error(
     `Unknown TASKDESK_STORAGE_DRIVER "${raw}". Expected "filesystem" or "s3".`,
   );
+}
+
+/**
+ * PTM-06: `"<driver>:<16 hex>"`, the digest of a named JSON tuple built from the resolved
+ * configuration the driver itself uses (never raw env strings, never credentials). It is a
+ * change detector, NOT a volume or bucket identity: the same string says nothing about which
+ * physical store backs it. For the filesystem the tuple includes the configured role, so an
+ * intent written by a `web` process never equals an `all` collector's fingerprint.
+ */
+export function getStorageBackendFingerprint(): string {
+  const name = getStorageDriver();
+  const tuple =
+    name === "s3"
+      ? { driver: "s3", ...s3Driver.getStorageLocation() }
+      : {
+          driver: "filesystem",
+          root: filesystemDriver.getResolvedStorageRoot(),
+          role: parseTaskDeskRole(),
+        };
+  return `${name}:${createHash("sha256").update(JSON.stringify(tuple)).digest("hex").slice(0, 16)}`;
 }
 
 function driver() {

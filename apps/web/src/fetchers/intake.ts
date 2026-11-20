@@ -179,7 +179,8 @@ export async function getPortalRequestType(key: string) {
     param: { key },
   });
   if (!response.ok)
-    throw new Error(
+    throw new HttpError(
+      response.status,
       (await response.text()) || "Unable to load the request form",
     );
   return response.json();

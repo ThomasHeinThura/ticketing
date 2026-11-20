@@ -1171,6 +1171,8 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
           ).toString(),
         );
         await page
+          .locator('[data-slot="empty"]')
+          .filter({ hasText: "No canned responses yet" })
           .getByRole("button", { name: "New response", exact: true })
           .click();
         const dialog = page.getByRole("dialog");

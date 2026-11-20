@@ -461,7 +461,7 @@
 		"accountSecurity": {
 			"codeError": "The authenticator code was not accepted. Check the current code and retry.",
 			"codeLabel": "Enter the six-digit code",
-			"description": "Manage your authenticator factor and backup codes.",
+			"description": "Керуйте паролем, способами входу та фактором автентифікації.",
 			"enabled": "Authenticator factor enabled",
 			"enabledDescription": "Sign-ins require an authenticator or an unused backup code.",
 			"enrollmentDisabled": "Local factor enrollment is disabled by instance policy.",
@@ -1774,7 +1774,9 @@
 			"title": "Canned responses",
 			"visibility": "Видимість за замовчуванням",
 			"save": "Save",
-			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
+			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending.",
+			"emptyLibrary": "Готових відповідей поки немає",
+			"emptyLibraryDescription": "Створіть шаблон відповіді, який агенти зможуть вставляти в коментарі."
 		},
 		"projectLabels": {
 			"subtitle": "Create, edit, and delete labels for this {{term_project_one}}.",
@@ -4160,7 +4162,9 @@
 				"description": "{{ref}} will be closed and the team will not work on it. You cannot undo this; to continue later, submit a new {{term_request_one}}.",
 				"done": "{{ref}} was withdrawn.",
 				"pending": "Withdrawing…"
-			}
+			},
+			"typeNotFoundTitle": "Ця форма недоступна.",
+			"typeNotFoundDescription": "Можливо, посилання застаріло або у вас немає до нього доступу."
 		},
 		"orientation": {
 			"body": "Raise a new {{term_request_one}} from the {{term_request_one}} catalogue. You can follow its progress, reply to our team and see what is due under My {{term_request_other}}.",

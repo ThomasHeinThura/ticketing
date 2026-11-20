@@ -353,6 +353,11 @@ const s3Fakes = vi.hoisted(() => {
         if (!obj) {
           const error = new Error("NoSuchKey");
           error.name = "NoSuchKey";
+          // The real SDK error shape of a first-attempt 404: the one copy failure PTM-06
+          // classifies as settled (nothing was copied).
+          Object.assign(error, {
+            $metadata: { httpStatusCode: 404, attempts: 1 },
+          });
           throw error;
         }
         // Snapshot the bytes NOW, while the source definitely still exists -- real

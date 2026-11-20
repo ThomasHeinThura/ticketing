@@ -94,7 +94,7 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
   });
 
   // U-14: on a phone the Inbox filters scroll instead of being cut off, and the project list
-  // keeps Kaneo's header (breadcrumb + Create project) with Recently deleted in the page.
+  // keeps the breadcrumb readable and project actions usable in the page.
   test("Journey 1b: phone Inbox filters and project list header stay usable", async ({
     page,
   }) => {
@@ -152,9 +152,11 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
       labels.map((label) => label.clientWidth),
     ))
       expect(width).toBeGreaterThanOrEqual(32);
-    await expect(
-      page.locator("header").getByRole("button", { name: "Create Project" }),
-    ).toBeVisible();
+    await page.getByRole("button", { name: "Create Project" }).click();
+    const createDialog = page.getByRole("dialog");
+    await expect(createDialog).toBeVisible();
+    await createDialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(createDialog).toBeHidden();
     const recentlyDeleted = page.getByRole("button", {
       name: "Recently deleted",
     });

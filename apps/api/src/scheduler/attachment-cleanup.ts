@@ -11,7 +11,8 @@ import {
   workItemTable,
 } from "../database/schema";
 import { logTaskDesk } from "../instance/observability/runtime";
-import { deleteStorageObject } from "../storage";
+import { parseTaskDeskRole } from "../runtime-role";
+import { deleteStorageObject, getStorageBackendFingerprint } from "../storage";
 import { contentReferencesAsset } from "../storage/cleanup-assets";
 import { dbClockUtc } from "../utils/db-time";
 import {
@@ -20,6 +21,7 @@ import {
   projectOwnPeople,
   WORK_ITEM_UNDER_OPEN_HOLD,
 } from "../utils/legal-hold-scope";
+import { MAX_ATTEMPTS, nextRetry } from "./attachment-gc-retry";
 import { assertJobExecutionOwned, withJobLease } from "./leader-lock";
 
 type CleanupKind = "pending" | "deleted";
@@ -28,6 +30,12 @@ export type AttachmentCleanupOutcome = {
   deleted: number;
   retained: number;
   degraded: boolean;
+  /**
+   * More due queue rows existed than this run served (PTM-06). Distinct from `degraded`, which
+   * keeps meaning a storage/SQL failure, a malformed row or a backend mismatch. Its only
+   * consumer is the per-run JSON log line in `runCleanup`.
+   */
+  queueBacklog?: boolean;
 };
 const MAX_ROWS_PER_RUN = 100;
 // Bounded rounds rotate past held/failing rows instead of starving later attachments.
@@ -232,11 +240,33 @@ export async function cleanAttachment(
   });
 }
 
+type QueueRowResult = "deleted" | "retained" | "skipped" | "degraded";
+
+type GcRow = {
+  attachment_id: string | null;
+  storage_driver: string | null;
+  retry_at: Date | string | null;
+  source_workspace_id: string | null;
+  attempts: number;
+};
+
 /**
- * Drains `attachment_object_gc` (`utils/attachment-object-queue.ts`): object keys whose
- * attachment rows were cascade-deleted with a hard-deleted workspace. An object is removed only
- * when no attachment row names its key any more (a key a surviving row still uses is dropped
- * from the queue untouched). A failed delete keeps the key queued and counts an attempt.
+ * Drains `attachment_object_gc` (`utils/attachment-object-queue.ts`). Two kinds of row:
+ *
+ *  - **Legacy** (`attachment_id` NULL): object keys whose attachment rows were cascade-deleted
+ *    with a hard-deleted workspace, or vacated pending keys. An object is removed only when no
+ *    attachment row names its key (a key a surviving row still uses is dropped from the queue
+ *    untouched). A failed delete counts an attempt and requeues the row at the tail.
+ *  - **Intent / tombstone** (PTM-06): a completion's final key, recorded before its copy.
+ *    Storage is touched only when the row's backend fingerprint equals this process's, the
+ *    filesystem topology gate passes, no attachment row names the key (the bytes would be
+ *    owned) and NO attachment row with the intent's id exists any more (F1/R1: a row in any
+ *    state, held or not, may still commit `ready` under that key). A missing row can never
+ *    return, so absence is monotonic and needs no lock. Filesystem intents are dropped after
+ *    one successful delete; S3 intents stay as tombstones, re-deleted on a capped schedule.
+ *
+ * Due rows are served in FIFO order of their due time. `queued_at` is never selected: an intent
+ * row carries 'infinity' there as the fence against an older collector.
  */
 export async function collectQueuedAttachmentObjects(
   limit = MAX_ROWS_PER_RUN,
@@ -251,9 +281,10 @@ export async function collectQueuedAttachmentObjects(
   try {
     queued = await db.execute<{ object_key: string }>(sql`
       SELECT "object_key" FROM "attachment_object_gc"
-      WHERE "queued_at" <= now()
-      ORDER BY "attempts" ASC, "queued_at" ASC, "object_key" ASC
-      LIMIT ${limit}
+      WHERE ("attachment_id" IS NULL AND "queued_at" <= now())
+         OR ("attachment_id" IS NOT NULL AND "retry_at" <= now())
+      ORDER BY COALESCE("retry_at", "queued_at") ASC, "object_key" ASC
+      LIMIT ${limit + 1}
     `);
   } catch {
     // Table missing or unreadable: report the run as degraded rather than failing the job
@@ -266,35 +297,37 @@ export async function collectQueuedAttachmentObjects(
     });
     return { ...outcome, degraded: true };
   }
-  for (const { object_key: objectKey } of queued.rows) {
+  // The extra row only detects remaining backlog; it is not processed.
+  if (queued.rows.length > limit) outcome.queueBacklog = true;
+  const collector = readCollectorIdentity();
+  for (const { object_key: objectKey } of queued.rows.slice(0, limit)) {
     await assertJobExecutionOwned();
     outcome.scanned++;
     try {
-      const removed = await db.transaction(async (tx) => {
-        const locked = await tx.execute(sql`
-          SELECT 1 FROM "attachment_object_gc"
-          WHERE "object_key" = ${objectKey} FOR UPDATE SKIP LOCKED
-        `);
-        if (locked.rows.length === 0) return false;
-        const referenced = await tx
-          .select({ id: attachmentTable.id })
-          .from(attachmentTable)
-          .where(eq(attachmentTable.objectKey, objectKey))
-          .limit(1);
-        if (referenced.length === 0) await deleteStorageObject(objectKey);
-        await tx.execute(
-          sql`DELETE FROM "attachment_object_gc" WHERE "object_key" = ${objectKey}`,
-        );
-        return referenced.length === 0;
-      });
-      if (removed) outcome.deleted++;
+      const result = await db.transaction((tx) =>
+        collectQueueRow(tx, objectKey, collector),
+      );
+      if (result === "skipped") continue;
+      if (result === "deleted") outcome.deleted++;
       else outcome.retained++;
+      if (result === "degraded") {
+        outcome.degraded = true;
+        logTaskDesk({
+          module: "jobs",
+          message: "jobs.failure",
+          level: "error",
+          result: "degraded",
+        });
+      }
     } catch {
       outcome.retained++;
       outcome.degraded = true;
+      // A SQL failure in the row's transaction: count the attempt (saturated) and requeue.
       await db
         .execute(
-          sql`UPDATE "attachment_object_gc" SET "attempts" = "attempts" + 1 WHERE "object_key" = ${objectKey}`,
+          sql`UPDATE "attachment_object_gc"
+              SET "attempts" = LEAST("attempts", ${MAX_ATTEMPTS - 1}) + 1
+              WHERE "object_key" = ${objectKey}`,
         )
         .catch(() => undefined);
       logTaskDesk({
@@ -306,6 +339,145 @@ export async function collectQueuedAttachmentObjects(
     }
   }
   return outcome;
+}
+
+/** This collector's own backend fingerprint and configured role, read once per run. */
+function readCollectorIdentity(): {
+  fingerprint: string | undefined;
+  roleIsAll: boolean;
+} {
+  let fingerprint: string | undefined;
+  let roleIsAll = false;
+  try {
+    fingerprint = getStorageBackendFingerprint();
+  } catch {
+    fingerprint = undefined;
+  }
+  try {
+    // The configured role, never the scheduler's mutable `schedulerRole`.
+    roleIsAll = parseTaskDeskRole() === "all";
+  } catch {
+    roleIsAll = false;
+  }
+  return { fingerprint, roleIsAll };
+}
+
+async function collectQueueRow(
+  tx: Transaction,
+  objectKey: string,
+  collector: { fingerprint: string | undefined; roleIsAll: boolean },
+): Promise<QueueRowResult> {
+  // The outer selection is a stale candidate list: another collector may have processed and
+  // rescheduled this row, or deleted it, since. The due predicate is therefore repeated under the
+  // row lock (READ COMMITTED: a fresh snapshot per statement), so a row that is no longer due, or
+  // is locked or gone, is skipped without a storage call or an attempt.
+  const locked = await tx.execute<GcRow>(sql`
+    SELECT "attachment_id", "storage_driver", "retry_at", "source_workspace_id", "attempts"
+    FROM "attachment_object_gc"
+    WHERE "object_key" = ${objectKey}
+      AND (
+        ("attachment_id" IS NULL AND "queued_at" <= now())
+        OR ("attachment_id" IS NOT NULL AND "retry_at" <= now())
+      )
+    FOR UPDATE SKIP LOCKED
+  `);
+  const row = locked.rows[0];
+  if (!row) return "skipped";
+  const { next, days } = nextRetry(row.attempts);
+  const retention = sql`"attempts" = ${next}, "retry_at" = now() + make_interval(days => ${days})`;
+  const referenced = async () =>
+    (
+      await tx
+        .select({ id: attachmentTable.id })
+        .from(attachmentTable)
+        .where(eq(attachmentTable.objectKey, objectKey))
+        .limit(1)
+    ).length > 0;
+  const dropRow = () =>
+    tx.execute(
+      sql`DELETE FROM "attachment_object_gc" WHERE "object_key" = ${objectKey}`,
+    );
+
+  const isLegacy =
+    row.attachment_id === null &&
+    row.storage_driver === null &&
+    row.retry_at === null;
+  if (isLegacy) {
+    if (await referenced()) {
+      await dropRow();
+      return "retained";
+    }
+    try {
+      await deleteStorageObject(objectKey);
+    } catch {
+      // Failure: one attempt, requeued at the FIFO tail (still due, queued after the others).
+      await tx.execute(
+        sql`UPDATE "attachment_object_gc"
+            SET "attempts" = ${next}, "queued_at" = now()
+            WHERE "object_key" = ${objectKey}`,
+      );
+      return "degraded";
+    }
+    await dropRow();
+    return "deleted";
+  }
+
+  // Anything but a complete intent shape is retained untouched and reported (unreachable under
+  // the table CHECK): no storage call, no drop.
+  if (
+    row.attachment_id === null ||
+    row.storage_driver === null ||
+    row.retry_at === null ||
+    row.source_workspace_id === null
+  )
+    return "degraded";
+
+  const isFilesystem = row.storage_driver.startsWith("filesystem:");
+  // A different backend, an unreadable local configuration, or (filesystem) a collector that is
+  // not the single `all` process: retain with a capped delay, no storage call, no drop.
+  if (
+    collector.fingerprint === undefined ||
+    row.storage_driver !== collector.fingerprint ||
+    (isFilesystem && !collector.roleIsAll)
+  ) {
+    await tx.execute(
+      sql`UPDATE "attachment_object_gc" SET ${retention} WHERE "object_key" = ${objectKey}`,
+    );
+    return "degraded";
+  }
+  // The key is named by an attachment row: its lifecycle owns the bytes (defensive path).
+  if (await referenced()) {
+    await dropRow();
+    return "retained";
+  }
+  // F1/R1: a row with the intent's id, in any state, may still commit `ready` under this key.
+  const owner = await tx
+    .select({ id: attachmentTable.id })
+    .from(attachmentTable)
+    .where(eq(attachmentTable.id, row.attachment_id))
+    .limit(1);
+  if (owner.length > 0) {
+    await tx.execute(
+      sql`UPDATE "attachment_object_gc" SET ${retention} WHERE "object_key" = ${objectKey}`,
+    );
+    return "retained";
+  }
+  try {
+    await deleteStorageObject(objectKey);
+  } catch {
+    await tx.execute(
+      sql`UPDATE "attachment_object_gc"
+          SET "attempts" = ${next}, "retry_at" = now()
+          WHERE "object_key" = ${objectKey}`,
+    );
+    return "degraded";
+  }
+  if (isFilesystem) await dropRow();
+  else
+    await tx.execute(
+      sql`UPDATE "attachment_object_gc" SET ${retention} WHERE "object_key" = ${objectKey}`,
+    );
+  return "deleted";
 }
 
 /** Recovery window for an inline image that no content references any more (P0R1-01). */
@@ -499,6 +671,7 @@ async function runCleanup(
         outcome.deleted += queue.deleted;
         outcome.retained += queue.retained;
         outcome.degraded ||= queue.degraded;
+        if (queue.queueBacklog) outcome.queueBacklog = true;
         const assets = await collectDetachedAssets(MAX_ROWS_PER_RUN);
         outcome.scanned += assets.scanned;
         outcome.deleted += assets.deleted;

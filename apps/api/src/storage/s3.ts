@@ -21,6 +21,7 @@ import {
   DEFAULT_DOWNLOAD_URL_TTL_SECONDS,
   DEFAULT_MAX_IMAGE_UPLOAD_BYTES,
   DEFAULT_UPLOAD_URL_TTL_SECONDS,
+  FinalizeOutcomeUnknownError,
   getFileExtension,
   isImageContentType,
   matchesKeyContext,
@@ -64,6 +65,13 @@ type StorageConfig = {
 };
 
 let clientCache:
+  | {
+      cacheKey: string;
+      client: S3Client;
+    }
+  | undefined;
+// PTM-06: CopyObject alone runs on a single-attempt client (see `finalizeAttachmentObject`).
+let copyClientCache:
   | {
       cacheKey: string;
       client: S3Client;
@@ -155,19 +163,17 @@ export function getMaxImageUploadBytes(): number {
   );
 }
 
-function getClient(config: StorageConfig) {
-  const cacheKey = JSON.stringify({
+function clientCacheKey(config: StorageConfig) {
+  return JSON.stringify({
     endpoint: config.endpoint,
     region: config.region,
     accessKeyId: config.accessKeyId,
     bucket: config.bucket,
     forcePathStyle: config.forcePathStyle,
   });
+}
 
-  if (clientCache?.cacheKey === cacheKey) {
-    return clientCache.client;
-  }
-
+function buildClient(config: StorageConfig, extra: S3ClientConfig = {}) {
   const clientConfig: S3ClientConfig = {
     endpoint: config.endpoint,
     region: config.region,
@@ -175,6 +181,7 @@ function getClient(config: StorageConfig) {
     // Avoid auto-injecting checksum params for presigned PUT URLs. Some
     // S3-compatible providers (e.g. Garage/R2) reject mismatched hoisted CRCs.
     requestChecksumCalculation: "WHEN_REQUIRED",
+    ...extra,
   };
 
   const credentials = resolveS3Credentials(
@@ -190,9 +197,62 @@ function getClient(config: StorageConfig) {
     clientConfig.credentials = credentials;
   }
 
-  const client = new S3Client(clientConfig);
+  return new S3Client(clientConfig);
+}
+
+function getClient(config: StorageConfig) {
+  const cacheKey = clientCacheKey(config);
+
+  if (clientCache?.cacheKey === cacheKey) {
+    return clientCache.client;
+  }
+
+  const client = buildClient(config);
   clientCache = { cacheKey, client };
   return client;
+}
+
+/**
+ * PTM-06: the client used only for `CopyObject` in `finalizeAttachmentObject`. The SDK default
+ * retries a failed copy internally, so a returned error could hide an earlier attempt that did
+ * land. One attempt means a copy that resolved is settled and any rejection is judged once.
+ */
+function getCopyClient(config: StorageConfig) {
+  const cacheKey = clientCacheKey(config);
+
+  if (copyClientCache?.cacheKey === cacheKey) {
+    return copyClientCache.client;
+  }
+
+  const client = buildClient(config, { maxAttempts: 1 });
+  copyClientCache = { cacheKey, client };
+  return client;
+}
+
+/**
+ * The location inputs of the backend fingerprint (`storage/index.ts`): endpoint, region, bucket
+ * and path style after canonicalisation, never credentials. A change detector only.
+ */
+export function getStorageLocation(): {
+  endpoint: string;
+  region: string;
+  bucket: string;
+  forcePathStyle: boolean;
+} {
+  const config = getStorageConfig();
+  let endpoint = config.endpoint.trim();
+  try {
+    const url = new URL(endpoint);
+    endpoint = `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, "")}`;
+  } catch {
+    endpoint = endpoint.replace(/\/+$/, "").toLowerCase();
+  }
+  return {
+    endpoint,
+    region: config.region,
+    bucket: config.bucket,
+    forcePathStyle: config.forcePathStyle,
+  };
 }
 
 export function validateTaskAssetUploadInput(
@@ -456,15 +516,43 @@ export async function finalizeAttachmentObject(
   const config = getStorageConfig();
   const client = getClient(config);
 
-  await client.send(
-    new CopyObjectCommand({
-      Bucket: config.bucket,
-      CopySource: `${config.bucket}/${encodeCopySourceKey(oldKey)}`,
-      Key: newKey,
-    }),
-  );
+  // PTM-06: one attempt. A resolved copy is settled. The only rejection that proves nothing was
+  // copied is a first-attempt 404 NoSuchKey (the upload never happened); every other rejection
+  // (network, timeout, 5xx, an embedded error, a 4xx, odd or missing metadata) may have been
+  // applied remotely, so it is an unknown outcome and the caller keeps its durable intent.
+  try {
+    await getCopyClient(config).send(
+      new CopyObjectCommand({
+        Bucket: config.bucket,
+        CopySource: `${config.bucket}/${encodeCopySourceKey(oldKey)}`,
+        Key: newKey,
+      }),
+    );
+  } catch (error) {
+    if (isSettledMissingSource(error)) throw error;
+    throw new FinalizeOutcomeUnknownError(
+      "S3 did not confirm the copy of the uploaded object.",
+      { cause: error },
+    );
+  }
+  // The copy is settled: a failed delete of the old key is an ordinary (settled) failure.
   await client.send(
     new DeleteObjectCommand({ Bucket: config.bucket, Key: oldKey }),
+  );
+}
+
+function isSettledMissingSource(error: unknown): boolean {
+  const failure = error as
+    | {
+        name?: unknown;
+        $metadata?: { httpStatusCode?: unknown; attempts?: unknown };
+      }
+    | null
+    | undefined;
+  return (
+    failure?.name === "NoSuchKey" &&
+    failure.$metadata?.httpStatusCode === 404 &&
+    failure.$metadata?.attempts === 1
   );
 }
 

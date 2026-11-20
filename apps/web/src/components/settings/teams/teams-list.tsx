@@ -9,7 +9,6 @@ import {
   Card,
   CardAction,
   CardDescription,
-  CardFrame,
   CardHeader,
   CardTitle,
   Dialog,
@@ -222,7 +221,7 @@ export function TeamsList() {
             </AlertDescription>
           </Alert>
         ) : teams.data?.length ? (
-          <CardFrame>
+          <div className="flex flex-col gap-2">
             {teams.data.map((team) => (
               <Card key={team.id}>
                 <CardHeader>
@@ -249,7 +248,7 @@ export function TeamsList() {
                 </CardHeader>
               </Card>
             ))}
-          </CardFrame>
+          </div>
         ) : (
           <Empty>
             <EmptyHeader>

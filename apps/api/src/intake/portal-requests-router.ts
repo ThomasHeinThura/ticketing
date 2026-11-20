@@ -152,7 +152,12 @@ const completeRoute = createRoute({
     200: jsonResponse("Completed file", portalRequestAttachmentSchema),
     400: errorResponse("Upload missing, too large or of the wrong type"),
     404: errorResponse("Attachment not found"),
-    409: errorResponse("Attachment is no longer pending"),
+    409: errorResponse(
+      "Attachment is no longer pending or its upload cannot be confirmed",
+    ),
+    503: errorResponse(
+      "Upload completion or storage outcome could not be confirmed",
+    ),
   },
 });
 

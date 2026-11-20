@@ -129,7 +129,11 @@ test("canned response history records persisted snippet changes", async ({
         const dialog = page.locator('[data-slot="dialog-popup"]');
 
         // 1. Persisted UI create.
-        await page.getByRole("button", { name: "New response" }).click();
+        await page
+          .locator('[data-slot="empty"]')
+          .filter({ hasText: "No canned responses yet" })
+          .getByRole("button", { name: "New response" })
+          .click();
         await dialog.getByLabel("Name", { exact: true }).fill(firstName);
         await dialog
           .locator(".ProseMirror[contenteditable=true]")
