@@ -399,11 +399,16 @@ const updateProjectRoute = createRoute({
   tags: ["Projects"],
   summary: "Update project",
   description:
-    "Replace a project's name, icon, slug, description, and visibility. " +
-    "defaultCommentVisibility (CA-2), the engagement fields kind, supportLevel and " +
+    "Update a project. Only the supplied fields apply: an omitted field is unchanged, " +
+    "and a body with no known field is invalid. name, icon, slug and description are " +
+    "optional like the rest. There is no optimistic version: two writes to the same field " +
+    "are last-writer-wins, and a client that sends all four base fields still overwrites " +
+    "them. defaultCommentVisibility (CA-2), the engagement fields kind, supportLevel and " +
     "serviceCalendarId (#766), and managerId, startDate, endDate and defaultAssigneeId " +
     "(PR-6, PR-10, AS-11) are optional and each needs project:manage_settings. " +
-    "parentId is never accepted here: re-parenting is PATCH /api/projects/{id}/ownership.",
+    "parentId is never accepted here: re-parenting is PATCH /api/projects/{id}/ownership. " +
+    "The generated request schema does not express the at-least-one-known-field rule: " +
+    "the server returns 400 for an empty or unknown-only body.",
   middleware: [
     workspaceAccess.fromProject("id", {
       requireProjectReach: true,
@@ -420,7 +425,7 @@ const updateProjectRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated project", projectSchema),
-    400: errorResponse("Invalid body"),
+    400: errorResponse("Invalid body, including a body with no known field"),
     403: errorResponse(
       "Missing project:update permission, or defaultCommentVisibility, kind, supportLevel or serviceCalendarId was sent without the project:manage_settings capability",
     ),

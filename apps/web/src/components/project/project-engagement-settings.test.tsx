@@ -390,13 +390,26 @@ describe("ProjectEngagementSettings", () => {
     fireEvent.change(support(), { target: { value: "none" } });
     fireEvent.click(save());
 
+    // Only the changed field travels: the unchanged kind is not rewritten.
     await waitFor(() =>
-      expect(mocks.updateProject).toHaveBeenCalledWith(
-        expect.objectContaining({
-          kind: "project",
-          supportLevel: null,
-        }),
-      ),
+      expect(mocks.updateProject).toHaveBeenCalledWith({
+        id: "project-1",
+        supportLevel: null,
+      }),
+    );
+  });
+
+  it("saving only the kind sends only the kind, leaving the saved support level alone", async () => {
+    mocks.project = { ...mocks.project, supportLevel: "L1" };
+    render_();
+    fireEvent.change(kind(), { target: { value: "managed_service" } });
+    fireEvent.click(save());
+
+    await waitFor(() =>
+      expect(mocks.updateProject).toHaveBeenCalledWith({
+        id: "project-1",
+        kind: "managed_service",
+      }),
     );
   });
 

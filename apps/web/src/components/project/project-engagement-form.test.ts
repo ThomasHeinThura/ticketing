@@ -94,12 +94,30 @@ describe("isEngagementDirty and buildEngagementPayload", () => {
     expect(isEngagementDirty(base, { ...base, supportLevel: "L1" })).toBe(true);
   });
 
+  it("sends only the fields the draft changed, so an unrelated saved value is never rewritten", () => {
+    expect(
+      buildEngagementPayload(base, { ...base, kind: "managed_service" }),
+    ).toStrictEqual({ kind: "managed_service" });
+    expect(
+      buildEngagementPayload(base, { ...base, supportLevel: "L1" }),
+    ).toStrictEqual({ supportLevel: "L1" });
+    expect(
+      buildEngagementPayload(base, {
+        kind: "managed_service",
+        supportLevel: "L2",
+      }),
+    ).toStrictEqual({ kind: "managed_service", supportLevel: "L2" });
+    expect(buildEngagementPayload(base, { ...base })).toStrictEqual({});
+  });
+
   it("sends a cleared field as an explicit null, never undefined", () => {
-    const payload = buildEngagementPayload(base);
-    expect(payload).toStrictEqual({
-      kind: "project",
-      supportLevel: null,
-    });
+    const saved = {
+      kind: "managed_service" as const,
+      supportLevel: "L2" as const,
+    };
+    expect(
+      buildEngagementPayload(saved, { ...saved, supportLevel: null }),
+    ).toStrictEqual({ supportLevel: null });
   });
 });
 

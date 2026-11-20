@@ -220,7 +220,7 @@ function ProjectEngagementSettings({
     try {
       await updateProject({
         id: project.id,
-        ...buildEngagementPayload(values),
+        ...buildEngagementPayload(saved, values),
       });
       await invalidateProject();
       setDraft(null);

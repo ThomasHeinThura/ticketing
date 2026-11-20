@@ -70,6 +70,73 @@ describe("update body", () => {
     expect(updateProjectBody.parse(body).startDate).toBeUndefined();
   });
 
+  describe("PTM-04 field intent: only the supplied known fields apply", () => {
+    it.each([
+      ["name", { name: "Beta" }],
+      ["icon", { icon: "Folder" }],
+      ["slug", { slug: "BETA" }],
+      ["description", { description: "" }],
+    ])("accepts %s alone and leaves the others omitted", (field, partial) => {
+      const parsed = updateProjectBody.parse(partial);
+      expect(Object.keys(parsed)).toEqual([field]);
+    });
+
+    it("accepts an optional setting alone, without the four base fields", () => {
+      const parsed = updateProjectBody.parse({
+        defaultCommentVisibility: "internal",
+      });
+      expect(parsed).toEqual({ defaultCommentVisibility: "internal" });
+      expect(parsed.name).toBeUndefined();
+      expect(parsed.slug).toBeUndefined();
+    });
+
+    it("keeps a clearing null on an already-nullable field a real change", () => {
+      expect(updateProjectBody.parse({ managerId: null })).toEqual({
+        managerId: null,
+      });
+      expect(updateProjectBody.parse({ supportLevel: null })).toEqual({
+        supportLevel: null,
+      });
+    });
+
+    it.each([
+      ["empty", {}],
+      ["only parentId", { parentId: "p2" }],
+      ["only ownerTeamId", { ownerTeamId: "t1" }],
+      ["only an unknown key", { visibility: "public" }],
+    ])("rejects a body with no known field (%s)", (_label, bad) => {
+      expect(updateProjectBody.safeParse(bad).success).toBe(false);
+    });
+
+    it("accepts known plus unknown keys and drops the unknown ones", () => {
+      const parsed = updateProjectBody.parse({
+        description: "x",
+        visibility: "public",
+        parentId: "p2",
+      });
+      expect(parsed).toEqual({ description: "x" });
+    });
+
+    it.each(["name", "icon", "slug", "description"])(
+      "still rejects an explicit null %s",
+      (field) => {
+        expect(updateProjectBody.safeParse({ [field]: null }).success).toBe(
+          false,
+        );
+        expect(
+          updateProjectBody.safeParse({
+            ...body,
+            [field]: null,
+          }).success,
+        ).toBe(false);
+      },
+    );
+
+    it("keeps a legacy full body valid and unchanged", () => {
+      expect(updateProjectBody.parse(body)).toEqual(body);
+    });
+  });
+
   it("accepts a manager and default assignee, or null to clear", () => {
     const parsed = updateProjectBody.parse({
       ...body,
