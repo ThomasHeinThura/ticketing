@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { completeAttachment } from "../../apps/api/src/attachment/controllers/complete-attachment";
 import { completeSubmissionAttachment } from "../../apps/api/src/attachment/controllers/complete-submission-attachment";
 import * as attachmentRepository from "../../apps/api/src/attachment/repository";
-import db, { schema } from "../../apps/api/src/database";
+import db, { getDatabase, schema } from "../../apps/api/src/database";
 import { acceptSubmission } from "../../apps/api/src/intake/repository";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import { collectQueuedAttachmentObjects } from "../../apps/api/src/scheduler/attachment-cleanup";
@@ -161,6 +161,40 @@ const staffInput = (w: StaffWorld, row: { id: string }) => ({
   identity: w.identity,
 });
 
+function loseReadyCommitReply() {
+  const finalize = storage.finalizeStorageObject;
+  vi.spyOn(storage, "finalizeStorageObject").mockImplementationOnce(
+    async (oldKey, newKey) => {
+      await finalize(oldKey, newKey);
+      const database = getDatabase();
+      const transaction = database.transaction.bind(database);
+      vi.spyOn(database, "transaction").mockImplementationOnce(
+        async (callback) => {
+          await transaction(callback);
+          throw new Error("commit reply lost");
+        },
+      );
+    },
+  );
+}
+
+async function expectReadyObjectAfterCollection(id: string) {
+  const ready = await attachmentRow(id);
+  expect(ready?.state).toBe("ready");
+  expect(await intentRows(id)).toEqual([]);
+  expect(await listFiles(root)).toEqual([
+    path.join(root, ready?.objectKey as string),
+  ]);
+  await collectQueuedAttachmentObjects();
+  expect(await attachmentRow(id)).toMatchObject({
+    state: "ready",
+    objectKey: ready?.objectKey,
+  });
+  expect(await listFiles(root)).toEqual([
+    path.join(root, ready?.objectKey as string),
+  ]);
+}
+
 async function seedIntentRows(
   row: { id: string },
   workspaceId: string,
@@ -176,6 +210,16 @@ async function seedIntentRows(
 }
 
 describe("ordinary completion: the durable intent", () => {
+  it("keeps the ready object when the commit reply is lost", async () => {
+    const w = await staffWorld();
+    const row = await pendingStaffRow(w);
+    loseReadyCommitReply();
+    await expect(completeAttachment(staffInput(w, row))).rejects.toThrow(
+      "commit reply lost",
+    );
+    await expectReadyObjectAfterCollection(row.id);
+  });
+
   it("is consumed atomically with ready: no locator remains after a success", async () => {
     const w = await staffWorld();
     const row = await pendingStaffRow(w);
@@ -458,6 +502,15 @@ describe("submission completion: phases A-D", () => {
     const done = await completeSubmissionAttachment(w.input);
     expect(done.state).toBe("ready");
     expect(await intentRows(w.pending.id)).toEqual([]);
+  });
+
+  it("keeps the ready object when the commit reply is lost", async () => {
+    const w = await submissionWorld();
+    loseReadyCommitReply();
+    await expect(completeSubmissionAttachment(w.input)).rejects.toThrow(
+      "commit reply lost",
+    );
+    await expectReadyObjectAfterCollection(w.pending.id);
   });
 
   it("holds no connection and no row lock while storage runs, and the reservation is committed", async () => {

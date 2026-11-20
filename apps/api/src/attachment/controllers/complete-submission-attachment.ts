@@ -156,8 +156,7 @@ export async function completeSubmissionAttachment(
       return false;
     }
   };
-  // Every exit below deletes only this call's own random final key; the intent is dropped only
-  // after a settled outcome, a successful delete and an unchanged backend fingerprint.
+  // The intent is dropped only after a settled outcome, delete and unchanged backend.
   const cleanUp = async () => {
     const deleted = await deleteStorageObject(finalKey).then(
       () => true,
@@ -172,6 +171,7 @@ export async function completeSubmissionAttachment(
   };
 
   let result: Awaited<ReturnType<typeof readyTransaction>>;
+  let readyCommitPending = false;
   try {
     // Phase C: storage I/O, no connection held.
     await finalizeStorageObject(pendingKey, finalKey).catch(
@@ -209,9 +209,14 @@ export async function completeSubmissionAttachment(
       maxBytes,
       contentLength,
       header,
+      onReady: () => {
+        readyCommitPending = true;
+      },
     });
+    readyCommitPending = false;
   } catch (error) {
-    await cleanUp();
+    // A lost COMMIT reply can mean the ready row already references this object.
+    if (!readyCommitPending) await cleanUp();
     throw error;
   }
   if ("error" in result) {
@@ -253,6 +258,7 @@ async function readyTransaction(args: {
   maxBytes: number;
   contentLength: number | undefined;
   header: Buffer;
+  onReady: () => void;
 }) {
   const { input, attachmentId, pendingKey, finalKey, maxBytes, contentLength } =
     args;
@@ -325,6 +331,7 @@ async function readyTransaction(args: {
         });
       }
     }
+    args.onReady();
     return { attachment: ready, reopenWorkItemId };
   });
 }

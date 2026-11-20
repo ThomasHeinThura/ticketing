@@ -205,7 +205,7 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
     }
   };
   let stable = true;
-  // One catch deletes only this call's own random final key, whichever step failed.
+  let readyCommitPending = false;
   try {
     await finalizeStorageObject(attachment.objectKey, finalObjectKey).catch(
       (error: unknown) => {
@@ -324,8 +324,10 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
         },
       ]);
 
+      readyCommitPending = true;
       return rows;
     });
+    readyCommitPending = false;
 
     const [updated] = updatedRows;
     if (!updated) {
@@ -335,6 +337,8 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
     }
     return updated;
   } catch (error) {
+    // A lost COMMIT reply can mean the ready row already references this object.
+    if (readyCommitPending) throw error;
     // A 429 rolled the ready update back; drop the still-pending row (state-guarded).
     if (error instanceof HTTPException && error.status === 429) {
       await deleteRejectedPendingAttachmentRow({
