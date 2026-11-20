@@ -1,8 +1,9 @@
 import type { ActivityRow } from "@taskdesk/domain";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import { type Executor, executorOrDefault } from "../database/executor";
 import {
   activityTable,
+  approvalTable,
   auditLogTable,
   workItemTable,
 } from "../database/schema";
@@ -102,8 +103,33 @@ export async function listEntityAuditRows(
     .where(
       and(
         eq(auditLogTable.workspaceId, workspaceId),
-        eq(auditLogTable.entityType, entityType),
-        eq(auditLogTable.entityId, entityId),
+        or(
+          and(
+            eq(auditLogTable.entityType, entityType),
+            eq(auditLogTable.entityId, entityId),
+          ),
+          and(
+            eq(auditLogTable.entityType, "approval"),
+            inArray(auditLogTable.action, [
+              "approval.requested",
+              "approval.decided",
+              "approval.withdrawn",
+              "approval.closed",
+            ]),
+            inArray(
+              auditLogTable.entityId,
+              tx
+                .select({ id: approvalTable.id })
+                .from(approvalTable)
+                .where(
+                  and(
+                    eq(approvalTable.workspaceId, workspaceId),
+                    eq(approvalTable.workItemId, entityId),
+                  ),
+                ),
+            ),
+          ),
+        ),
       ),
     )
     .orderBy(desc(auditLogTable.seq))

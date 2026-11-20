@@ -99,4 +99,29 @@ describe("WorkItemAuditHistory reconstruction", () => {
     expect(screen.queryByText("None")).toBeNull();
     expect(screen.getByText("Unassigned")).toBeTruthy();
   });
+
+  it("shows the approver and decision in approval history", async () => {
+    mocks.history.mockResolvedValue({
+      rows: [
+        {
+          id: "approval-1",
+          createdAt: AT,
+          action: "approval.decided",
+          entityType: "approval",
+          actorId: "person-1",
+          actorType: "person",
+          before: { state: "pending" },
+          after: { state: "approved" },
+        },
+      ],
+    });
+    mocks.users.mockResolvedValue({
+      members: [
+        { personId: "person-1", userId: "user-1", user: { name: "Casey" } },
+      ],
+    });
+    renderHistory();
+    fireEvent.click(screen.getByText("Audit history"));
+    expect(await screen.findByText("Casey · Approved")).toBeTruthy();
+  });
 });

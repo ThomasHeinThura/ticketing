@@ -65,7 +65,7 @@ export default function WorkItemAuditHistory({
   );
   const fields = Object.entries(snapshot.data?.snapshot?.fields ?? {});
   const states = useGetProjectStates(projectId, open);
-  const people = useGetActiveWorkspaceUsers(workspaceId ?? "", open && !!at);
+  const people = useGetActiveWorkspaceUsers(workspaceId ?? "", open);
   const lookups = useMemo(
     () => ({
       states: new Map(
@@ -165,6 +165,20 @@ export default function WorkItemAuditHistory({
                       <TableCell>{formatDateTime(row.createdAt)}</TableCell>
                       <TableCell>
                         {auditActionLabel(row.action, t)}
+                        {row.entityType === "approval" && (
+                          <span className="block text-xs">
+                            {row.actorType === "person"
+                              ? people.data?.members.find(
+                                  (member) => member.personId === row.actorId,
+                                )?.user.name || t("common:people.unknown")
+                              : t("common:people.unknown")}
+                            {row.after &&
+                              typeof row.after === "object" &&
+                              "state" in row.after &&
+                              typeof row.after.state === "string" &&
+                              ` · ${t(`workItemExtras:detail.approvals.state.${row.after.state}`, { defaultValue: row.after.state.charAt(0).toUpperCase() + row.after.state.slice(1) })}`}
+                          </span>
+                        )}
                         {auditStateChange(row.before, row.after, lookups) && (
                           <span className="block text-muted-foreground text-xs">
                             {auditStateChange(row.before, row.after, lookups)}
