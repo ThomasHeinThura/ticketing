@@ -259,6 +259,7 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
     let text = "";
     for (const type of ["tasks", "comments", "projects"]) {
       const r = await read<SearchBody>(a.app, searchUrl(a, `&type=${type}`));
+      expect(r.status, `search type=${type}: ${r.text}`).toBe(200);
       if (r.status !== 200) status = r.status;
       results.push(...(r.body?.results ?? []));
       totalCount += r.body?.totalCount ?? 0;
@@ -395,6 +396,11 @@ describe("API integration: project reach on workspace-level reads (#740)", () =>
         PROJECT_KEY_SCOPE,
       );
       const seesAllKey = await makeApiKey(a.seesAll.user.id, PROJECT_KEY_SCOPE);
+      expect(
+        new Set(
+          [outsiderKey, memberKey, seesAllKey].map((key) => key.slice(0, 12)),
+        ).size,
+      ).toBe(3);
 
       for (const [key, sees] of [
         [outsiderKey, "none"],

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { and, eq, inArray } from "drizzle-orm";
 import { expect } from "vitest";
+import { generateApiKeySecret } from "../../../apps/api/src/api-key/service";
 import db, { schema } from "../../../apps/api/src/database";
 import type { createApp } from "../../../apps/api/src/index";
 import { seedWorkspaceBuiltInRoles } from "../../../apps/api/src/workspace/built-in-roles.repository";
@@ -683,7 +684,7 @@ export function hashApiKey(key: string) {
 
 /** Mint an API key owned by `userId` with the given permission scope (null = unscoped). */
 export async function makeApiKey(userId: string, permissions: unknown) {
-  const raw = `taskdesk_reach_${randomUUID()}`;
+  const raw = generateApiKeySecret();
   const now = new Date();
   await db.insert(schema.apikeyTable).values({
     referenceId: userId,
