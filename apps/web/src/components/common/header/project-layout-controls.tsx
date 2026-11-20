@@ -105,7 +105,6 @@ function ViewTab({
   icon: Icon,
   onClick,
   disabledReason,
-  clipped,
   children,
 }: {
   view: ProjectView;
@@ -113,8 +112,6 @@ function ViewTab({
   icon: LucideIcon;
   onClick: () => void;
   disabledReason?: string;
-  /** Not fully inside the strip's frame: hidden so no tab shows half a label (it is in More). */
-  clipped?: boolean;
   children: ReactNode;
 }) {
   if (disabledReason) {
@@ -127,10 +124,7 @@ function ViewTab({
           aria-disabled="true"
           aria-description={disabledReason}
           aria-current={active ? "page" : undefined}
-          className={cn(
-            "h-6 scroll-mx-6 cursor-not-allowed gap-1.5 rounded-md px-2 text-xs opacity-64",
-            clipped && "opacity-0",
-          )}
+          className="h-6 scroll-mx-6 cursor-not-allowed gap-1.5 rounded-md px-2 text-xs opacity-64"
         >
           <Icon className="size-3.5" />
           {children}
@@ -150,7 +144,6 @@ function ViewTab({
         // active tab scrolled into view is never left under the fade.
         "h-6 scroll-mx-6 gap-1.5 rounded-md px-2 text-xs",
         !active && "text-muted-foreground",
-        clipped && "opacity-0",
       )}
     >
       <Icon className="size-3.5" />
@@ -799,7 +792,6 @@ export default function ProjectLayoutControls({
                     active={resolvedView === tab.view}
                     icon={tab.icon}
                     disabledReason={tab.disabledReason}
-                    clipped={hiddenViews.includes(tab.view)}
                     onClick={tab.onSelect}
                   >
                     {tab.label}
