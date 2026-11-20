@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   assertOwned: vi.fn(),
   createNotification: vi.fn(),
   listTasks: vi.fn(),
+  lockTask: vi.fn(),
   insertSent: vi.fn(),
   ReservationLost: class extends Error {},
 }));
@@ -28,6 +29,7 @@ vi.mock("../../../apps/api/src/events", () => ({
 vi.mock("../../../apps/api/src/scheduler/repository", () => ({
   insertReminderSent: (...args: unknown[]) => mocks.insertSent(...args),
   listTasksNeedingReminder: (...args: unknown[]) => mocks.listTasks(...args),
+  lockReminderTask: (...args: unknown[]) => mocks.lockTask(...args),
 }));
 
 import { checkDueDateReminders } from "../../../apps/api/src/scheduler/due-date-reminders";
@@ -38,6 +40,7 @@ describe("due-date reminder checkpoints", () => {
     mocks.createNotification.mockReset().mockResolvedValue(undefined);
     mocks.listTasks.mockReset();
     mocks.insertSent.mockReset().mockResolvedValue(true);
+    mocks.lockTask.mockReset().mockResolvedValue({ dueDate: null });
   });
 
   it("scans the past 24 hours for both reminder types", async () => {

@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import { checkDueDateReminders } from "../../apps/api/src/scheduler/due-date-reminders";
+import * as schedulerRepository from "../../apps/api/src/scheduler/repository";
 import updateTask from "../../apps/api/src/task/controllers/update-task";
 import { resetTestDatabase } from "./helpers/database";
 import { seedLegacy, setupWorld } from "./helpers/reach-world";
@@ -119,6 +120,78 @@ describe("API integration: due-date reminder atomicity", () => {
     expect(await markers(taskId)).toHaveLength(0);
     await checkDueDateReminders();
     expect(await markers(taskId)).toHaveLength(1);
+  });
+
+  it("does not deliver or mark a candidate rescheduled after the scan", async () => {
+    const { world, taskId } = await overdueTask();
+    const [task] = await db
+      .select()
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.id, taskId));
+    if (!task) throw new Error("missing task");
+    const identity = await resolveIdentity({
+      userId: world.projectMember.user.id,
+      credential: "session",
+    });
+    if (!identity) throw new Error("missing identity");
+    const nextDue = new Date(Date.now() + 7 * 24 * 60 * 60_000);
+    let resume!: () => void;
+    let scanned!: () => void;
+    let foundCandidate = false;
+    const paused = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    const candidateRead = new Promise<void>((resolve) => {
+      scanned = resolve;
+    });
+    const original = schedulerRepository.listTasksNeedingReminder;
+    const spy = vi
+      .spyOn(schedulerRepository, "listTasksNeedingReminder")
+      .mockImplementation(async (...args) => {
+        const tasks = await original(...args);
+        if (args[2] === "overdue") {
+          foundCandidate = tasks.some((candidate) => candidate.id === taskId);
+          scanned();
+          await paused;
+        }
+        return tasks;
+      });
+    const scan = checkDueDateReminders();
+    try {
+      await candidateRead;
+      await updateTask(
+        identity,
+        task.id,
+        undefined,
+        task.title,
+        task.status,
+        task.startDate?.toISOString(),
+        nextDue.toISOString(),
+        task.projectId,
+        task.description ?? "",
+        task.priority,
+        task.position ?? 0,
+        task.userId ?? undefined,
+        world.projectMember.user.id,
+      );
+    } finally {
+      resume();
+      await scan;
+      spy.mockRestore();
+    }
+    expect(foundCandidate).toBe(true);
+    expect(await markers(taskId)).toHaveLength(0);
+    expect(await notifications(taskId)).toHaveLength(0);
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.setSystemTime(new Date(nextDue.getTime() + 2 * 60_000));
+      expect(await checkDueDateReminders()).toEqual({ degraded: false });
+      expect(await markers(taskId)).toHaveLength(1);
+      expect((await notifications(taskId))[0]?.type).toBe("task_overdue");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("a failure after the marker rolls the marker back and the retry delivers", async () => {

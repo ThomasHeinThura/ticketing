@@ -10,6 +10,7 @@ import { REMINDER_WINDOW_MINUTES } from "./reminder-timing";
 import {
   insertReminderSent,
   listTasksNeedingReminder,
+  lockReminderTask,
   type ReminderType,
 } from "./repository";
 
@@ -61,6 +62,9 @@ async function processReminder(
   // marker rolls both back, so the next run retries; a committed marker always has its
   // notification (or a deliberate preference/reach skip). The realtime publish follows commit.
   const notification = await db.transaction(async (tx) => {
+    const current = await lockReminderTask(task.id, tx);
+    if (!current || current.dueDate?.getTime() !== task.dueDate?.getTime())
+      return null;
     const inserted = await insertReminderSent(task.id, reminderType, tx);
     if (!inserted) return null;
     return createNotification({

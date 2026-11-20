@@ -158,6 +158,15 @@ export async function renewJobLease(
 
 export type ReminderType = "configured_before" | "overdue";
 
+export async function lockReminderTask(taskId: string, executor: Executor) {
+  const [task] = await executor
+    .select({ dueDate: taskTable.dueDate })
+    .from(taskTable)
+    .where(eq(taskTable.id, taskId))
+    .for("update");
+  return task;
+}
+
 /** Tasks with a due date in the window that have not yet been reminded of this type. */
 export async function listTasksNeedingReminder(
   windowStart: Date,
