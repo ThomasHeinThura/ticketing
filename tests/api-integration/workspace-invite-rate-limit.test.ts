@@ -39,6 +39,10 @@ describe("S6a: native rate limit on POST /api/workspace/{id}/invitations", () =>
     const created = await createWorkspaceNative(app, owner.cookie);
     const workspace = (await created.json()) as { id: string };
 
+    const other = await signUpUser(app);
+    const otherWorkspace = (await (
+      await createWorkspaceNative(app, other.cookie)
+    ).json()) as { id: string };
     const statuses: number[] = [];
     for (let i = 0; i < 6; i++) {
       const response = await csrfRequest(
@@ -63,5 +67,23 @@ describe("S6a: native rate limit on POST /api/workspace/{id}/invitations", () =>
 
     expect(statuses.slice(0, 5)).toEqual([200, 200, 200, 200, 200]);
     expect(statuses[5]).toBe(429);
+    const otherResponse = await csrfRequest(
+      app,
+      `/api/workspace/${otherWorkspace.id}/invitations`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: other.cookie,
+          "x-forwarded-for": PINNED_CLIENT_IP,
+        },
+        body: JSON.stringify({
+          email: `other-${randomUUID()}@example.com`,
+          role: "member",
+        }),
+      },
+      other.cookie,
+    );
+    expect(otherResponse.status).toBe(200);
   });
 });

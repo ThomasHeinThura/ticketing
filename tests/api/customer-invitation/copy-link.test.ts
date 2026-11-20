@@ -30,6 +30,7 @@ vi.mock(
 );
 
 import { AUDIT_ONLY_ACTIONS } from "../../../apps/api/src/audit/actions";
+import * as rateLimitStorage from "../../../apps/api/src/auth/rate-limit-storage";
 import {
   deriveCustomerInvitationCredential,
   resolveCustomerInvitationCredentialForCopy,
@@ -39,11 +40,7 @@ import {
   credentialMatches,
 } from "../../../apps/api/src/customer-invitation/logic";
 import { requireAgentBrowserSession } from "../../../apps/api/src/utils/require-agent-browser-session";
-import {
-  copyInvitationLinkTrackedActorCount,
-  requireCopyInvitationLinkRateLimit,
-  resetCopyInvitationLinkRateLimitBuckets,
-} from "../../../apps/api/src/utils/require-copy-link-rate-limit";
+import { requireCopyInvitationLinkRateLimit } from "../../../apps/api/src/utils/require-copy-link-rate-limit";
 import { requireInvitationCopyAccess } from "../../../apps/api/src/utils/require-invitation-copy-access";
 
 const KEY_A = "11".repeat(32);
@@ -64,7 +61,6 @@ beforeEach(() => {
   process.env.TASKDESK_ENCRYPTION_KEY = KEY_A;
   delete process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS;
   roleStore.rolesByUserAndWorkspace.clear();
-  resetCopyInvitationLinkRateLimitBuckets();
 });
 
 afterEach(() => {
@@ -76,7 +72,6 @@ afterEach(() => {
   else process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS = originalPrevKey;
 
   roleStore.rolesByUserAndWorkspace.clear();
-  resetCopyInvitationLinkRateLimitBuckets();
   vi.restoreAllMocks();
 });
 
@@ -229,12 +224,21 @@ describe("copy-link endpoint guards, member:invite capability, hard-bounded rate
       resolvePortal: (host) =>
         host === "portal.example.test" ? "customer" : "agent",
     });
-    const rateLimiter = requireCopyInvitationLinkRateLimit({
+    const coordinator = rateLimitStorage.createAuthRateLimitCoordinator({
       now: options.now,
-      maxRequests: options.maxRequests ?? 30,
-      windowMs: options.windowMs ?? 60_000,
-      maxTrackedActors: options.maxTrackedActors,
+      maxMemoryEntries: options.maxTrackedActors,
+      isDistributedConfigured: () => false,
+      setUnsharedMetric: () => {},
+      emitWarning: () => {},
     });
+    vi.spyOn(rateLimitStorage, "consumeSharedAuthRateLimit").mockImplementation(
+      (scope, key) =>
+        coordinator.consume(scope, key, {
+          window: (options.windowMs ?? 60_000) / 1000,
+          max: options.maxRequests ?? 30,
+        }),
+    );
+    const rateLimiter = requireCopyInvitationLinkRateLimit();
 
     app.post(
       "/workspace/:workspaceId/organisations/:organisationId/invitations/:id/copy-link",
@@ -639,7 +643,6 @@ describe("copy-link endpoint guards, member:invite capability, hard-bounded rate
         })
       ).status,
     ).toBe(200);
-    expect(copyInvitationLinkTrackedActorCount()).toBe(3);
 
     // New actors (actor_4, actor_5) arrive at t=25s while all 3 buckets are live -> refused 429,
     // map size never exceeds 3, and existing actors' counters are NOT evicted or reset.
@@ -650,9 +653,8 @@ describe("copy-link endpoint guards, member:invite capability, hard-bounded rate
         headers: { host: "agent.example.test", "x-test-user": newcomer },
       });
       expect(overflow.status).toBe(429);
-      expect(overflow.headers.get("Retry-After")).toBe("35");
+      expect(overflow.headers.get("Retry-After")).toBe("60");
     }
-    expect(copyInvitationLinkTrackedActorCount()).toBe(3);
 
     // actor_1's live bucket was NOT evicted -> still rate-limited at count=2!
     const actor1StillLimited = await app.request(customerPath, {
@@ -681,7 +683,6 @@ describe("copy-link endpoint guards, member:invite capability, hard-bounded rate
       headers: { host: "agent.example.test", "x-test-user": "actor_4" },
     });
     expect(actor4Recovered.status).toBe(200);
-    expect(copyInvitationLinkTrackedActorCount()).toBe(3);
   });
 
   it("registers invitation.link_copied as an audit-only action and never records the secret or email address", async () => {

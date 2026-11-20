@@ -5,7 +5,9 @@
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
 import { checkDueDateReminders } from "../../apps/api/src/scheduler/due-date-reminders";
+import updateTask from "../../apps/api/src/task/controllers/update-task";
 import { resetTestDatabase } from "./helpers/database";
 import { seedLegacy, setupWorld } from "./helpers/reach-world";
 
@@ -49,6 +51,74 @@ describe("API integration: due-date reminder atomicity", () => {
     await checkDueDateReminders();
     expect(await markers(taskId)).toHaveLength(1);
     expect(await notifications(taskId)).toHaveLength(1);
+  });
+
+  it("catches up overdue and upcoming reminders once after a missed scan", async () => {
+    const { taskId } = await overdueTask();
+    await db
+      .update(schema.taskTable)
+      .set({ dueDate: new Date(Date.now() - 23 * 60 * 60_000) })
+      .where(eq(schema.taskTable.id, taskId));
+    await checkDueDateReminders();
+    await checkDueDateReminders();
+    expect(
+      (await notifications(taskId)).filter(
+        (row) => row.type === "task_overdue",
+      ),
+    ).toHaveLength(1);
+
+    const upcoming = await overdueTask();
+    await db
+      .update(schema.taskTable)
+      .set({ dueDate: new Date(Date.now() + 60 * 60_000) })
+      .where(eq(schema.taskTable.id, upcoming.taskId));
+    await checkDueDateReminders();
+    await checkDueDateReminders();
+    expect(
+      (await notifications(upcoming.taskId)).filter(
+        (row) => row.type === "due_date_reminder",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("clears markers only when a full task update changes the due date", async () => {
+    const { world, taskId } = await overdueTask();
+    await checkDueDateReminders();
+    expect(await markers(taskId)).toHaveLength(1);
+    const task = (
+      await db
+        .select()
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.id, taskId))
+    )[0];
+    if (!task?.dueDate) throw new Error("missing task or due date");
+    const identity = await resolveIdentity({
+      userId: world.projectMember.user.id,
+      credential: "session",
+    });
+    if (!identity) throw new Error("missing identity");
+    const update = (dueDate: string) =>
+      updateTask(
+        identity,
+        task.id,
+        undefined,
+        task.title,
+        task.status,
+        task.startDate?.toISOString(),
+        dueDate,
+        task.projectId,
+        task.description ?? "",
+        task.priority,
+        task.position ?? 0,
+        task.userId ?? undefined,
+        world.projectMember.user.id,
+      );
+    await update(task.dueDate.toISOString());
+    expect(await markers(taskId)).toHaveLength(1);
+    await update(new Date(Date.now() - 60_000).toISOString());
+    expect(await markers(taskId)).toHaveLength(0);
+    await checkDueDateReminders();
+    expect(await markers(taskId)).toHaveLength(1);
   });
 
   it("a failure after the marker rolls the marker back and the retry delivers", async () => {

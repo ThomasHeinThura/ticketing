@@ -1,6 +1,6 @@
 const MINUTE_MS = 60 * 1000;
 
-export const REMINDER_WINDOW_MINUTES = 10;
+export const REMINDER_WINDOW_MINUTES = 24 * 60;
 
 export function isReminderDue({
   dueDate,

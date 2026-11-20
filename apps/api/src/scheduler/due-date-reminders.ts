@@ -27,7 +27,7 @@ function buildWindows(now: Date) {
     },
     overdue: {
       end: now,
-      start: new Date(nowMs - 10 * MINUTE_MS),
+      start: new Date(nowMs - REMINDER_WINDOW_MINUTES * MINUTE_MS),
       type: "overdue" as ReminderType,
       notificationType: "task_overdue" as const,
     },

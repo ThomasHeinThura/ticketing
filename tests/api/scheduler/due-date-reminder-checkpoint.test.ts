@@ -40,6 +40,15 @@ describe("due-date reminder checkpoints", () => {
     mocks.insertSent.mockReset().mockResolvedValue(true);
   });
 
+  it("scans the past 24 hours for both reminder types", async () => {
+    mocks.listTasks.mockResolvedValue([]);
+    await checkDueDateReminders();
+    expect(mocks.listTasks).toHaveBeenCalledTimes(2);
+    for (const [start, end] of mocks.listTasks.mock.calls) {
+      expect(end.getTime() - start.getTime()).toBe(24 * 60 * 60_000);
+    }
+  });
+
   it("finishes the current reminder pair and refuses the next task", async () => {
     mocks.listTasks.mockResolvedValue([
       {
