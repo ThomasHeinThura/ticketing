@@ -91,7 +91,8 @@ dc exec -T postgres \
   pg_dump -Fc -U "$POSTGRES_USER" "$POSTGRES_DB" > "$DUMP_FILE"
 
 printf '==> Verifying dump restorability with pg_restore --list\n'
-LIST_COUNT="$(dc exec -T postgres pg_restore --list < "$DUMP_FILE" | grep -c '^[^;]' || true)"
+LIST_OUTPUT="$(dc exec -T postgres pg_restore --list < "$DUMP_FILE")"
+LIST_COUNT="$(printf '%s\n' "$LIST_OUTPUT" | grep -c '^[^;]' || true)"
 if [ "${LIST_COUNT:-0}" -le 0 ]; then
   printf 'xx pg_restore --list returned no archive entries for %s\n' "$DUMP_FILE" >&2
   exit 1
