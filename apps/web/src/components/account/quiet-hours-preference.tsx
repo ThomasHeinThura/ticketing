@@ -25,7 +25,12 @@ import { useTranslation } from "react-i18next";
 import { TimeField } from "@/components/service-calendar/time-field";
 import type { QuietHours } from "@/fetchers/notification-preferences/get-notification-preferences";
 import { saveQuietHours } from "@/fetchers/notification-preferences/quiet-hours";
+import {
+  captureNotificationHistoryRefresh,
+  type PersonalHistoryAudience,
+} from "@/fetchers/settings/personal-history";
 import useGetNotificationPreferences from "@/hooks/queries/notification-preferences/use-get-notification-preferences";
+import { authClient } from "@/lib/auth-client";
 import { formatClockTime, parseClockTime } from "@/lib/service-calendar-form";
 
 function timeZones(current: string): string[] {
@@ -43,6 +48,7 @@ function timeZones(current: string): string[] {
  */
 export function QuietHoursPreference() {
   const { t } = useTranslation("notificationProvider");
+  const { data: session } = authClient.useSession();
   const preferences = useGetNotificationPreferences();
   const placeholderVisible = useDelayedPending(preferences.isLoading);
   const [completed, setCompleted] = useState(false);
@@ -87,6 +93,7 @@ export function QuietHoursPreference() {
             completed={completed}
             onStart={() => setCompleted(false)}
             onSaved={() => setCompleted(true)}
+            historyIdentity={session}
           />
         )}
       </CardContent>
@@ -102,10 +109,16 @@ export function QuietHoursForm({
   save = saveQuietHours,
   cacheKey = ["notification-preferences"],
   note,
+  historyAudience = "staff",
+  historyIdentity,
+  historyUserId,
 }: {
   save?: (value: QuietHours | null) => Promise<unknown>;
   cacheKey?: readonly unknown[];
   note?: string;
+  historyAudience?: PersonalHistoryAudience;
+  historyIdentity?: { user?: { id: string }; session?: { id: string } } | null;
+  historyUserId?: string;
   saved: QuietHours | null;
   completed: boolean;
   onStart: () => void;
@@ -121,7 +134,25 @@ export function QuietHoursForm({
   const [noticeIsSave, setNoticeIsSave] = useState(false);
   const zones = useMemo(() => timeZones(timezone), [timezone]);
   const mutation = useMutation({
-    mutationFn: save,
+    mutationFn: async (value: QuietHours | null) => {
+      const identity =
+        historyAudience === "portal"
+          ? queryClient.getQueryData<{
+              user: { id: string };
+              session: { id: string };
+            }>(["portal", "session"])
+          : historyIdentity;
+      const refresh = captureNotificationHistoryRefresh(
+        queryClient,
+        historyAudience,
+        historyAudience === "portal" && identity?.user?.id !== historyUserId
+          ? undefined
+          : identity,
+      );
+      const result = await save(value);
+      refresh();
+      return result;
+    },
     onSuccess: async (_data, variables) => {
       setNoticeIsSave(Boolean(variables));
       setNotice(variables ? t("quietHours.saved") : t("quietHours.cleared"));

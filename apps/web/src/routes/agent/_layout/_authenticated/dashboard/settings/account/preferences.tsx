@@ -18,6 +18,8 @@ import {
 import { RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { PersonalPreferencesHistory } from "@/components/settings/personal-preferences-history";
 import { useDensityPreference } from "@/hooks/use-density-preference";
 import { useLocale } from "@/hooks/use-locale";
 import {
@@ -47,6 +49,7 @@ function getLocaleLabel(locale: AppLocale) {
 
 function RouteComponent() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { locale, setLocale } = useLocale();
   const {
     theme,
@@ -106,6 +109,7 @@ function RouteComponent() {
         </p>
       </div>
 
+      {user?.id && <PersonalPreferencesHistory userId={user.id} />}
       <div className="space-y-6">
         <div className="space-y-1">
           <h2 className="text-md font-medium">

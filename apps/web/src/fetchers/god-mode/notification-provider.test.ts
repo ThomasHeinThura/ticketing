@@ -22,6 +22,7 @@ vi.mock("../get-api-url", () => ({
 
 import { IdentityAdminError } from "./identity-admin-error";
 import {
+  getEmailProvider,
   saveEmailProvider,
   sendEmailProviderTest,
 } from "./notification-provider";
@@ -114,4 +115,17 @@ describe("sending a test email", () => {
       status: 429,
     });
   });
+});
+
+it("preserves the nullable persisted provider ID from GET and PATCH", async () => {
+  mocks.get.mockResolvedValueOnce(
+    new Response(JSON.stringify({ id: null }), { status: 200 }),
+  );
+  expect((await getEmailProvider()).id).toBeNull();
+  mocks.apiFetch.mockResolvedValueOnce(
+    new Response(JSON.stringify({ id: "provider-row" }), { status: 200 }),
+  );
+  expect((await saveEmailProvider(input, "proof-token")).id).toBe(
+    "provider-row",
+  );
 });

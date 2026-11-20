@@ -7,6 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as personalHistory from "@/fetchers/settings/personal-history";
 import { NotificationPreferencesSettings } from "./notification-preferences-settings";
 
 const updatePreferences = vi.fn();
@@ -229,6 +230,10 @@ describe("NotificationPreferencesSettings", () => {
   });
 
   it("offers the report.export_ready email preference and saves it on its own (P5-R3-02)", async () => {
+    const refreshed = vi.fn();
+    const capture = vi
+      .spyOn(personalHistory, "captureNotificationHistoryRefresh")
+      .mockReturnValue(refreshed);
     renderSettings();
     const block = screen.getByTestId("report-export-email-preference");
     const save = screen.getByRole("button", {
@@ -245,6 +250,9 @@ describe("NotificationPreferencesSettings", () => {
     await waitFor(() =>
       expect(canonical.saveReportExport).toHaveBeenCalledTimes(1),
     );
+    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce());
+    expect(capture.mock.calls[0][1]).toBe("staff");
+    capture.mockRestore();
     expect(canonical.saveReportExport.mock.calls[0]?.[0]).toEqual({
       enabled: false,
     });

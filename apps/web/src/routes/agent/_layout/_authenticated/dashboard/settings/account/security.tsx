@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
@@ -14,7 +15,9 @@ import { useTranslation } from "react-i18next";
 import { ChangePasswordCard } from "@/components/account/change-password-card";
 import PageTitle from "@/components/page-title";
 import { ConnectedAccountsPanel } from "@/components/settings/connected-accounts-panel";
+import { PersonalSelfHistory } from "@/components/settings/personal-self-history";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import { capturePersonalSelfHistoryRefresh } from "@/fetchers/settings/personal-history";
 import useChangePassword from "@/hooks/mutations/use-change-password";
 import { authClient } from "@/lib/auth-client";
 import { parseAccountSecuritySearch, routes } from "@/lib/routes";
@@ -37,6 +40,8 @@ type FactorStatus = {
 function AccountSecurity() {
   const { t } = useTranslation();
   const passwordChange = useChangePassword();
+  const client = useQueryClient();
+  const { data: session } = authClient.useSession();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const { enrollmentRequired, identityLinkIntent } = search;
@@ -90,8 +95,15 @@ function AccountSecurity() {
     setPending(true);
     setError(null);
     try {
+      const refreshHistory = capturePersonalSelfHistoryRefresh(
+        client,
+        "security",
+        "staff",
+        session,
+      );
       const result = await authClient.twoFactor.verifyTotp({ code });
       if (result.error) throw new Error(t("auth:accountSecurity.codeError"));
+      refreshHistory();
       setTotpUri(null);
       setBackupCodes(pendingBackupCodes);
       setPendingBackupCodes(null);
@@ -116,6 +128,14 @@ function AccountSecurity() {
             {t("auth:accountSecurity.description")}
           </p>
         </header>
+        {session?.user?.id && session.session?.id ? (
+          <PersonalSelfHistory
+            section="security"
+            audience="staff"
+            userId={session.user.id}
+            sessionId={session.session.id}
+          />
+        ) : null}
         {status && (!status.required || status.enabled) ? (
           <>
             <ChangePasswordCard

@@ -18,6 +18,22 @@ vi.mock("@/fetchers/user-settings/user-settings", () => ({
   getUserSettings: vi.fn(),
   patchUserSettings,
 }));
+vi.mock("@/components/settings/personal-preferences-history", () => ({
+  PersonalPreferencesHistory: ({ userId }: { userId: string }) => (
+    <div data-testid="preferences-history">{userId}</div>
+  ),
+}));
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({
+      data: { user: { id: "user-1" }, session: { id: "session-1" } },
+    }),
+    getSession: async () => ({
+      data: { user: { id: "user-1" }, session: { id: "session-1" } },
+      error: null,
+    }),
+  },
+}));
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => options,
 }));
@@ -41,6 +57,10 @@ function pick(option: HTMLElement) {
 
 describe("preferences page density setter (#673)", () => {
   beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("offline test")),
+    );
     localStorage.clear();
     patchUserSettings.mockReset();
     patchUserSettings.mockResolvedValue({});
@@ -49,6 +69,7 @@ describe("preferences page density setter (#673)", () => {
   });
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     useUserPreferencesStore.setState({ compactMode: false });
   });
 
@@ -68,6 +89,9 @@ describe("preferences page density setter (#673)", () => {
       </QueryClientProvider>,
     );
     expect(document.documentElement).not.toHaveClass("compact-mode");
+    expect(screen.getByTestId("preferences-history")).toHaveTextContent(
+      "user-1",
+    );
     expect(document.title).toContain("settings:preferencesPage.title");
 
     for (const label of [
@@ -97,6 +121,23 @@ describe("preferences page density setter (#673)", () => {
         }),
       ).toBeInTheDocument();
     }
+
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "settings:preferencesPage.theme" }),
+    );
+    pick(
+      await screen.findByRole("option", {
+        name: "settings:preferencesPage.themeLight",
+      }),
+    );
+    expect(patchUserSettings).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "settings:preferencesPage.sidebarDefault",
+      }),
+    );
+    expect(patchUserSettings).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByTestId("density-select"));
     pick(

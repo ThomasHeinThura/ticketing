@@ -16,8 +16,10 @@ import PageTitle from "@/components/page-title";
 import { ApiKeyCreatedModal } from "@/components/settings/api-key-created-modal";
 import { ApiKeyTable } from "@/components/settings/api-key-table";
 import { CreateApiKeyDialog } from "@/components/settings/create-api-key-dialog";
+import { PersonalSelfHistory } from "@/components/settings/personal-self-history";
 import { ServiceKeysCard } from "@/components/settings/service-keys-card";
 import useGetApiKeys from "@/hooks/queries/use-get-api-keys";
+import { authClient } from "@/lib/auth-client";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 
 export const Route = createFileRoute(
@@ -29,6 +31,7 @@ export const Route = createFileRoute(
 function RouteComponent() {
   const { t } = useTranslation();
   const { data: apiKeys = [], isLoading } = useGetApiKeys();
+  const { data: session } = authClient.useSession();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createdKey, setCreatedKey] = useState<{
     key: string;
@@ -86,6 +89,18 @@ function RouteComponent() {
               <ApiKeyTable apiKeys={apiKeys} isLoading={isLoading} />
             </CardPanel>
           </Card>
+          {session?.user?.id && session.session?.id ? (
+            <Card className="!rounded-none">
+              <CardPanel>
+                <PersonalSelfHistory
+                  section="apiKeys"
+                  audience="staff"
+                  userId={session.user.id}
+                  sessionId={session.session.id}
+                />
+              </CardPanel>
+            </Card>
+          ) : null}
         </CardFrame>
 
         <ServiceKeysCard />

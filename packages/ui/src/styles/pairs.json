@@ -38294,7 +38294,11 @@
 			"packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
 			"packages/ui/src/components/table.tsx::TableCaption::caption[0]::text-muted-foreground#0",
 			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
-			"packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0"
+			"packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/personal-notification-history.tsx::PersonalNotificationHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/settings/personal-preferences-history.tsx::PersonalPreferencesHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/settings/personal-profile-history.tsx::PersonalProfileHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/settings/personal-self-history.tsx::PersonalSelfHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -50277,6 +50281,195 @@
 				"id": "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/timeline.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/notifications.tsx:/_layout/_authenticated/dashboard/settings/account/notifications",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-notification-history.tsx::PersonalNotificationHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-notification-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/account.tsx:/account",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-notification-history.tsx::PersonalNotificationHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-notification-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx:/_layout/_authenticated/dashboard/settings/account/preferences",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-preferences-history.tsx::PersonalPreferencesHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-preferences-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx:/_layout/_authenticated/dashboard/settings/account/information",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-profile-history.tsx::PersonalProfileHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-profile-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-self-history.tsx::PersonalSelfHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-self-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/account.tsx:/account",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-self-history.tsx::PersonalSelfHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-self-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/notifications.tsx:/_layout/_authenticated/god-mode/notifications",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::SettingsHistoryForSession::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/notifications.tsx:/_layout/_authenticated/dashboard/settings/account/notifications",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/account.tsx:/account",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx:/_layout/_authenticated/dashboard/settings/account/preferences",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx:/_layout/_authenticated/dashboard/settings/account/information",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/notifications.tsx:/_layout/_authenticated/god-mode/notifications",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
 			}
 		]
 	},
@@ -50868,7 +51061,11 @@
 			"packages/ui/src/components/table.tsx::TableCaption::caption[0]::text-muted-foreground#0",
 			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
 			"packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
-			"packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0"
+			"packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/personal-notification-history.tsx::PersonalNotificationHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/settings/personal-preferences-history.tsx::PersonalPreferencesHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/settings/personal-profile-history.tsx::PersonalProfileHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/settings/personal-self-history.tsx::PersonalSelfHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -63044,6 +63241,195 @@
 				"id": "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/timeline.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/notifications.tsx:/_layout/_authenticated/dashboard/settings/account/notifications",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-notification-history.tsx::PersonalNotificationHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-notification-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/account.tsx:/account",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-notification-history.tsx::PersonalNotificationHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-notification-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx:/_layout/_authenticated/dashboard/settings/account/preferences",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-preferences-history.tsx::PersonalPreferencesHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-preferences-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx:/_layout/_authenticated/dashboard/settings/account/information",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-profile-history.tsx::PersonalProfileHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-profile-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-self-history.tsx::PersonalSelfHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-self-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/account.tsx:/account",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/personal-self-history.tsx::PersonalSelfHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-self-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/notifications.tsx:/_layout/_authenticated/god-mode/notifications",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::SettingsHistoryForSession::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/notifications.tsx:/_layout/_authenticated/dashboard/settings/account/notifications",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/portal/account.tsx:/account",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/preferences.tsx:/_layout/_authenticated/dashboard/settings/account/preferences",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx:/_layout/_authenticated/dashboard/settings/account/information",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/security.tsx:/_layout/_authenticated/dashboard/settings/account/security",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/notifications.tsx:/_layout/_authenticated/god-mode/notifications",
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode.tsx:/_layout/_authenticated/god-mode",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
 			}
 		]
 	},
@@ -64037,7 +64423,10 @@
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/ul[0]/li[0]/div[0]/p[0]::text-muted-foreground#0",
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/ul[0]/li[0]/div[0]/p[0]::text-muted-foreground#1",
 			"packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
-			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0"
+			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/personal-self-history.tsx::PersonalSelfHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/settings/settings-history.tsx::SettingsHistoryForSession::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -69585,6 +69974,50 @@
 				"id": "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/developer.tsx:RouteComponent",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/settings/personal-self-history.tsx::PersonalSelfHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-self-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::SettingsHistoryForSession::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/developer.tsx:RouteComponent",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
 			}
 		]
 	},
@@ -69956,7 +70389,10 @@
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/ul[0]/li[0]/div[0]/p[0]::text-muted-foreground#0",
 			"packages/ui/src/components/capability-matrix.tsx::<module>::div[0]/fieldset[0]/ul[0]/li[0]/div[0]/p[0]::text-muted-foreground#1",
 			"packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
-			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0"
+			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/personal-self-history.tsx::PersonalSelfHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+			"apps/web/src/components/settings/settings-history.tsx::SettingsHistoryForSession::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
 			{
@@ -75564,6 +76000,50 @@
 				"id": "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/table.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/developer.tsx:RouteComponent",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/settings/personal-self-history.tsx::PersonalSelfHistory::HistoryPresentation[0]/div[0]/p[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/personal-self-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::SettingsHistoryForSession::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/developer.tsx:RouteComponent",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/s3-draft-panel.tsx:S3DraftForm",
+					"Card->packages/ui/src/components/card.tsx:Card"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
 			}
 		]
 	},
@@ -100668,6 +101148,39 @@
 				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "packages/ui/src/components/toast-viewport.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/service-keys-card.tsx:ServiceKeyHistoryDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::SettingsHistoryForSession::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/service-keys-card.tsx:ServiceKeyHistoryDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/service-keys-card.tsx:ServiceKeyHistoryDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/dialog.tsx"
 			}
 		]
 	},
@@ -106381,6 +106894,39 @@
 				"id": "packages/ui/src/components/toast-viewport.tsx::ToastItem::Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Toast.Description[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "packages/ui/src/components/toast-viewport.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/service-keys-card.tsx:ServiceKeyHistoryDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::SettingsHistoryForSession::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/service-keys-card.tsx:ServiceKeyHistoryDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/service-keys-card.tsx:ServiceKeyHistoryDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/dialog.tsx"
 			}
 		]
 	},

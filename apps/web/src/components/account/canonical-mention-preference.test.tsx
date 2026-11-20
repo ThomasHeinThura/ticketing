@@ -117,6 +117,7 @@ vi.mock("@tanstack/react-query", () => ({
   },
 }));
 
+import * as personalHistory from "@/fetchers/settings/personal-history";
 import { CanonicalMentionPreference } from "./canonical-mention-preference";
 
 afterEach(cleanup);
@@ -140,6 +141,10 @@ describe("email preference landing", () => {
     expect(document.activeElement).toHaveClass("ring-ring");
   });
   it("requires an explicit change and save", async () => {
+    const refreshed = vi.fn();
+    const capture = vi
+      .spyOn(personalHistory, "captureNotificationHistoryRefresh")
+      .mockReturnValue(refreshed);
     render(<CanonicalMentionPreference />);
     fireEvent.click(screen.getByRole("switch", { name: "mention.enabled" }));
     expect(mocks.save).not.toHaveBeenCalled();
@@ -150,6 +155,9 @@ describe("email preference landing", () => {
         digest: "off",
       }),
     );
+    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce());
+    expect(capture.mock.calls[0][1]).toBe("staff");
+    capture.mockRestore();
   });
   it("announces a successful preference save once when the form stays mounted", async () => {
     render(<CanonicalMentionPreference />);

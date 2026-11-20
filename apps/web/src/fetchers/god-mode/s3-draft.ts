@@ -23,6 +23,7 @@ export type S3DraftRequest = {
   } | null;
 };
 export type S3DraftResponse = {
+  id: string | null;
   version: number;
   config: S3DraftConfig | null;
   credentialConfigured: boolean;

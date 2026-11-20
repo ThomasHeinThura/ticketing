@@ -9,7 +9,16 @@ import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "./account";
 
-const mocks = vi.hoisted(() => ({ change: vi.fn(), success: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  change: vi.fn(),
+  success: vi.fn(),
+  history: vi.fn(),
+  securityHistory: vi.fn(),
+  captureHistory: vi.fn(),
+  refreshHistory: vi.fn(),
+  historyDenied: false,
+  sessionUser: "customer",
+}));
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
     ...options,
@@ -23,7 +32,32 @@ vi.mock("@/lib/i18n/portal-translation", () => ({
   usePortalTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@/components/account/portal-canonical-preferences", () => ({
-  PortalCanonicalPreferencesPage: () => null,
+  PortalCanonicalPreferencesPage: ({ history }: { history: React.ReactNode }) =>
+    history,
+}));
+vi.mock("@/components/settings/personal-notification-history", () => ({
+  PersonalNotificationHistory: (props: unknown) => {
+    mocks.history(props);
+    return null;
+  },
+}));
+vi.mock("@/components/settings/personal-self-history", () => ({
+  PersonalSelfHistory: (props: unknown) => {
+    mocks.securityHistory(props);
+    return mocks.historyDenied ? <p role="alert">History unavailable</p> : null;
+  },
+}));
+vi.mock("@/fetchers/settings/personal-history", () => ({
+  capturePersonalSelfHistoryRefresh: (...args: unknown[]) => {
+    mocks.captureHistory(...args);
+    return mocks.refreshHistory;
+  },
+}));
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({
+    data: { user: { id: mocks.sessionUser }, session: { id: "s1" } },
+  }),
+  useQueryClient: () => ({}),
 }));
 vi.mock("@/components/portal/portal-page-title", () => ({
   PortalPageTitle: () => null,
@@ -63,12 +97,38 @@ function fillAndSubmit() {
 beforeEach(() => {
   mocks.change.mockReset();
   mocks.success.mockReset();
+  mocks.captureHistory.mockReset();
+  mocks.refreshHistory.mockReset();
+  mocks.securityHistory.mockReset();
+  mocks.historyDenied = false;
+  mocks.sessionUser = "customer";
 });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
 describe("portal account password section", () => {
+  it("mounts portal notification history for the authenticated session", () => {
+    status(false);
+    render(<Account />);
+    expect(mocks.history).toHaveBeenCalledWith({
+      audience: "portal",
+      userId: "customer",
+      sessionId: "s1",
+    });
+    expect(mocks.securityHistory).toHaveBeenCalledWith({
+      section: "security",
+      audience: "portal",
+      userId: "customer",
+      sessionId: "s1",
+    });
+  });
+  it("omits security History for a mismatched portal session", () => {
+    mocks.sessionUser = "someone-else";
+    status(false);
+    render(<Account />);
+    expect(mocks.securityHistory).not.toHaveBeenCalled();
+  });
   it("hides for SSO-only accounts", async () => {
     status(false);
     render(<Account />);
@@ -94,6 +154,7 @@ describe("portal account password section", () => {
         revokeOtherSessions: true,
       },
     });
+    expect(mocks.refreshHistory).not.toHaveBeenCalled();
   });
   it("clears the fields and shows a toast after success", async () => {
     status(true);
@@ -107,5 +168,26 @@ describe("portal account password section", () => {
       ).toHaveValue(""),
     );
     expect(mocks.success).toHaveBeenCalled();
+    expect(mocks.captureHistory).toHaveBeenCalledWith(
+      expect.anything(),
+      "security",
+      "portal",
+      {
+        user: { id: "customer" },
+        session: { id: "s1" },
+      },
+    );
+    expect(mocks.refreshHistory).toHaveBeenCalledOnce();
+  });
+
+  it("keeps an authorized password save working while History is denied", async () => {
+    mocks.historyDenied = true;
+    status(true);
+    mocks.change.mockResolvedValueOnce({ data: {}, error: null });
+    render(<Account />);
+    await screen.findByRole("button", { name: "auth:changePassword.submit" });
+    fillAndSubmit();
+    await waitFor(() => expect(mocks.success).toHaveBeenCalledOnce());
+    expect(screen.getByRole("alert")).toHaveTextContent("History unavailable");
   });
 });

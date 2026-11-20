@@ -7,6 +7,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as personalHistory from "@/fetchers/settings/personal-history";
 import { translate } from "@/test/en-translation";
 
 const mocks = vi.hoisted(() => ({
@@ -101,6 +102,10 @@ beforeEach(() => {
 
 describe("quiet hours preference", () => {
   it("does not save on open and needs an explicit save", async () => {
+    const refreshed = vi.fn();
+    const capture = vi
+      .spyOn(personalHistory, "captureNotificationHistoryRefresh")
+      .mockReturnValue(refreshed);
     const { container } = render(<QuietHoursPreference />);
     expect(mocks.save).not.toHaveBeenCalled();
     expect(container.querySelector('input[type="time"]')).toBeNull();
@@ -108,6 +113,8 @@ describe("quiet hours preference", () => {
     expect(mocks.save).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Save quiet hours" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce());
+    capture.mockRestore();
     await screen.findByRole("button", { name: "Saved" });
     const announcements = screen
       .getAllByRole("status")
@@ -162,12 +169,19 @@ describe("quiet hours preference", () => {
   });
 
   it("turns quiet hours off with null", async () => {
+    const refreshed = vi.fn();
+    const capture = vi
+      .spyOn(personalHistory, "captureNotificationHistoryRefresh")
+      .mockReturnValue(refreshed);
     mocks.quietHours = { start: "22:00", end: "07:00", timezone: "UTC" };
     render(<QuietHoursPreference />);
     fireEvent.click(
       screen.getByRole("button", { name: "Turn off quiet hours" }),
     );
     await waitFor(() => expect(mocks.save).toHaveBeenCalledWith(null));
+    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce());
+    expect(capture.mock.calls[0][1]).toBe("staff");
+    capture.mockRestore();
   });
 
   it("preserves the local minute boundaries of an overnight window", async () => {

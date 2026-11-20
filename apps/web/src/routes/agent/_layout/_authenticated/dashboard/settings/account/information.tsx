@@ -32,6 +32,7 @@ import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { PersonalProfileHistory } from "@/components/settings/personal-profile-history";
 import useDeleteAccount, {
   SESSION_TOO_OLD,
 } from "@/hooks/mutations/use-delete-account";
@@ -267,6 +268,8 @@ function RouteComponent() {
             {t("settings:informationPage.subtitle")}
           </p>
         </div>
+
+        {user?.id && <PersonalProfileHistory userId={user.id} />}
 
         <div className="space-y-6">
           <div className="space-y-1">

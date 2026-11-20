@@ -21,6 +21,13 @@ const fixture = vi.hoisted(() => ({
   enable: vi.fn(),
   verifyTotp: vi.fn(),
   navigate: vi.fn(),
+  history: vi.fn(),
+  refreshHistory: vi.fn(),
+}));
+
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+  useQueryClient: () => ({}),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -35,6 +42,18 @@ vi.mock("react-i18next", async (importOriginal) => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
+vi.mock("@/components/settings/personal-self-history", () => ({
+  PersonalSelfHistory: (props: unknown) => {
+    fixture.history(props);
+    return null;
+  },
+}));
+vi.mock("@/fetchers/settings/personal-history", () => ({
+  capturePersonalSelfHistoryRefresh: (...args: unknown[]) => {
+    fixture.refreshHistory(...args);
+    return fixture.refreshHistory;
+  },
+}));
 vi.mock("@/components/settings/connected-accounts-panel", async () => {
   const { Button } = await import("@taskdesk/ui");
   return {
@@ -56,6 +75,7 @@ vi.mock("@/hooks/mutations/use-change-password", () => ({
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
     twoFactor: { enable: fixture.enable, verifyTotp: fixture.verifyTotp },
+    useSession: () => ({ data: { user: { id: "u1" }, session: { id: "s1" } } }),
   },
 }));
 
@@ -94,6 +114,8 @@ describe("account security factor enrollment", () => {
     fixture.enable.mockReset();
     fixture.verifyTotp.mockReset();
     fixture.navigate.mockReset();
+    fixture.history.mockReset();
+    fixture.refreshHistory.mockReset();
     fixture.enable.mockResolvedValue({
       data: {
         method: "totp",
@@ -248,6 +270,47 @@ describe("account security factor enrollment", () => {
     expect(
       screen.getByRole("button", { name: "auth:changePassword.submit" }),
     ).toBeInTheDocument();
+  });
+
+  it("mounts staff security History and refreshes only after first TOTP verification", async () => {
+    render(<SecurityPage />);
+    await screen.findByText("auth:accountSecurity.required");
+    expect(fixture.history).toHaveBeenCalledWith({
+      section: "security",
+      audience: "staff",
+      userId: "u1",
+      sessionId: "s1",
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.setupButton" }),
+    );
+    const code = await screen.findByLabelText("auth:accountSecurity.codeLabel");
+    fireEvent.change(code, { target: { value: "123456" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.verify" }),
+    );
+    await waitFor(() =>
+      expect(fixture.refreshHistory).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it("does not claim MFA History when verification fails", async () => {
+    fixture.verifyTotp.mockResolvedValueOnce({
+      data: null,
+      error: { code: "INVALID_CODE" },
+    });
+    render(<SecurityPage />);
+    await screen.findByText("auth:accountSecurity.required");
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.setupButton" }),
+    );
+    const code = await screen.findByLabelText("auth:accountSecurity.codeLabel");
+    fireEvent.change(code, { target: { value: "123456" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.verify" }),
+    );
+    await screen.findByText("auth:accountSecurity.codeError");
+    expect(fixture.refreshHistory).toHaveBeenCalledTimes(1);
   });
 
   it("clears the callback intent while preserving the TOTP enrollment query", async () => {

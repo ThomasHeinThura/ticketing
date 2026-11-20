@@ -10,9 +10,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
+  refresh: vi.fn(),
+  assertSession: vi.fn(),
+  session: { user: { id: "user-1" }, session: { id: "session-1" } },
   save: vi.fn(),
   test: vi.fn(),
   prove: vi.fn(),
+}));
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { useSession: () => ({ data: mocks.session }) },
+}));
+vi.mock("@/components/settings/refresh-settings-history", () => ({
+  refreshSettingsHistory: mocks.refresh,
+}));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({ id, userId }: { id: string; userId: string }) => (
+    <div data-testid="storage-history" data-user={userId}>
+      {id}
+    </div>
+  ),
+}));
+vi.mock("@/fetchers/settings/personal-history", () => ({
+  assertNotificationHistorySession: (...args: unknown[]) =>
+    mocks.assertSession(...args),
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -37,6 +57,7 @@ import { IdentityAdminError } from "@/fetchers/god-mode/identity-admin-error";
 import { S3DraftPanel } from "./s3-draft-panel";
 
 const data = {
+  id: "storage-row",
   version: 3,
   config: {
     connector: "external",
@@ -55,6 +76,7 @@ const data = {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.session = { user: { id: "user-1" }, session: { id: "session-1" } };
   mocks.get.mockResolvedValue(data);
   mocks.save.mockResolvedValue({ ...data, version: 4 });
   mocks.test.mockResolvedValue({
@@ -453,4 +475,168 @@ describe("S3DraftPanel", () => {
       expect(screen.getByRole("button", { name: "draft.save" })).toBeEnabled();
     });
   });
+});
+
+it("shows History for the persisted draft and refreshes the captured key after save", async () => {
+  setup();
+  expect(await screen.findByTestId("storage-history")).toHaveTextContent(
+    "storage-row",
+  );
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+  await waitFor(() =>
+    expect(mocks.refresh).toHaveBeenCalledWith(
+      expect.anything(),
+      [
+        "settings-history",
+        "instance_storage_draft",
+        "storage-row",
+        "agent",
+        "user-1",
+        "session-1",
+      ],
+      expect.any(Function),
+    ),
+  );
+});
+
+it("mounts first-save History only after receiving the persisted ID", async () => {
+  mocks.get.mockResolvedValue({ ...data, id: null });
+  setup();
+  await screen.findByText("draft.inactive");
+  expect(screen.queryByTestId("storage-history")).toBeNull();
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+  expect(await screen.findByTestId("storage-history")).toHaveTextContent(
+    "storage-row",
+  );
+  expect(mocks.refresh).toHaveBeenCalledWith(
+    expect.anything(),
+    [
+      "settings-history",
+      "instance_storage_draft",
+      "storage-row",
+      "agent",
+      "user-1",
+      "session-1",
+    ],
+    expect.any(Function),
+  );
+});
+
+it("does not refresh History on a refused save or a storage probe", async () => {
+  mocks.save.mockRejectedValueOnce(
+    new IdentityAdminError(403, "failed", "step_up", null),
+  );
+  setup();
+  await screen.findByText("draft.inactive");
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+  await screen.findByText("draft.operationFailed");
+  expect(mocks.refresh).not.toHaveBeenCalled();
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.test" }));
+  await waitFor(() => expect(mocks.test).toHaveBeenCalled());
+  expect(mocks.refresh).not.toHaveBeenCalled();
+});
+
+it("completes save feedback while History refresh stalls", async () => {
+  mocks.refresh.mockImplementation(() => new Promise(() => {}));
+  setup();
+  await screen.findByText("draft.inactive");
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+  expect(
+    await screen.findByRole("button", { name: "common:actions.saved" }),
+  ).toBeEnabled();
+  expect(screen.getByLabelText("stepUp.password")).toHaveValue("");
+});
+
+it("keeps the saved refresh bound to the original session after a switch", async () => {
+  let finish!: (value: typeof data) => void;
+  mocks.save.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const view = render(
+    <QueryClientProvider client={client}>
+      <S3DraftPanel />
+    </QueryClientProvider>,
+  );
+  await screen.findByText("draft.inactive");
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+  await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+  mocks.session = { user: { id: "user-2" }, session: { id: "session-2" } };
+  view.rerender(
+    <QueryClientProvider client={client}>
+      <S3DraftPanel />
+    </QueryClientProvider>,
+  );
+  finish(data);
+  await waitFor(() =>
+    expect(mocks.refresh).toHaveBeenCalledWith(
+      expect.anything(),
+      [
+        "settings-history",
+        "instance_storage_draft",
+        "storage-row",
+        "agent",
+        "user-1",
+        "session-1",
+      ],
+      expect.any(Function),
+    ),
+  );
+});
+
+it("hides History when the source read is refused", async () => {
+  mocks.get.mockRejectedValueOnce(
+    new IdentityAdminError(403, "refused", "step_up", null),
+  );
+  setup();
+  await screen.findByText("draft.loadFailed");
+  expect(screen.queryByTestId("storage-history")).toBeNull();
+});
+
+it("guards the saved refresh with the captured host and identity", async () => {
+  setup();
+  await screen.findByText("draft.inactive");
+  await factor();
+  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
+  await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+  await mocks.refresh.mock.calls[0][2]();
+  expect(mocks.assertSession).toHaveBeenCalledWith(
+    "staff",
+    "user-1",
+    "session-1",
+    window.location.host,
+  );
+});
+
+it("does not mount History for an impersonated session", async () => {
+  Object.assign(mocks.session.session, { impersonatedBy: "admin" });
+  setup();
+  await screen.findByText("draft.inactive");
+  expect(screen.queryByTestId("storage-history")).toBeNull();
+});
+
+it("replaces History when the source target changes", async () => {
+  const client = setup();
+  expect(await screen.findByTestId("storage-history")).toHaveTextContent(
+    "storage-row",
+  );
+  client.setQueryData(
+    ["god-mode", "s3-draft", window.location.host, "user-1", "session-1"],
+    { ...data, id: "new-storage-row" },
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("storage-history")).toHaveTextContent(
+      "new-storage-row",
+    ),
+  );
 });

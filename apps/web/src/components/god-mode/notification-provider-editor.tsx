@@ -28,6 +28,8 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
+import { SettingsHistory } from "@/components/settings/settings-history";
 import {
   type EmailProvider,
   type EmailProviderConfig,
@@ -42,8 +44,11 @@ import {
   type PluginSettingsFormManifest,
   type SupportedPlugin,
 } from "@/fetchers/god-mode/plugins";
+import { assertNotificationHistorySession } from "@/fetchers/settings/personal-history";
+import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
+import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
 import {
   TestResultAlert,
@@ -56,7 +61,7 @@ import {
 } from "./plugins/schema-settings-form";
 import { FailureAlert, StepUpFields } from "./step-up-fields";
 
-const queryKey = ["instance", "notification-provider", "email"];
+const providerQueryKey = ["instance", "notification-provider", "email"];
 const emptyConfig: EmailProviderConfig = {
   provider: "smtp",
   region: null,
@@ -92,6 +97,20 @@ function isEmailSettingsForm(
 
 export function NotificationProviderEditor() {
   const { t } = useTranslation("notificationProvider");
+  const { data: session } = authClient.useSession();
+  const userId = session?.user?.id;
+  const sessionId = session?.session?.id;
+  const sessionScope = session?.session as
+    | { portal?: string | null; impersonatedBy?: string | null }
+    | undefined;
+  const historyAllowed = Boolean(
+    userId &&
+      sessionId &&
+      !sessionScope?.impersonatedBy &&
+      (!sessionScope?.portal || sessionScope.portal === "agent"),
+  );
+  const host = window.location.host;
+  const queryKey = [...providerQueryKey, host, userId, sessionId];
   const [completed, setCompleted] = useState(false);
   useEffect(() => {
     if (!completed) return;
@@ -155,7 +174,7 @@ export function NotificationProviderEditor() {
         {completed ? t("saved") : ""}
       </span>
       <ProviderForm
-        key={query.data.version}
+        key={`${host}:${userId ?? ""}:${sessionId ?? ""}:${query.data.id ?? ""}:${query.data.version}`}
         provider={query.data}
         settingsForm={plugin.settingsForm}
         localMailpitCaptureAvailable={query.data.localMailpitCaptureAvailable}
@@ -163,7 +182,20 @@ export function NotificationProviderEditor() {
         onStart={() => setCompleted(false)}
         onSaved={() => setCompleted(true)}
         onReload={() => void query.refetch()}
+        queryKey={queryKey}
+        historyIdentity={
+          historyAllowed && userId && sessionId
+            ? { userId, sessionId, host }
+            : null
+        }
       />
+      {query.data.id && historyAllowed && userId && sessionId ? (
+        <SettingsHistory
+          type="instance_notification_provider"
+          id={query.data.id}
+          userId={userId}
+        />
+      ) : null}
     </>
   );
 }
@@ -175,6 +207,8 @@ function ProviderForm({
   onStart,
   onSaved,
   onReload,
+  queryKey,
+  historyIdentity,
 }: {
   provider: EmailProvider;
   settingsForm: Extract<SupportedPlugin["settingsForm"], { available: true }>;
@@ -183,6 +217,8 @@ function ProviderForm({
   onStart: () => void;
   onSaved: () => void;
   onReload: () => void;
+  queryKey: (string | undefined)[];
+  historyIdentity: { userId: string; sessionId: string; host: string } | null;
 }) {
   const { t } = useTranslation("notificationProvider");
   const queryClient = useQueryClient();
@@ -406,6 +442,9 @@ function ProviderForm({
     }
     onStart();
     const intent = lifecycle.capture();
+    const capturedIdentity = historyIdentity;
+    const capturedId = provider.id;
+    const capturedQueryKey = queryKey;
     setError(null);
     setNotice(null);
     const request = {
@@ -427,7 +466,24 @@ function ProviderForm({
       return;
     }
     if (lifecycle.isCurrent(intent)) onSaved();
-    await queryClient.invalidateQueries({ queryKey });
+    if (result.value.id && (!capturedId || capturedId === result.value.id)) {
+      if (capturedIdentity) {
+        const { userId, sessionId, host } = capturedIdentity;
+        refreshSettingsHistory(
+          queryClient,
+          settingsHistoryQueryKey(
+            "instance_notification_provider",
+            result.value.id,
+            userId,
+            sessionId,
+          ),
+          () =>
+            assertNotificationHistorySession("staff", userId, sessionId, host),
+        );
+      }
+      queryClient.setQueryData(capturedQueryKey, result.value);
+    }
+    await queryClient.invalidateQueries({ queryKey: capturedQueryKey });
     if (lifecycle.isCurrent(intent)) {
       setPassword("");
       setClearPassword(false);

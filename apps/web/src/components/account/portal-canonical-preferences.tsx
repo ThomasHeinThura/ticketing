@@ -24,7 +24,7 @@ import {
   Switch,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   getPortalCanonicalPreferences,
   getPortalEmailLinkHandoff,
@@ -33,10 +33,10 @@ import {
   savePortalCanonicalPreference,
   savePortalQuietHours,
 } from "@/fetchers/notification-preferences/portal-canonical-preference";
+import { captureNotificationHistoryRefresh } from "@/fetchers/settings/personal-history";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { consumeNotificationPreferenceHandoffAttempted } from "@/lib/notification-preference-handoff";
 import { routes } from "@/lib/routes";
-
 import { QuietHoursForm } from "./quiet-hours-preference";
 
 const PREFERENCE_CARDS = [
@@ -53,8 +53,10 @@ const PREFERENCE_CARDS = [
 
 export function PortalCanonicalPreferencesPage({
   portalUserId,
+  history,
 }: {
   portalUserId: string;
+  history?: ReactNode;
 }) {
   const { t } = usePortalTranslation(["portal", "common"]);
   const [emailLinkAttempted] = useState(
@@ -115,6 +117,7 @@ export function PortalCanonicalPreferencesPage({
           {t("portal:account.notifications.inAppAlways")}
         </p>
       </header>
+      {history}
       <p className="text-sm text-muted-foreground">
         <Link
           className="underline underline-offset-4"
@@ -260,6 +263,8 @@ function PortalQuietHoursPreference({
             onStart={() => setCompleted(false)}
             onSaved={() => setCompleted(true)}
             save={savePortalQuietHours}
+            historyAudience="portal"
+            historyUserId={portalUserId}
             cacheKey={cacheKey}
             note={t("portal:account.notifications.quietHoursNote")}
           />
@@ -285,7 +290,24 @@ function PreferenceCard({
   const [enabled, setEnabled] = useState(preference.enabled);
   const [digest, setDigest] = useState(preference.digest);
   const [saved, setSaved] = useState(false);
-  const mutation = useMutation({ mutationFn: savePortalCanonicalPreference });
+  const mutation = useMutation({
+    mutationFn: async (
+      input: Parameters<typeof savePortalCanonicalPreference>[0],
+    ) => {
+      const identity = queryClient.getQueryData<{
+        user: { id: string };
+        session: { id: string };
+      }>(["portal", "session"]);
+      const refresh = captureNotificationHistoryRefresh(
+        queryClient,
+        "portal",
+        identity?.user.id === portalUserId ? identity : undefined,
+      );
+      const result = await savePortalCanonicalPreference(input);
+      refresh();
+      return result;
+    },
+  });
   const title = t(`portal:account.notifications.${kind}.title`);
   return (
     <Card>

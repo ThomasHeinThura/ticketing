@@ -4,6 +4,8 @@ import { CanonicalMentionPreference } from "@/components/account/canonical-menti
 import { NotificationPreferencesSettings } from "@/components/account/notification-preferences-settings";
 import { QuietHoursPreference } from "@/components/account/quiet-hours-preference";
 import PageTitle from "@/components/page-title";
+import { PersonalNotificationHistory } from "@/components/settings/personal-notification-history";
+import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/account/notifications",
@@ -13,6 +15,7 @@ export const Route = createFileRoute(
 
 function RouteComponent() {
   const { t } = useTranslation();
+  const { data: session } = authClient.useSession();
 
   return (
     <>
@@ -27,6 +30,11 @@ function RouteComponent() {
           </p>
         </div>
 
+        <PersonalNotificationHistory
+          audience="staff"
+          userId={session?.user?.id}
+          sessionId={session?.session?.id}
+        />
         <CanonicalMentionPreference />
         <QuietHoursPreference />
         <NotificationPreferencesSettings />
