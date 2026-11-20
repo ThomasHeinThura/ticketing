@@ -232,6 +232,21 @@ beforeEach(async () => {
 });
 
 describe("IP-18 explicit Entra account linking", () => {
+  it("returns no link options for a password session while refusing link starts", async () => {
+    await db
+      .update(schema.sessionTable)
+      .set({ identityConnectionId: null })
+      .where(eq(schema.sessionTable.id, SESSION_ID));
+    const listed = await app.request(`${origin}/api/me/identity-links`, {
+      headers: { cookie: SESSION_COOKIE },
+    });
+    expect(listed.status).toBe(200);
+    expect(await listed.json()).toBeNull();
+    expect(
+      (await post(`/api/me/identity-links/${TARGET_ID}/start`)).status,
+    ).toBe(404);
+  });
+
   it("requires an A-session confirmation after proving B and adds no new reach", async () => {
     fixture.claims = {
       iss: ISSUER,

@@ -4323,6 +4323,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
+			"replyAfterReview": "You can reply once your request has been reviewed or the team asks for more information.",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",

@@ -302,7 +302,7 @@ const listRoute = createRoute({
   responses: {
     200: jsonResponse(
       "Connections for the current account",
-      accountLinkListResponseSchema,
+      accountLinkListResponseSchema.nullable(),
     ),
     401: errorResponse("An authenticated browser session is required"),
     403: errorResponse("The current account cannot link identities"),
@@ -370,12 +370,29 @@ const router = apiRouter()
     }
     const sourceContext = await db.transaction(async (tx) => {
       await lockPendingActionLifecycle(tx);
+      const [sourceSession] = await tx
+        .select({ connectionId: schema.sessionTable.identityConnectionId })
+        .from(schema.sessionTable)
+        .where(
+          and(
+            eq(schema.sessionTable.id, session.id),
+            eq(schema.sessionTable.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (sourceSession && sourceSession.connectionId === null)
+        return "password" as const;
       return loadSourceSession(tx, {
         sessionId: session.id,
         userId,
         portal,
       });
     });
+    if (sourceContext === "password") {
+      c.header("Cache-Control", "no-store");
+      setShadowLegacyAuthorization(c, "allowed");
+      return c.json(null, 200);
+    }
     if (!sourceContext) {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Forbidden" });

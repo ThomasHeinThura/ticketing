@@ -4307,6 +4307,7 @@
 				"closed": "Closed",
 				"withdrawn": "Withdrawn"
 			},
+			"replyAfterReview": "You can reply once your request has been reviewed or the team asks for more information.",
 			"conversationEmpty": "No messages yet",
 			"attachmentsEmpty": "No attachments"
 		},
