@@ -3285,6 +3285,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "rekan@perusahaan.com",
+			"bulkHint": "Masukkan hingga 10 alamat email, dipisahkan koma atau baris baru.",
+			"bulkLimit": "Masukkan 1 hingga 10 alamat email berbeda.",
+			"bulkResult": {
+				"invalid": "Alamat email tidak valid.",
+				"conflict": "Sudah diundang atau menjadi anggota.",
+				"rateLimited": "Terlalu banyak undangan. Coba lagi nanti.",
+				"failed": "Undangan gagal. Coba lagi."
+			},
 			"sendInvitation": "Kirim Undangan",
 			"success": "Undangan berhasil dikirim",
 			"error": "Gagal mengundang anggota tim",

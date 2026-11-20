@@ -3307,6 +3307,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "collega@azienda.com",
+			"bulkHint": "Fino a 10 indirizzi email, separati da virgole o nuove righe.",
+			"bulkLimit": "Inserisci da 1 a 10 indirizzi email diversi.",
+			"bulkResult": {
+				"invalid": "Indirizzo email non valido.",
+				"conflict": "Già invitato o membro.",
+				"rateLimited": "Troppi inviti. Riprova più tardi.",
+				"failed": "Invito non riuscito. Riprova."
+			},
 			"sendInvitation": "Invia Invito",
 			"success": "Invito inviato con successo",
 			"error": "Invito membro del team fallito",

@@ -12,11 +12,12 @@ import {
   DialogTitle,
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  Input,
+  Textarea,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -25,6 +26,7 @@ import { z } from "zod/v4";
 import { PickerPopover } from "@/components/common/picker-popover";
 import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
 import { NoEmailNotice } from "@/components/invitation/no-email-notice";
+import { InvitationRequestError } from "@/fetchers/workspace/invite-workspace-member";
 import useInviteWorkspaceUser from "@/hooks/mutations/workspace-user/use-invite-workspace-user";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -41,6 +43,23 @@ const teamMemberSchema = z.object({
 });
 
 type TeamMemberFormValues = z.infer<typeof teamMemberSchema>;
+
+export function parseInviteEmails(value: string) {
+  return [
+    ...new Set(
+      value
+        .split(/[,\n]+/)
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+type InviteResult = {
+  email: string;
+  invitation?: { id: string; expiresAt: string; delivered: boolean };
+  error?: "invalid" | "conflict" | "rateLimited" | "failed";
+};
 
 function InviteTeamMemberModal({ open, onClose }: Props) {
   const { t } = useTranslation();
@@ -62,12 +81,8 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
   });
   const { canInviteUsers } = useWorkspacePermission();
   const canInvite = canInviteUsers();
-  const [createdInvitation, setCreatedInvitation] = useState<{
-    id: string;
-    email: string;
-    expiresAt: string;
-    delivered: boolean;
-  } | null>(null);
+  const [results, setResults] = useState<InviteResult[]>([]);
+  const [sending, setSending] = useState(false);
 
   const form = useForm<TeamMemberFormValues>({
     resolver: standardSchemaResolver(teamMemberSchema),
@@ -89,41 +104,55 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
       toast.error(t("team:inviteModal.error"));
       return;
     }
-    try {
-      const invitation = await mutateAsync({
-        email,
-        workspaceId,
-        role,
-      });
-      await queryClient.refetchQueries({
-        queryKey: ["workspace-users", workspaceId],
-      });
-
-      if (invitation?.delivered !== false) {
-        toast.success(t("team:inviteModal.success"));
-      }
-
-      if (invitation?.id) {
-        setCreatedInvitation({
-          id: invitation.id,
-          email,
-          expiresAt:
-            typeof invitation.expiresAt === "string"
-              ? invitation.expiresAt
-              : "",
-          delivered: Boolean(invitation.delivered),
-        });
-        form.reset();
-        return;
-      }
-
-      resetInviteTeamMember();
-      onClose();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("team:inviteModal.error"),
-      );
+    const emails = parseInviteEmails(email);
+    if (emails.length === 0 || emails.length > 10) {
+      form.setError("email", { message: t("team:inviteModal.bulkLimit") });
+      return;
     }
+    setSending(true);
+    const nextResults: InviteResult[] = [];
+    for (const address of emails) {
+      if (!z.email().safeParse(address).success) {
+        nextResults.push({ email: address, error: "invalid" });
+        continue;
+      }
+      try {
+        const invitation = await mutateAsync({
+          email: address,
+          workspaceId,
+          role,
+        });
+        nextResults.push({
+          email: address,
+          invitation: {
+            id: invitation.id,
+            expiresAt:
+              typeof invitation.expiresAt === "string"
+                ? invitation.expiresAt
+                : "",
+            delivered: Boolean(invitation.delivered),
+          },
+        });
+        if (emails.length === 1 && invitation.delivered) {
+          toast.success(t("team:inviteModal.success"));
+        }
+      } catch (error) {
+        nextResults.push({
+          email: address,
+          error:
+            error instanceof InvitationRequestError && error.status === 409
+              ? "conflict"
+              : error instanceof InvitationRequestError && error.status === 429
+                ? "rateLimited"
+                : "failed",
+        });
+      }
+    }
+    setResults(nextResults);
+    setSending(false);
+    await queryClient.refetchQueries({
+      queryKey: ["workspace-users", workspaceId],
+    });
   };
 
   const resetInviteTeamMember = async () => {
@@ -136,7 +165,8 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
   };
 
   const resetAndCloseModal = () => {
-    setCreatedInvitation(null);
+    if (sending) return;
+    setResults([]);
     resetInviteTeamMember();
     onClose();
   };
@@ -149,23 +179,34 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
       >
         <DialogHeader>
           <DialogTitle>
-            {createdInvitation
+            {results.length === 1 && results[0]?.invitation
               ? t("team:inviteModal.createdTitle")
               : t("team:inviteModal.title")}
           </DialogTitle>
         </DialogHeader>
 
-        {createdInvitation ? (
+        {results.length > 0 ? (
           <>
             <DialogPanel className="space-y-3">
-              <InvitationResultCard
-                kind="staff"
-                invitationId={createdInvitation.id}
-                workspaceId={workspaceId}
-                email={createdInvitation.email}
-                delivered={createdInvitation.delivered}
-                expiresAt={createdInvitation.expiresAt}
-              />
+              {results.map((result) => (
+                <div key={result.email}>
+                  <p className="font-medium break-all">{result.email}</p>
+                  {result.invitation ? (
+                    <InvitationResultCard
+                      kind="staff"
+                      invitationId={result.invitation.id}
+                      workspaceId={workspaceId}
+                      email={result.email}
+                      delivered={result.invitation.delivered}
+                      expiresAt={result.invitation.expiresAt}
+                    />
+                  ) : (
+                    <p role="alert">
+                      {t(`team:inviteModal.bulkResult.${result.error}`)}
+                    </p>
+                  )}
+                </div>
+              ))}
             </DialogPanel>
             <DialogFooter>
               <Button size="sm" onClick={resetAndCloseModal}>
@@ -185,12 +226,16 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
                     <FormItem>
                       <FormLabel>{t("team:inviteModal.emailLabel")}</FormLabel>
                       <FormControl>
-                        <Input
+                        <Textarea
                           {...field}
                           placeholder={t("team:inviteModal.emailPlaceholder")}
+                          rows={3}
                           autoFocus
                         />
                       </FormControl>
+                      <FormDescription>
+                        {t("team:inviteModal.bulkHint")}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -235,6 +280,7 @@ function InviteTeamMemberModal({ open, onClose }: Props) {
                   type="submit"
                   size="sm"
                   disabled={
+                    sending ||
                     !workspaceId ||
                     !canInvite ||
                     !roles.data?.some((item) => item.id === form.watch("role"))

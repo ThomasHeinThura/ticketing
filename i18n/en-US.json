@@ -3296,6 +3296,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
+			"bulkHint": "Enter up to 10 email addresses, separated by commas or new lines.",
+			"bulkLimit": "Enter between 1 and 10 distinct email addresses.",
+			"bulkResult": {
+				"invalid": "Invalid email address.",
+				"conflict": "Already invited or a member.",
+				"rateLimited": "Too many invitations. Try again later.",
+				"failed": "Invitation failed. Try again."
+			},
 			"sendInvitation": "Send Invitation",
 			"success": "Invitation sent successfully",
 			"error": "Failed to invite team member",

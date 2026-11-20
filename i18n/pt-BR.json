@@ -3307,6 +3307,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colega@empresa.com",
+			"bulkHint": "Insira até 10 endereços de e-mail, separados por vírgulas ou novas linhas.",
+			"bulkLimit": "Insira de 1 a 10 endereços de e-mail diferentes.",
+			"bulkResult": {
+				"invalid": "Endereço de e-mail inválido.",
+				"conflict": "Já foi convidado ou é membro.",
+				"rateLimited": "Muitos convites. Tente novamente mais tarde.",
+				"failed": "Falha no convite. Tente novamente."
+			},
 			"sendInvitation": "Enviar convite",
 			"success": "Convite enviado com sucesso",
 			"error": "Falha ao convidar membro da equipe",

@@ -3307,6 +3307,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "compi@company.com",
+			"bulkHint": "Hasta 10 correos, separados por comas o saltos de línea.",
+			"bulkLimit": "Introduce entre 1 y 10 correos distintos.",
+			"bulkResult": {
+				"invalid": "Correo no válido.",
+				"conflict": "Ya tiene una invitación o es miembro.",
+				"rateLimited": "Demasiadas invitaciones. Inténtalo más tarde.",
+				"failed": "No se pudo enviar la invitación. Inténtalo de nuevo."
+			},
 			"sendInvitation": "Enviar invitación",
 			"success": "Invitación enviada correctamente",
 			"error": "Error al invitar miembro al equipo",

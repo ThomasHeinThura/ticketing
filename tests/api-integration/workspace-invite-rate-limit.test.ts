@@ -1,19 +1,3 @@
-/**
- * S6a (retrofit plan §3, R1): the native equivalent of
- * `organization-invite-rate-limit.test.ts`, proving the rate limit MOVED
- * along with the invite route rather than being silently lost.
- * `apps/api/src/utils/require-invite-rate-limit.ts` is the native
- * `requireInviteRateLimit()` middleware mounted on
- * `POST /api/workspace/{id}/invitations`
- * (`apps/api/src/workspace/index.ts`) -- same window and max as the
- * plugin's own `customRules["/organization/invite-member"]`
- * (`{ window: 60, max: 5 }`, `apps/api/src/auth.ts`).
- *
- * Kept in its own file for the identical reason the plugin version is:
- * the in-memory bucket this middleware keeps is a module-level `Map`, and
- * mixing this file's six-call budget with other invite-create traffic in
- * the same file would make ordering matter.
- */
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../apps/api/src/index";
@@ -23,17 +7,13 @@ import { signUpUser } from "./helpers/organization-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 describe("S6a: native rate limit on POST /api/workspace/{id}/invitations", () => {
-  // Same fixed TEST-NET-2 address, same reasoning as
-  // organization-invite-rate-limit.test.ts: pinning the bucket is what makes
-  // six calls read as one caller to `resolveClientIp` at the default trust
-  // depth of 1.
   const PINNED_CLIENT_IP = "198.51.100.204";
 
   beforeEach(async () => {
     await resetTestDatabase();
   });
 
-  it("allows 5 invite-create requests within the 60s window and rejects the 6th with 429", async () => {
+  it("allows 10 requests per inviter in 60 seconds and rejects the 11th with Retry-After", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
     const created = await createWorkspaceNative(app, owner.cookie);
@@ -44,7 +24,7 @@ describe("S6a: native rate limit on POST /api/workspace/{id}/invitations", () =>
       await createWorkspaceNative(app, other.cookie)
     ).json()) as { id: string };
     const statuses: number[] = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 11; i++) {
       const response = await csrfRequest(
         app,
         `/api/workspace/${workspace.id}/invitations`,
@@ -63,10 +43,12 @@ describe("S6a: native rate limit on POST /api/workspace/{id}/invitations", () =>
         owner.cookie,
       );
       statuses.push(response.status);
+      if (i === 10)
+        expect(Number(response.headers.get("Retry-After"))).toBeGreaterThan(0);
     }
 
-    expect(statuses.slice(0, 5)).toEqual([200, 200, 200, 200, 200]);
-    expect(statuses[5]).toBe(429);
+    expect(statuses.slice(0, 10)).toEqual(Array(10).fill(200));
+    expect(statuses[10]).toBe(429);
     const otherResponse = await csrfRequest(
       app,
       `/api/workspace/${otherWorkspace.id}/invitations`,

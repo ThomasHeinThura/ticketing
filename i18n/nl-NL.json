@@ -3296,6 +3296,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "collega@bedrijf.nl",
+			"bulkHint": "Voer maximaal 10 e-mailadressen in, gescheiden door komma’s of nieuwe regels.",
+			"bulkLimit": "Voer 1 tot 10 verschillende e-mailadressen in.",
+			"bulkResult": {
+				"invalid": "Ongeldig e-mailadres.",
+				"conflict": "Al uitgenodigd of lid.",
+				"rateLimited": "Te veel uitnodigingen. Probeer het later opnieuw.",
+				"failed": "Uitnodiging mislukt. Probeer het opnieuw."
+			},
 			"sendInvitation": "Uitnodiging versturen",
 			"success": "Uitnodiging succesvol verzonden",
 			"error": "Uitnodigen teamlid mislukt",

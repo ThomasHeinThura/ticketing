@@ -955,6 +955,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "wspolpracownik@firma.pl",
+			"bulkHint": "Wpisz do 10 adresów e-mail, oddzielonych przecinkami lub nowymi wierszami.",
+			"bulkLimit": "Wpisz od 1 do 10 różnych adresów e-mail.",
+			"bulkResult": {
+				"invalid": "Nieprawidłowy adres e-mail.",
+				"conflict": "Już zaproszony lub jest członkiem.",
+				"rateLimited": "Za dużo zaproszeń. Spróbuj później.",
+				"failed": "Nie udało się wysłać zaproszenia. Spróbuj ponownie."
+			},
 			"sendInvitation": "Wyślij zaproszenie",
 			"success": "Zaproszenie zostało wysłane",
 			"error": "Nie udało się zaprosić członka zespołu",

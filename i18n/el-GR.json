@@ -3296,6 +3296,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
+			"bulkHint": "Έως 10 διευθύνσεις email, χωρισμένες με κόμμα ή αλλαγή γραμμής.",
+			"bulkLimit": "Εισαγάγετε 1 έως 10 διαφορετικές διευθύνσεις email.",
+			"bulkResult": {
+				"invalid": "Μη έγκυρη διεύθυνση email.",
+				"conflict": "Έχει ήδη προσκληθεί ή είναι μέλος.",
+				"rateLimited": "Πάρα πολλές προσκλήσεις. Δοκιμάστε αργότερα.",
+				"failed": "Η πρόσκληση απέτυχε. Δοκιμάστε ξανά."
+			},
 			"sendInvitation": "Αποστολή πρόσκλησης",
 			"success": "Η πρόσκληση στάλθηκε με επιτυχία",
 			"error": "Αποτυχία πρόσκλησης μέλους ομάδας",

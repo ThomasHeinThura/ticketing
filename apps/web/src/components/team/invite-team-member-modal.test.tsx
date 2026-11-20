@@ -6,7 +6,10 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import InviteTeamMemberModal from "./invite-team-member-modal";
+import { InvitationRequestError } from "@/fetchers/workspace/invite-workspace-member";
+import InviteTeamMemberModal, {
+  parseInviteEmails,
+} from "./invite-team-member-modal";
 
 const noticeState = vi.hoisted(() => ({
   hasSmtp: true as boolean | undefined,
@@ -191,4 +194,79 @@ it("offers email settings to an instance admin when email is missing", () => {
   expect(
     screen.getByRole("link", { name: "team:invitations.configureEmail" }),
   ).toHaveAttribute("href", "/god-mode/notifications");
+});
+
+describe("bulk staff invitations", () => {
+  it("splits, trims and deduplicates addresses case-insensitively", () => {
+    expect(
+      parseInviteEmails(" A@example.com, b@example.com\na@EXAMPLE.com,, "),
+    ).toEqual(["a@example.com", "b@example.com"]);
+  });
+
+  it("shows each outcome and continues after invalid, conflicting and rate-limited addresses", async () => {
+    invite
+      .mockResolvedValueOnce({ id: "one", expiresAt: "", delivered: true })
+      .mockRejectedValueOnce(new InvitationRequestError(409, "conflict"))
+      .mockRejectedValueOnce(new InvitationRequestError(429, "limited"))
+      .mockResolvedValueOnce({ id: "four", expiresAt: "", delivered: false });
+    render(<InviteTeamMemberModal open onClose={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("team:inviteModal.emailLabel"), {
+      target: {
+        value:
+          "one@example.com, invalid\ntwo@example.com, three@example.com, four@example.com, ONE@example.com",
+      },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "team:inviteModal.sendInvitation" }),
+    );
+    expect(
+      await screen.findByText("team:inviteModal.bulkResult.rateLimited"),
+    ).toBeVisible();
+    expect(
+      screen.getByText("team:inviteModal.bulkResult.invalid"),
+    ).toBeVisible();
+    expect(
+      screen.getByText("team:inviteModal.bulkResult.conflict"),
+    ).toBeVisible();
+    expect(screen.getByText("team:invitations.resultEmailSent")).toBeVisible();
+    expect(
+      screen.getByText("team:invitations.resultEmailNotSent"),
+    ).toBeVisible();
+    expect(invite).toHaveBeenCalledTimes(4);
+    expect(invite).toHaveBeenLastCalledWith({
+      workspaceId: "ws",
+      email: "four@example.com",
+      role: "member",
+    });
+  });
+
+  it("accepts ten distinct addresses and refuses eleven without sending", async () => {
+    const input = Array.from(
+      { length: 11 },
+      (_, i) => `person${i}@example.com`,
+    );
+    invite.mockImplementation(async () => ({
+      id: crypto.randomUUID(),
+      expiresAt: "",
+      delivered: true,
+    }));
+    render(<InviteTeamMemberModal open onClose={vi.fn()} />);
+    const field = screen.getByLabelText("team:inviteModal.emailLabel");
+    fireEvent.change(field, { target: { value: input.join(",") } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "team:inviteModal.sendInvitation" }),
+    );
+    expect(await screen.findByText("team:inviteModal.bulkLimit")).toBeVisible();
+    expect(invite).not.toHaveBeenCalled();
+    fireEvent.change(field, {
+      target: { value: input.slice(0, 10).join(",") },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "team:inviteModal.sendInvitation" }),
+    );
+    await waitFor(() => expect(invite).toHaveBeenCalledTimes(10));
+    expect(
+      await screen.findAllByText("team:invitations.resultEmailSent"),
+    ).toHaveLength(10);
+  });
 });

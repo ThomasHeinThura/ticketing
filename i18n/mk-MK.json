@@ -3296,6 +3296,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "kolega@kompanija.com",
+			"bulkHint": "Внесете до 10 е-адреси, одделени со запирка или нов ред.",
+			"bulkLimit": "Внесете од 1 до 10 различни е-адреси.",
+			"bulkResult": {
+				"invalid": "Неважечка е-адреса.",
+				"conflict": "Веќе е поканет или е член.",
+				"rateLimited": "Премногу покани. Обидете се подоцна.",
+				"failed": "Поканата не успеа. Обидете се повторно."
+			},
 			"sendInvitation": "Испрати покана",
 			"success": "Поканата е успешно испратена",
 			"error": "Неуспешно поканување на член на тим",
