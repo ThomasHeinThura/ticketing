@@ -80,7 +80,30 @@ vi.mock("../../../apps/api/src/project/effective-settings", () => ({
   }) => overrideId ?? workspaceDefaultId,
 }));
 
-import updateProject from "../../../apps/api/src/project/controllers/update-project";
+import updateProjectWithActor from "../../../apps/api/src/project/controllers/update-project";
+
+vi.mock("../../../apps/api/src/events/audit-savepoint", () => ({
+  appendAuditSavepoint: async () => false,
+}));
+vi.mock(
+  "../../../apps/api/src/instance/observability/audit-failure-notifier",
+  () => ({ notifyCurrentInstanceAdminsOfAuditFailure: async () => {} }),
+);
+
+type UpdateArgs = Parameters<typeof updateProjectWithActor>;
+const actor = { actorId: "u1", actorType: "person" } as UpdateArgs[7];
+// Field-intent cases do not assert audit; the History API tests own that.
+type FieldArgs = [
+  UpdateArgs[0],
+  UpdateArgs[1],
+  UpdateArgs[2],
+  UpdateArgs[3],
+  UpdateArgs[4],
+  UpdateArgs[5],
+  UpdateArgs[6],
+];
+const updateProject = (...args: FieldArgs) =>
+  updateProjectWithActor(...args, actor);
 
 const stored = {
   id: "p1",
