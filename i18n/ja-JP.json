@@ -560,6 +560,7 @@
 			"providerConfiguration": "設定",
 			"providerCredential": "認証情報",
 			"memberHistory": "{{name}} の履歴 ({{number}})",
+			"entityLabel": "{{name}}の履歴",
 			"roleChanged": "ロールを変更",
 			"preferenceFields": {
 				"density": "表示密度",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "許可するファイル形式",
 				"body": "返信本文",
 				"visibilityDefault": "既定の公開範囲",
+				"color": "色",
+				"wipLimit": "仕掛かり作業の上限",
+				"unit": "単位",
+				"currency": "通貨",
+				"billable": "請求可能",
+				"hasDefaultRate": "既定の単価",
+				"rateSet": "単価の設定",
 				"unknown": "その他の設定"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "一括操作を実行",
 				"kb_settings_changed": "ナレッジベース設定を変更",
 				"instance_settings_changed": "インスタンス設定を更新",
+				"label_catalogue_created": "ラベルを作成",
+				"label_catalogue_updated": "ラベルを更新",
+				"label_catalogue_deleted": "ラベルを削除",
+				"cost_type_created": "コスト種別を作成",
+				"cost_type_updated": "コスト種別を更新",
+				"hourly_rate_created": "時間単価を追加",
+				"budget_created": "予算を作成",
+				"state_wip_limit_changed": "仕掛かり作業の上限を変更",
 				"unknown": "設定を変更"
 			}
 		},

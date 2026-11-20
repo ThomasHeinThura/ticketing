@@ -560,6 +560,7 @@
 			"providerConfiguration": "Konfiguration",
 			"providerCredential": "Anmeldedaten",
 			"memberHistory": "Verlauf für {{name}} ({{number}})",
+			"entityLabel": "Verlauf für {{name}}",
 			"roleChanged": "Rolle geändert",
 			"preferenceFields": {
 				"density": "Dichte",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "Zulässige Dateitypen",
 				"body": "Antworttext",
 				"visibilityDefault": "Standardsichtbarkeit",
+				"color": "Farbe",
+				"wipLimit": "Limit für laufende Arbeit",
+				"unit": "Einheit",
+				"currency": "Währung",
+				"billable": "Abrechenbar",
+				"hasDefaultRate": "Standardsatz",
+				"rateSet": "Satz festgelegt",
 				"unknown": "Weitere Einstellung"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Massenaktion ausgeführt",
 				"kb_settings_changed": "Einstellungen der Wissensdatenbank geändert",
 				"instance_settings_changed": "Instanzeinstellungen aktualisiert",
+				"label_catalogue_created": "Label erstellt",
+				"label_catalogue_updated": "Label aktualisiert",
+				"label_catalogue_deleted": "Label gelöscht",
+				"cost_type_created": "Kostenart erstellt",
+				"cost_type_updated": "Kostenart aktualisiert",
+				"hourly_rate_created": "Stundensatz hinzugefügt",
+				"budget_created": "Budget erstellt",
+				"state_wip_limit_changed": "Limit für laufende Arbeit geändert",
 				"unknown": "Einstellungen geändert"
 			}
 		},

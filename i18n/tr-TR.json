@@ -560,6 +560,7 @@
 			"providerConfiguration": "Yapılandırma",
 			"providerCredential": "Kimlik bilgisi",
 			"memberHistory": "{{name}} geçmişi ({{number}})",
+			"entityLabel": "{{name}} geçmişi",
 			"roleChanged": "Rol değiştirildi",
 			"preferenceFields": {
 				"density": "Yoğunluk",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "İzin verilen dosya türleri",
 				"body": "Yanıt gövdesi",
 				"visibilityDefault": "Varsayılan görünürlük",
+				"color": "Renk",
+				"wipLimit": "Devam eden iş sınırı",
+				"unit": "Birim",
+				"currency": "Para birimi",
+				"billable": "Faturalandırılabilir",
+				"hasDefaultRate": "Varsayılan ücret",
+				"rateSet": "Ücret belirlendi",
 				"unknown": "Diğer ayar"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Toplu işlem yapıldı",
 				"kb_settings_changed": "Bilgi bankası ayarları değiştirildi",
 				"instance_settings_changed": "Kurulum ayarları güncellendi",
+				"label_catalogue_created": "Etiket oluşturuldu",
+				"label_catalogue_updated": "Etiket güncellendi",
+				"label_catalogue_deleted": "Etiket silindi",
+				"cost_type_created": "Maliyet türü oluşturuldu",
+				"cost_type_updated": "Maliyet türü güncellendi",
+				"hourly_rate_created": "Saatlik ücret eklendi",
+				"budget_created": "Bütçe oluşturuldu",
+				"state_wip_limit_changed": "Devam eden iş sınırı değiştirildi",
 				"unknown": "Ayarlar değiştirildi"
 			}
 		},

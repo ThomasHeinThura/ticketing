@@ -560,6 +560,7 @@
 			"providerConfiguration": "구성",
 			"providerCredential": "자격 증명",
 			"memberHistory": "{{name}} 기록 ({{number}})",
+			"entityLabel": "{{name}} 기록",
 			"roleChanged": "역할 변경",
 			"preferenceFields": {
 				"density": "밀도",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "허용되는 파일 형식",
 				"body": "응답 본문",
 				"visibilityDefault": "기본 공개 범위",
+				"color": "색상",
+				"wipLimit": "진행 중 작업 한도",
+				"unit": "단위",
+				"currency": "통화",
+				"billable": "청구 가능",
+				"hasDefaultRate": "기본 요율",
+				"rateSet": "요율 설정됨",
 				"unknown": "기타 설정"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "일괄 작업 수행됨",
 				"kb_settings_changed": "지식 베이스 설정 변경됨",
 				"instance_settings_changed": "인스턴스 설정 업데이트됨",
+				"label_catalogue_created": "라벨 생성됨",
+				"label_catalogue_updated": "라벨 업데이트됨",
+				"label_catalogue_deleted": "라벨 삭제됨",
+				"cost_type_created": "비용 유형 생성됨",
+				"cost_type_updated": "비용 유형 업데이트됨",
+				"hourly_rate_created": "시간당 요율 추가됨",
+				"budget_created": "예산 생성됨",
+				"state_wip_limit_changed": "진행 중 작업 한도 변경됨",
 				"unknown": "설정 변경됨"
 			}
 		},

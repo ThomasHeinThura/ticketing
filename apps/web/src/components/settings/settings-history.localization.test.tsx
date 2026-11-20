@@ -124,6 +124,7 @@ const HISTORY_KEYS = [
   "apiKey",
   "automation",
   "personUnavailable",
+  "entityLabel",
 ] as const;
 const TEAM_ACTIONS = [
   ["team.created", "team_created", "Team created"],
@@ -195,7 +196,13 @@ async function renderHistory(
     | "project"
     | "time_activity"
     | "workflow"
-    | "canned_response",
+    | "canned_response"
+    | "workspace_label"
+    | "project_label"
+    | "state"
+    | "cost_type"
+    | "hourly_rate"
+    | "budget",
   id: string,
   payload: Json,
 ) {
@@ -239,7 +246,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
       expect(Object.keys(settings).sort()).toEqual(
         Object.keys(expected).sort(),
       );
-      expect(Object.keys(settings)).toHaveLength(37);
+      expect(Object.keys(settings)).toHaveLength(45);
       for (const key of Object.keys(expected)) {
         expect(at(source, `settings.history.actions.${key}`)).not.toBe("");
         // `bulk_performed` already had a work-item label ("Bulk change"); the settings panel owns its own.
@@ -261,7 +268,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
         ...FIELDS.map((f) => `godModeSettings.fields.${f}.label`),
         ...TEAM_ACTIONS.map(([, key]) => `settings.history.actions.${key}`),
       ];
-      expect(paths).toHaveLength(33);
+      expect(paths).toHaveLength(34);
       for (const path of paths) {
         const value = at(own, path);
         const base = path.startsWith("settings.history.actions.team_")
@@ -664,6 +671,12 @@ type Inventory = Array<{
     | "workflow"
     | "canned_response"
     | "time_activity"
+    | "workspace_label"
+    | "project_label"
+    | "state"
+    | "cost_type"
+    | "hourly_rate"
+    | "budget"
     | "instance";
   action: string;
   /** [API marker, settings.history.fields key]; written out here, independent of the renderer. */
@@ -673,6 +686,13 @@ const same = (names: string[]): Array<[string, string]> =>
   names.map((n) => [n, n]);
 const INSTANCE_FIELDS = same(API_FIELDS);
 const CANNED_FIELDS = same(["name", "body", "visibilityDefault"]);
+const LABEL_FIELDS = same(["name", "color"]);
+const labelRows = (type: "workspace_label" | "project_label") =>
+  ["created", "updated", "deleted"].map((verb) => ({
+    type,
+    action: `label.catalogue_${verb}`,
+    fields: LABEL_FIELDS,
+  }));
 /** Every action and marker the settings History panel can show (API: HISTORY_FIELDS, entityHistoryRow, producers). */
 const INVENTORY: Inventory = [
   { type: "workspace", action: "workspace.created", fields: [] },
@@ -798,6 +818,29 @@ const INVENTORY: Inventory = [
       ["archived", "archived"],
     ],
   },
+  ...labelRows("workspace_label"),
+  ...labelRows("project_label"),
+  {
+    type: "state",
+    action: "state.wip_limit_changed",
+    fields: same(["wipLimit"]),
+  },
+  {
+    type: "cost_type",
+    action: "cost_type.created",
+    fields: same(["name", "unit", "currency", "billable", "hasDefaultRate"]),
+  },
+  {
+    type: "cost_type",
+    action: "cost_type.updated",
+    fields: same(["name", "unit", "currency", "billable", "archived"]),
+  },
+  {
+    type: "hourly_rate",
+    action: "hourly_rate.created",
+    fields: same(["rateSet"]),
+  },
+  { type: "budget", action: "budget.created", fields: [] },
   {
     type: "instance",
     action: "instance.settings_changed",
@@ -819,6 +862,7 @@ const labelSameAsEnglish = new Set<string>([
   "de-DE:settings.history.fields.name",
   "de-DE:settings.history.fields.logo",
   "de-DE:settings.history.fields.position",
+  "es-ES:settings.history.fields.color",
   "fr-FR:settings.history.fields.description",
   "fr-FR:settings.history.fields.logo",
   "fr-FR:settings.history.fields.position",
@@ -835,8 +879,8 @@ const labelSameAsEnglish = new Set<string>([
 
 describe("full History inventory has dedicated localized labels", () => {
   it("covers every action and field of the API projection", () => {
-    expect(INVENTORY_ACTIONS).toHaveLength(26);
-    expect(new Set(INVENTORY_ACTIONS.map(actionKey)).size).toBe(26);
+    expect(INVENTORY_ACTIONS).toHaveLength(34);
+    expect(new Set(INVENTORY_ACTIONS.map(actionKey)).size).toBe(34);
   });
 
   it.each(all)(

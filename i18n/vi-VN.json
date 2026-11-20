@@ -560,6 +560,7 @@
 			"providerConfiguration": "Cấu hình",
 			"providerCredential": "Thông tin xác thực",
 			"memberHistory": "Lịch sử của {{name}} ({{number}})",
+			"entityLabel": "Lịch sử của {{name}}",
 			"roleChanged": "Vai trò đã thay đổi",
 			"preferenceFields": {
 				"density": "Mật độ",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "Loại tệp được phép",
 				"body": "Nội dung phản hồi",
 				"visibilityDefault": "Chế độ hiển thị mặc định",
+				"color": "Màu sắc",
+				"wipLimit": "Giới hạn công việc đang thực hiện",
+				"unit": "Đơn vị",
+				"currency": "Tiền tệ",
+				"billable": "Có thể tính phí",
+				"hasDefaultRate": "Đơn giá mặc định",
+				"rateSet": "Đã đặt đơn giá",
 				"unknown": "Cài đặt khác"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Đã thực hiện thao tác hàng loạt",
 				"kb_settings_changed": "Đã thay đổi cài đặt cơ sở tri thức",
 				"instance_settings_changed": "Đã cập nhật cài đặt hệ thống",
+				"label_catalogue_created": "Đã tạo nhãn",
+				"label_catalogue_updated": "Đã cập nhật nhãn",
+				"label_catalogue_deleted": "Đã xóa nhãn",
+				"cost_type_created": "Đã tạo loại chi phí",
+				"cost_type_updated": "Đã cập nhật loại chi phí",
+				"hourly_rate_created": "Đã thêm đơn giá theo giờ",
+				"budget_created": "Đã tạo ngân sách",
+				"state_wip_limit_changed": "Đã đổi giới hạn công việc đang thực hiện",
 				"unknown": "Đã thay đổi cài đặt"
 			}
 		},

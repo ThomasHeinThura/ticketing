@@ -560,6 +560,7 @@
 			"providerConfiguration": "Configuration",
 			"providerCredential": "Identifiant secret",
 			"memberHistory": "Historique de {{name}} ({{number}})",
+			"entityLabel": "Historique de {{name}}",
 			"roleChanged": "Rôle modifié",
 			"preferenceFields": {
 				"density": "Densité",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "Types de fichiers autorisés",
 				"body": "Corps de la réponse",
 				"visibilityDefault": "Visibilité par défaut",
+				"color": "Couleur",
+				"wipLimit": "Limite de travaux en cours",
+				"unit": "Unité",
+				"currency": "Devise",
+				"billable": "Facturable",
+				"hasDefaultRate": "Taux par défaut",
+				"rateSet": "Taux défini",
 				"unknown": "Autre paramètre"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Action groupée effectuée",
 				"kb_settings_changed": "Paramètres de la base de connaissances modifiés",
 				"instance_settings_changed": "Paramètres de l’instance mis à jour",
+				"label_catalogue_created": "Label créé",
+				"label_catalogue_updated": "Label mis à jour",
+				"label_catalogue_deleted": "Label supprimé",
+				"cost_type_created": "Type de coût créé",
+				"cost_type_updated": "Type de coût mis à jour",
+				"hourly_rate_created": "Taux horaire ajouté",
+				"budget_created": "Budget créé",
+				"state_wip_limit_changed": "Limite de travaux en cours modifiée",
 				"unknown": "Paramètres modifiés"
 			}
 		},

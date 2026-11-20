@@ -36,6 +36,14 @@ vi.mock("@/fetchers/time-tracking", () => {
   };
 });
 
+vi.mock("@/components/settings/entity-history-button", () => ({
+  EntityHistoryButton: (props: { name: string; target: unknown }) => (
+    <span data-testid="history-target" data-name={props.name}>
+      {JSON.stringify(props.target)}
+    </span>
+  ),
+}));
+
 import { ProjectBudget, percentSpent } from "./project-budget";
 
 const base: BudgetOverview = {
@@ -64,14 +72,14 @@ const base: BudgetOverview = {
   byPerson: [],
 };
 
-function renderBudget() {
+function renderBudget(workspaceId?: string) {
   return render(
     <QueryClientProvider
       client={
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
       }
     >
-      <ProjectBudget projectId="p1" />
+      <ProjectBudget projectId="p1" workspaceId={workspaceId} />
     </QueryClientProvider>,
   );
 }
@@ -265,5 +273,25 @@ describe("ProjectBudget", () => {
     expect(
       await screen.findByText("timeTracking:budget.forbiddenTitle"),
     ).toBeTruthy();
+  });
+});
+
+describe("ProjectBudget History", () => {
+  it("gives each budget a project-scoped History once the workspace is known", async () => {
+    renderBudget("w1");
+    expect((await screen.findByTestId("history-target")).textContent).toBe(
+      JSON.stringify({
+        kind: "entity",
+        type: "budget",
+        id: "b1",
+        scope: { kind: "project", workspaceId: "w1", projectId: "p1" },
+      }),
+    );
+  });
+
+  it("offers no History without a workspace", async () => {
+    renderBudget();
+    await screen.findByTestId("budget-card");
+    expect(screen.queryByTestId("history-target")).toBeNull();
   });
 });

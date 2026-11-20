@@ -560,6 +560,7 @@
 			"providerConfiguration": "कॉन्फ़िगरेशन",
 			"providerCredential": "प्रमाण-पत्र",
 			"memberHistory": "{{name}} का इतिहास ({{number}})",
+			"entityLabel": "{{name}} का इतिहास",
 			"roleChanged": "भूमिका बदली गई",
 			"preferenceFields": {
 				"density": "घनत्व",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "अनुमत फ़ाइल प्रकार",
 				"body": "उत्तर का मुख्य भाग",
 				"visibilityDefault": "डिफ़ॉल्ट दृश्यता",
+				"color": "रंग",
+				"wipLimit": "कार्य-प्रगति सीमा",
+				"unit": "इकाई",
+				"currency": "मुद्रा",
+				"billable": "बिल योग्य",
+				"hasDefaultRate": "डिफ़ॉल्ट दर",
+				"rateSet": "दर निर्धारित",
 				"unknown": "अन्य सेटिंग"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "बल्क कार्रवाई की गई",
 				"kb_settings_changed": "ज्ञान आधार की सेटिंग बदली गईं",
 				"instance_settings_changed": "इंस्टेंस सेटिंग अपडेट की गईं",
+				"label_catalogue_created": "लेबल बनाया गया",
+				"label_catalogue_updated": "लेबल अपडेट किया गया",
+				"label_catalogue_deleted": "लेबल हटाया गया",
+				"cost_type_created": "लागत प्रकार बनाया गया",
+				"cost_type_updated": "लागत प्रकार अपडेट किया गया",
+				"hourly_rate_created": "प्रति घंटा दर जोड़ी गई",
+				"budget_created": "बजट बनाया गया",
+				"state_wip_limit_changed": "कार्य-प्रगति सीमा बदली गई",
 				"unknown": "सेटिंग बदली गईं"
 			}
 		},

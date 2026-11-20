@@ -21,12 +21,12 @@ import {
   TableRow,
   useDelayedPending,
 } from "@taskdesk/ui";
-
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { EntityHistoryButton } from "@/components/settings/entity-history-button";
 import {
   isForbiddenError,
   useSettingsAccess,
@@ -282,6 +282,11 @@ function RatesSettingsContent() {
                     {t("timeTracking:rates.hourly")}
                   </TableHead>
                   <TableHead>{t("timeTracking:rates.effectiveFrom")}</TableHead>
+                  <TableHead className="w-10">
+                    <span className="sr-only">
+                      {t("settings:history.title")}
+                    </span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -298,6 +303,28 @@ function RatesSettingsContent() {
                     </TableCell>
                     <TableCell className="tabular-nums">
                       {rate.effectiveFrom}
+                    </TableCell>
+                    <TableCell>
+                      {workspace?.id ? (
+                        <EntityHistoryButton
+                          name={rate.personName ?? rate.personId}
+                          target={{
+                            kind: "entity",
+                            type: "hourly_rate",
+                            id: rate.id,
+                            scope: rate.projectId
+                              ? {
+                                  kind: "project",
+                                  workspaceId: workspace.id,
+                                  projectId: rate.projectId,
+                                }
+                              : {
+                                  kind: "workspace",
+                                  workspaceId: workspace.id,
+                                },
+                          }}
+                        />
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}

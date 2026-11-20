@@ -2249,6 +2249,9 @@
 						"memberHistory": {
 							"type": "string"
 						},
+						"entityLabel": {
+							"type": "string"
+						},
 						"roleChanged": {
 							"type": "string"
 						},
@@ -2479,6 +2482,27 @@
 								"visibilityDefault": {
 									"type": "string"
 								},
+								"color": {
+									"type": "string"
+								},
+								"wipLimit": {
+									"type": "string"
+								},
+								"unit": {
+									"type": "string"
+								},
+								"currency": {
+									"type": "string"
+								},
+								"billable": {
+									"type": "string"
+								},
+								"hasDefaultRate": {
+									"type": "string"
+								},
+								"rateSet": {
+									"type": "string"
+								},
 								"unknown": {
 									"type": "string"
 								}
@@ -2531,6 +2555,13 @@
 								"attachmentAllowedExtensions",
 								"body",
 								"visibilityDefault",
+								"color",
+								"wipLimit",
+								"unit",
+								"currency",
+								"billable",
+								"hasDefaultRate",
+								"rateSet",
 								"unknown"
 							]
 						},
@@ -2646,6 +2677,30 @@
 								"instance_settings_changed": {
 									"type": "string"
 								},
+								"label_catalogue_created": {
+									"type": "string"
+								},
+								"label_catalogue_updated": {
+									"type": "string"
+								},
+								"label_catalogue_deleted": {
+									"type": "string"
+								},
+								"cost_type_created": {
+									"type": "string"
+								},
+								"cost_type_updated": {
+									"type": "string"
+								},
+								"hourly_rate_created": {
+									"type": "string"
+								},
+								"budget_created": {
+									"type": "string"
+								},
+								"state_wip_limit_changed": {
+									"type": "string"
+								},
 								"unknown": {
 									"type": "string"
 								}
@@ -2687,6 +2742,14 @@
 								"bulk_performed",
 								"kb_settings_changed",
 								"instance_settings_changed",
+								"label_catalogue_created",
+								"label_catalogue_updated",
+								"label_catalogue_deleted",
+								"cost_type_created",
+								"cost_type_updated",
+								"hourly_rate_created",
+								"budget_created",
+								"state_wip_limit_changed",
 								"unknown"
 							]
 						}
@@ -2695,6 +2758,7 @@
 						"providerConfiguration",
 						"providerCredential",
 						"memberHistory",
+						"entityLabel",
 						"roleChanged",
 						"preferenceFields",
 						"notificationDelivery",

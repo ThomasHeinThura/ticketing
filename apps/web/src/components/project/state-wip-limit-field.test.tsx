@@ -32,6 +32,14 @@ vi.mock("@/hooks/queries/project/use-get-projects", () => ({
   default: () => ({ data: [{ id: "p1", slug: "PRJ" }] }),
 }));
 
+vi.mock("@/components/settings/entity-history-button", () => ({
+  EntityHistoryButton: (props: { name: string; target: unknown }) => (
+    <span data-testid="history-target" data-name={props.name}>
+      {JSON.stringify(props.target)}
+    </span>
+  ),
+}));
+
 import StateWipLimitField from "./state-wip-limit-field";
 
 afterEach(() => {
@@ -90,5 +98,19 @@ describe("StateWipLimitField (VW-12)", () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
+  });
+});
+
+describe("StateWipLimitField History", () => {
+  it("gives the state its project-scoped History", () => {
+    renderField();
+    expect(screen.getByTestId("history-target").textContent).toBe(
+      JSON.stringify({
+        kind: "entity",
+        type: "state",
+        id: "s1",
+        scope: { kind: "project", workspaceId: "w1", projectId: "p1" },
+      }),
+    );
   });
 });

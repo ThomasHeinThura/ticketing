@@ -560,6 +560,7 @@
 			"providerConfiguration": "Конфігурація",
 			"providerCredential": "Облікові дані",
 			"memberHistory": "Історія {{name}} ({{number}})",
+			"entityLabel": "Історія: {{name}}",
 			"roleChanged": "Роль змінено",
 			"preferenceFields": {
 				"density": "Щільність",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "Дозволені типи файлів",
 				"body": "Текст відповіді",
 				"visibilityDefault": "Видимість за замовчуванням",
+				"color": "Колір",
+				"wipLimit": "Ліміт незавершеної роботи",
+				"unit": "Одиниця",
+				"currency": "Валюта",
+				"billable": "Оплачуване",
+				"hasDefaultRate": "Ставка за замовчуванням",
+				"rateSet": "Ставку задано",
 				"unknown": "Інше налаштування"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Виконано масову дію",
 				"kb_settings_changed": "Налаштування бази знань змінено",
 				"instance_settings_changed": "Налаштування екземпляра оновлено",
+				"label_catalogue_created": "Мітку створено",
+				"label_catalogue_updated": "Мітку оновлено",
+				"label_catalogue_deleted": "Мітку видалено",
+				"cost_type_created": "Тип витрат створено",
+				"cost_type_updated": "Тип витрат оновлено",
+				"hourly_rate_created": "Погодинну ставку додано",
+				"budget_created": "Бюджет створено",
+				"state_wip_limit_changed": "Ліміт незавершеної роботи змінено",
 				"unknown": "Налаштування змінено"
 			}
 		},

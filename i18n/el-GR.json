@@ -560,6 +560,7 @@
 			"providerConfiguration": "Διαμόρφωση",
 			"providerCredential": "Διαπιστευτήρια",
 			"memberHistory": "Ιστορικό για {{name}} ({{number}})",
+			"entityLabel": "Ιστορικό για {{name}}",
 			"roleChanged": "Ο ρόλος άλλαξε",
 			"preferenceFields": {
 				"density": "Πυκνότητα",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "Επιτρεπόμενοι τύποι αρχείων",
 				"body": "Κείμενο απάντησης",
 				"visibilityDefault": "Προεπιλεγμένη ορατότητα",
+				"color": "Χρώμα",
+				"wipLimit": "Όριο εργασιών σε εξέλιξη",
+				"unit": "Μονάδα",
+				"currency": "Νόμισμα",
+				"billable": "Χρεώσιμο",
+				"hasDefaultRate": "Προεπιλεγμένη χρέωση",
+				"rateSet": "Ορίστηκε χρέωση",
 				"unknown": "Άλλη ρύθμιση"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Εκτελέστηκε μαζική ενέργεια",
 				"kb_settings_changed": "Οι ρυθμίσεις της βάσης γνώσεων άλλαξαν",
 				"instance_settings_changed": "Οι ρυθμίσεις της εγκατάστασης ενημερώθηκαν",
+				"label_catalogue_created": "Η ετικέτα δημιουργήθηκε",
+				"label_catalogue_updated": "Η ετικέτα ενημερώθηκε",
+				"label_catalogue_deleted": "Η ετικέτα διαγράφηκε",
+				"cost_type_created": "Ο τύπος κόστους δημιουργήθηκε",
+				"cost_type_updated": "Ο τύπος κόστους ενημερώθηκε",
+				"hourly_rate_created": "Προστέθηκε ωριαία χρέωση",
+				"budget_created": "Ο προϋπολογισμός δημιουργήθηκε",
+				"state_wip_limit_changed": "Το όριο εργασιών σε εξέλιξη άλλαξε",
 				"unknown": "Οι ρυθμίσεις άλλαξαν"
 			}
 		},

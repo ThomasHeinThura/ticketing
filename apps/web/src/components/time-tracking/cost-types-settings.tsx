@@ -28,6 +28,7 @@ import {
 import { Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { EntityHistoryButton } from "@/components/settings/entity-history-button";
 import {
   type CostType,
   createCostType,
@@ -322,6 +323,15 @@ function CostTypeRow({
       </TableCell>
       <TableCell>
         <div className="flex justify-end gap-1">
+          <EntityHistoryButton
+            name={costType.name}
+            target={{
+              kind: "entity",
+              type: "cost_type",
+              id: costType.id,
+              scope: { kind: "workspace", workspaceId },
+            }}
+          />
           <Button
             size="icon-sm"
             variant="ghost"

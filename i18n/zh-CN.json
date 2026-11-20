@@ -560,6 +560,7 @@
 			"providerConfiguration": "配置",
 			"providerCredential": "凭据",
 			"memberHistory": "{{name}}的历史记录（{{number}}）",
+			"entityLabel": "{{name}}的历史记录",
 			"roleChanged": "角色已更改",
 			"preferenceFields": {
 				"density": "显示密度",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "允许的文件类型",
 				"body": "回复正文",
 				"visibilityDefault": "默认可见性",
+				"color": "颜色",
+				"wipLimit": "在制工作上限",
+				"unit": "单位",
+				"currency": "货币",
+				"billable": "可计费",
+				"hasDefaultRate": "默认费率",
+				"rateSet": "已设置费率",
 				"unknown": "其他设置"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "已执行批量操作",
 				"kb_settings_changed": "已更改知识库设置",
 				"instance_settings_changed": "已更新实例设置",
+				"label_catalogue_created": "已创建标签",
+				"label_catalogue_updated": "已更新标签",
+				"label_catalogue_deleted": "已删除标签",
+				"cost_type_created": "已创建成本类型",
+				"cost_type_updated": "已更新成本类型",
+				"hourly_rate_created": "已添加每小时费率",
+				"budget_created": "已创建预算",
+				"state_wip_limit_changed": "已更改在制工作上限",
 				"unknown": "设置已更改"
 			}
 		},

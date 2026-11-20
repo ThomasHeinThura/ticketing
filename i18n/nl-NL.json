@@ -560,6 +560,7 @@
 			"providerConfiguration": "Configuratie",
 			"providerCredential": "Inloggegeven",
 			"memberHistory": "Geschiedenis van {{name}} ({{number}})",
+			"entityLabel": "Geschiedenis van {{name}}",
 			"roleChanged": "Rol gewijzigd",
 			"preferenceFields": {
 				"density": "Dichtheid",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "Toegestane bestandstypen",
 				"body": "Antwoordtekst",
 				"visibilityDefault": "Standaardzichtbaarheid",
+				"color": "Kleur",
+				"wipLimit": "Limiet voor lopend werk",
+				"unit": "Eenheid",
+				"currency": "Valuta",
+				"billable": "Factureerbaar",
+				"hasDefaultRate": "Standaardtarief",
+				"rateSet": "Tarief ingesteld",
 				"unknown": "Overige instelling"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Bulkactie uitgevoerd",
 				"kb_settings_changed": "Instellingen van de kennisbank gewijzigd",
 				"instance_settings_changed": "Instance-instellingen bijgewerkt",
+				"label_catalogue_created": "Label aangemaakt",
+				"label_catalogue_updated": "Label bijgewerkt",
+				"label_catalogue_deleted": "Label verwijderd",
+				"cost_type_created": "Kostensoort aangemaakt",
+				"cost_type_updated": "Kostensoort bijgewerkt",
+				"hourly_rate_created": "Uurtarief toegevoegd",
+				"budget_created": "Budget aangemaakt",
+				"state_wip_limit_changed": "Limiet voor lopend werk gewijzigd",
 				"unknown": "Instellingen gewijzigd"
 			}
 		},

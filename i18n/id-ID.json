@@ -560,6 +560,7 @@
 			"providerConfiguration": "Konfigurasi",
 			"providerCredential": "Kredensial",
 			"memberHistory": "Riwayat {{name}} ({{number}})",
+			"entityLabel": "Riwayat {{name}}",
 			"roleChanged": "Peran diubah",
 			"preferenceFields": {
 				"density": "Kepadatan",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "Jenis file yang diizinkan",
 				"body": "Isi balasan",
 				"visibilityDefault": "Visibilitas default",
+				"color": "Warna",
+				"wipLimit": "Batas pekerjaan berjalan",
+				"unit": "Satuan",
+				"currency": "Mata uang",
+				"billable": "Dapat ditagih",
+				"hasDefaultRate": "Tarif default",
+				"rateSet": "Tarif ditetapkan",
 				"unknown": "Pengaturan lainnya"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Tindakan massal dilakukan",
 				"kb_settings_changed": "Pengaturan basis pengetahuan diubah",
 				"instance_settings_changed": "Pengaturan instans diperbarui",
+				"label_catalogue_created": "Label dibuat",
+				"label_catalogue_updated": "Label diperbarui",
+				"label_catalogue_deleted": "Label dihapus",
+				"cost_type_created": "Jenis biaya dibuat",
+				"cost_type_updated": "Jenis biaya diperbarui",
+				"hourly_rate_created": "Tarif per jam ditambahkan",
+				"budget_created": "Anggaran dibuat",
+				"state_wip_limit_changed": "Batas pekerjaan berjalan diubah",
 				"unknown": "Pengaturan diubah"
 			}
 		},

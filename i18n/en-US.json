@@ -560,6 +560,7 @@
 			"providerConfiguration": "Configuration",
 			"providerCredential": "Credential",
 			"memberHistory": "History for {{name}} ({{number}})",
+			"entityLabel": "History for {{name}}",
 			"roleChanged": "Role changed",
 			"preferenceFields": {
 				"density": "Density",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "Allowed file types",
 				"body": "Response body",
 				"visibilityDefault": "Default visibility",
+				"color": "Color",
+				"wipLimit": "Work-in-progress limit",
+				"unit": "Unit",
+				"currency": "Currency",
+				"billable": "Billable",
+				"hasDefaultRate": "Default rate",
+				"rateSet": "Rate set",
 				"unknown": "Other setting"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Bulk action performed",
 				"kb_settings_changed": "Knowledge base settings changed",
 				"instance_settings_changed": "Instance settings updated",
+				"label_catalogue_created": "Label created",
+				"label_catalogue_updated": "Label updated",
+				"label_catalogue_deleted": "Label deleted",
+				"cost_type_created": "Cost type created",
+				"cost_type_updated": "Cost type updated",
+				"hourly_rate_created": "Hourly rate added",
+				"budget_created": "Budget created",
+				"state_wip_limit_changed": "Work-in-progress limit changed",
 				"unknown": "Settings changed"
 			}
 		},

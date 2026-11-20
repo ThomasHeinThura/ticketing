@@ -560,6 +560,7 @@
 			"providerConfiguration": "Конфигурация",
 			"providerCredential": "Учётные данные",
 			"memberHistory": "История {{name}} ({{number}})",
+			"entityLabel": "История: {{name}}",
 			"roleChanged": "Роль изменена",
 			"preferenceFields": {
 				"density": "Плотность",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "Разрешённые типы файлов",
 				"body": "Текст ответа",
 				"visibilityDefault": "Видимость по умолчанию",
+				"color": "Цвет",
+				"wipLimit": "Лимит незавершённой работы",
+				"unit": "Единица",
+				"currency": "Валюта",
+				"billable": "Оплачиваемое",
+				"hasDefaultRate": "Ставка по умолчанию",
+				"rateSet": "Ставка задана",
 				"unknown": "Другая настройка"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Выполнено массовое действие",
 				"kb_settings_changed": "Настройки базы знаний изменены",
 				"instance_settings_changed": "Настройки экземпляра обновлены",
+				"label_catalogue_created": "Метка создана",
+				"label_catalogue_updated": "Метка обновлена",
+				"label_catalogue_deleted": "Метка удалена",
+				"cost_type_created": "Тип затрат создан",
+				"cost_type_updated": "Тип затрат обновлён",
+				"hourly_rate_created": "Почасовая ставка добавлена",
+				"budget_created": "Бюджет создан",
+				"state_wip_limit_changed": "Лимит незавершённой работы изменён",
 				"unknown": "Настройки изменены"
 			}
 		},

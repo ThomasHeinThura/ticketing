@@ -89,6 +89,24 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     attachmentAllowedExtensions:
       "settings:history.fields.attachmentAllowedExtensions",
   },
+  workspace_label: {
+    name: "settings:history.fields.name",
+    color: "settings:history.fields.color",
+  },
+  project_label: {
+    name: "settings:history.fields.name",
+    color: "settings:history.fields.color",
+  },
+  state: { wipLimit: "settings:history.fields.wipLimit" },
+  cost_type: {
+    name: "settings:history.fields.name",
+    unit: "settings:history.fields.unit",
+    currency: "settings:history.fields.currency",
+    billable: "settings:history.fields.billable",
+    hasDefaultRate: "settings:history.fields.hasDefaultRate",
+    archived: "settings:history.fields.archived",
+  },
+  hourly_rate: { rateSet: "settings:history.fields.rateSet" },
   time_activity: {
     name: "settings:history.fields.activity",
     archived: "settings:history.fields.archived",

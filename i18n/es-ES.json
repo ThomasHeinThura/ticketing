@@ -560,6 +560,7 @@
 			"providerConfiguration": "Configuración",
 			"providerCredential": "Credencial",
 			"memberHistory": "Historial de {{name}} ({{number}})",
+			"entityLabel": "Historial de {{name}}",
 			"roleChanged": "Rol modificado",
 			"preferenceFields": {
 				"density": "Densidad",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "Tipos de archivo permitidos",
 				"body": "Cuerpo de la respuesta",
 				"visibilityDefault": "Visibilidad predeterminada",
+				"color": "Color",
+				"wipLimit": "Límite de trabajo en curso",
+				"unit": "Unidad",
+				"currency": "Moneda",
+				"billable": "Facturable",
+				"hasDefaultRate": "Tarifa predeterminada",
+				"rateSet": "Tarifa establecida",
 				"unknown": "Otro ajuste"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Acción masiva realizada",
 				"kb_settings_changed": "Ajustes de la base de conocimiento modificados",
 				"instance_settings_changed": "Ajustes de la instancia actualizados",
+				"label_catalogue_created": "Etiqueta creada",
+				"label_catalogue_updated": "Etiqueta actualizada",
+				"label_catalogue_deleted": "Etiqueta eliminada",
+				"cost_type_created": "Tipo de coste creado",
+				"cost_type_updated": "Tipo de coste actualizado",
+				"hourly_rate_created": "Tarifa por hora añadida",
+				"budget_created": "Presupuesto creado",
+				"state_wip_limit_changed": "Límite de trabajo en curso modificado",
 				"unknown": "Ajustes modificados"
 			}
 		},

@@ -560,6 +560,7 @@
 			"providerConfiguration": "Конфигурација",
 			"providerCredential": "Акредитив",
 			"memberHistory": "Историја за {{name}} ({{number}})",
+			"entityLabel": "Историја за {{name}}",
 			"roleChanged": "Улогата е променета",
 			"preferenceFields": {
 				"density": "Густина",
@@ -634,6 +635,13 @@
 				"attachmentAllowedExtensions": "Дозволени типови датотеки",
 				"body": "Содржина на одговорот",
 				"visibilityDefault": "Стандардна видливост",
+				"color": "Боја",
+				"wipLimit": "Ограничување на работа во тек",
+				"unit": "Единица",
+				"currency": "Валута",
+				"billable": "Наплатливо",
+				"hasDefaultRate": "Стандардна тарифа",
+				"rateSet": "Поставена тарифа",
 				"unknown": "Друга поставка"
 			},
 			"actions": {
@@ -673,6 +681,14 @@
 				"bulk_performed": "Извршена е масовна акција",
 				"kb_settings_changed": "Поставките на базата на знаење се променети",
 				"instance_settings_changed": "Поставките на инстанцата се ажурирани",
+				"label_catalogue_created": "Ознаката е создадена",
+				"label_catalogue_updated": "Ознаката е ажурирана",
+				"label_catalogue_deleted": "Ознаката е избришана",
+				"cost_type_created": "Типот на трошок е создаден",
+				"cost_type_updated": "Типот на трошок е ажуриран",
+				"hourly_rate_created": "Додадена е часовна тарифа",
+				"budget_created": "Буџетот е создаден",
+				"state_wip_limit_changed": "Ограничувањето на работа во тек е променето",
 				"unknown": "Поставките се променети"
 			}
 		},
