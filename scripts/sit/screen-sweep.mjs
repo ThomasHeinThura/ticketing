@@ -167,6 +167,19 @@ function pathOf(url) {
   }
 }
 
+/** A refused settings History read (`GET /api/audit`) only hides that panel; the page stays reachable. */
+export function isHistoryRefusal(url, status) {
+  return pathOf(url) === "/api/audit" && DENIED_STATUS.has(status);
+}
+
+export function isApiDenial(url, status) {
+  return (
+    pathOf(url).startsWith("/api/") &&
+    DENIED_STATUS.has(status) &&
+    !isHistoryRefusal(url, status)
+  );
+}
+
 /**
  * Decide whether the role was denied (reported as `denied`, not as a failure).
  * Signals: redirect to a sign-in page, 401/403/404 on the document or an API
@@ -484,9 +497,9 @@ async function visit(context, job, axeBuilder) {
       const status = response.status();
       if (status < 400) return;
       const url = response.url();
-      if (pathOf(url).startsWith("/api/") && DENIED_STATUS.has(status))
-        apiStatuses.push(status);
-      else failedRequests.push({ url: redactUrl(url), status });
+      if (isApiDenial(url, status)) apiStatuses.push(status);
+      else if (!isHistoryRefusal(url, status))
+        failedRequests.push({ url: redactUrl(url), status });
     });
     page.on("requestfailed", (request) => {
       const failure = request.failure()?.errorText ?? "failed";
