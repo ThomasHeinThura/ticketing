@@ -587,6 +587,31 @@ describe("CreateWorkItemDialog", () => {
     ).toBeNull();
   });
 
+  it("does not offer templates for types unavailable in this project", async () => {
+    mocks.templates = [
+      {
+        id: "usable",
+        name: "Usable template",
+        typeId: "type-1",
+        title: "Task",
+      },
+      {
+        id: "unusable",
+        name: "Unavailable template",
+        typeId: "other",
+        title: "Other",
+      },
+    ];
+    renderDialog();
+    fireEvent.click(screen.getByTestId("create-work-item-template-trigger"));
+    expect(
+      await screen.findByRole("button", { name: "Usable template" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Unavailable template" }),
+    ).toBeNull();
+  });
+
   it("creating from a template sends its id, adopts its type and fills only an empty title", async () => {
     mocks.templates = [
       {
@@ -1170,6 +1195,20 @@ it("retains optional field drafts after a server validation error", async () => 
       name: "common:modals.createTask.labels: Release",
     }),
   ).toBeInTheDocument();
+});
+it("explains when the selected type's workflow became incompatible", async () => {
+  mocks.mutateAsync.mockRejectedValue(
+    new HttpError(
+      422,
+      "The type's published workflow cannot leave this project's default state",
+    ),
+  );
+  renderDialog();
+  await fillRequired();
+  fireEvent.click(screen.getByTestId("create-work-item-submit"));
+  expect(await screen.findByTestId("create-work-item-error")).toHaveTextContent(
+    "workItems:create.errorWorkflow",
+  );
 });
 it("keeps basic creation available without optional field authority or unavailable catalogues", async () => {
   mocks.canUpdate = false;

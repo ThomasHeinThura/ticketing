@@ -13,12 +13,17 @@ import type { WorkItemType } from "@/types/work-item-type";
  * instead of letting it be selected and 400 the create request later. If every row
  * fails, the picker's own empty state says there is nothing to choose from.
  */
-async function getWorkItemTypes(workspaceId: string): Promise<WorkItemType[]> {
-  const response = await client.workspace[":workspaceId"][
-    "work-item-types"
-  ].$get({
-    param: { workspaceId },
-  });
+async function getWorkItemTypes(
+  workspaceId: string,
+  projectId?: string,
+): Promise<WorkItemType[]> {
+  const response = projectId
+    ? await client.projects[":projectId"]["creatable-work-item-types"].$get({
+        param: { projectId },
+      })
+    : await client.workspace[":workspaceId"]["work-item-types"].$get({
+        param: { workspaceId },
+      });
 
   if (!response.ok) {
     throw new HttpError(response.status, "Failed to fetch work item types");

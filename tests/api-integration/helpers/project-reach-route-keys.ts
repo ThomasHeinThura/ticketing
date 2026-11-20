@@ -58,6 +58,7 @@ export const PROJECT_RECOVERY_ROUTE_KEYS = [
 
 /** Reads of one project's own data. */
 export const PROJECT_READ_ROUTE_KEYS = [
+  "GET /api/projects/{projectId}/creatable-work-item-types",
   "GET /api/projects/{projectId}/settings/inheritance",
   "GET /api/project/{id}",
   "GET /api/project/{id}/health",

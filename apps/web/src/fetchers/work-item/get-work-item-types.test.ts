@@ -3,10 +3,14 @@ import getWorkItemTypes from "./get-work-item-types";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
+  getProject: vi.fn(),
 }));
 
 vi.mock("@taskdesk/libs", () => ({
   client: {
+    projects: {
+      ":projectId": { "creatable-work-item-types": { $get: mocks.getProject } },
+    },
     workspace: {
       ":workspaceId": {
         "work-item-types": {
@@ -33,6 +37,19 @@ function makeType(overrides: Record<string, unknown> = {}) {
 describe("getWorkItemTypes", () => {
   beforeEach(() => {
     mocks.get.mockReset();
+    mocks.getProject.mockReset();
+  });
+
+  it("loads the project-specific catalogue for creation", async () => {
+    mocks.getProject.mockResolvedValue({
+      ok: true,
+      json: async () => [makeType()],
+    });
+    expect(await getWorkItemTypes("ws-1", "project-1")).toHaveLength(1);
+    expect(mocks.getProject).toHaveBeenCalledWith({
+      param: { projectId: "project-1" },
+    });
+    expect(mocks.get).not.toHaveBeenCalled();
   });
 
   it("returns valid rows and calls the route with the workspace id", async () => {

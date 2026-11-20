@@ -19,6 +19,7 @@ import {
   apiKeyScopeFromStoredPermissions,
 } from "../utils/require-api-key-permission-scope";
 import { resolveAssigneeEligibility } from "./assignee-eligibility";
+import { canLeaveDefaultState } from "./creation-workflow";
 
 export type CreateAuthorization = {
   userId: string;
@@ -244,16 +245,11 @@ export async function prepareWorkItemCreation(
         .where(eq(schema.workflowTransitionTable.versionId, version.id))
     : [];
   if (
-    !liveTemplates.has(defaultState.stateTemplateId) ||
-    !edges.some(
-      (edge) =>
-        (edge.fromStateTemplateId === null ||
-          edge.fromStateTemplateId === defaultState.stateTemplateId) &&
-        edge.toStateTemplateId !== defaultState.stateTemplateId &&
-        liveTemplates.has(edge.toStateTemplateId) &&
-        states.some(
-          (state) => state.stateTemplateId === edge.toStateTemplateId,
-        ),
+    !canLeaveDefaultState(
+      defaultState.stateTemplateId,
+      new Set(states.map((state) => state.stateTemplateId)),
+      liveTemplates,
+      edges,
     )
   )
     throw new HTTPException(422, {

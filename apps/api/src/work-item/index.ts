@@ -77,7 +77,9 @@ import listAssignablePeople from "./controllers/list-assignable-people";
 import { listHierarchyChildren } from "./controllers/list-hierarchy-children";
 import listWorkItemActivity from "./controllers/list-work-item-activity";
 import listWorkItemTransitions from "./controllers/list-work-item-transitions";
-import listWorkItemTypes from "./controllers/list-work-item-types";
+import listWorkItemTypes, {
+  listCreatableWorkItemTypes,
+} from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
 import moveWorkItem, {
   authoriseMoveTarget,
@@ -298,6 +300,30 @@ const createWorkItemRoute = createRoute({
     422: errorResponse(
       "The requester is not a customer of the project's organisation (A-03)",
     ),
+  },
+});
+
+const listCreatableWorkItemTypesRoute = createRoute({
+  method: "get",
+  operationId: "listCreatableWorkItemTypes",
+  path: "/projects/{projectId}/creatable-work-item-types",
+  tags: ["Work items"],
+  summary: "List work item types usable in a project",
+  middleware: [
+    workspaceAccess.fromProject("projectId", {
+      requireProjectReach: true,
+      deferApiKeyCapability: true,
+    }),
+    requireWorkspaceCapability("work_item:create"),
+  ] as const,
+  request: { params: projectIdParam },
+  responses: {
+    200: jsonResponse(
+      "Types with a leaveable default state",
+      workItemTypeListSchema,
+    ),
+    403: errorResponse("Missing work_item:create permission"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
@@ -1915,6 +1941,13 @@ const workItem = apiRouter<
     const { key } = c.req.valid("param");
     const item = await getWorkItemSla(key, c.get("workspaceId"));
     return c.json(workItemSlaSchema.parse(item), 200);
+  })
+  .openapi(listCreatableWorkItemTypesRoute, async (c) => {
+    const { projectId } = c.req.valid("param");
+    return c.json(
+      await listCreatableWorkItemTypes(c.get("workspaceId"), projectId),
+      200,
+    );
   })
   .openapi(listWorkItemTypesRoute, async (c) => {
     const { workspaceId } = c.req.valid("param");

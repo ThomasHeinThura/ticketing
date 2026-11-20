@@ -76,6 +76,15 @@ describe("createWorkItem", () => {
     });
   });
 
+  it("preserves the workflow refusal on a 422 response", async () => {
+    const detail =
+      "The type's published workflow cannot leave this project's default state";
+    mocks.post.mockResolvedValue(new Response(detail, { status: 422 }));
+    await expect(
+      createWorkItem({ projectId: "proj-1", typeId: "t", title: "x" }),
+    ).rejects.toMatchObject({ status: 422, message: detail });
+  });
+
   it("throws an HttpError carrying the real status for a non-ok response (the dialog splits 403 and 400)", async () => {
     mocks.post.mockResolvedValue({ ok: false, status: 403 });
 
