@@ -4295,7 +4295,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
-			"replyAfterReview": "You can reply once your request has been reviewed or the team asks for more information.",
+			"replyAfterReview": "Je kunt reageren zodra je verzoek is beoordeeld of het team om meer informatie vraagt.",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",

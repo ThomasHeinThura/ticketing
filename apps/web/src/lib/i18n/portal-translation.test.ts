@@ -3,6 +3,7 @@ import { createInstance } from "i18next";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import english from "../../../../../i18n/en-US.json";
+import { loadLocale, supportedLocales } from "../../../../../i18n/resources";
 import { i18n as baseI18n } from "./index";
 import {
   getDefaultPortalTerm,
@@ -40,6 +41,15 @@ async function isolatedTranslator(noun = "Case", plural = "Cases") {
 }
 
 describe("portal terminology translation", () => {
+  it("provides the reply explanation in every supported language", async () => {
+    for (const locale of supportedLocales.filter((item) => item !== "en-US")) {
+      const translations = (await loadLocale(locale)) as typeof english;
+      expect(translations.portal.request.replyAfterReview, locale).not.toBe(
+        english.portal.request.replyAfterReview,
+      );
+    }
+  });
+
   it("injects the active isolated customer noun into one and other forms", async () => {
     const { t } = await isolatedTranslator();
     expect(t("portal:navigation.requests")).toBe("My Cases");

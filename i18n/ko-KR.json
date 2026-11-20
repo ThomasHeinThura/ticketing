@@ -4281,7 +4281,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
-			"replyAfterReview": "You can reply once your request has been reviewed or the team asks for more information.",
+			"replyAfterReview": "요청이 검토되거나 팀에서 추가 정보를 요청하면 답변할 수 있습니다.",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",
