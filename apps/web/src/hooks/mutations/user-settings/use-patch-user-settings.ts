@@ -1,6 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
-import { capturePreferencesHistoryRefresh } from "@/fetchers/settings/personal-history";
 import {
   patchUserSettings,
   type UserSettingsPatch,
@@ -14,7 +13,6 @@ import { profileSessionGuard } from "@/lib/profile-session-guard";
  * next successful load (settings-hierarchy.md ST-17).
  */
 export function usePatchUserSettings() {
-  const client = useQueryClient();
   const { user } = useAuth();
   const { data: session } = authClient.useSession();
   return useMutation({
@@ -24,13 +22,17 @@ export function usePatchUserSettings() {
       const host = window.location.host;
       if (!userId || !sessionId || user?.id !== userId)
         throw new Error("Settings save cancelled: no session");
-      const refresh = capturePreferencesHistoryRefresh(client, session);
       await profileSessionGuard(userId, sessionId)();
       if (window.location.host !== host)
         throw new Error("Settings save cancelled: host changed");
-      const result = await patchUserSettings(patch);
-      refresh();
-      return result;
+      return patchUserSettings(patch);
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "preferences" },
+        ],
+      },
     },
   });
 }

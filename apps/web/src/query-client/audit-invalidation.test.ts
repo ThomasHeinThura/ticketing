@@ -1,6 +1,12 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
+import { HttpError } from "@/lib/http-error";
 import { followAuditInvalidation } from "./audit-invalidation";
+import {
+  historyStamp,
+  SETTINGS_HISTORY_KEY,
+  withdrawHistoryOnRefusal,
+} from "./settings-history-key";
 
 function seeded() {
   const client = new QueryClient();
@@ -54,5 +60,30 @@ describe("audit history follows work-item invalidation", () => {
     expect(invalidated(other, ["work-items", "audit-history", "HELP-1"])).toBe(
       true,
     );
+  });
+});
+
+describe("history withdrawal on a refused query", () => {
+  const stamp = () => historyStamp("any");
+  it("advances the identity epoch for another query's 403 or 404 only", () => {
+    const client = new QueryClient();
+    const before = stamp();
+    withdrawHistoryOnRefusal(
+      client,
+      { queryKey: ["x"] },
+      new HttpError(500, "x"),
+    );
+    withdrawHistoryOnRefusal(
+      client,
+      { queryKey: [SETTINGS_HISTORY_KEY, "h"] },
+      new HttpError(403, "own refusal"),
+    );
+    expect(stamp()).toBe(before);
+    withdrawHistoryOnRefusal(
+      client,
+      { queryKey: ["x"] },
+      new HttpError(404, "x"),
+    );
+    expect(stamp()).not.toBe(before);
   });
 });

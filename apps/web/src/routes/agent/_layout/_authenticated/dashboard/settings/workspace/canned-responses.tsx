@@ -41,30 +41,27 @@ import {
 } from "@taskdesk/ui";
 
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor, {
   type CommentContentSnapshot,
 } from "@/components/activity/comment-editor";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import {
   isForbiddenError,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
 import { SettingsAccessPage } from "@/components/settings/settings-access-page";
-import { SettingsHistory } from "@/components/settings/settings-history";
 import {
   type CannedResponseInput,
   getCannedResponseLibrary,
   removeCannedResponse,
   saveCannedResponse,
 } from "@/fetchers/canned-response/manage-canned-responses";
+import type { HistoryTarget } from "@/hooks/queries/settings/use-settings-history";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { authClient } from "@/lib/auth-client";
-import { profileSessionGuard } from "@/lib/profile-session-guard";
 import {
   type CannedResponseSearch,
   parseCannedResponseSearch,
@@ -77,19 +74,24 @@ export const Route = createFileRoute(
   validateSearch: parseCannedResponseSearch,
   component: CannedResponsesPage,
 });
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 type Snippet = Awaited<ReturnType<typeof getCannedResponseLibrary>>[number];
 const EMPTY_DOCUMENT = { type: "doc", content: [{ type: "paragraph" }] };
 
 function CannedResponseEditor({
   snippet,
-  userId,
+  workspaceId,
   pending,
   error,
   onSave,
   onClose,
 }: {
   snippet?: Snippet;
-  userId?: string;
+  workspaceId?: string;
   pending: boolean;
   error: unknown;
   onSave: (input: CannedResponseInput) => void;
@@ -199,12 +201,17 @@ function CannedResponseEditor({
                 </SelectContent>
               </Select>
             </div>
-            {snippet && userId ? (
-              <SettingsHistory
-                type="canned_response"
-                id={snippet.id}
-                userId={userId}
-              />
+            {snippet && workspaceId ? (
+              <Suspense fallback={null}>
+                <SettingsHistory
+                  target={{
+                    kind: "entity",
+                    type: "canned_response",
+                    id: snippet.id,
+                    scope: { kind: "workspace", workspaceId },
+                  }}
+                />
+              </Suspense>
             ) : null}
             {error ? (
               <Alert variant="error">
@@ -264,7 +271,6 @@ function CannedResponsesPageContent() {
   const navigate = useNavigate({ from: Route.fullPath });
   const openPendingAction = useOpenPendingAction();
   const cache = useQueryClient();
-  const { data: session } = authClient.useSession();
   const { workspace, canManageWorkspaceSettings, isCheckingPermissions } =
     useWorkspacePermission();
   const canManage = canManageWorkspaceSettings();
@@ -292,28 +298,29 @@ function CannedResponsesPageContent() {
           throw new Error(t("settings:cannedResponses.notFound"));
         return removeCannedResponse(target);
       }
-      const userId = session?.user?.id;
-      const sessionId = session?.session?.id;
-      const saved = await saveCannedResponse(
+      return saveCannedResponse(
         workspace.id,
         input.value,
         search.id === "new" ? undefined : search.id,
       );
-      // Nonblocking: a refresh failure never turns a saved change into a failed one.
-      if (userId && sessionId && typeof saved?.id === "string")
-        refreshSettingsHistory(
-          cache,
-          [
-            "settings-history",
-            "canned_response",
-            saved.id,
-            "agent",
-            userId,
-            sessionId,
-          ],
-          profileSessionGuard(userId, sessionId),
-        );
-      return saved;
+    },
+    meta: {
+      audits: {
+        targets: (
+          input: { kind: "save" | "delete" },
+          result: { id?: unknown } | undefined,
+        ): HistoryTarget[] =>
+          workspace && input.kind === "save" && typeof result?.id === "string"
+            ? [
+                {
+                  kind: "entity",
+                  type: "canned_response",
+                  id: result.id,
+                  scope: { kind: "workspace", workspaceId: workspace.id },
+                },
+              ]
+            : [],
+      },
     },
     onSuccess: async (result, input) => {
       if (input.kind === "delete") {
@@ -473,7 +480,7 @@ function CannedResponsesPageContent() {
               <CannedResponseEditor
                 key={`${workspace?.id}:${search.id}`}
                 snippet={selected}
-                userId={session?.user?.id}
+                workspaceId={workspace?.id}
                 pending={mutation.isPending}
                 error={mutation.error}
                 onSave={(value) => mutation.mutate({ kind: "save", value })}

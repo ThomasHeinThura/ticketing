@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +16,7 @@ import {
 const api = vi.hoisted(() => ({
   get: vi.fn(),
   patch: vi.fn(),
+  audited: vi.fn(),
   identity: { user: { id: "user-1" }, session: { id: "s1" } },
 }));
 
@@ -29,6 +34,12 @@ vi.mock("@/fetchers/user-settings/user-settings", () => ({
 function setup(projectId: string | undefined = "proj_1") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    mutationCache: new MutationCache({
+      onSuccess: (data, variables, _context, mutation) =>
+        api.audited(
+          mutation.meta?.audits?.targets(variables as never, data as never),
+        ),
+    }),
   });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -48,6 +59,7 @@ function setup(projectId: string | undefined = "proj_1") {
 beforeEach(() => {
   api.get.mockReset();
   api.patch.mockReset();
+  api.audited.mockReset();
   api.get.mockResolvedValue({
     settings: { "listGroups.proj_1": ["open"], density: "compact" },
   });
@@ -165,38 +177,11 @@ describe("stored value parsers", () => {
   });
 });
 
-it("refreshes the captured preferences history after a queued save completes", async () => {
-  let finish!: (value: { settings: object }) => void;
-  api.patch.mockReturnValueOnce(
-    new Promise((resolve) => {
-      finish = resolve;
-    }),
-  );
-  const { result, queryClient, rerender } = setup();
-  const oldKey = [
-    "personal-settings-history",
-    window.location.host,
-    "preferences",
-    "user-1",
-    "s1",
-  ];
-  const newKey = [
-    "personal-settings-history",
-    window.location.host,
-    "preferences",
-    "user-1",
-    "s2",
-  ];
-  queryClient.setQueryData(oldKey, { rows: ["old"] });
-  queryClient.setQueryData(newKey, { rows: ["other"] });
+it("declares the preferences History target once a queued save completes", async () => {
+  const { result } = setup();
   act(() => result.current.set(["done"]));
-  await waitFor(() => expect(api.patch).toHaveBeenCalledOnce());
-  api.identity = { user: { id: "user-1" }, session: { id: "s2" } };
-  rerender();
-  await act(async () => {
-    finish({ settings: {} });
-  });
-  await waitFor(() => expect(queryClient.getQueryData(oldKey)).toBeNull());
-  expect(queryClient.getQueryData(newKey)).toEqual({ rows: ["other"] });
-  api.identity = { user: { id: "user-1" }, session: { id: "s1" } };
+  await waitFor(() => expect(api.audited).toHaveBeenCalledOnce());
+  expect(api.audited).toHaveBeenCalledWith([
+    { kind: "self", audience: "staff", section: "preferences" },
+  ]);
 });

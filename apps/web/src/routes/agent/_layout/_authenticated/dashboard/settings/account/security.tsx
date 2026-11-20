@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
@@ -10,17 +10,21 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import type { FormEvent } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChangePasswordCard } from "@/components/account/change-password-card";
 import PageTitle from "@/components/page-title";
 import { ConnectedAccountsPanel } from "@/components/settings/connected-accounts-panel";
-import { PersonalSelfHistory } from "@/components/settings/personal-self-history";
 import { getApiUrl } from "@/fetchers/get-api-url";
-import { capturePersonalSelfHistoryRefresh } from "@/fetchers/settings/personal-history";
 import useChangePassword from "@/hooks/mutations/use-change-password";
 import { authClient } from "@/lib/auth-client";
 import { parseAccountSecuritySearch, routes } from "@/lib/routes";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/account/security",
@@ -40,8 +44,23 @@ type FactorStatus = {
 function AccountSecurity() {
   const { t } = useTranslation();
   const passwordChange = useChangePassword();
-  const client = useQueryClient();
-  const { data: session } = authClient.useSession();
+  const verifyTotp = useMutation({
+    mutationFn: async (totp: string) => {
+      const result = await authClient.twoFactor.verifyTotp({ code: totp });
+      if (result.error) throw new Error(t("auth:accountSecurity.codeError"));
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          {
+            kind: "self",
+            audience: "staff",
+            section: "security",
+          },
+        ],
+      },
+    },
+  });
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const { enrollmentRequired, identityLinkIntent } = search;
@@ -95,15 +114,7 @@ function AccountSecurity() {
     setPending(true);
     setError(null);
     try {
-      const refreshHistory = capturePersonalSelfHistoryRefresh(
-        client,
-        "security",
-        "staff",
-        session,
-      );
-      const result = await authClient.twoFactor.verifyTotp({ code });
-      if (result.error) throw new Error(t("auth:accountSecurity.codeError"));
-      refreshHistory();
+      await verifyTotp.mutateAsync(code);
       setTotpUri(null);
       setBackupCodes(pendingBackupCodes);
       setPendingBackupCodes(null);
@@ -128,14 +139,11 @@ function AccountSecurity() {
             {t("auth:accountSecurity.description")}
           </p>
         </header>
-        {session?.user?.id && session.session?.id ? (
-          <PersonalSelfHistory
-            section="security"
-            audience="staff"
-            userId={session.user.id}
-            sessionId={session.session.id}
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{ kind: "self", audience: "staff", section: "security" }}
           />
-        ) : null}
+        </Suspense>
         {status && (!status.required || status.enabled) ? (
           <>
             <ChangePasswordCard

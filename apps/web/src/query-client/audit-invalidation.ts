@@ -1,4 +1,38 @@
 import type { Query, QueryClient } from "@tanstack/react-query";
+import type { HistoryTarget } from "./settings-history-key";
+
+// The controller lives in the lazy History chunk and installs these when it loads. Until then no
+// History query exists, so there is nothing to withdraw and the eager graph stays small.
+export const historyHooks: {
+  onMutation?: (
+    client: QueryClient,
+    meta: AuditMutationMeta | undefined,
+    variables: unknown,
+    result: unknown,
+  ) => void;
+  onRefusal?: (
+    client: QueryClient,
+    query: Pick<Query, "queryKey">,
+    error: unknown,
+  ) => void;
+} = {};
+
+/**
+ * A mutation that writes audited settings declares which History targets it changes. The global
+ * MutationCache withdraws and rereads them on success, before any screen callback runs.
+ * Example: `useMutation({ mutationFn, meta: { audits: { targets: (v: Vars, r: Result) => [{ ... }] } } })`.
+ */
+export type AuditMutationMeta = {
+  audits?: {
+    targets(variables: never, result: never): readonly HistoryTarget[];
+  };
+  [key: string]: unknown;
+};
+declare module "@tanstack/react-query" {
+  interface Register {
+    mutationMeta: AuditMutationMeta;
+  }
+}
 
 /** The work-item key an invalidated query is about, `null` for "all items", `undefined` if unrelated. */
 function invalidatedItemKey(query: Query): string | null | undefined {

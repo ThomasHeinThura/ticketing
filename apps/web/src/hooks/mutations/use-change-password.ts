@@ -1,5 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { capturePersonalSelfHistoryRefresh } from "@/fetchers/settings/personal-history";
+import { useMutation } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 
 type ChangePasswordRequest = {
@@ -9,20 +8,12 @@ type ChangePasswordRequest = {
 };
 
 function useChangePassword() {
-  const client = useQueryClient();
-  const { data: session } = authClient.useSession();
   return useMutation({
     mutationFn: async ({
       currentPassword,
       newPassword,
       revokeOtherSessions,
     }: ChangePasswordRequest) => {
-      const refreshHistory = capturePersonalSelfHistoryRefresh(
-        client,
-        "security",
-        "staff",
-        session,
-      );
       const { data, error } = await authClient.changePassword({
         currentPassword,
         newPassword,
@@ -33,8 +24,14 @@ function useChangePassword() {
         throw new Error(error.code || "UNKNOWN");
       }
 
-      refreshHistory();
       return data;
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "security" },
+        ],
+      },
     },
   });
 }

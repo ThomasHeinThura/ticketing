@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { expect, it, vi } from "vitest";
 import { Route } from "./notifications";
@@ -10,17 +10,10 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    useSession: () => ({
-      data: { user: { id: "staff" }, session: { id: "session" } },
-    }),
-  },
-}));
-vi.mock("@/components/settings/personal-notification-history", () => ({
-  PersonalNotificationHistory: (props: unknown) => {
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: (props: unknown) => {
     mocks.history(props);
-    return null;
+    return <p>Notification history</p>;
   },
 }));
 vi.mock("@/components/account/canonical-mention-preference", () => ({
@@ -33,12 +26,11 @@ vi.mock("@/components/account/quiet-hours-preference", () => ({
   QuietHoursPreference: () => null,
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
-it("mounts staff history for the current session", () => {
+it("mounts staff notification history by target only", async () => {
   const Page = (Route as unknown as { component: ComponentType }).component;
   render(<Page />);
+  await screen.findByText("Notification history");
   expect(mocks.history).toHaveBeenCalledWith({
-    audience: "staff",
-    userId: "staff",
-    sessionId: "session",
+    target: { kind: "self", audience: "staff", section: "notifications" },
   });
 });

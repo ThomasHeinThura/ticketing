@@ -13,33 +13,17 @@ const terminologyMocks = vi.hoisted(() => ({
   preview: vi.fn(),
   save: vi.fn(),
 }));
-const historyMocks = vi.hoisted(() => ({
-  refresh: vi.fn(),
-  session: { user: { id: "u1" }, session: { id: "s1" } } as {
-    user: { id: string };
-    session: { id: string };
-  } | null,
-}));
-
-vi.mock("@/lib/auth-client", () => ({
-  authClient: { useSession: () => ({ data: historyMocks.session }) },
-}));
-vi.mock("@/components/settings/refresh-settings-history", () => ({
-  refreshSettingsHistory: historyMocks.refresh,
-}));
 vi.mock("@/components/settings/settings-history", () => ({
   SettingsHistory: ({
-    id,
-    selector,
+    target,
   }: {
-    id: string;
-    selector: { scope: string; workspaceId?: string };
+    target: { id: string; scope: { kind: string; workspaceId?: string } };
   }) => (
     <div
       data-testid="term-history"
-      data-id={id}
-      data-scope={selector.scope}
-      data-workspace={selector.workspaceId}
+      data-id={target.id}
+      data-scope={target.scope.kind}
+      data-workspace={target.scope.workspaceId}
     />
   ),
 }));
@@ -63,7 +47,6 @@ vi.mock("@/fetchers/terminology", () => ({
 
 afterEach(() => {
   vi.clearAllMocks();
-  historyMocks.session = { user: { id: "u1" }, session: { id: "s1" } };
 });
 
 async function renderEditor(overrides: unknown[] = []) {
@@ -254,7 +237,24 @@ it("keeps History on the selected catalogue cell across term, audience and local
   );
 });
 
-it("refreshes only the captured cell after a save even if selection changes", async () => {
+/** The History targets the global MutationCache would withdraw for the last save. */
+const savedTargets = (queryClient: QueryClient) => {
+  const mutation = queryClient.getMutationCache().getAll().at(-1);
+  return mutation?.options.meta?.audits?.targets(
+    mutation.state.variables as never,
+    undefined as never,
+  );
+};
+const cell = (id: string) => [
+  {
+    kind: "entity",
+    type: "terminology_override",
+    id,
+    scope: { kind: "workspace", workspaceId: "workspace-a" },
+  },
+];
+
+it("declares only the captured cell for a save even if selection changes", async () => {
   let finish!: (value: { overrides: unknown[]; etag: string }) => void;
   terminologyMocks.save.mockImplementation(
     () =>
@@ -274,26 +274,17 @@ it("refreshes only the captured cell after a save even if selection changes", as
   fireEvent.click(screen.getByRole("combobox", { name: "Term" }));
   fireEvent.click(await screen.findByRole("option", { name: "project" }));
   finish({ overrides: [], etag: '"v2"' });
-  await waitFor(() => expect(historyMocks.refresh).toHaveBeenCalledOnce());
-  expect(historyMocks.refresh).toHaveBeenCalledWith(
-    queryClient,
-    [
-      "settings-history",
-      "terminology_override",
-      "request:both:en-US",
-      "workspace",
-      "workspace-a",
-      "agent",
-      "u1",
-      "s1",
-    ],
-    expect.any(Function),
+  await waitFor(() =>
+    expect(queryClient.getMutationCache().getAll().at(-1)?.state.status).toBe(
+      "success",
+    ),
   );
+  expect(savedTargets(queryClient)).toEqual(cell("request:both:en-US"));
 });
 
-it("retains History after reset and does not refresh it after a failed save", async () => {
+it("retains History after reset and keeps the screen usable after a failed save", async () => {
   terminologyMocks.save.mockResolvedValueOnce({ overrides: [], etag: '"v2"' });
-  await renderEditor([
+  const { queryClient } = await renderEditor([
     {
       audience: "both",
       termKey: "request",
@@ -303,12 +294,16 @@ it("retains History after reset and does not refresh it after a failed save", as
   ]);
   await screen.findByDisplayValue("Case");
   fireEvent.click(screen.getByRole("button", { name: "Use default" }));
-  await waitFor(() => expect(historyMocks.refresh).toHaveBeenCalledOnce());
+  await waitFor(() =>
+    expect(queryClient.getMutationCache().getAll().at(-1)?.state.status).toBe(
+      "success",
+    ),
+  );
+  expect(savedTargets(queryClient)).toEqual(cell("request:both:en-US"));
   expect(screen.getByTestId("term-history")).toHaveAttribute(
     "data-id",
     "request:both:en-US",
   );
-  historyMocks.refresh.mockClear();
   terminologyMocks.save.mockRejectedValueOnce(new Error("refused"));
   fireEvent.change(screen.getByLabelText("One"), { target: { value: "New" } });
   fireEvent.change(screen.getByLabelText("Other"), {
@@ -316,12 +311,4 @@ it("retains History after reset and does not refresh it after a failed save", as
   });
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await screen.findByRole("alert");
-  expect(historyMocks.refresh).not.toHaveBeenCalled();
-});
-
-it("does not mount History without a session", async () => {
-  historyMocks.session = null;
-  await renderEditor();
-  await screen.findByLabelText("One");
-  expect(screen.queryByTestId("term-history")).toBeNull();
 });

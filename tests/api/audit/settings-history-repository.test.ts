@@ -352,7 +352,7 @@ describe("settings history repository scope", () => {
     expect(queries).toHaveLength(3);
     for (const query of queries.slice(0, 2)) {
       expect(query.sql).toContain('from "instance_setting"');
-      expect(query.sql).toContain('"audit_log"."action" =');
+      expect(query.sql).toMatch(/"audit_log"\."action" in \(\$\d+\)/);
       expect(query.sql).toContain('"audit_log"."workspace_id" is null');
       expect(query.sql).toContain('"audit_log"."project_id" is null');
       expect(query.params).toContain("instance");

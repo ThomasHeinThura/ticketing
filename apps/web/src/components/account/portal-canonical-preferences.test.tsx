@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -9,9 +13,9 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PortalCanonicalPreference } from "@/fetchers/notification-preferences/portal-canonical-preference";
-import * as personalHistory from "@/fetchers/settings/personal-history";
 
 const mocks = vi.hoisted(() => ({
+  audited: vi.fn(),
   get: vi.fn(),
   save: vi.fn(),
   handoff: vi.fn(),
@@ -69,6 +73,12 @@ function rows(): PortalCanonicalPreference[] {
 function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    mutationCache: new MutationCache({
+      onSuccess: (data, variables, _context, mutation) =>
+        mocks.audited(
+          mutation.meta?.audits?.targets(variables as never, data as never),
+        ),
+    }),
   });
   client.setQueryData(["portal", "session"], {
     user: { id: "customer-1" },
@@ -175,10 +185,7 @@ describe("portal notification preferences", () => {
   });
 
   it("saves an explicit event and announces one success", async () => {
-    const refreshed = vi.fn();
-    const capture = vi
-      .spyOn(personalHistory, "captureNotificationHistoryRefresh")
-      .mockReturnValue(refreshed);
+    mocks.audited.mockClear();
     renderPage();
     await screen.findByText(
       "portal:account.notifications.requestAccepted.title",
@@ -199,13 +206,11 @@ describe("portal notification preferences", () => {
         digest: "off",
       });
     });
-    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce());
-    expect(capture.mock.calls[0][1]).toBe("portal");
-    expect(capture.mock.calls[0][2]).toEqual({
-      user: { id: "customer-1" },
-      session: { id: "s1" },
-    });
-    capture.mockRestore();
+    await waitFor(() =>
+      expect(mocks.audited).toHaveBeenCalledWith([
+        { kind: "self", audience: "portal", section: "notifications" },
+      ]),
+    );
     await waitFor(() => {
       const announcements = accepted
         .getAllByRole("status")
@@ -221,10 +226,7 @@ describe("portal notification preferences", () => {
   });
 
   it("retains the draft on save failure and retries without exposing server text", async () => {
-    const refreshed = vi.fn();
-    const capture = vi
-      .spyOn(personalHistory, "captureNotificationHistoryRefresh")
-      .mockReturnValue(refreshed);
+    mocks.audited.mockClear();
     mocks.save.mockRejectedValueOnce(new Error("private server detail"));
     renderPage();
     await screen.findByText("portal:account.notifications.transition.title");
@@ -238,7 +240,7 @@ describe("portal notification preferences", () => {
     expect(await transition.findByRole("alert")).toHaveTextContent(
       "portal:account.notifications.saveFailed",
     );
-    expect(refreshed).not.toHaveBeenCalled();
+    expect(mocks.audited).not.toHaveBeenCalled();
     expect(screen.queryByText("private server detail")).toBeNull();
     expect(transition.getByRole("switch")).toBeChecked();
     fireEvent.click(
@@ -248,8 +250,7 @@ describe("portal notification preferences", () => {
     );
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(transition.queryByRole("alert")).toBeNull());
-    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce());
-    capture.mockRestore();
+    await waitFor(() => expect(mocks.audited).toHaveBeenCalledOnce());
   });
 
   it("retries loading and renders no arbitrary handoff key", async () => {
@@ -274,10 +275,7 @@ describe("portal notification preferences", () => {
   });
 
   it("saves and clears the customer's own quiet hours through the portal API", async () => {
-    const refreshed = vi.fn();
-    const capture = vi
-      .spyOn(personalHistory, "captureNotificationHistoryRefresh")
-      .mockReturnValue(refreshed);
+    mocks.audited.mockClear();
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     renderPage();
     fireEvent.click(
@@ -298,12 +296,10 @@ describe("portal notification preferences", () => {
       expect(mocks.saveQuiet).toHaveBeenCalledTimes(2);
       expect(mocks.saveQuiet.mock.calls[1]?.[0]).toBeNull();
     });
-    await waitFor(() => expect(refreshed).toHaveBeenCalledTimes(2));
-    expect(capture.mock.calls.map((call) => call[1])).toEqual([
-      "portal",
-      "portal",
+    await waitFor(() => expect(mocks.audited).toHaveBeenCalledTimes(2));
+    expect(mocks.audited).toHaveBeenLastCalledWith([
+      { kind: "self", audience: "portal", section: "notifications" },
     ]);
-    capture.mockRestore();
   });
 
   it("retries a quiet-hours load refusal without exposing the response", async () => {

@@ -4,7 +4,7 @@ import {
   handleUnauthorized,
   isUnauthorizedError,
 } from "@/lib/http-error";
-import { followAuditInvalidation } from "./audit-invalidation";
+import { followAuditInvalidation, historyHooks } from "./audit-invalidation";
 import { configureNotifyScheduler } from "./notify-scheduler";
 
 configureNotifyScheduler();
@@ -105,33 +105,40 @@ export function shouldRetryQuery(failureCount: number, error: unknown) {
 /** The portal root's cached session read (`routes/portal/__root.tsx`). */
 export const portalSessionQueryKey = ["portal", "session"] as const;
 
-const queryClient = new QueryClient({
-  queryCache: new QueryCache({
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        // The session is gone: never answer the next navigation from the cached session.
-        queryClient.removeQueries({ queryKey: portalSessionQueryKey });
-        handleUnauthorized();
-        return;
-      }
-      captureCacheError(error, "query");
+export function createQueryClient() {
+  const client: QueryClient = new QueryClient({
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        if (isUnauthorizedError(error)) {
+          // The session is gone: never answer the next navigation from the cached session.
+          client.removeQueries({ queryKey: portalSessionQueryKey });
+          handleUnauthorized();
+          return;
+        }
+        historyHooks.onRefusal?.(client, query, error);
+        captureCacheError(error, "query");
+      },
+    }),
+    mutationCache: new MutationCache({
+      onSuccess: (data, variables, _context, mutation) =>
+        historyHooks.onMutation?.(client, mutation.meta, variables, data),
+      onError: (error) => captureCacheError(error, "mutation"),
+    }),
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        retry: shouldRetryQuery,
+      },
+      mutations: {
+        retry: false,
+      },
     },
-  }),
-  mutationCache: new MutationCache({
-    onError: (error) => captureCacheError(error, "mutation"),
-  }),
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-      retry: shouldRetryQuery,
-    },
-    mutations: {
-      retry: false,
-    },
-  },
-});
+  });
+  followAuditInvalidation(client);
+  return client;
+}
 
-followAuditInvalidation(queryClient);
+const queryClient = createQueryClient();
 
 export default queryClient;

@@ -1,12 +1,17 @@
 import { randomBytes } from "node:crypto";
 import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import {
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ComponentType } from "react";
+import { type ComponentType, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "./security";
 
@@ -22,12 +27,7 @@ const fixture = vi.hoisted(() => ({
   verifyTotp: vi.fn(),
   navigate: vi.fn(),
   history: vi.fn(),
-  refreshHistory: vi.fn(),
-}));
-
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useQueryClient: () => ({}),
+  audited: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -42,16 +42,10 @@ vi.mock("react-i18next", async (importOriginal) => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
-vi.mock("@/components/settings/personal-self-history", () => ({
-  PersonalSelfHistory: (props: unknown) => {
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: (props: unknown) => {
     fixture.history(props);
     return null;
-  },
-}));
-vi.mock("@/fetchers/settings/personal-history", () => ({
-  capturePersonalSelfHistoryRefresh: (...args: unknown[]) => {
-    fixture.refreshHistory(...args);
-    return fixture.refreshHistory;
   },
 }));
 vi.mock("@/components/settings/connected-accounts-panel", async () => {
@@ -79,8 +73,25 @@ vi.mock("@/lib/auth-client", () => ({
   },
 }));
 
-const SecurityPage = (Route as unknown as { component: ComponentType })
-  .component;
+const Page = (Route as unknown as { component: ComponentType }).component;
+function SecurityPage() {
+  const [client] = useState(
+    () =>
+      new QueryClient({
+        mutationCache: new MutationCache({
+          onSuccess: (data, variables, _context, mutation) =>
+            fixture.audited(
+              mutation.meta?.audits?.targets(variables as never, data as never),
+            ),
+        }),
+      }),
+  );
+  return (
+    <QueryClientProvider client={client}>
+      <Page />
+    </QueryClientProvider>
+  );
+}
 
 function factorStatus(
   passwordRequiredForEnrollment: boolean,
@@ -115,7 +126,7 @@ describe("account security factor enrollment", () => {
     fixture.verifyTotp.mockReset();
     fixture.navigate.mockReset();
     fixture.history.mockReset();
-    fixture.refreshHistory.mockReset();
+    fixture.audited.mockReset();
     fixture.enable.mockResolvedValue({
       data: {
         method: "totp",
@@ -272,15 +283,15 @@ describe("account security factor enrollment", () => {
     ).toBeInTheDocument();
   });
 
-  it("mounts staff security History and refreshes only after first TOTP verification", async () => {
+  it("mounts staff security History by target and audits only after first TOTP verification", async () => {
     render(<SecurityPage />);
     await screen.findByText("auth:accountSecurity.required");
-    expect(fixture.history).toHaveBeenCalledWith({
-      section: "security",
-      audience: "staff",
-      userId: "u1",
-      sessionId: "s1",
-    });
+    await waitFor(() =>
+      expect(fixture.history).toHaveBeenCalledWith({
+        target: { kind: "self", audience: "staff", section: "security" },
+      }),
+    );
+    expect(fixture.audited).not.toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole("button", { name: "auth:accountSecurity.setupButton" }),
     );
@@ -290,7 +301,9 @@ describe("account security factor enrollment", () => {
       screen.getByRole("button", { name: "auth:accountSecurity.verify" }),
     );
     await waitFor(() =>
-      expect(fixture.refreshHistory).toHaveBeenCalledTimes(2),
+      expect(fixture.audited).toHaveBeenCalledWith([
+        { kind: "self", audience: "staff", section: "security" },
+      ]),
     );
   });
 
@@ -310,7 +323,7 @@ describe("account security factor enrollment", () => {
       screen.getByRole("button", { name: "auth:accountSecurity.verify" }),
     );
     await screen.findByText("auth:accountSecurity.codeError");
-    expect(fixture.refreshHistory).toHaveBeenCalledTimes(1);
+    expect(fixture.audited).not.toHaveBeenCalled();
   });
 
   it("clears the callback intent while preserving the TOTP enrollment query", async () => {

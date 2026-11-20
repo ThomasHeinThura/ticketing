@@ -58,9 +58,8 @@
 @source not "./components/settings/feature-flags-panel.tsx";
 @source not "./components/settings/instance-settings-frame.tsx";
 @source not "./components/settings/label-catalogue.tsx";
-@source not "./components/settings/personal-preferences-history.tsx";
-@source not "./components/settings/personal-profile-history.tsx";
 @source not "./components/settings/roles";
+@source not "./components/settings/service-key-history-dialog.tsx";
 @source not "./components/settings/service-keys-card.tsx";
 @source not "./components/settings/settings-access-page.tsx";
 @source not "./components/settings/settings-access.tsx";

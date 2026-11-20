@@ -18,6 +18,9 @@ vi.mock("@/lib/auth-client", () => ({
     }),
   },
 }));
+vi.mock("@/lib/profile-session-guard", () => ({
+  profileSessionGuard: () => async () => undefined,
+}));
 vi.mock("../providers/auth-provider/hooks/use-auth", () => ({
   useAuth: () => ({ user: { id: "reader" } }),
 }));

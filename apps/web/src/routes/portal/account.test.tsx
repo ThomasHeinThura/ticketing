@@ -1,11 +1,16 @@
 import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import {
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ComponentType } from "react";
+import { type ComponentType, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "./account";
 
@@ -13,11 +18,8 @@ const mocks = vi.hoisted(() => ({
   change: vi.fn(),
   success: vi.fn(),
   history: vi.fn(),
-  securityHistory: vi.fn(),
-  captureHistory: vi.fn(),
-  refreshHistory: vi.fn(),
+  audited: vi.fn(),
   historyDenied: false,
-  sessionUser: "customer",
 }));
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
@@ -35,29 +37,11 @@ vi.mock("@/components/account/portal-canonical-preferences", () => ({
   PortalCanonicalPreferencesPage: ({ history }: { history: React.ReactNode }) =>
     history,
 }));
-vi.mock("@/components/settings/personal-notification-history", () => ({
-  PersonalNotificationHistory: (props: unknown) => {
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: (props: unknown) => {
     mocks.history(props);
-    return null;
-  },
-}));
-vi.mock("@/components/settings/personal-self-history", () => ({
-  PersonalSelfHistory: (props: unknown) => {
-    mocks.securityHistory(props);
     return mocks.historyDenied ? <p role="alert">History unavailable</p> : null;
   },
-}));
-vi.mock("@/fetchers/settings/personal-history", () => ({
-  capturePersonalSelfHistoryRefresh: (...args: unknown[]) => {
-    mocks.captureHistory(...args);
-    return mocks.refreshHistory;
-  },
-}));
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({
-    data: { user: { id: mocks.sessionUser }, session: { id: "s1" } },
-  }),
-  useQueryClient: () => ({}),
 }));
 vi.mock("@/components/portal/portal-page-title", () => ({
   PortalPageTitle: () => null,
@@ -66,7 +50,25 @@ vi.mock("@/lib/toast", () => ({ toast: { success: mocks.success } }));
 vi.mock("@/lib/portal-auth-client", () => ({
   portalAuthClient: { $fetch: mocks.change },
 }));
-const Account = (Route as unknown as { component: ComponentType }).component;
+const Page = (Route as unknown as { component: ComponentType }).component;
+function Account() {
+  const [client] = useState(
+    () =>
+      new QueryClient({
+        mutationCache: new MutationCache({
+          onSuccess: (data, variables, _context, mutation) =>
+            mocks.audited(
+              mutation.meta?.audits?.targets(variables as never, data as never),
+            ),
+        }),
+      }),
+  );
+  return (
+    <QueryClientProvider client={client}>
+      <Page />
+    </QueryClientProvider>
+  );
+}
 
 function status(hasLocalPassword: boolean) {
   vi.stubGlobal(
@@ -97,37 +99,26 @@ function fillAndSubmit() {
 beforeEach(() => {
   mocks.change.mockReset();
   mocks.success.mockReset();
-  mocks.captureHistory.mockReset();
-  mocks.refreshHistory.mockReset();
-  mocks.securityHistory.mockReset();
+  mocks.history.mockReset();
+  mocks.audited.mockReset();
   mocks.historyDenied = false;
-  mocks.sessionUser = "customer";
 });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
 describe("portal account password section", () => {
-  it("mounts portal notification history for the authenticated session", () => {
+  it("mounts portal notification and security history by target only", async () => {
     status(false);
     render(<Account />);
+    await waitFor(() =>
+      expect(mocks.history).toHaveBeenCalledWith({
+        target: { kind: "self", audience: "portal", section: "security" },
+      }),
+    );
     expect(mocks.history).toHaveBeenCalledWith({
-      audience: "portal",
-      userId: "customer",
-      sessionId: "s1",
+      target: { kind: "self", audience: "portal", section: "notifications" },
     });
-    expect(mocks.securityHistory).toHaveBeenCalledWith({
-      section: "security",
-      audience: "portal",
-      userId: "customer",
-      sessionId: "s1",
-    });
-  });
-  it("omits security History for a mismatched portal session", () => {
-    mocks.sessionUser = "someone-else";
-    status(false);
-    render(<Account />);
-    expect(mocks.securityHistory).not.toHaveBeenCalled();
   });
   it("hides for SSO-only accounts", async () => {
     status(false);
@@ -154,7 +145,7 @@ describe("portal account password section", () => {
         revokeOtherSessions: true,
       },
     });
-    expect(mocks.refreshHistory).not.toHaveBeenCalled();
+    expect(mocks.audited).not.toHaveBeenCalled();
   });
   it("clears the fields and shows a toast after success", async () => {
     status(true);
@@ -168,16 +159,9 @@ describe("portal account password section", () => {
       ).toHaveValue(""),
     );
     expect(mocks.success).toHaveBeenCalled();
-    expect(mocks.captureHistory).toHaveBeenCalledWith(
-      expect.anything(),
-      "security",
-      "portal",
-      {
-        user: { id: "customer" },
-        session: { id: "s1" },
-      },
-    );
-    expect(mocks.refreshHistory).toHaveBeenCalledOnce();
+    expect(mocks.audited).toHaveBeenCalledWith([
+      { kind: "self", audience: "portal", section: "security" },
+    ]);
   });
 
   it("keeps an authorized password save working while History is denied", async () => {
@@ -188,6 +172,8 @@ describe("portal account password section", () => {
     await screen.findByRole("button", { name: "auth:changePassword.submit" });
     fillAndSubmit();
     await waitFor(() => expect(mocks.success).toHaveBeenCalledOnce());
-    expect(screen.getByRole("alert")).toHaveTextContent("History unavailable");
+    expect(await screen.findAllByText("History unavailable")).not.toHaveLength(
+      0,
+    );
   });
 });

@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  getSettingsHistory,
-  settingsHistoryQueryKey,
-} from "./settings-history";
+import { getSettingsHistory } from "./settings-history";
 
 const get = vi.hoisted(() => vi.fn());
 vi.mock("@taskdesk/libs", () => ({ client: { audit: { $get: get } } }));
@@ -51,21 +48,10 @@ it("forwards the optional abort signal to the entity request", async () => {
   );
 });
 
-it("partitions the same terminology cell by explicit instance and workspace scope", async () => {
+it("sends the explicit instance or workspace scope of a terminology cell", async () => {
   const id = "request:both:en-US";
   const instance = { scope: "instance" } as const;
   const workspaceA = { scope: "workspace", workspaceId: "w1" } as const;
-  const workspaceB = { scope: "workspace", workspaceId: "w2" } as const;
-  expect(
-    settingsHistoryQueryKey("terminology_override", id, "u", "s", instance),
-  ).not.toEqual(
-    settingsHistoryQueryKey("terminology_override", id, "u", "s", workspaceA),
-  );
-  expect(
-    settingsHistoryQueryKey("terminology_override", id, "u", "s", workspaceA),
-  ).not.toEqual(
-    settingsHistoryQueryKey("terminology_override", id, "u", "s", workspaceB),
-  );
   get.mockResolvedValue({
     ok: true,
     json: async () => ({

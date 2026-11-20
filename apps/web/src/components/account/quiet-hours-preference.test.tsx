@@ -7,10 +7,10 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as personalHistory from "@/fetchers/settings/personal-history";
 import { translate } from "@/test/en-translation";
 
 const mocks = vi.hoisted(() => ({
+  audits: undefined as unknown,
   save: vi.fn(),
   invalidate: vi.fn(),
   quietHours: null as { start: string; end: string; timezone: string } | null,
@@ -41,14 +41,18 @@ vi.mock("@tanstack/react-query", () => ({
   useMutation: ({
     mutationFn,
     onSuccess,
+    meta,
   }: {
     mutationFn: (value: unknown) => Promise<unknown>;
     onSuccess: (data: unknown, variables: unknown) => Promise<void>;
+    meta: { audits: { targets: () => unknown } };
   }) => ({
     isPending: mocks.pending,
     isError: false,
-    mutate: (value: unknown) =>
-      void mutationFn(value).then((data) => onSuccess(data, value)),
+    mutate: (value: unknown) => {
+      mocks.audits = meta.audits.targets();
+      void mutationFn(value).then((data) => onSuccess(data, value));
+    },
   }),
 }));
 
@@ -102,10 +106,6 @@ beforeEach(() => {
 
 describe("quiet hours preference", () => {
   it("does not save on open and needs an explicit save", async () => {
-    const refreshed = vi.fn();
-    const capture = vi
-      .spyOn(personalHistory, "captureNotificationHistoryRefresh")
-      .mockReturnValue(refreshed);
     const { container } = render(<QuietHoursPreference />);
     expect(mocks.save).not.toHaveBeenCalled();
     expect(container.querySelector('input[type="time"]')).toBeNull();
@@ -113,8 +113,9 @@ describe("quiet hours preference", () => {
     expect(mocks.save).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Save quiet hours" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce());
-    capture.mockRestore();
+    expect(mocks.audits).toEqual([
+      { kind: "self", audience: "staff", section: "notifications" },
+    ]);
     await screen.findByRole("button", { name: "Saved" });
     const announcements = screen
       .getAllByRole("status")
@@ -169,19 +170,15 @@ describe("quiet hours preference", () => {
   });
 
   it("turns quiet hours off with null", async () => {
-    const refreshed = vi.fn();
-    const capture = vi
-      .spyOn(personalHistory, "captureNotificationHistoryRefresh")
-      .mockReturnValue(refreshed);
     mocks.quietHours = { start: "22:00", end: "07:00", timezone: "UTC" };
     render(<QuietHoursPreference />);
     fireEvent.click(
       screen.getByRole("button", { name: "Turn off quiet hours" }),
     );
     await waitFor(() => expect(mocks.save).toHaveBeenCalledWith(null));
-    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce());
-    expect(capture.mock.calls[0][1]).toBe("staff");
-    capture.mockRestore();
+    expect(mocks.audits).toEqual([
+      { kind: "self", audience: "staff", section: "notifications" },
+    ]);
   });
 
   it("preserves the local minute boundaries of an overnight window", async () => {

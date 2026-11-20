@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -10,8 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
-  refresh: vi.fn(),
-  assertSession: vi.fn(),
+  audited: vi.fn(),
   session: { user: { id: "user-1" }, session: { id: "session-1" } },
   save: vi.fn(),
   test: vi.fn(),
@@ -20,19 +23,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth-client", () => ({
   authClient: { useSession: () => ({ data: mocks.session }) },
 }));
-vi.mock("@/components/settings/refresh-settings-history", () => ({
-  refreshSettingsHistory: mocks.refresh,
-}));
 vi.mock("@/components/settings/settings-history", () => ({
-  SettingsHistory: ({ id, userId }: { id: string; userId: string }) => (
-    <div data-testid="storage-history" data-user={userId}>
-      {id}
-    </div>
+  SettingsHistory: ({ target }: { target: { id: string } }) => (
+    <div data-testid="storage-history">{target.id}</div>
   ),
-}));
-vi.mock("@/fetchers/settings/personal-history", () => ({
-  assertNotificationHistorySession: (...args: unknown[]) =>
-    mocks.assertSession(...args),
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -91,6 +85,12 @@ afterEach(cleanup);
 function setup() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
+    mutationCache: new MutationCache({
+      onSuccess: (data, variables, _context, mutation) =>
+        mocks.audited(
+          mutation.meta?.audits?.targets(variables as never, data as never),
+        ),
+    }),
   });
   render(
     <QueryClientProvider client={client}>
@@ -477,7 +477,16 @@ describe("S3DraftPanel", () => {
   });
 });
 
-it("shows History for the persisted draft and refreshes the captured key after save", async () => {
+const storageTarget = [
+  {
+    kind: "entity",
+    type: "instance_storage_draft",
+    id: "storage-row",
+    scope: { kind: "instance" },
+  },
+];
+
+it("shows History for the persisted draft and audits its id after save", async () => {
   setup();
   expect(await screen.findByTestId("storage-history")).toHaveTextContent(
     "storage-row",
@@ -485,18 +494,7 @@ it("shows History for the persisted draft and refreshes the captured key after s
   await factor();
   fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
   await waitFor(() =>
-    expect(mocks.refresh).toHaveBeenCalledWith(
-      expect.anything(),
-      [
-        "settings-history",
-        "instance_storage_draft",
-        "storage-row",
-        "agent",
-        "user-1",
-        "session-1",
-      ],
-      expect.any(Function),
-    ),
+    expect(mocks.audited).toHaveBeenCalledWith(storageTarget),
   );
 });
 
@@ -510,21 +508,10 @@ it("mounts first-save History only after receiving the persisted ID", async () =
   expect(await screen.findByTestId("storage-history")).toHaveTextContent(
     "storage-row",
   );
-  expect(mocks.refresh).toHaveBeenCalledWith(
-    expect.anything(),
-    [
-      "settings-history",
-      "instance_storage_draft",
-      "storage-row",
-      "agent",
-      "user-1",
-      "session-1",
-    ],
-    expect.any(Function),
-  );
+  expect(mocks.audited).toHaveBeenCalledWith(storageTarget);
 });
 
-it("does not refresh History on a refused save or a storage probe", async () => {
+it("does not audit a refused save or a storage probe", async () => {
   mocks.save.mockRejectedValueOnce(
     new IdentityAdminError(403, "failed", "step_up", null),
   );
@@ -533,65 +520,46 @@ it("does not refresh History on a refused save or a storage probe", async () => 
   await factor();
   fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
   await screen.findByText("draft.operationFailed");
-  expect(mocks.refresh).not.toHaveBeenCalled();
+  expect(mocks.audited).not.toHaveBeenCalled();
   await factor();
   fireEvent.click(screen.getByRole("button", { name: "draft.test" }));
   await waitFor(() => expect(mocks.test).toHaveBeenCalled());
-  expect(mocks.refresh).not.toHaveBeenCalled();
+  expect(mocks.audited).not.toHaveBeenCalled();
 });
 
-it("completes save feedback while History refresh stalls", async () => {
-  mocks.refresh.mockImplementation(() => new Promise(() => {}));
-  setup();
-  await screen.findByText("draft.inactive");
-  await factor();
-  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
-  expect(
-    await screen.findByRole("button", { name: "common:actions.saved" }),
-  ).toBeEnabled();
-  expect(screen.getByLabelText("stepUp.password")).toHaveValue("");
-});
-
-it("keeps the saved refresh bound to the original session after a switch", async () => {
-  let finish!: (value: typeof data) => void;
-  mocks.save.mockReturnValue(
-    new Promise((resolve) => {
-      finish = resolve;
-    }),
-  );
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+it("persists the save response into the canonical cache and keeps credentials out of the mutation", async () => {
+  const client = setup();
+  fireEvent.change(await screen.findByLabelText("draft.bucket"), {
+    target: { value: "other-bucket" },
   });
-  const view = render(
-    <QueryClientProvider client={client}>
-      <S3DraftPanel />
-    </QueryClientProvider>,
-  );
-  await screen.findByText("draft.inactive");
+  fireEvent.change(await screen.findByLabelText("draft.accessValue"), {
+    target: { value: "AKIA-synthetic" },
+  });
+  fireEvent.change(await screen.findByLabelText("draft.secretValue"), {
+    target: { value: "shh-synthetic" },
+  });
   await factor();
   fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
-  await waitFor(() => expect(mocks.save).toHaveBeenCalled());
-  mocks.session = { user: { id: "user-2" }, session: { id: "session-2" } };
-  view.rerender(
-    <QueryClientProvider client={client}>
-      <S3DraftPanel />
-    </QueryClientProvider>,
-  );
-  finish(data);
+  await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
   await waitFor(() =>
-    expect(mocks.refresh).toHaveBeenCalledWith(
-      expect.anything(),
-      [
-        "settings-history",
-        "instance_storage_draft",
-        "storage-row",
-        "agent",
+    expect(
+      client.getQueryData([
+        "god-mode",
+        "s3-draft",
+        window.location.host,
         "user-1",
         "session-1",
-      ],
-      expect.any(Function),
-    ),
+      ]),
+    ).toEqual({ ...data, version: 4 }),
   );
+  const mutations = client.getMutationCache().getAll();
+  expect(mutations.length).toBeGreaterThan(0);
+  for (const mutation of mutations) {
+    expect(mutation.state.variables).toBeUndefined();
+    expect(
+      JSON.stringify([mutation.options.meta, mutation.state.data]),
+    ).not.toMatch(/AKIA-synthetic|shh-synthetic/);
+  }
 });
 
 it("hides History when the source read is refused", async () => {
@@ -601,42 +569,4 @@ it("hides History when the source read is refused", async () => {
   setup();
   await screen.findByText("draft.loadFailed");
   expect(screen.queryByTestId("storage-history")).toBeNull();
-});
-
-it("guards the saved refresh with the captured host and identity", async () => {
-  setup();
-  await screen.findByText("draft.inactive");
-  await factor();
-  fireEvent.click(screen.getByRole("button", { name: "draft.save" }));
-  await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
-  await mocks.refresh.mock.calls[0][2]();
-  expect(mocks.assertSession).toHaveBeenCalledWith(
-    "staff",
-    "user-1",
-    "session-1",
-    window.location.host,
-  );
-});
-
-it("does not mount History for an impersonated session", async () => {
-  Object.assign(mocks.session.session, { impersonatedBy: "admin" });
-  setup();
-  await screen.findByText("draft.inactive");
-  expect(screen.queryByTestId("storage-history")).toBeNull();
-});
-
-it("replaces History when the source target changes", async () => {
-  const client = setup();
-  expect(await screen.findByTestId("storage-history")).toHaveTextContent(
-    "storage-row",
-  );
-  client.setQueryData(
-    ["god-mode", "s3-draft", window.location.host, "user-1", "session-1"],
-    { ...data, id: "new-storage-row" },
-  );
-  await waitFor(() =>
-    expect(screen.getByTestId("storage-history")).toHaveTextContent(
-      "new-storage-row",
-    ),
-  );
 });

@@ -7,8 +7,6 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { personalSelfHistoryKey } from "@/fetchers/settings/personal-history";
-import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
 import { PendingActionApproval } from "./pending-action-approval";
 
 const mocks = vi.hoisted(() => ({
@@ -23,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   pathname: { current: "" },
   invalidate: vi.fn(),
+  audited: vi.fn(),
   cancelQueries: vi.fn(),
   setQueryData: vi.fn(),
   getSession: vi.fn(),
@@ -65,11 +64,19 @@ vi.mock("@tanstack/react-query", () => ({
   }),
   useMutation: ({
     mutationFn,
+    meta,
   }: {
     mutationFn: (v: unknown) => Promise<unknown>;
+    meta?: {
+      audits: { targets: (variables: unknown, result: unknown) => unknown };
+    };
   }) => ({
     isPending: false,
-    mutateAsync: (value: unknown) => mutationFn(value),
+    mutateAsync: async (value: unknown) => {
+      const result = await mutationFn(value);
+      if (meta) mocks.audited(meta.audits.targets(value, result));
+      return result;
+    },
   }),
 }));
 vi.mock("@/lib/auth-client", () => ({
@@ -526,204 +533,29 @@ describe("personal API-key deletion confirmation", () => {
   });
 });
 
-describe("personal API-key deletion History", () => {
-  const personalAction = (kind: string) => ({
+describe("API-key deletion History", () => {
+  const keyAction = (summary: Record<string, unknown>, over = {}) => ({
     id: "pa-api-key",
     action: "delete",
     targetType: "api_key",
     targetIds: ["key-1"],
-    confirmation: "typed_name_step_up",
-    approvalSupported: true,
-    state: "pending",
-    origin: "web",
-    expiresAt: "2026-10-25T00:00:00.000Z",
-    summary: { name: "Retired local credential", kind },
-  });
-  const historyKey = () =>
-    personalSelfHistoryKey("apiKeys", "staff", "u1", "s1");
-
-  async function submit(onExecuted = vi.fn()) {
-    render(
-      <PendingActionApproval
-        id="pa-api-key"
-        layout="page"
-        onExecuted={onExecuted}
-      />,
-    );
-    fireEvent.change(
-      screen.getByLabelText("pendingActions:registered.confirmName"),
-      {
-        target: { value: "Retired local credential" },
-      },
-    );
-    fireEvent.change(
-      screen.getByLabelText("pendingActions:dynamic.accountPassword"),
-      {
-        target: { value: "fresh-password" },
-      },
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "common:actions.delete" }),
-    );
-    await waitFor(() => expect(mocks.approve).toHaveBeenCalled());
-    return onExecuted;
-  }
-
-  beforeEach(() => {
-    mocks.action.current = personalAction("personal");
-    mocks.sessionId = "s1";
-    mocks.portal = null;
-    mocks.impersonatedBy = null;
-    mocks.activeWorkspaceId = "workspace-1";
-    mocks.approve.mockReset().mockResolvedValue({ state: "executed" });
-    mocks.proof.mockReset().mockResolvedValue("step-up-proof");
-    mocks.invalidate.mockReset().mockResolvedValue(undefined);
-    mocks.cancelQueries.mockReset().mockResolvedValue(undefined);
-    mocks.setQueryData.mockReset();
-    mocks.remove.mockReset();
-    mocks.getSession.mockReset().mockResolvedValue({
-      data: { user: { id: "u1" }, session: { id: "s1" } },
-      error: null,
-    });
-    mocks.navigate.mockReset().mockResolvedValue(undefined);
-    mocks.pathname.current = "/dashboard/settings/account/developer";
-  });
-  afterEach(cleanup);
-
-  it("does not claim History merely by opening the pending action", () => {
-    render(<PendingActionApproval id="pa-api-key" layout="page" />);
-    expect(mocks.cancelQueries).not.toHaveBeenCalled();
-    expect(mocks.approve).not.toHaveBeenCalled();
-  });
-
-  it("marks only captured personal-key History stale on confirmed execution", async () => {
-    const onExecuted = await submit();
-    await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
-    expect(mocks.cancelQueries).toHaveBeenCalledWith({
-      queryKey: historyKey(),
-      exact: true,
-    });
-    expect(mocks.setQueryData).toHaveBeenCalledExactlyOnceWith(
-      historyKey(),
-      null,
-    );
-    expect(mocks.invalidate).toHaveBeenCalledWith({
-      queryKey: historyKey(),
-      exact: true,
-      refetchType: "active",
-    });
-    expect(mocks.remove).not.toHaveBeenCalled();
-  });
-
-  it("stales the old key without refetch when the browser session rotates", async () => {
-    mocks.getSession.mockImplementation(async () => ({
-      data: { user: { id: "u1" }, session: { id: mocks.sessionId } },
-      error: null,
-    }));
-    mocks.approve.mockImplementation(async () => {
-      mocks.sessionId = "s2";
-      return { state: "executed" };
-    });
-    const onExecuted = await submit();
-    await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
-    // The old exact key is cleared and handed to its own query; that query's session
-    // guard (real QueryClient tests) refuses the rotated session before any read.
-    expect(mocks.setQueryData).toHaveBeenCalledExactlyOnceWith(
-      historyKey(),
-      null,
-    );
-    expect(mocks.invalidate).toHaveBeenCalledWith({
-      queryKey: historyKey(),
-      exact: true,
-      refetchType: "active",
-    });
-  });
-
-  it("completes deletion while the History session check is stalled", async () => {
-    mocks.getSession.mockImplementation(() => new Promise(() => {}));
-    const onExecuted = await submit();
-    await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
-    expect(mocks.invalidate).toHaveBeenCalledWith({
-      queryKey: historyKey(),
-      exact: true,
-      refetchType: "active",
-    });
-  });
-
-  it.each(["pending", "expired"])(
-    "does not claim History for %s approval",
-    async (state) => {
-      if (state === "expired") {
-        mocks.action.current = {
-          ...personalAction("personal"),
-          state: "expired",
-        };
-        render(<PendingActionApproval id="pa-api-key" layout="page" />);
-        expect(mocks.approve).not.toHaveBeenCalled();
-      } else {
-        mocks.approve.mockResolvedValue({ state: "pending" });
-        await submit();
-      }
-      expect(mocks.cancelQueries).not.toHaveBeenCalled();
-    },
-  );
-
-  it("does not claim History when approval is refused", async () => {
-    mocks.approve.mockRejectedValue(new Error("refused"));
-    await submit();
-    await screen.findByRole("alert");
-    expect(mocks.cancelQueries).not.toHaveBeenCalled();
-  });
-
-  it("does not claim personal History for a service key", async () => {
-    mocks.action.current = personalAction("service");
-    const onExecuted = await submit();
-    await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
-    expect(mocks.cancelQueries).not.toHaveBeenCalled();
-  });
-});
-
-describe("executed service-key deletion History handoff", () => {
-  const serviceAction = (over: Record<string, unknown> = {}) => ({
-    id: "pa-service-key",
-    action: "delete",
-    targetType: "api_key",
-    targetIds: ["service-key-1"],
     targetWorkspaceId: "workspace-target",
     confirmation: "typed_name_step_up",
     approvalSupported: true,
     state: "pending",
     origin: "web",
     expiresAt: "2026-10-25T00:00:00.000Z",
-    summary: {
-      name: "Retired local credential",
-      kind: "service",
-      apiKeyId: "service-key-1",
-    },
+    summary: { name: "Retired local credential", ...summary },
     ...over,
   });
-  const historyKey = () =>
-    settingsHistoryQueryKey("service_api_key", "service-key-1", "u1", "s1");
-  const admissionKey = () => [
-    "service-key-history-admission",
-    window.location.host,
-    "u1",
-    "s1",
-    "workspace-target",
-    "service-key-1",
-  ];
-  const listKey = () => [
-    "service-key-history-list",
-    "workspace-target",
-    window.location.host,
-    "u1",
-    "s1",
-  ];
+  const personal = () => keyAction({ kind: "personal" });
+  const service = (over = {}, summary = {}) =>
+    keyAction({ kind: "service", apiKeyId: "key-1", ...summary }, over);
 
   async function submit(onExecuted = vi.fn()) {
     render(
       <PendingActionApproval
-        id="pa-service-key"
+        id="pa-api-key"
         layout="page"
         onExecuted={onExecuted}
       />,
@@ -744,106 +576,49 @@ describe("executed service-key deletion History handoff", () => {
   }
 
   beforeEach(() => {
-    mocks.action.current = serviceAction();
+    mocks.action.current = personal();
     mocks.sessionId = "s1";
-    mocks.portal = null;
-    mocks.impersonatedBy = null;
-    mocks.activeWorkspaceId = "workspace-active-other";
+    mocks.activeWorkspaceId = "workspace-1";
     mocks.approve.mockReset().mockResolvedValue({ state: "executed" });
     mocks.proof.mockReset().mockResolvedValue("step-up-proof");
     mocks.invalidate.mockReset().mockResolvedValue(undefined);
+    mocks.audited.mockReset();
     mocks.cancelQueries.mockReset().mockResolvedValue(undefined);
     mocks.setQueryData.mockReset();
     mocks.remove.mockReset();
-    mocks.getSession.mockReset().mockResolvedValue({
-      data: { user: { id: "u1" }, session: { id: "s1" } },
-      error: null,
-    });
     mocks.navigate.mockReset().mockResolvedValue(undefined);
     mocks.pathname.current = "/dashboard/settings/account/developer";
   });
   afterEach(cleanup);
 
-  it("clears the exact deleted-key caches and refreshes only the loaded target workspace", async () => {
-    const onExecuted = await submit();
-    await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
-    for (const key of [historyKey(), admissionKey()]) {
-      expect(mocks.cancelQueries).toHaveBeenCalledWith({
-        queryKey: key,
-        exact: true,
-      });
-      expect(mocks.remove).toHaveBeenCalledWith({ queryKey: key, exact: true });
-    }
-    for (const key of [["service-keys", "workspace-target"], listKey()]) {
-      expect(mocks.invalidate).toHaveBeenCalledWith({
-        queryKey: key,
-        exact: true,
-        refetchType: "none",
-      });
-      await waitFor(() =>
-        expect(
-          mocks.invalidate.mock.calls
-            .map(([options]) => options)
-            .filter((options) => options?.refetchType === "active"),
-        ).toContainEqual({ queryKey: key, exact: true, refetchType: "active" }),
-      );
-    }
-    expect(mocks.invalidate).not.toHaveBeenCalledWith({
-      queryKey: ["service-keys", "workspace-active-other"],
-      exact: true,
-      refetchType: "none",
-    });
-    for (const refetchType of ["none", "active"]) {
-      expect(mocks.invalidate).not.toHaveBeenCalledWith({
-        queryKey: personalSelfHistoryKey("apiKeys", "staff", "u1", "s1"),
-        exact: true,
-        refetchType,
-      });
-    }
+  it("does not audit merely by opening the pending action", () => {
+    render(<PendingActionApproval id="pa-api-key" layout="page" />);
+    expect(mocks.audited).not.toHaveBeenCalled();
+    expect(mocks.approve).not.toHaveBeenCalled();
   });
 
-  it("stales captured workspace keys without active refetch after a session and workspace switch", async () => {
-    mocks.getSession.mockImplementation(async () => ({
-      data: { user: { id: "u1" }, session: { id: mocks.sessionId } },
-      error: null,
-    }));
-    mocks.approve.mockImplementation(async () => {
-      mocks.sessionId = "s2";
-      mocks.activeWorkspaceId = "workspace-new";
-      return { state: "executed" };
-    });
+  it("audits the personal-key section on confirmed execution", async () => {
     const onExecuted = await submit();
     await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
-    for (const key of [["service-keys", "workspace-target"], listKey()]) {
-      expect(mocks.invalidate).toHaveBeenCalledWith({
-        queryKey: key,
-        exact: true,
-        refetchType: "none",
-      });
-      expect(mocks.invalidate).not.toHaveBeenCalledWith({
-        queryKey: key,
-        exact: true,
-        refetchType: "active",
-      });
-    }
-    expect(mocks.remove).toHaveBeenCalledWith({
-      queryKey: historyKey(),
-      exact: true,
-    });
+    expect(mocks.audited).toHaveBeenCalledExactlyOnceWith([
+      { kind: "self", audience: "staff", section: "apiKeys" },
+    ]);
   });
 
-  it("keeps approval completion and secret cleanup independent of a stalled History guard", async () => {
-    mocks.getSession.mockImplementation(() => new Promise(() => {}));
+  it("audits the deleted service key in its workspace and reloads that list", async () => {
+    mocks.action.current = service();
     const onExecuted = await submit();
     await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
+    expect(mocks.audited).toHaveBeenCalledExactlyOnceWith([
+      {
+        kind: "entity",
+        type: "service_api_key",
+        id: "key-1",
+        scope: { kind: "workspace", workspaceId: "workspace-target" },
+      },
+    ]);
     expect(mocks.invalidate).toHaveBeenCalledWith({
       queryKey: ["service-keys", "workspace-target"],
-      exact: true,
-      refetchType: "none",
-    });
-    expect(mocks.remove).toHaveBeenCalledWith({
-      queryKey: admissionKey(),
-      exact: true,
     });
     expect(
       screen.getByLabelText("pendingActions:dynamic.accountPassword"),
@@ -851,58 +626,34 @@ describe("executed service-key deletion History handoff", () => {
   });
 
   it.each([
-    ["missing workspace", { targetWorkspaceId: null }],
-    [
-      "mismatched key id",
-      {
-        summary: {
-          name: "Retired local credential",
-          kind: "service",
-          apiKeyId: "another-key",
-        },
-      },
-    ],
-    ["extra target id", { targetIds: ["service-key-1", "another-key"] }],
+    ["missing workspace", { targetWorkspaceId: null }, {}],
+    ["mismatched key id", {}, { apiKeyId: "another-key" }],
+    ["extra target id", { targetIds: ["key-1", "another-key"] }, {}],
   ])(
-    "does not refresh service History with %s metadata",
-    async (_label, over) => {
-      mocks.action.current = serviceAction(over);
+    "audits nothing for a service key with %s metadata",
+    async (_label, over, summary) => {
+      mocks.action.current = service(over, summary);
       const onExecuted = await submit();
       await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
-      expect(mocks.cancelQueries).not.toHaveBeenCalled();
-      expect(mocks.remove).not.toHaveBeenCalled();
+      expect(mocks.audited).toHaveBeenCalledExactlyOnceWith([]);
     },
   );
 
-  it("does not refresh service History for a non-executed approval", async () => {
-    mocks.approve.mockResolvedValue({ state: "expired" });
-    await submit();
-    expect(mocks.cancelQueries).not.toHaveBeenCalled();
-    expect(mocks.remove).not.toHaveBeenCalled();
-  });
+  it.each(["pending", "expired"])(
+    "does not audit a %s approval",
+    async (state) => {
+      mocks.approve.mockResolvedValue({ state });
+      await submit();
+      expect(mocks.audited).toHaveBeenCalledExactlyOnceWith([]);
+    },
+  );
 
-  it("does not refresh service History after a rejected approval", async () => {
+  it("does not audit when approval is refused", async () => {
     mocks.approve.mockRejectedValue(new Error("refused"));
     await submit();
     await screen.findByRole("alert");
-    expect(mocks.cancelQueries).not.toHaveBeenCalled();
-    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.audited).not.toHaveBeenCalled();
   });
-
-  it.each([
-    ["portal", { portal: "portal", impersonatedBy: null }],
-    ["impersonation", { portal: null, impersonatedBy: "admin-1" }],
-  ])(
-    "does not refresh service History from a %s session",
-    async (_label, session) => {
-      mocks.portal = session.portal;
-      mocks.impersonatedBy = session.impersonatedBy;
-      const onExecuted = await submit();
-      await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
-      expect(mocks.cancelQueries).not.toHaveBeenCalled();
-      expect(mocks.remove).not.toHaveBeenCalled();
-    },
-  );
 });
 
 describe("executed role deletion", () => {

@@ -74,6 +74,7 @@ import {
   S3_DRAFT_PLUGIN_ID,
 } from "../storage/s3-draft-repository";
 import { dbNowUtc } from "../utils/db-time";
+import { HISTORY_ACTIONS, INSTANCE_PLUGIN_TARGETS } from "./history-actions";
 import { AUDIT_CHAIN_LOCK_KEY } from "./lock";
 import type { SettingsHistoryEntityType } from "./schema";
 import { validTerminologyHistoryCell } from "./schema";
@@ -272,38 +273,6 @@ const workspaceHistoryTargets = {
   cost_type: costTypeTable,
 } as const;
 
-const p1HistoryActions = {
-  automation: [
-    "automation.created",
-    "automation.updated",
-    "automation.enabled",
-    "automation.disabled",
-    "automation.deleted",
-  ],
-  state: ["state.wip_limit_changed"],
-  time_activity: ["time_activity.created", "time_activity.updated"],
-  cost_type: ["cost_type.created", "cost_type.updated"],
-  hourly_rate: ["hourly_rate.created"],
-  budget: ["budget.created"],
-} as const;
-
-const p3HistoryActions = {
-  instance_notification_provider: "plugin.changed",
-  instance_storage_draft: "plugin.changed",
-  instance_auth_methods: "plugin.changed",
-  staff_self_registration: "plugin.changed",
-  instance_job: "job.configuration_changed",
-  identity_connection: "identity_connection.changed",
-  import_source_connection: "plugin.changed",
-} as const;
-
-const serviceKeyHistoryActions = [
-  "api_key.created",
-  "api_key.revoked",
-  "api_key.reattested",
-  "api_key.ownership_transferred",
-] as const;
-
 const estimateFeatureEnabled = (projectId: string, workspaceId: string) => sql`
   coalesce(
     (select ${instanceFeatureFlagTable.enabled} from ${instanceFeatureFlagTable}
@@ -460,7 +429,7 @@ function settingsHistoryCurrentReach(
       currentInstanceAdminPredicate(input.identity, tx),
     );
 
-  if (Object.hasOwn(p3HistoryActions, input.entityType)) {
+  if (INSTANCE_PLUGIN_TARGETS.has(input.entityType)) {
     if (
       input.identity.credential !== "session" ||
       input.identity.side !== "staff" ||
@@ -871,12 +840,7 @@ function settingsHistoryCurrentReach(
 }
 
 function settingsHistoryFilter(input: SettingsHistoryInput, tx: Executor) {
-  const actions = Object.hasOwn(p1HistoryActions, input.entityType)
-    ? p1HistoryActions[input.entityType as keyof typeof p1HistoryActions]
-    : null;
-  const p3Action = Object.hasOwn(p3HistoryActions, input.entityType)
-    ? p3HistoryActions[input.entityType as keyof typeof p3HistoryActions]
-    : null;
+  const instancePlugin = INSTANCE_PLUGIN_TARGETS.has(input.entityType);
   const projectBound =
     input.entityType === "project" ||
     input.entityType === "project_label" ||
@@ -889,27 +853,13 @@ function settingsHistoryFilter(input: SettingsHistoryInput, tx: Executor) {
       input.projectId != null);
   return and(
     settingsHistoryCurrentReach(input, tx),
-    actions ? inArray(auditLogTable.action, [...actions]) : undefined,
-    p3Action ? eq(auditLogTable.action, p3Action) : undefined,
-    input.entityType === "service_api_key"
-      ? inArray(auditLogTable.action, [...serviceKeyHistoryActions])
-      : undefined,
-    // Observability, local-factor and rekey events share this entity: General shows only settings changes.
-    input.entityType === "instance"
-      ? eq(auditLogTable.action, "instance.settings_changed")
-      : undefined,
-    input.entityType === "terminology_override"
-      ? eq(auditLogTable.action, "terminology.changed")
-      : input.entityType === "project_estimates"
-        ? inArray(auditLogTable.action, [
-            "estimate.configured",
-            "estimate.system_changed",
-          ])
-        : undefined,
+    // The table is the only action filter: observability, rekey and lifecycle rows never show.
+    inArray(auditLogTable.action, [
+      ...HISTORY_ACTIONS.entity[input.entityType],
+    ]),
     input.entityType === "workspace_member" ||
       input.entityType === "project_membership"
       ? and(
-          eq(auditLogTable.action, "membership.changed"),
           sql`jsonb_typeof(${auditLogTable.before} -> 'role') = 'string'`,
           sql`jsonb_typeof(${auditLogTable.after} -> 'role') = 'string'`,
           sql`(${auditLogTable.before} ->> 'role') is distinct from (${auditLogTable.after} ->> 'role')`,
@@ -959,7 +909,7 @@ function settingsHistoryFilter(input: SettingsHistoryInput, tx: Executor) {
       (input.entityType === "terminology_override" &&
         input.workspaceId === null)
       ? and(isNull(auditLogTable.workspaceId), isNull(auditLogTable.projectId))
-      : p3Action
+      : instancePlugin
         ? and(
             input.entityType === "import_source_connection"
               ? input.workspaceId

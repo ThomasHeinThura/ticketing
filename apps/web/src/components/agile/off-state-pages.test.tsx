@@ -35,6 +35,9 @@ vi.mock("react-i18next", async () => ({
     i18n: { language: "en-US" },
   }),
 }));
+vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
+  default: () => ({ data: { id: "w1" } }),
+}));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("./use-can-manage-project-features", () => ({
   useCanManageProjectFeatures: () => false,

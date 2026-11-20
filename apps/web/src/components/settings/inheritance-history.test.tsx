@@ -1,8 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createContext, type ReactNode, useContext } from "react";
 import { expect, it, vi } from "vitest";
 import ProjectEngagementSettings from "@/components/project/project-engagement-settings";
+import type { HistoryTarget } from "@/hooks/queries/settings/use-settings-history";
+import { createQueryClient } from "@/query-client";
 import { SettingsHistory } from "./settings-history";
 import { WorkspaceProjectDefaultsPanel } from "./workspace-project-defaults-panel";
 
@@ -61,6 +63,15 @@ vi.mock("@/hooks/queries/project/use-get-project", () => ({
 vi.mock("@/hooks/mutations/project/use-update-project", () => ({
   default: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
+const target = (type: "workspace" | "project", id: string): HistoryTarget => ({
+  kind: "entity",
+  type,
+  id,
+  scope:
+    type === "workspace"
+      ? { kind: "workspace", workspaceId: "w1" }
+      : { kind: "project", workspaceId: "w1", projectId: "p1" },
+});
 const inheritance = {
   projectId: "p1",
   workspaceId: "w1",
@@ -170,12 +181,10 @@ it.each(["workspace", "project"] as const)(
         },
       };
     });
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
+    const client = createQueryClient();
     render(
       <QueryClientProvider client={client}>
-        <SettingsHistory type={type} id={id} userId="u1" />
+        <SettingsHistory target={target(type, id)} />
         {type === "workspace" ? (
           <WorkspaceProjectDefaultsPanel workspaceId="w1" />
         ) : (
@@ -218,12 +227,10 @@ it("refreshes open project History after changing health", async () => {
   mocks.updateHealth.mockImplementation(async () => {
     name = "After";
   });
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+  const client = createQueryClient();
   render(
     <QueryClientProvider client={client}>
-      <SettingsHistory type="project" id="p1" userId="u1" />
+      <SettingsHistory target={target("project", "p1")} />
       <ProjectEngagementSettings workspaceId="w1" projectId="p1" />
     </QueryClientProvider>,
   );

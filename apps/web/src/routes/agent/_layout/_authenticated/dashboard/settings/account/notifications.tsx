@@ -1,11 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { CanonicalMentionPreference } from "@/components/account/canonical-mention-preference";
 import { NotificationPreferencesSettings } from "@/components/account/notification-preferences-settings";
 import { QuietHoursPreference } from "@/components/account/quiet-hours-preference";
 import PageTitle from "@/components/page-title";
-import { PersonalNotificationHistory } from "@/components/settings/personal-notification-history";
-import { authClient } from "@/lib/auth-client";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/account/notifications",
@@ -15,7 +20,6 @@ export const Route = createFileRoute(
 
 function RouteComponent() {
   const { t } = useTranslation();
-  const { data: session } = authClient.useSession();
 
   return (
     <>
@@ -30,11 +34,15 @@ function RouteComponent() {
           </p>
         </div>
 
-        <PersonalNotificationHistory
-          audience="staff"
-          userId={session?.user?.id}
-          sessionId={session?.session?.id}
-        />
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{
+              kind: "self",
+              audience: "staff",
+              section: "notifications",
+            }}
+          />
+        </Suspense>
         <CanonicalMentionPreference />
         <QuietHoursPreference />
         <NotificationPreferencesSettings />

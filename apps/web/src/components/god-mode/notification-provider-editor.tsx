@@ -25,11 +25,9 @@ import {
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
-import { SettingsHistory } from "@/components/settings/settings-history";
 import {
   type EmailProvider,
   type EmailProviderConfig,
@@ -44,8 +42,6 @@ import {
   type PluginSettingsFormManifest,
   type SupportedPlugin,
 } from "@/fetchers/god-mode/plugins";
-import { assertNotificationHistorySession } from "@/fetchers/settings/personal-history";
-import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { authClient } from "@/lib/auth-client";
@@ -95,20 +91,17 @@ function isEmailSettingsForm(
   );
 }
 
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
 export function NotificationProviderEditor() {
   const { t } = useTranslation("notificationProvider");
   const { data: session } = authClient.useSession();
   const userId = session?.user?.id;
   const sessionId = session?.session?.id;
-  const sessionScope = session?.session as
-    | { portal?: string | null; impersonatedBy?: string | null }
-    | undefined;
-  const historyAllowed = Boolean(
-    userId &&
-      sessionId &&
-      !sessionScope?.impersonatedBy &&
-      (!sessionScope?.portal || sessionScope.portal === "agent"),
-  );
   const host = window.location.host;
   const queryKey = [...providerQueryKey, host, userId, sessionId];
   const [completed, setCompleted] = useState(false);
@@ -183,18 +176,18 @@ export function NotificationProviderEditor() {
         onSaved={() => setCompleted(true)}
         onReload={() => void query.refetch()}
         queryKey={queryKey}
-        historyIdentity={
-          historyAllowed && userId && sessionId
-            ? { userId, sessionId, host }
-            : null
-        }
       />
-      {query.data.id && historyAllowed && userId && sessionId ? (
-        <SettingsHistory
-          type="instance_notification_provider"
-          id={query.data.id}
-          userId={userId}
-        />
+      {query.data.id ? (
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{
+              kind: "entity",
+              type: "instance_notification_provider",
+              id: query.data.id,
+              scope: { kind: "instance" },
+            }}
+          />
+        </Suspense>
       ) : null}
     </>
   );
@@ -208,7 +201,6 @@ function ProviderForm({
   onSaved,
   onReload,
   queryKey,
-  historyIdentity,
 }: {
   provider: EmailProvider;
   settingsForm: Extract<SupportedPlugin["settingsForm"], { available: true }>;
@@ -218,7 +210,6 @@ function ProviderForm({
   onSaved: () => void;
   onReload: () => void;
   queryKey: (string | undefined)[];
-  historyIdentity: { userId: string; sessionId: string; host: string } | null;
 }) {
   const { t } = useTranslation("notificationProvider");
   const queryClient = useQueryClient();
@@ -246,6 +237,32 @@ function ProviderForm({
     setTestResult(null);
   });
   const verify = useMutation({ mutationFn: sendEmailProviderTest });
+  // The request carries the mail password: it travels by ref, never through mutation variables.
+  const pending = useRef<{
+    request: Parameters<typeof saveEmailProvider>[0];
+    token: string;
+  } | null>(null);
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      if (!pending.current) throw new Error("No provider to save");
+      return saveEmailProvider(pending.current.request, pending.current.token);
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, saved: EmailProvider) =>
+          saved.id
+            ? [
+                {
+                  kind: "entity",
+                  type: "instance_notification_provider",
+                  id: saved.id,
+                  scope: { kind: "instance" },
+                },
+              ]
+            : [],
+      },
+    },
+  });
   const busy = step.busy || verify.isPending;
   const kind = kindOf(config);
   const sesSelected = kind === "ses";
@@ -442,7 +459,6 @@ function ProviderForm({
     }
     onStart();
     const intent = lifecycle.capture();
-    const capturedIdentity = historyIdentity;
     const capturedId = provider.id;
     const capturedQueryKey = queryKey;
     setError(null);
@@ -457,7 +473,12 @@ function ProviderForm({
     // single-use proof is bound to exactly this request.
     const result = await step.run(
       { operation: "notification_provider_save", request },
-      (token) => saveEmailProvider(request, token),
+      (token) => {
+        pending.current = { request, token };
+        return saveMutation.mutateAsync().finally(() => {
+          pending.current = null;
+        });
+      },
     );
     if (!result.ok) {
       // A failed write never leaves the typed password behind; the failure itself is shown by
@@ -467,20 +488,6 @@ function ProviderForm({
     }
     if (lifecycle.isCurrent(intent)) onSaved();
     if (result.value.id && (!capturedId || capturedId === result.value.id)) {
-      if (capturedIdentity) {
-        const { userId, sessionId, host } = capturedIdentity;
-        refreshSettingsHistory(
-          queryClient,
-          settingsHistoryQueryKey(
-            "instance_notification_provider",
-            result.value.id,
-            userId,
-            sessionId,
-          ),
-          () =>
-            assertNotificationHistorySession("staff", userId, sessionId, host),
-        );
-      }
       queryClient.setQueryData(capturedQueryKey, result.value);
     }
     await queryClient.invalidateQueries({ queryKey: capturedQueryKey });

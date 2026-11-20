@@ -11,27 +11,6 @@ export type SettingsHistoryScope =
   | { scope: "instance" }
   | { scope: "workspace"; workspaceId: string };
 
-export function settingsHistoryQueryKey(
-  type: SettingsHistoryTarget,
-  id: string,
-  userId: string,
-  sessionId: string,
-  selector?: SettingsHistoryScope,
-) {
-  return selector
-    ? [
-        "settings-history",
-        type,
-        id,
-        selector.scope,
-        selector.scope === "workspace" ? selector.workspaceId : null,
-        "agent",
-        userId,
-        sessionId,
-      ]
-    : ["settings-history", type, id, "agent", userId, sessionId];
-}
-
 export async function getSettingsHistory(
   type: SettingsHistoryTarget,
   id: string,

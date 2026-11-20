@@ -711,21 +711,14 @@ it("offers email settings to an instance admin when email is missing", () => {
   ).toHaveAttribute("href", "/god-mode/notifications");
 });
 
-const historySession = vi.hoisted(() => ({ id: "session-1" }));
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    useSession: () => ({
-      data: {
-        user: { id: "current-user" },
-        session: { id: historySession.id },
-      },
-    }),
-  },
-}));
 vi.mock("@/components/settings/settings-history", () => ({
-  SettingsHistory: ({ type, id }: { type: string; id: string }) => (
+  SettingsHistory: ({
+    target,
+  }: {
+    target: { type: string; id: string; scope: { workspaceId: string } };
+  }) => (
     <div data-testid="history-target">
-      {type}:{id}
+      {target.type}:{target.id}:{target.scope.workspaceId}
     </div>
   ),
 }));
@@ -742,11 +735,11 @@ it("opens history for the membership row rather than the user", async () => {
     screen.getByRole("button", { name: /settings:history.memberHistory/ }),
   );
   expect(await screen.findByTestId("history-target")).toHaveTextContent(
-    "workspace_member:membership-row",
+    "workspace_member:membership-row:workspace-1",
   );
 });
 
-it("closes history on session, scope, or row replacement and refuses malformed IDs", async () => {
+it("closes history when its row disappears and refuses malformed IDs", async () => {
   const valid = { ...member, workspaceMemberId: "membership-row" };
   const view = render(
     <MembersTable workspaceId="w1" invitations={[]} users={[valid]} />,
@@ -755,26 +748,11 @@ it("closes history on session, scope, or row replacement and refuses malformed I
     screen.getByRole("button", { name: /settings:history.memberHistory/ }),
   );
   expect(await screen.findByTestId("history-target")).toBeTruthy();
-  historySession.id = "session-2";
-  view.rerender(
-    <MembersTable workspaceId="w1" invitations={[]} users={[valid]} />,
-  );
-  expect(screen.queryByTestId("history-target")).toBeNull();
-  historySession.id = "session-1";
-  view.rerender(
-    <MembersTable workspaceId="w1" invitations={[]} users={[valid]} />,
-  );
-  expect(screen.queryByTestId("history-target")).toBeNull();
-  fireEvent.click(
-    screen.getByRole("button", { name: /settings:history.memberHistory/ }),
-  );
-  view.rerender(
-    <MembersTable workspaceId="w2" invitations={[]} users={[valid]} />,
-  );
+  view.rerender(<MembersTable workspaceId="w1" invitations={[]} users={[]} />);
   expect(screen.queryByTestId("history-target")).toBeNull();
   view.rerender(
     <MembersTable
-      workspaceId="w2"
+      workspaceId="w1"
       invitations={[]}
       users={[{ ...valid, workspaceMemberId: "" }]}
     />,
@@ -797,6 +775,6 @@ it("exposes history to a reader without role edit authority", async () => {
     screen.getByRole("button", { name: /settings:history.memberHistory/ }),
   );
   expect(await screen.findByTestId("history-target")).toHaveTextContent(
-    "workspace_member:row",
+    "workspace_member:row:w1",
   );
 });

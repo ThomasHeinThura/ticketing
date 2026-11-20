@@ -1,8 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  profileHistoryKey,
-  refreshPersonalHistory,
-} from "@/fetchers/settings/personal-history";
 import deleteAvatar from "@/fetchers/user/delete-avatar";
 import { authClient } from "@/lib/auth-client";
 import { profileSessionGuard } from "@/lib/profile-session-guard";
@@ -18,10 +14,6 @@ function useRemoveUserAvatar() {
         session?.user?.id,
         session?.session?.id,
       );
-      const key = profileHistoryKey(
-        session?.user?.id ?? "",
-        session?.session?.id ?? "",
-      );
       await check();
       const { error } = await authClient.updateUser({ image: null });
 
@@ -29,13 +21,23 @@ function useRemoveUserAvatar() {
         throw new Error(error.message || "Failed to remove profile picture");
       }
 
-      refreshPersonalHistory(queryClient, key);
+      return { check };
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "profile" },
+        ],
+      },
+    },
+    // The profile write is committed (and audited) above; the file delete must not run for another session.
+    onSuccess: async ({ check }) => {
       await check(true);
       const result = await deleteAvatar();
       await check(true);
+      await invalidateUserProfileQueries(queryClient);
       return result;
     },
-    onSuccess: () => invalidateUserProfileQueries(queryClient),
   });
 }
 

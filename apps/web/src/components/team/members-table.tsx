@@ -34,12 +34,11 @@ import {
   ShieldIcon,
   TrashIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PickerPopover } from "@/components/common/picker-popover";
 import { InvitationResultCard } from "@/components/invitation/invitation-result-card";
 import { NoEmailNotice } from "@/components/invitation/no-email-notice";
-import { SettingsHistory } from "@/components/settings/settings-history";
 import inviteWorkspaceMember from "@/fetchers/workspace/invite-workspace-member";
 import useCancelInvitation from "@/hooks/mutations/workspace-user/use-cancel-invitation";
 import useDeleteWorkspaceUser from "@/hooks/mutations/workspace-user/use-delete-workspace-user";
@@ -48,7 +47,6 @@ import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
 import { useCopyInvitationLink } from "@/hooks/use-copy-invitation-link";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
@@ -60,6 +58,12 @@ import type {
 } from "@/types/workspace-user";
 import { Avatar, AvatarFallback, AvatarImage } from "../avatar";
 import { useAuth } from "../providers/auth-provider/hooks/use-auth";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 function validHistoryId(id: unknown): id is string {
   return (
@@ -110,13 +114,9 @@ function capitalize(value: string): string {
 
 function MembersTable({ workspaceId, invitations, users }: Props) {
   const { t } = useTranslation();
-  const { data: session } = authClient.useSession();
   const [history, setHistory] = useState<{
     id: string;
     targetUserId: string;
-    workspaceId: string;
-    userId: string;
-    sessionId: string;
   } | null>(null);
   const [memberToDelete, setMemberToDelete] = useState<WorkspaceUser | null>(
     null,
@@ -130,20 +130,17 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
   const [resendingId, setResendingId] = useState<string | null>(null);
 
   const { user: currentUser } = useAuth();
+  const historyOpen = Boolean(
+    history &&
+      users.some(
+        (member) =>
+          member.id === history.targetUserId &&
+          member.workspaceMemberId === history.id,
+      ),
+  );
   useEffect(() => {
-    if (
-      history &&
-      (history.workspaceId !== workspaceId ||
-        history.userId !== session?.user?.id ||
-        history.sessionId !== session?.session?.id ||
-        !users.some(
-          (member) =>
-            member.id === history.targetUserId &&
-            member.workspaceMemberId === history.id,
-        ))
-    )
-      setHistory(null);
-  }, [history, workspaceId, session?.user?.id, session?.session?.id, users]);
+    if (history && !historyOpen) setHistory(null);
+  }, [history, historyOpen]);
   const { mutateAsync: deleteWorkspaceUser, isPending: isDeleting } =
     useDeleteWorkspaceUser();
   const { mutateAsync: cancelInvitation, isPending: isCancelling } =
@@ -388,17 +385,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
   return (
     <>
       <Dialog
-        open={Boolean(
-          history &&
-            history.workspaceId === workspaceId &&
-            history.userId === session?.user?.id &&
-            history.sessionId === session?.session?.id &&
-            users.some(
-              (member) =>
-                member.workspaceMemberId === history.id &&
-                member.id === history.targetUserId,
-            ),
-        )}
+        open={historyOpen}
         onOpenChange={(open) => !open && setHistory(null)}
       >
         <DialogPopup closeLabel={t("common:actions.close")}>
@@ -406,21 +393,18 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
             <DialogTitle>{t("settings:history.title")}</DialogTitle>
           </DialogHeader>
           <DialogPanel>
-            {history &&
-            history.workspaceId === workspaceId &&
-            history.userId === session?.user?.id &&
-            history.sessionId === session?.session?.id &&
-            users.some(
-              (member) =>
-                member.workspaceMemberId === history.id &&
-                member.id === history.targetUserId,
-            ) ? (
-              <SettingsHistory
-                key={`${history.id}:${history.userId}:${history.sessionId}:${workspaceId}`}
-                type="workspace_member"
-                id={history.id}
-                userId={history.userId}
-              />
+            {history && historyOpen ? (
+              <Suspense fallback={null}>
+                <SettingsHistory
+                  key={`${history.id}:${workspaceId}`}
+                  target={{
+                    kind: "entity",
+                    type: "workspace_member",
+                    id: history.id,
+                    scope: { kind: "workspace", workspaceId },
+                  }}
+                />
+              </Suspense>
             ) : null}
           </DialogPanel>
         </DialogPopup>
@@ -512,9 +496,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                   {member.joinedAt ? formatDateMedium(member.joinedAt) : "–"}
                 </TableCell>
                 <TableCell className="pe-6 py-3 text-right">
-                  {validHistoryId(member.workspaceMemberId) &&
-                  session?.user?.id &&
-                  session.session?.id ? (
+                  {validHistoryId(member.workspaceMemberId) ? (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -526,9 +508,6 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         setHistory({
                           id: member.workspaceMemberId,
                           targetUserId: member.id,
-                          workspaceId,
-                          userId: session.user.id,
-                          sessionId: session.session.id,
                         })
                       }
                     >

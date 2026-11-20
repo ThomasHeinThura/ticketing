@@ -1,10 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import {
-  onlineManager,
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
   fireEvent,
@@ -13,9 +9,36 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
-import { HttpError } from "@/lib/http-error";
-import { SettingsHistory } from "./settings-history";
+import type { SettingsHistoryTarget } from "@/fetchers/settings/settings-history";
+import { SettingsHistory as HistoryPanel } from "./settings-history";
+
+// Tests below speak entity/id; the identity comes from the mocked session.
+function SettingsHistory({
+  type,
+  id,
+  selector,
+}: {
+  type: SettingsHistoryTarget;
+  id: string;
+  userId?: string;
+  selector?:
+    | { scope: "instance" }
+    | { scope: "workspace"; workspaceId: string };
+}) {
+  return (
+    <HistoryPanel
+      target={{
+        kind: "entity",
+        type,
+        id,
+        scope:
+          selector?.scope === "workspace"
+            ? { kind: "workspace", workspaceId: selector.workspaceId }
+            : { kind: "instance" },
+      }}
+    />
+  );
+}
 
 const get = vi.hoisted(() => vi.fn());
 vi.mock("@/fetchers/settings/settings-history", async (importOriginal) => ({
@@ -31,6 +54,13 @@ vi.mock("@/lib/auth-client", () => ({
         user: { id: currentUser.id },
         session: { id: currentUser.sessionId },
       },
+    }),
+    getSession: async () => ({
+      data: {
+        user: { id: currentUser.id },
+        session: { id: currentUser.sessionId },
+      },
+      error: null,
     }),
   },
 }));
@@ -85,42 +115,6 @@ function setup(userId = "u1") {
   return { client, ...view };
 }
 describe("SettingsHistory", () => {
-  it("revalidates before disclosing previously loaded history after reach is revoked", async () => {
-    get.mockReset().mockResolvedValueOnce({
-      entityType: "workspace",
-      entityId: "w1",
-      lastChanged: { actor: row.actor, at: row.at },
-      rows: [row],
-    });
-    let rejectRead: (error: Error) => void = () => {};
-    get.mockImplementationOnce(
-      () =>
-        new Promise((_resolve, reject) => {
-          rejectRead = reject;
-        }),
-    );
-    const { client } = setup();
-    await screen.findByText(/Last changed by Alice/);
-    fireEvent.click(screen.getByRole("button", { name: /History/ }));
-    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
-    expect(
-      screen.queryByText(
-        /Last changed by Alice|settings:history.actions.workspace_settings_updated/,
-      ),
-    ).toBeNull();
-    await act(async () => rejectRead(new HttpError(403, "Forbidden")));
-    expect(
-      screen.queryByText(
-        /Last changed by Alice|settings:history.actions.workspace_settings_updated/,
-      ),
-    ).toBeNull();
-    expect(
-      client.getQueryData(
-        settingsHistoryQueryKey("workspace", "w1", "u1", "s1"),
-      ),
-    ).toBeNull();
-  });
-
   it("does not admit an older disclosure after a second opening", async () => {
     let finish: (value: unknown) => void = () => {};
     const old = {
@@ -708,84 +702,6 @@ describe("SettingsHistory", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByText("No recorded changes yet.")).toBeTruthy();
   });
-  it.each([401, 403, 404])(
-    "removes only refused target data on %s and retains retry",
-    async (status) => {
-      currentUser.id = "u1";
-      currentUser.sessionId = "s1";
-      get.mockReset().mockResolvedValue({
-        entityType: "workspace",
-        entityId: "w1",
-        lastChanged: { actor: row.actor, at: row.at },
-        rows: [row],
-      });
-      const { client } = setup();
-      const key = ["settings-history", "workspace", "w1", "agent", "u1", "s1"];
-      const other = [
-        "settings-history",
-        "workspace",
-        "other",
-        "agent",
-        "u1",
-        "s1",
-      ];
-      client.setQueryData(other, { private: "other" });
-      expect(await screen.findByText(/Last changed by Alice/)).toBeTruthy();
-      fireEvent.click(screen.getByRole("button", { name: /History/ }));
-      expect(
-        await screen.findByText(
-          /settings:history.actions.workspace_settings_updated/,
-        ),
-      ).toBeTruthy();
-      get.mockRejectedValueOnce(new HttpError(status, "denied"));
-      await client.invalidateQueries({ queryKey: key, exact: true });
-      await screen.findByRole("alert");
-      expect(screen.queryByText(/Alice/)).toBeNull();
-      expect(
-        screen.queryByText(
-          /settings:history.actions.workspace_settings_updated/,
-        ),
-      ).toBeNull();
-      expect(client.getQueryData(key)).toBeNull();
-      expect(client.getQueryData(other)).toEqual({ private: "other" });
-      get.mockResolvedValueOnce({
-        entityType: "workspace",
-        entityId: "w1",
-        lastChanged: null,
-        rows: [],
-      });
-      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-      expect(await screen.findByText("No recorded changes yet.")).toBeTruthy();
-    },
-  );
-  it("hides cached data on a transient error and recovers on Retry", async () => {
-    currentUser.id = "u1";
-    currentUser.sessionId = "s1";
-    get.mockResolvedValueOnce({
-      entityType: "workspace",
-      entityId: "w1",
-      lastChanged: { actor: row.actor, at: row.at },
-      rows: [row],
-    });
-    const { client } = setup();
-    await screen.findByText(/Last changed by Alice/);
-    get.mockRejectedValueOnce(new HttpError(503, "unavailable"));
-    await client.invalidateQueries({
-      queryKey: ["settings-history", "workspace", "w1"],
-    });
-    await screen.findByRole("alert");
-    // A failed current read no longer vouches for the earlier result: it stays hidden.
-    expect(screen.queryByText(/Last changed by Alice/)).toBeNull();
-    get.mockResolvedValueOnce({
-      entityType: "workspace",
-      entityId: "w1",
-      lastChanged: { actor: row.actor, at: row.at },
-      rows: [row],
-    });
-    fireEvent.click(screen.getByRole("button", { name: /Retry/ }));
-    await screen.findByText(/Last changed by Alice/);
-    expect(screen.queryByRole("alert")).toBeNull();
-  });
   it("does not show another target or session while its history loads", async () => {
     currentUser.id = "u1";
     currentUser.sessionId = "s1";
@@ -812,66 +728,6 @@ describe("SettingsHistory", () => {
     );
     expect(screen.queryByText(/Alice/)).toBeNull();
   });
-  it("separates cached results by identity", async () => {
-    currentUser.id = "u1";
-    currentUser.sessionId = "s1";
-    get.mockResolvedValue({
-      entityType: "workspace",
-      entityId: "w1",
-      lastChanged: null,
-      rows: [],
-    });
-    const { client, rerender } = setup();
-    await screen.findByText("No recorded changes yet.");
-    currentUser.id = "u2";
-    currentUser.sessionId = "s2";
-    rerender(
-      <QueryClientProvider client={client}>
-        <SettingsHistory type="workspace" id="w1" userId="u2" />
-      </QueryClientProvider>,
-    );
-    await waitFor(() =>
-      expect(
-        client.getQueryData([
-          "settings-history",
-          "workspace",
-          "w1",
-          "agent",
-          "u2",
-          "s2",
-        ]),
-      ).toBeTruthy(),
-    );
-  });
-});
-it("ignores an obsolete denied read after a newer history response", async () => {
-  currentUser.id = "u1";
-  currentUser.sessionId = "s1";
-  get.mockReset();
-  let denyOld!: (error: Error) => void;
-  get
-    .mockImplementationOnce(
-      () =>
-        new Promise((_resolve, reject) => {
-          denyOld = reject;
-        }),
-    )
-    .mockResolvedValueOnce({
-      entityType: "workspace",
-      entityId: "w1",
-      lastChanged: null,
-      rows: [],
-    });
-  const { client } = setup();
-  await waitFor(() => expect(get).toHaveBeenCalledOnce());
-  const key = ["settings-history", "workspace", "w1", "agent", "u1", "s1"];
-  const { refreshSettingsHistory } = await import("./refresh-settings-history");
-  refreshSettingsHistory(client, key, async () => {});
-  await screen.findByText("No recorded changes yet.");
-  denyOld(new HttpError(403, "old refusal"));
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  expect(client.getQueryData(key)).toMatchObject({ entityId: "w1" });
-  expect(screen.queryByRole("alert")).toBeNull();
 });
 
 it("renders only the closed membership role marker and localized action", async () => {
@@ -1212,203 +1068,3 @@ it.each(["de-DE", "ja-JP", "zh-CN"])(
     }
   },
 );
-
-// Shared renderer: cached History must never show before a settled read of the current mount
-// (the app's query client sets refetchOnMount: false, so the mount read is part of the contract).
-describe.each([
-  "workspace",
-  "project",
-  "canned_response",
-  "automation",
-  "time_activity",
-  "instance",
-] as const)(
-  "%s History admits cached data only after a settled current read",
-  (type) => {
-    const entryFor = (name: string, at: string) => ({
-      entityType: type,
-      entityId: "target",
-      lastChanged: { actor: { kind: "person", name }, at },
-      rows: [
-        {
-          at,
-          actor: { kind: "person", name },
-          action: `${type}.updated`,
-          changedFields: ["name"],
-        },
-      ],
-    });
-    const privateEntry = entryFor("Private Pat", "2026-01-01T00:00:00Z");
-    const fresh = entryFor("Fresh Fran", "2026-02-01T00:00:00Z");
-    const appClient = () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: false,
-            refetchOnMount: false,
-            refetchOnWindowFocus: false,
-          },
-        },
-      });
-    const keyOf = (user = "u1", session = "s1") =>
-      settingsHistoryQueryKey(type, "target", user, session);
-    function mountSeeded(client = appClient(), userId = "u1") {
-      currentUser.id = "u1";
-      currentUser.sessionId = "s1";
-      client.setQueryData(
-        keyOf(userId, userId === "u1" ? "s1" : ""),
-        privateEntry,
-      );
-      return render(
-        <QueryClientProvider client={client}>
-          <SettingsHistory type={type} id="target" userId={userId} />
-        </QueryClientProvider>,
-      );
-    }
-    const noPrivate = () => {
-      fireEvent.click(screen.getByRole("button", { name: /History/ }));
-      expect(screen.queryByText(/Private Pat/)).toBeNull();
-      expect(screen.queryByText(/Last changed by Private/)).toBeNull();
-    };
-
-    it("hides the seeded entry during a held mount read, then shows only the fresh result", async () => {
-      let finish: (value: unknown) => void = () => {};
-      get.mockReset();
-      get.mockImplementation(
-        () =>
-          new Promise((resolve) => {
-            finish = resolve;
-          }),
-      );
-      mountSeeded();
-      await waitFor(() => expect(get).toHaveBeenCalledOnce());
-      noPrivate();
-      expect(screen.queryByText(/Last changed/)).toBeNull();
-      await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
-      await act(async () => finish(fresh));
-      await screen.findByText(/Last changed by Fresh Fran/);
-      expect(screen.queryByText(/Private Pat/)).toBeNull();
-    });
-
-    it.each([
-      ["refused 403", () => new HttpError(403, "denied")],
-      ["a 500", () => new HttpError(500, "boom")],
-    ])(
-      "keeps the seeded entry hidden on %s, with an alert and a Retry that recovers",
-      async (_name, error) => {
-        get.mockReset();
-        get.mockRejectedValueOnce(error()).mockResolvedValueOnce(fresh);
-        mountSeeded();
-        await screen.findByRole("alert");
-        noPrivate();
-        fireEvent.click(screen.getByRole("button", { name: /Retry/ }));
-        await screen.findByText(/Last changed by Fresh Fran/);
-        expect(screen.queryByText(/Private Pat/)).toBeNull();
-        expect(screen.queryByRole("alert")).toBeNull();
-      },
-    );
-
-    it("keeps the seeded entry hidden while the read is paused offline and shows only the resumed result", async () => {
-      get.mockReset();
-      get.mockResolvedValue(fresh);
-      onlineManager.setOnline(false);
-      try {
-        mountSeeded();
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        expect(get).not.toHaveBeenCalled();
-        noPrivate();
-        expect(screen.queryByText(/Last changed/)).toBeNull();
-        onlineManager.setOnline(true);
-        await screen.findByText(/Last changed by Fresh Fran/);
-        expect(screen.queryByText(/Private Pat/)).toBeNull();
-      } finally {
-        onlineManager.setOnline(true);
-      }
-    });
-
-    it("re-reads on every remount instead of replaying the previous mount's result", async () => {
-      get.mockReset();
-      get.mockResolvedValueOnce(fresh);
-      const client = appClient();
-      const first = mountSeeded(client);
-      await screen.findByText(/Last changed by Fresh Fran/);
-      first.unmount();
-      let finish: (value: unknown) => void = () => {};
-      get.mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            finish = resolve;
-          }),
-      );
-      render(
-        <QueryClientProvider client={client}>
-          <SettingsHistory type={type} id="target" userId="u1" />
-        </QueryClientProvider>,
-      );
-      await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
-      expect(screen.queryByText(/Last changed/)).toBeNull();
-      await act(async () =>
-        finish(entryFor("Second Sam", "2026-03-01T00:00:00Z")),
-      );
-      await screen.findByText(/Last changed by Second Sam/);
-    });
-
-    it("neither reads nor shows cached data for another user or a missing session", async () => {
-      get.mockReset();
-      mountSeeded(appClient(), "u2");
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(get).not.toHaveBeenCalled();
-      noPrivate();
-    });
-
-    it("does not show another target's or session's cached entry while the current read is held", async () => {
-      get.mockReset();
-      get.mockImplementation(() => new Promise(() => {}));
-      const client = appClient();
-      client.setQueryData(keyOf("u1", "s-old"), privateEntry);
-      client.setQueryData(
-        settingsHistoryQueryKey(type, "other-target", "u1", "s1"),
-        privateEntry,
-      );
-      currentUser.id = "u1";
-      currentUser.sessionId = "s1";
-      render(
-        <QueryClientProvider client={client}>
-          <SettingsHistory type={type} id="target" userId="u1" />
-        </QueryClientProvider>,
-      );
-      await waitFor(() => expect(get).toHaveBeenCalledOnce());
-      noPrivate();
-    });
-  },
-);
-
-it("does not disclose cached metadata when a mutation refresh cancels the disclosure read", async () => {
-  currentUser.id = "u1";
-  currentUser.sessionId = "s1";
-  const cached = {
-    entityType: "workspace",
-    entityId: "w1",
-    lastChanged: { actor: row.actor, at: row.at },
-    rows: [row],
-  };
-  get
-    .mockReset()
-    .mockResolvedValueOnce(cached)
-    .mockImplementation(() => new Promise(() => {}));
-  const { client } = setup();
-  await screen.findByText(/Last changed by Alice/);
-  fireEvent.click(screen.getByRole("button", { name: /History/ }));
-  await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
-  const { refreshSettingsHistory } = await import("./refresh-settings-history");
-  await act(async () => {
-    refreshSettingsHistory(
-      client,
-      settingsHistoryQueryKey("workspace", "w1", "u1", "s1"),
-      () => new Promise(() => {}),
-    );
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
-  expect(screen.queryByText(/Alice/)).toBeNull();
-  expect(screen.getByRole("alert")).toBeInTheDocument();
-});

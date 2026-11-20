@@ -14,8 +14,37 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { createInstance, type ResourceKey } from "i18next";
 import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { SettingsHistoryTarget } from "@/fetchers/settings/settings-history";
 import { HttpError } from "@/lib/http-error";
-import { SettingsHistory } from "./settings-history";
+import { SettingsHistory as HistoryPanel } from "./settings-history";
+
+// Tests below speak entity/id; the identity comes from the mocked session.
+function SettingsHistory({
+  type,
+  id,
+  selector,
+}: {
+  type: SettingsHistoryTarget;
+  id: string;
+  userId?: string;
+  selector?:
+    | { scope: "instance" }
+    | { scope: "workspace"; workspaceId: string };
+}) {
+  return (
+    <HistoryPanel
+      target={{
+        kind: "entity",
+        type,
+        id,
+        scope:
+          selector?.scope === "workspace"
+            ? { kind: "workspace", workspaceId: selector.workspaceId }
+            : { kind: "instance" },
+      }}
+    />
+  );
+}
 
 const get = vi.hoisted(() => vi.fn());
 vi.mock("@/fetchers/settings/settings-history", async (importOriginal) => ({
@@ -28,6 +57,10 @@ vi.mock("@/lib/auth-client", () => ({
   authClient: {
     useSession: () => ({
       data: { user: { id: "u1" }, session: { id: "s1" } },
+    }),
+    getSession: async () => ({
+      data: { user: { id: "u1" }, session: { id: "s1" } },
+      error: null,
     }),
   },
 }));

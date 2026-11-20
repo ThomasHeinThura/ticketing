@@ -1,8 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  profileHistoryKey,
-  refreshPersonalHistory,
-} from "@/fetchers/settings/personal-history";
 import uploadAvatar from "@/fetchers/user/upload-avatar";
 import { authClient } from "@/lib/auth-client";
 import { prepareAvatarImage } from "@/lib/prepare-avatar-image";
@@ -19,10 +15,6 @@ function useUpdateUserAvatar() {
         session?.user?.id,
         session?.session?.id,
       );
-      const key = profileHistoryKey(
-        session?.user?.id ?? "",
-        session?.session?.id ?? "",
-      );
       const { contentType, data } = await prepareAvatarImage(file);
       await check();
       const avatar = await uploadAvatar({ contentType, data });
@@ -34,14 +26,19 @@ function useUpdateUserAvatar() {
         throw new Error(error.message || "Failed to update profile picture");
       }
 
-      refreshPersonalHistory(queryClient, key);
-      await check(true);
       return { avatar, check };
     },
     onSuccess: async ({ check }) => {
       await check(true);
       await invalidateUserProfileQueries(queryClient);
       await check(true);
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "profile" },
+        ],
+      },
     },
   });
 }

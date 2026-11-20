@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Input,
   Label,
@@ -17,20 +17,10 @@ import {
   TableRow,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
-import {
-  HistoryPresentation,
-  SettingsHistory,
-} from "@/components/settings/settings-history";
-import {
-  getSettingsHistory,
-  settingsHistoryQueryKey,
-} from "@/fetchers/settings/settings-history";
 import {
   createAvailableHours,
-  getTimeSettings,
   updateTimeSettings,
 } from "@/fetchers/time-tracking";
 import {
@@ -40,7 +30,6 @@ import {
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { authClient } from "@/lib/auth-client";
-import { HttpError } from "@/lib/http-error";
 import { profileSessionGuard } from "@/lib/profile-session-guard";
 import { isoDay, useServerToday } from "@/lib/server-clock";
 import { formatMinutes } from "@/lib/time-minutes";
@@ -49,106 +38,11 @@ import { parseHoursPerWeek, useAvailableHours } from "./cost-queries";
 import { DateField } from "./date-field";
 import { useInvalidateTime, useTimeErrorMessage } from "./time-shared";
 
-type HistoryIdentity = { userId: string; sessionId: string; host: string };
-
-async function assertHistorySession(
-  userId: string,
-  sessionId: string,
-  host: string,
-) {
-  if (window.location.host !== host) throw new HttpError(403, "Host changed");
-  try {
-    await profileSessionGuard(userId, sessionId)();
-  } catch {
-    throw new HttpError(403, "Session unavailable");
-  }
-  if (window.location.host !== host) throw new HttpError(403, "Host changed");
-}
-
-function TimeSettingsHistory({
-  workspaceId,
-  projectId,
-  identity,
-}: {
-  workspaceId: string;
-  projectId?: string;
-  identity: HistoryIdentity;
-}) {
-  const queryClient = useQueryClient();
-  const admission = useQuery({
-    queryKey: [
-      "time-settings-history-admission",
-      identity.host,
-      identity.userId,
-      identity.sessionId,
-      workspaceId,
-      projectId ?? "",
-    ],
-    queryFn: async ({ signal }) => {
-      const { userId, sessionId, host } = identity;
-      const historyKey = settingsHistoryQueryKey(
-        projectId ? "project" : "workspace",
-        projectId ?? workspaceId,
-        userId,
-        sessionId,
-      );
-      try {
-        await assertHistorySession(userId, sessionId, host);
-        const [source, history] = await Promise.all([
-          getTimeSettings(workspaceId, projectId),
-          getSettingsHistory(
-            projectId ? "project" : "workspace",
-            projectId ?? workspaceId,
-            signal,
-          ),
-        ]);
-        await assertHistorySession(userId, sessionId, host);
-        if (projectId && source.project?.id !== projectId) {
-          if (!signal.aborted) queryClient.setQueryData(historyKey, null);
-          return false;
-        }
-        if (!signal.aborted) queryClient.setQueryData(historyKey, history);
-        return true;
-      } catch (error) {
-        if (
-          !signal.aborted &&
-          error instanceof HttpError &&
-          [401, 403, 404].includes(error.status)
-        )
-          queryClient.setQueryData(historyKey, null);
-        throw error;
-      }
-    },
-    retry: false,
-    staleTime: 0,
-    refetchOnMount: "always",
-  });
-  if (admission.isError) {
-    if (
-      admission.error instanceof HttpError &&
-      [401, 403, 404].includes(admission.error.status)
-    )
-      return null;
-    return (
-      <HistoryPresentation
-        loading={false}
-        error
-        retry={() => void admission.refetch()}
-        onOpen={() => {}}
-      >
-        {null}
-      </HistoryPresentation>
-    );
-  }
-  if (admission.isFetching || !admission.data) return null;
-  return (
-    <SettingsHistory
-      type={projectId ? "project" : "workspace"}
-      id={projectId ?? workspaceId}
-      userId={identity.userId}
-    />
-  );
-}
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 /** TC-4: how many days back people may log time without `time_entry:log_backdated`. */
 export function BackdateLimitSetting() {
@@ -162,13 +56,6 @@ export function BackdateLimitSetting() {
   const sessionScope = session?.session as
     | { portal?: string | null; impersonatedBy?: string | null }
     | undefined;
-  const identity =
-    userId &&
-    sessionId &&
-    !sessionScope?.impersonatedBy &&
-    (!sessionScope?.portal || sessionScope.portal === "agent")
-      ? { userId, sessionId, host }
-      : null;
   const settings = useTimeSettings(workspace?.id);
   const invalidate = useInvalidateTime();
   const message = useTimeErrorMessage();
@@ -201,29 +88,32 @@ export function BackdateLimitSetting() {
     }: {
       workspaceId: string;
       days: number;
-      identity: HistoryIdentity | null;
+      identity: { userId: string; sessionId: string } | null;
       intent: number;
       revision: number;
     }) => updateTimeSettings({ workspaceId, backdateLimitDays: days }),
+    meta: {
+      audits: {
+        targets: ({ workspaceId }: { workspaceId: string }) => [
+          {
+            kind: "time-settings",
+            scope: { kind: "workspace", workspaceId },
+          } as const,
+        ],
+      },
+    },
     onSuccess: async (
       result,
       { workspaceId, identity, intent, revision: saved },
     ) => {
-      if (identity) {
-        const { userId, sessionId, host } = identity;
-        refreshSettingsHistory(
-          client,
-          settingsHistoryQueryKey("workspace", workspaceId, userId, sessionId),
-          () => assertHistorySession(userId, sessionId, host),
-        );
-      }
       if (!lifecycle.isCurrent(intent) || !identity) return;
+      // Seed the settings only for the session that saved: confirm it around the cancel.
+      const confirmSession = profileSessionGuard(
+        identity.userId,
+        identity.sessionId,
+      );
       try {
-        await assertHistorySession(
-          identity.userId,
-          identity.sessionId,
-          identity.host,
-        );
+        await confirmSession();
         if (!lifecycle.isCurrent(intent)) return;
         const settingsKey = [
           "time-tracking",
@@ -232,11 +122,7 @@ export function BackdateLimitSetting() {
           "",
         ] as const;
         await client.cancelQueries({ queryKey: settingsKey, exact: true });
-        await assertHistorySession(
-          identity.userId,
-          identity.sessionId,
-          identity.host,
-        );
+        await confirmSession();
         if (!lifecycle.isCurrent(intent)) return;
         client.setQueryData(settingsKey, result);
       } catch {
@@ -273,7 +159,7 @@ export function BackdateLimitSetting() {
             save.mutate({
               workspaceId: workspace.id,
               days,
-              identity,
+              identity: userId && sessionId ? { userId, sessionId } : null,
               intent: lifecycle.capture(),
               revision: revision.current,
             });
@@ -323,12 +209,15 @@ export function BackdateLimitSetting() {
           {t("timeTracking:settings.backdateHelp")}
         </p>
       </form>
-      {workspace?.id && identity && !settings.isError ? (
-        <TimeSettingsHistory
-          key={JSON.stringify([host, userId, sessionId, workspace.id])}
-          workspaceId={workspace.id}
-          identity={identity}
-        />
+      {workspace?.id ? (
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{
+              kind: "time-settings",
+              scope: { kind: "workspace", workspaceId: workspace.id },
+            }}
+          />
+        </Suspense>
       ) : null}
     </>
   );
@@ -339,20 +228,12 @@ export function ProjectBillableSetting({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const { data: workspace } = useActiveWorkspace();
   const { data: session } = authClient.useSession();
-  const client = useQueryClient();
   const host = window.location.host;
   const userId = session?.user?.id;
   const sessionId = session?.session?.id;
   const sessionScope = session?.session as
     | { portal?: string | null; impersonatedBy?: string | null }
     | undefined;
-  const identity =
-    userId &&
-    sessionId &&
-    !sessionScope?.impersonatedBy &&
-    (!sessionScope?.portal || sessionScope.portal === "agent")
-      ? { userId, sessionId, host }
-      : null;
   const settings = useTimeSettings(workspace?.id, projectId);
   const invalidate = useInvalidateTime();
   const message = useTimeErrorMessage();
@@ -377,27 +258,33 @@ export function ProjectBillableSetting({ projectId }: { projectId: string }) {
       workspaceId: string;
       targetProjectId: string;
       defaultBillable: boolean;
-      identity: HistoryIdentity | null;
       intent: number;
     }) =>
       updateTimeSettings({
         workspaceId,
         project: { id: targetProjectId, defaultBillable },
       }),
-    onSuccess: async (_result, { targetProjectId, identity, intent }) => {
-      if (identity) {
-        const { userId, sessionId, host } = identity;
-        refreshSettingsHistory(
-          client,
-          settingsHistoryQueryKey(
-            "project",
-            targetProjectId,
-            userId,
-            sessionId,
-          ),
-          () => assertHistorySession(userId, sessionId, host),
-        );
-      }
+    meta: {
+      audits: {
+        targets: ({
+          workspaceId,
+          targetProjectId,
+        }: {
+          workspaceId: string;
+          targetProjectId: string;
+        }) => [
+          {
+            kind: "time-settings",
+            scope: {
+              kind: "project",
+              workspaceId,
+              projectId: targetProjectId,
+            },
+          } as const,
+        ],
+      },
+    },
+    onSuccess: async (_result, { intent }) => {
       if (!lifecycle.isCurrent(intent)) return;
       toast.success(t("timeTracking:settings.saved"));
       await invalidate();
@@ -423,7 +310,6 @@ export function ProjectBillableSetting({ projectId }: { projectId: string }) {
                   workspaceId: workspace.id,
                   targetProjectId: projectId,
                   defaultBillable: next,
-                  identity,
                   intent: lifecycle.capture(),
                 });
             }}
@@ -450,22 +336,15 @@ export function ProjectBillableSetting({ projectId }: { projectId: string }) {
           </p>
         </div>
       </div>
-      {workspace?.id &&
-      identity &&
-      !settings.isError &&
-      project.id === projectId ? (
-        <TimeSettingsHistory
-          key={JSON.stringify([
-            host,
-            userId,
-            sessionId,
-            workspace.id,
-            projectId,
-          ])}
-          workspaceId={workspace.id}
-          projectId={projectId}
-          identity={identity}
-        />
+      {workspace?.id ? (
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{
+              kind: "time-settings",
+              scope: { kind: "project", workspaceId: workspace.id, projectId },
+            }}
+          />
+        </Suspense>
       ) : null}
     </>
   );

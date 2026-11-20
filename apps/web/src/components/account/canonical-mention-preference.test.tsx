@@ -10,6 +10,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  audits: undefined as unknown,
   save: vi.fn(),
   saveComment: vi.fn(),
   saveTeamNotification: vi.fn(),
@@ -95,9 +96,12 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useMutation: ({
     mutationFn,
+    meta,
   }: {
     mutationFn: (value: unknown) => Promise<unknown>;
+    meta: { audits: { targets: () => unknown } };
   }) => {
+    mocks.audits = meta.audits.targets();
     const [isSuccess, setSuccess] = useState(false);
     return {
       isPending: false,
@@ -117,7 +121,6 @@ vi.mock("@tanstack/react-query", () => ({
   },
 }));
 
-import * as personalHistory from "@/fetchers/settings/personal-history";
 import { CanonicalMentionPreference } from "./canonical-mention-preference";
 
 afterEach(cleanup);
@@ -141,10 +144,6 @@ describe("email preference landing", () => {
     expect(document.activeElement).toHaveClass("ring-ring");
   });
   it("requires an explicit change and save", async () => {
-    const refreshed = vi.fn();
-    const capture = vi
-      .spyOn(personalHistory, "captureNotificationHistoryRefresh")
-      .mockReturnValue(refreshed);
     render(<CanonicalMentionPreference />);
     fireEvent.click(screen.getByRole("switch", { name: "mention.enabled" }));
     expect(mocks.save).not.toHaveBeenCalled();
@@ -155,9 +154,9 @@ describe("email preference landing", () => {
         digest: "off",
       }),
     );
-    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce());
-    expect(capture.mock.calls[0][1]).toBe("staff");
-    capture.mockRestore();
+    expect(mocks.audits).toEqual([
+      { kind: "self", audience: "staff", section: "notifications" },
+    ]);
   });
   it("announces a successful preference save once when the form stays mounted", async () => {
     render(<CanonicalMentionPreference />);

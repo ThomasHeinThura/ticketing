@@ -25,14 +25,20 @@ import {
   Separator,
 } from "@taskdesk/ui";
 import { Loader2, Pencil, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
-import { PersonalProfileHistory } from "@/components/settings/personal-profile-history";
 import useDeleteAccount, {
   SESSION_TOO_OLD,
 } from "@/hooks/mutations/use-delete-account";
@@ -42,6 +48,12 @@ import useUpdateUserProfile from "@/hooks/mutations/use-update-user-profile";
 import { getInitials } from "@/lib/get-initials";
 import { ACCEPTED_AVATAR_TYPES } from "@/lib/prepare-avatar-image";
 import { toast } from "@/lib/toast";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/account/information",
@@ -269,7 +281,11 @@ function RouteComponent() {
           </p>
         </div>
 
-        {user?.id && <PersonalProfileHistory userId={user.id} />}
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{ kind: "self", audience: "staff", section: "profile" }}
+          />
+        </Suspense>
 
         <div className="space-y-6">
           <div className="space-y-1">

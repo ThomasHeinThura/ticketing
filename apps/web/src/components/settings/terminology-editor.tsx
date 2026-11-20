@@ -22,11 +22,8 @@ import {
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
-import { SettingsHistory } from "@/components/settings/settings-history";
-import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
 import {
   getTerminology,
   previewTerminology,
@@ -37,8 +34,10 @@ import {
   type TerminologyTarget,
   type TerminologyTermKey,
 } from "@/fetchers/terminology";
-import { authClient } from "@/lib/auth-client";
-import { profileSessionGuard } from "@/lib/profile-session-guard";
+import type {
+  HistoryScope,
+  HistoryTarget,
+} from "@/query-client/settings-history-key";
 
 const terminologyKey = (target: TerminologyTarget) =>
   [
@@ -63,6 +62,17 @@ function localeLabel(locale: string): string {
   }
 }
 
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
+const historyScope = (target: TerminologyTarget): HistoryScope =>
+  target.scope === "workspace"
+    ? { kind: "workspace", workspaceId: target.workspaceId }
+    : { kind: "instance" };
+
 export function sampleCountForCategory(locale: string, category: string) {
   const rules = new Intl.PluralRules(locale);
   const preferredCounts = [
@@ -85,7 +95,6 @@ export function sampleCountForCategory(locale: string, category: string) {
 
 export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
   const { t } = useTranslation(["settings", "term"]);
-  const { data: session } = authClient.useSession();
   const queryClient = useQueryClient();
   const queryKey = terminologyKey(target);
   const query = useQuery({ queryKey, queryFn: () => getTerminology(target) });
@@ -132,42 +141,45 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
     }));
   };
   const save = useMutation({
-    mutationFn: async (forms: TerminologyForms | null) => {
+    mutationFn: async ({
+      forms,
+      target: savedTarget,
+    }: {
+      forms: TerminologyForms | null;
+      id: string;
+      target: TerminologyTarget;
+    }) => {
       const snapshot = query.data;
       if (!snapshot) throw new Error("Terminology settings are not loaded");
-      const savedTarget = target;
-      const savedId = historyId;
-      const savedUserId = session?.user?.id;
-      const savedSessionId = session?.session?.id;
       const result = await saveTerminology(savedTarget, {
         expectedEtag: snapshot.etag,
         override: { audience, termKey, locale, forms },
       });
-      return { result, savedTarget, savedId, savedUserId, savedSessionId };
+      return { result, savedTarget };
     },
-    onSuccess: ({
-      result,
-      savedTarget,
-      savedId,
-      savedUserId,
-      savedSessionId,
-    }) => {
+    meta: {
+      audits: {
+        targets: ({
+          id,
+          target: savedTarget,
+        }: {
+          id: string;
+          target: TerminologyTarget;
+        }): HistoryTarget[] => [
+          {
+            kind: "entity",
+            type: "terminology_override",
+            id,
+            scope: historyScope(savedTarget),
+          },
+        ],
+      },
+    },
+    onSuccess: ({ result, savedTarget }) => {
       queryClient.setQueryData(terminologyKey(savedTarget), result);
       void queryClient.invalidateQueries({
         queryKey: ["terminology-runtime"],
       });
-      if (savedUserId && savedSessionId)
-        refreshSettingsHistory(
-          queryClient,
-          settingsHistoryQueryKey(
-            "terminology_override",
-            savedId,
-            savedUserId,
-            savedSessionId,
-            savedTarget,
-          ),
-          profileSessionGuard(savedUserId, savedSessionId),
-        );
     },
     onError: () => void queryClient.invalidateQueries({ queryKey }),
   });
@@ -361,14 +373,16 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
             </Select>
           </div>
         </div>
-        {session?.user?.id && session.session?.id ? (
+        <Suspense fallback={null}>
           <SettingsHistory
-            type="terminology_override"
-            id={historyId}
-            userId={session.user.id}
-            selector={target}
+            target={{
+              kind: "entity",
+              type: "terminology_override",
+              id: historyId,
+              scope: historyScope(target),
+            }}
           />
-        ) : null}
+        </Suspense>
         <div className="grid gap-4 sm:grid-cols-2">
           {categories.map((category) => (
             <div key={category} className="space-y-2">
@@ -438,21 +452,21 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
           <SaveButton
             disabled={
               (!formsDirty && !save.isPending) ||
-              (save.isPending && save.variables === null) ||
+              (save.isPending && save.variables?.forms === null) ||
               categories.some((category) => !draft[category]?.trim())
             }
-            pending={save.isPending && save.variables !== null}
-            success={save.isSuccess && save.variables !== null}
+            pending={save.isPending && save.variables?.forms !== null}
+            success={save.isSuccess && save.variables?.forms !== null}
             savedLabel={t("common:actions.saved")}
             workingLabel={t("common:actions.saving")}
-            onClick={() => save.mutate(draft)}
+            onClick={() => save.mutate({ forms: draft, id: historyId, target })}
           >
             {t("common:actions.save", { defaultValue: "Save" })}
           </SaveButton>
           <Button
             variant="outline"
             disabled={save.isPending || !current}
-            onClick={() => save.mutate(null)}
+            onClick={() => save.mutate({ forms: null, id: historyId, target })}
           >
             {t("terminology.useDefault", { defaultValue: "Use default" })}
           </Button>

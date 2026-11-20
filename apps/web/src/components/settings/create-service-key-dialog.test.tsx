@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -11,7 +15,7 @@ import { translate } from "@/test/en-translation";
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
-  refresh: vi.fn(),
+  audited: vi.fn(),
   guard: vi.fn(),
   session: { user: { id: "u1" }, session: { id: "s1" } },
   prove: vi.fn(),
@@ -25,12 +29,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth-client", () => ({
   authClient: { useSession: () => ({ data: mocks.session }) },
 }));
-vi.mock("@/fetchers/settings/personal-history", () => ({
-  assertNotificationHistorySession: (...args: unknown[]) =>
-    mocks.guard(...args),
-}));
-vi.mock("@/components/settings/refresh-settings-history", () => ({
-  refreshSettingsHistory: mocks.refresh,
+vi.mock("@/lib/profile-session-guard", () => ({
+  profileSessionGuard: () => () => mocks.guard(),
 }));
 vi.mock("@/lib/i18n", () => ({ i18n: { t: (key: string) => key } }));
 
@@ -65,7 +65,7 @@ import { CreateServiceKeyDialog } from "./create-service-key-dialog";
 
 beforeEach(() => {
   mocks.session = { user: { id: "u1" }, session: { id: "s1" } };
-  mocks.refresh.mockReset();
+  mocks.audited.mockReset();
   mocks.guard.mockReset().mockResolvedValue(undefined);
   mocks.create
     .mockReset()
@@ -77,6 +77,12 @@ afterEach(cleanup);
 function renderFixture(onCreated = vi.fn(), workspaceId = "ws-1") {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
+    mutationCache: new MutationCache({
+      onSuccess: (data, variables, _context, mutation) =>
+        mocks.audited(
+          mutation.meta?.audits?.targets(variables as never, data as never),
+        ),
+    }),
   });
   client.setQueryData(["god-mode", "step-up-factor"], mocks.factorStatus);
   client.setQueryData(agentSessionKeys.session(), {
@@ -176,19 +182,21 @@ describe("CreateServiceKeyDialog", () => {
   });
 });
 
-it("refreshes the returned key ID without waiting for History or list refresh", async () => {
+it("audits the returned key ID without waiting for the list refresh", async () => {
   const fixture = renderFixture();
   vi.spyOn(fixture.client, "invalidateQueries").mockImplementation(
     () => new Promise(() => {}),
   );
-  mocks.refresh.mockImplementation(() => new Promise(() => {}));
   submit();
   await waitFor(() =>
-    expect(mocks.refresh).toHaveBeenCalledWith(
-      expect.anything(),
-      ["settings-history", "service_api_key", "k1", "agent", "u1", "s1"],
-      expect.any(Function),
-    ),
+    expect(mocks.audited).toHaveBeenCalledWith([
+      {
+        kind: "entity",
+        type: "service_api_key",
+        id: "k1",
+        scope: { kind: "workspace", workspaceId: "ws-1" },
+      },
+    ]),
   );
   await waitFor(() =>
     expect(fixture.onCreated).toHaveBeenCalledWith(
@@ -198,7 +206,7 @@ it("refreshes the returned key ID without waiting for History or list refresh", 
   expect(fixture.onClose).toHaveBeenCalled();
 });
 
-it("refreshes only the captured identity when the session and workspace switch during creation", async () => {
+it("audits the created key in its original workspace when the session and workspace switch during creation", async () => {
   let finish!: (value: { id: string; name: string; key: string }) => void;
   mocks.create.mockReturnValue(
     new Promise((resolve) => {
@@ -220,11 +228,14 @@ it("refreshes only the captured identity when the session and workspace switch d
   );
   finish({ id: "k1", name: "Pipeline", key: "tdk_secret" });
   await waitFor(() =>
-    expect(mocks.refresh).toHaveBeenCalledWith(
-      expect.anything(),
-      ["settings-history", "service_api_key", "k1", "agent", "u1", "s1"],
-      expect.any(Function),
-    ),
+    expect(mocks.audited).toHaveBeenCalledWith([
+      {
+        kind: "entity",
+        type: "service_api_key",
+        id: "k1",
+        scope: { kind: "workspace", workspaceId: "ws-1" },
+      },
+    ]),
   );
   expect(fixture.onCreated).not.toHaveBeenCalled();
   expect(fixture.onClose).not.toHaveBeenCalled();
@@ -236,16 +247,15 @@ it("does not block ordinary creation handoff for an impersonated session", async
   submit();
   await waitFor(() => expect(fixture.onCreated).toHaveBeenCalled());
   expect(fixture.onClose).toHaveBeenCalled();
-  expect(mocks.refresh).not.toHaveBeenCalled();
 });
 
-it("does not refresh History or hand off a key on failed creation", async () => {
+it("does not audit or hand off a key on failed creation", async () => {
   mocks.create.mockRejectedValue(new Error("refused"));
   const fixture = renderFixture();
   submit();
   await waitFor(() => expect(mocks.create).toHaveBeenCalled());
   await screen.findByText(translate("settings:serviceKeys.create.failed"));
-  expect(mocks.refresh).not.toHaveBeenCalled();
+  expect(mocks.audited).not.toHaveBeenCalled();
   expect(fixture.onCreated).not.toHaveBeenCalled();
 });
 
@@ -271,68 +281,6 @@ it("keeps the one-time key for retry if post-create session verification is temp
   expect(mocks.create).toHaveBeenCalledTimes(1);
 });
 
-it("marks only the captured History key stale after a session switch and does not refetch under the new session", async () => {
-  const { refreshSettingsHistory } = await vi.importActual<
-    typeof import("./refresh-settings-history")
-  >("./refresh-settings-history");
-  mocks.refresh.mockImplementation(refreshSettingsHistory);
-  mocks.guard.mockRejectedValue(new Error("session changed"));
-  let finish!: (value: { id: string; name: string; key: string }) => void;
-  mocks.create.mockReturnValue(
-    new Promise((resolve) => {
-      finish = resolve;
-    }),
-  );
-  const fixture = renderFixture();
-  const oldKey = [
-    "settings-history",
-    "service_api_key",
-    "k1",
-    "agent",
-    "u1",
-    "s1",
-  ];
-  const newKey = [
-    "settings-history",
-    "service_api_key",
-    "k1",
-    "agent",
-    "u2",
-    "s2",
-  ];
-  fixture.client.setQueryData(oldKey, { old: true });
-  fixture.client.setQueryData(newKey, { untouched: true });
-  const invalidations = vi.spyOn(fixture.client, "invalidateQueries");
-  submit();
-  await waitFor(() => expect(mocks.create).toHaveBeenCalled());
-  mocks.session = { user: { id: "u2" }, session: { id: "s2" } };
-  fixture.rerender(
-    <QueryClientProvider client={fixture.client}>
-      <CreateServiceKeyDialog
-        workspaceId="ws-2"
-        onClose={fixture.onClose}
-        onCreated={fixture.onCreated}
-      />
-    </QueryClientProvider>,
-  );
-  finish({ id: "k1", name: "Pipeline", key: "tdk_secret" });
-  await waitFor(() =>
-    expect(fixture.client.getQueryState(oldKey)?.isInvalidated).toBe(true),
-  );
-  expect(fixture.client.getQueryState(newKey)?.isInvalidated).toBe(false);
-  expect(invalidations).toHaveBeenCalledWith({
-    queryKey: oldKey,
-    exact: true,
-    refetchType: "none",
-  });
-  expect(invalidations).not.toHaveBeenCalledWith({
-    queryKey: oldKey,
-    exact: true,
-    refetchType: "active",
-  });
-  expect(fixture.onCreated).not.toHaveBeenCalled();
-});
-
 it("does not hand the one-time key to a new session if identity changes while the UI guard is pending", async () => {
   let release!: () => void;
   mocks.guard.mockReturnValueOnce(
@@ -354,12 +302,12 @@ it("does not hand the one-time key to a new session if identity changes while th
     </QueryClientProvider>,
   );
   release();
-  await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+  await waitFor(() => expect(mocks.audited).toHaveBeenCalled());
   expect(fixture.onCreated).not.toHaveBeenCalled();
   expect(fixture.onClose).not.toHaveBeenCalled();
 });
 
-it("marks the captured key stale even if its dialog unmounts while creation is pending", async () => {
+it("audits the created key even if its dialog unmounts while creation is pending", async () => {
   let finish!: (value: { id: string; name: string; key: string }) => void;
   mocks.create.mockReturnValue(
     new Promise((resolve) => {
@@ -372,11 +320,14 @@ it("marks the captured key stale even if its dialog unmounts while creation is p
   fixture.unmount();
   finish({ id: "k1", name: "Pipeline", key: "tdk_secret" });
   await waitFor(() =>
-    expect(mocks.refresh).toHaveBeenCalledWith(
-      expect.anything(),
-      ["settings-history", "service_api_key", "k1", "agent", "u1", "s1"],
-      expect.any(Function),
-    ),
+    expect(mocks.audited).toHaveBeenCalledWith([
+      {
+        kind: "entity",
+        type: "service_api_key",
+        id: "k1",
+        scope: { kind: "workspace", workspaceId: "ws-1" },
+      },
+    ]),
   );
   expect(fixture.onCreated).not.toHaveBeenCalled();
   expect(fixture.onClose).not.toHaveBeenCalled();

@@ -35,15 +35,13 @@ import {
   READ_CAPABILITIES,
   WRITE_CAPABILITY_GROUPS,
 } from "@/components/settings/create-api-key-dialog";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import { translatedCapabilityDescription } from "@/components/settings/roles/capability-model";
 import { createServiceKey } from "@/fetchers/service-keys";
-import { assertNotificationHistorySession } from "@/fetchers/settings/personal-history";
-import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { authClient } from "@/lib/auth-client";
 import { localizedAdminErrorMessage } from "@/lib/http-error";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 import { toast } from "@/lib/toast";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 
@@ -124,13 +122,11 @@ export function CreateServiceKeyDialog({
     if (!lifecycle.isCurrent(intent)) return;
     setCheckingHandoff(true);
     try {
-      if (captured)
-        await assertNotificationHistorySession(
-          "staff",
-          captured.userId,
-          captured.sessionId,
-          captured.host,
-        );
+      if (captured) {
+        if (window.location.host !== captured.host)
+          throw new Error("Host changed");
+        await profileSessionGuard(captured.userId, captured.sessionId)();
+      }
     } catch {
       if (lifecycle.isCurrent(intent))
         setPendingHandoff({ created, captured, savedWorkspaceId, intent });
@@ -143,9 +139,6 @@ export function CreateServiceKeyDialog({
     void queryClient.invalidateQueries({
       queryKey: serviceKeysKey(savedWorkspaceId),
     });
-    void queryClient.invalidateQueries({
-      queryKey: ["service-key-history-list", savedWorkspaceId],
-    });
     toast.success(t("common:actions.saved"));
     onCreated(created);
     onClose();
@@ -154,12 +147,6 @@ export function CreateServiceKeyDialog({
   const mutation = useMutation({
     mutationFn: async () => {
       const captured = userId && sessionId ? { host, userId, sessionId } : null;
-      const historyIdentity =
-        captured &&
-        !sessionScope?.impersonatedBy &&
-        (!sessionScope?.portal || sessionScope.portal === "agent")
-          ? captured
-          : null;
       const savedWorkspaceId = workspaceId;
       const intent = lifecycle.capture();
       const addresses = ipAllowlist
@@ -184,32 +171,29 @@ export function CreateServiceKeyDialog({
       return {
         created: outcome.value,
         captured,
-        historyIdentity,
         savedWorkspaceId,
         intent,
       };
     },
-    onSuccess: async ({
-      created,
-      captured,
-      historyIdentity,
-      savedWorkspaceId,
-      intent,
-    }) => {
-      if (historyIdentity && created.id) {
-        const { host, userId, sessionId } = historyIdentity;
-        refreshSettingsHistory(
-          queryClient,
-          settingsHistoryQueryKey(
-            "service_api_key",
-            created.id,
-            userId,
-            sessionId,
-          ),
-          () =>
-            assertNotificationHistorySession("staff", userId, sessionId, host),
-        );
-      }
+    meta: {
+      audits: {
+        targets: (
+          _: unknown,
+          {
+            created,
+            savedWorkspaceId,
+          }: { created: { id: string }; savedWorkspaceId: string },
+        ) => [
+          {
+            kind: "entity",
+            type: "service_api_key",
+            id: created.id,
+            scope: { kind: "workspace", workspaceId: savedWorkspaceId },
+          },
+        ],
+      },
+    },
+    onSuccess: async ({ created, captured, savedWorkspaceId, intent }) => {
       await handOff({ created, captured, savedWorkspaceId, intent });
     },
   });

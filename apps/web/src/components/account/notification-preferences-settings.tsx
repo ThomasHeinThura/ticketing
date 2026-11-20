@@ -29,7 +29,6 @@ import {
   getEmailLinkHandoff,
   saveReportExportEmailPreference,
 } from "@/fetchers/notification-preferences/canonical-mention-preference";
-import { captureNotificationHistoryRefresh } from "@/fetchers/settings/personal-history";
 import {
   useDeleteNotificationWorkspaceRule,
   useUpdateNotificationPreferences,
@@ -38,7 +37,6 @@ import {
 import useGetNotificationPreferences from "@/hooks/queries/notification-preferences/use-get-notification-preferences";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
-import { authClient } from "@/lib/auth-client";
 
 type WorkspaceSummary = {
   id: string;
@@ -494,7 +492,6 @@ function WorkspaceRuleCard({
 function ReportExportEmailPreference() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
   const preferences = useGetNotificationPreferences();
   const handoff = useQuery({
     queryKey: ["notification-preferences", "email-link-handoff"],
@@ -525,17 +522,15 @@ function ReportExportEmailPreference() {
     }
   }, [linked, stored]);
   const mutation = useMutation({
-    mutationFn: async (
+    mutationFn: (
       input: Parameters<typeof saveReportExportEmailPreference>[0],
-    ) => {
-      const refresh = captureNotificationHistoryRefresh(
-        queryClient,
-        "staff",
-        session,
-      );
-      const result = await saveReportExportEmailPreference(input);
-      refresh();
-      return result;
+    ) => saveReportExportEmailPreference(input),
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "notifications" },
+        ],
+      },
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({

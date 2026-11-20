@@ -1,7 +1,7 @@
 import {
+  MutationCache,
   QueryClient,
   QueryClientProvider,
-  QueryObserver,
 } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -11,6 +11,7 @@ import { useLocale } from "./use-locale";
 const mock = vi.hoisted(() => ({
   update: vi.fn(),
   change: vi.fn(),
+  audited: vi.fn(),
   identity: { id: "u1", session: "s1" },
 }));
 vi.mock("@/lib/auth-client", () => ({
@@ -41,9 +42,26 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-it("invalidates the initiating session after locale save even if the session changes", async () => {
+function mount() {
+  const client = new QueryClient({
+    mutationCache: new MutationCache({
+      onSuccess: (data, variables, _context, mutation) =>
+        mock.audited(
+          mutation.meta?.audits?.targets(variables as never, data as never),
+        ),
+    }),
+  });
+  const invalidate = vi.spyOn(client, "invalidateQueries");
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return { invalidate, hook: renderHook(() => useLocale(), { wrapper }) };
+}
+
+it("audits a committed locale save even if the session then changes, and applies nothing", async () => {
   mock.identity = { id: "u1", session: "s1" };
   mock.change.mockClear();
+  mock.audited.mockClear();
   const previousLanguage = document.documentElement.lang;
   let finish!: (value: unknown) => void;
   mock.update.mockImplementationOnce(
@@ -52,20 +70,7 @@ it("invalidates the initiating session after locale save even if the session cha
         finish = resolve;
       }),
   );
-  const client = new QueryClient();
-  const invalidate = vi.spyOn(client, "invalidateQueries");
-  const key = [
-    "personal-settings-history",
-    window.location.host,
-    "profile",
-    "u1",
-    "s1",
-  ];
-  client.setQueryData(key, { marker: "old" });
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  );
-  const hook = renderHook(() => useLocale(), { wrapper });
+  const { invalidate, hook } = mount();
   let pending!: Promise<void>;
   act(() => {
     pending = hook.result.current.setLocale("en-US");
@@ -77,117 +82,38 @@ it("invalidates the initiating session after locale save even if the session cha
     finish({ error: null });
     await expect(pending).rejects.toThrow("session changed");
   });
-  expect(invalidate).toHaveBeenCalledWith({
-    queryKey: [
-      "personal-settings-history",
-      window.location.host,
-      "profile",
-      "u1",
-      "s1",
-    ],
-    exact: true,
-    refetchType: "active",
-  });
-  expect(client.getQueryState(key)?.isInvalidated).toBe(true);
-  expect(invalidate).toHaveBeenCalledTimes(1);
+  expect(mock.audited).toHaveBeenCalledWith([
+    { kind: "self", audience: "staff", section: "profile" },
+  ]);
+  expect(invalidate).not.toHaveBeenCalled();
   expect(mock.change).not.toHaveBeenCalled();
   expect(document.documentElement.lang).toBe(previousLanguage);
-  expect(invalidate).not.toHaveBeenCalledWith({
-    queryKey: [
-      "personal-settings-history",
-      window.location.host,
-      "profile",
-      "u2",
-      "s2",
-    ],
-    exact: true,
-    refetchType: "active",
-  });
 });
 
-it("does not invalidate after a failed locale save", async () => {
+it("does not audit or invalidate after a failed locale save", async () => {
+  mock.identity = { id: "u1", session: "s1" };
+  mock.audited.mockClear();
   mock.update.mockResolvedValueOnce({ error: { message: "denied" } });
-  const client = new QueryClient();
-  const invalidate = vi.spyOn(client, "invalidateQueries");
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  );
-  const hook = renderHook(() => useLocale(), { wrapper });
+  const { invalidate, hook } = mount();
   await expect(hook.result.current.setLocale("en-US")).rejects.toThrow(
     "denied",
   );
   expect(invalidate).not.toHaveBeenCalled();
+  expect(mock.audited).not.toHaveBeenCalled();
 });
-it("invalidates the saved profile and changes language on success", async () => {
+
+it("audits the profile, invalidates the session and changes language on success", async () => {
   mock.identity = { id: "u1", session: "s1" };
+  mock.audited.mockClear();
+  mock.change.mockClear();
   mock.update.mockResolvedValueOnce({ error: null });
-  const client = new QueryClient();
-  const invalidate = vi.spyOn(client, "invalidateQueries");
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  );
-  const hook = renderHook(() => useLocale(), { wrapper });
+  const { invalidate, hook } = mount();
   await act(async () => {
     await hook.result.current.setLocale("en-US");
   });
-  expect(invalidate).toHaveBeenCalledWith({
-    queryKey: [
-      "personal-settings-history",
-      window.location.host,
-      "profile",
-      "u1",
-      "s1",
-    ],
-    exact: true,
-    refetchType: "active",
-  });
+  expect(mock.audited).toHaveBeenCalledWith([
+    { kind: "self", audience: "staff", section: "profile" },
+  ]);
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ["session"] });
   expect(mock.change).toHaveBeenCalledWith("en-US");
-});
-it("applies the saved language without waiting for history refresh", async () => {
-  mock.identity = { id: "u1", session: "s1" };
-  mock.update.mockResolvedValueOnce({ error: null });
-  mock.change.mockClear();
-  const client = new QueryClient();
-  const key = [
-    "personal-settings-history",
-    window.location.host,
-    "profile",
-    "u1",
-    "s1",
-  ];
-  client.setQueryData(key, { rows: [] });
-  const fetchHistory = vi.fn(() => new Promise(() => {}));
-  const observer = new QueryObserver(client, {
-    queryKey: key,
-    queryFn: fetchHistory,
-    staleTime: Number.POSITIVE_INFINITY,
-  });
-  const unsubscribe = observer.subscribe(() => {});
-  const invalidate = vi.spyOn(client, "invalidateQueries");
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  );
-  const hook = renderHook(() => useLocale(), { wrapper });
-  let result = "pending";
-  await act(async () => {
-    void hook.result.current.setLocale("en-US").then(() => {
-      result = "saved";
-    });
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  });
-  expect(result).toBe("saved");
-  expect(fetchHistory).toHaveBeenCalledOnce();
-  unsubscribe();
-  expect(mock.change).toHaveBeenCalledWith("en-US");
-  expect(invalidate).toHaveBeenCalledWith({
-    queryKey: [
-      "personal-settings-history",
-      window.location.host,
-      "profile",
-      "u1",
-      "s1",
-    ],
-    exact: true,
-    refetchType: "active",
-  });
 });

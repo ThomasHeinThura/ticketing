@@ -33,7 +33,6 @@ import {
   savePortalCanonicalPreference,
   savePortalQuietHours,
 } from "@/fetchers/notification-preferences/portal-canonical-preference";
-import { captureNotificationHistoryRefresh } from "@/fetchers/settings/personal-history";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { consumeNotificationPreferenceHandoffAttempted } from "@/lib/notification-preference-handoff";
 import { routes } from "@/lib/routes";
@@ -264,7 +263,6 @@ function PortalQuietHoursPreference({
             onSaved={() => setCompleted(true)}
             save={savePortalQuietHours}
             historyAudience="portal"
-            historyUserId={portalUserId}
             cacheKey={cacheKey}
             note={t("portal:account.notifications.quietHoursNote")}
           />
@@ -291,21 +289,14 @@ function PreferenceCard({
   const [digest, setDigest] = useState(preference.digest);
   const [saved, setSaved] = useState(false);
   const mutation = useMutation({
-    mutationFn: async (
-      input: Parameters<typeof savePortalCanonicalPreference>[0],
-    ) => {
-      const identity = queryClient.getQueryData<{
-        user: { id: string };
-        session: { id: string };
-      }>(["portal", "session"]);
-      const refresh = captureNotificationHistoryRefresh(
-        queryClient,
-        "portal",
-        identity?.user.id === portalUserId ? identity : undefined,
-      );
-      const result = await savePortalCanonicalPreference(input);
-      refresh();
-      return result;
+    mutationFn: (input: Parameters<typeof savePortalCanonicalPreference>[0]) =>
+      savePortalCanonicalPreference(input),
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "portal", section: "notifications" },
+        ],
+      },
     },
   });
   const title = t(`portal:account.notifications.${kind}.title`);

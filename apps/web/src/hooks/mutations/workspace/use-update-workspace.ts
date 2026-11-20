@@ -1,8 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { client } from "@taskdesk/libs";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
-import { authClient } from "@/lib/auth-client";
-import { profileSessionGuard } from "@/lib/profile-session-guard";
+import type { HistoryTarget } from "@/hooks/queries/settings/use-settings-history";
 
 type UpdateWorkspaceRequest = {
   workspaceId: string;
@@ -21,7 +19,6 @@ type UpdateWorkspaceRequest = {
 
 function useUpdateWorkspace() {
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
   return useMutation({
     mutationFn: async ({
       workspaceId,
@@ -30,8 +27,6 @@ function useUpdateWorkspace() {
       slug,
       logo,
     }: UpdateWorkspaceRequest) => {
-      const userId = session?.user?.id;
-      const sessionId = session?.session?.id;
       const updateData: {
         name?: string;
         description?: string;
@@ -78,21 +73,19 @@ function useUpdateWorkspace() {
         throw new Error(error || "Failed to update workspace");
       }
 
-      const result = await response.json();
-      if (userId && sessionId)
-        refreshSettingsHistory(
-          queryClient,
-          [
-            "settings-history",
-            "workspace",
-            workspaceId,
-            "agent",
-            userId,
-            sessionId,
-          ],
-          profileSessionGuard(userId, sessionId),
-        );
-      return result;
+      return response.json();
+    },
+    meta: {
+      audits: {
+        targets: (variables: UpdateWorkspaceRequest): HistoryTarget[] => [
+          {
+            kind: "entity",
+            type: "workspace",
+            id: variables.workspaceId,
+            scope: { kind: "workspace", workspaceId: variables.workspaceId },
+          },
+        ],
+      },
     },
     onSuccess: (_data, variables) => {
       // The native PATCH hits no plugin route, so nothing else refreshes the

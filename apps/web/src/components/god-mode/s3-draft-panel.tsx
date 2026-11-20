@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -21,10 +21,8 @@ import {
   Switch,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
-import { SettingsHistory } from "@/components/settings/settings-history";
 import {
   getS3Draft,
   type S3DraftConfig,
@@ -34,11 +32,15 @@ import {
   saveS3Draft,
   testS3Draft,
 } from "@/fetchers/god-mode/s3-draft";
-import { assertNotificationHistorySession } from "@/fetchers/settings/personal-history";
-import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { authClient } from "@/lib/auth-client";
 import { FailureAlert, StepUpFields } from "./step-up-fields";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 const emptyConfig: S3DraftConfig = {
   connector: "external",
@@ -71,18 +73,10 @@ export function S3DraftPanel() {
   const { data: session } = authClient.useSession();
   const userId = session?.user?.id;
   const sessionId = session?.session?.id;
-  const sessionScope = session?.session as
-    | { portal?: string | null; impersonatedBy?: string | null }
-    | undefined;
-  const historyAllowed = Boolean(
-    userId &&
-      sessionId &&
-      !sessionScope?.impersonatedBy &&
-      (!sessionScope?.portal || sessionScope.portal === "agent"),
-  );
   const host = window.location.host;
+  const queryKey = ["god-mode", "s3-draft", host, userId, sessionId];
   const query = useQuery({
-    queryKey: ["god-mode", "s3-draft", host, userId, sessionId],
+    queryKey,
     queryFn: getS3Draft,
     retry: false,
     refetchOnWindowFocus: false,
@@ -111,13 +105,9 @@ export function S3DraftPanel() {
     );
   return (
     <S3DraftForm
-      key={`${host}:${userId ?? ""}:${sessionId ?? ""}:${query.data.id ?? ""}`}
+      key={`${host}:${userId ?? ""}:${sessionId ?? ""}`}
       initial={query.data}
-      historyIdentity={
-        historyAllowed && userId && sessionId
-          ? { userId, sessionId, host }
-          : null
-      }
+      queryKey={queryKey}
       reload={async () => {
         const result = await query.refetch();
         if (result.isError || !result.data) throw new Error("reload failed");
@@ -130,16 +120,42 @@ export function S3DraftPanel() {
 function S3DraftForm({
   initial,
   reload,
-  historyIdentity,
+  queryKey,
 }: {
   initial: S3DraftResponse;
   reload: () => Promise<S3DraftResponse>;
-  historyIdentity: { userId: string; sessionId: string; host: string } | null;
+  queryKey: readonly unknown[];
 }) {
   const { t } = useTranslation("godModeStorage");
   const step = useStepUpAction();
   const queryClient = useQueryClient();
   const [savingDraft, setSavingDraft] = useState(false);
+  // The request carries credentials: it travels by ref, never through mutation variables or cache.
+  const pending = useRef<{ request: S3DraftRequest; token: string } | null>(
+    null,
+  );
+  const save = useMutation({
+    mutationFn: () => {
+      if (!pending.current) throw new Error("No S3 draft to save");
+      return saveS3Draft(pending.current.request, pending.current.token);
+    },
+    meta: {
+      audits: {
+        targets: (_: unknown, saved: S3DraftResponse) =>
+          saved.id
+            ? [
+                {
+                  kind: "entity",
+                  type: "instance_storage_draft",
+                  id: saved.id,
+                  scope: { kind: "instance" },
+                },
+              ]
+            : [],
+      },
+    },
+    onSuccess: (saved) => queryClient.setQueryData(queryKey, saved),
+  });
   const [base, setBase] = useState(initial);
   const [config, setConfig] = useState<S3DraftConfig>(
     initial.config ?? emptyConfig,
@@ -234,14 +250,16 @@ function S3DraftForm({
     setProbe(null);
     try {
       const request = snapshot();
-      const capturedIdentity = historyIdentity;
-      const capturedId = base.id;
       const result = await step.run<S3DraftResponse | S3DraftProbe>(
         { operation, ...request },
-        (token) =>
-          operation === "storage_config_save"
-            ? saveS3Draft(request, token)
-            : testS3Draft(request, token),
+        (token) => {
+          if (operation !== "storage_config_save")
+            return testS3Draft(request, token);
+          pending.current = { request, token };
+          return save.mutateAsync().finally(() => {
+            pending.current = null;
+          });
+        },
       );
       if (result.ok) {
         // Entered credentials never outlive the attempt that used them.
@@ -255,29 +273,6 @@ function S3DraftForm({
           setAccessMode("keep");
           setSecretMode("keep");
           setNotice(true);
-          if (
-            saved.id &&
-            (!capturedId || capturedId === saved.id) &&
-            capturedIdentity
-          ) {
-            const { userId, sessionId, host } = capturedIdentity;
-            refreshSettingsHistory(
-              queryClient,
-              settingsHistoryQueryKey(
-                "instance_storage_draft",
-                saved.id,
-                userId,
-                sessionId,
-              ),
-              () =>
-                assertNotificationHistorySession(
-                  "staff",
-                  userId,
-                  sessionId,
-                  host,
-                ),
-            );
-          }
         } else setProbe(result.value as S3DraftProbe);
       }
     } finally {
@@ -324,12 +319,17 @@ function S3DraftForm({
         <CardDescription>{t("draft.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {base.id && historyIdentity ? (
-          <SettingsHistory
-            type="instance_storage_draft"
-            id={base.id}
-            userId={historyIdentity.userId}
-          />
+        {base.id ? (
+          <Suspense fallback={null}>
+            <SettingsHistory
+              target={{
+                kind: "entity",
+                type: "instance_storage_draft",
+                id: base.id,
+                scope: { kind: "instance" },
+              }}
+            />
+          </Suspense>
         ) : null}
         <Alert variant="info">
           <AlertDescription>{t("draft.notice")}</AlertDescription>

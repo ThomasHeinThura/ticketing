@@ -1,24 +1,9 @@
-import {
-  QueryClient,
-  QueryClientProvider,
-  QueryObserver,
-} from "@tanstack/react-query";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import useUpdateWorkspace from "./use-update-workspace";
 
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    useSession: () => ({
-      data: { user: { id: "user-1" }, session: { id: "session-1" } },
-    }),
-    getSession: async () => ({
-      data: { user: { id: "user-1" }, session: { id: "session-1" } },
-      error: null,
-    }),
-  },
-}));
 const mocks = vi.hoisted(() => ({
   patch: vi.fn(),
 }));
@@ -257,19 +242,7 @@ describe("useUpdateWorkspace", () => {
       });
     });
 
-    expect(invalidateSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
-    expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: [
-        "settings-history",
-        "workspace",
-        "workspace-1",
-        "agent",
-        "user-1",
-        "session-1",
-      ],
-      exact: true,
-      refetchType: "none",
-    });
+    expect(invalidateSpy).toHaveBeenCalledTimes(2);
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["workspaces"] });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["workspace", "full", "workspace-1"],
@@ -302,47 +275,28 @@ describe("useUpdateWorkspace", () => {
   });
 });
 
-it("replaces initial pre-save workspace history after successive writes", async () => {
-  const { Wrapper, queryClient } = createWrapperWithClient();
-  const key = [
-    "settings-history",
-    "workspace",
-    "workspace-1",
-    "agent",
-    "user-1",
-    "session-1",
-  ];
-  let finishOld!: (value: string) => void;
-  const read = vi
-    .fn()
-    .mockImplementationOnce(
-      () =>
-        new Promise<string>((resolve) => {
-          finishOld = resolve;
-        }),
-    )
-    .mockResolvedValue("latest");
-  const observer = new QueryObserver(queryClient, {
-    queryKey: key,
-    queryFn: read,
-    staleTime: Number.POSITIVE_INFINITY,
-  });
-  const stop = observer.subscribe(() => {});
-  await waitFor(() => expect(read).toHaveBeenCalledOnce());
+it("declares the saved workspace as the audited History target", async () => {
   mocks.patch.mockResolvedValue({ ok: true, json: async () => ({}) });
+  const { Wrapper, queryClient } = createWrapperWithClient();
   const hook = renderHook(() => useUpdateWorkspace(), { wrapper: Wrapper });
   await act(async () => {
     await hook.result.current.mutateAsync({
       workspaceId: "workspace-1",
       name: "one",
     });
-    await hook.result.current.mutateAsync({
-      workspaceId: "workspace-1",
-      name: "two",
-    });
   });
-  finishOld("old");
-  await waitFor(() => expect(observer.getCurrentResult().data).toBe("latest"));
-  stop();
-  queryClient.clear();
+  const mutation = queryClient.getMutationCache().getAll()[0];
+  expect(
+    mutation?.meta?.audits?.targets(
+      mutation.state.variables as never,
+      mutation.state.data as never,
+    ),
+  ).toEqual([
+    {
+      kind: "entity",
+      type: "workspace",
+      id: "workspace-1",
+      scope: { kind: "workspace", workspaceId: "workspace-1" },
+    },
+  ]);
 });

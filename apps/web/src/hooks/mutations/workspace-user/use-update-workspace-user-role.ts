@@ -1,8 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import updateWorkspaceMemberRole from "@/fetchers/workspace-user/update-workspace-member-role";
-import { authClient } from "@/lib/auth-client";
-import { profileSessionGuard } from "@/lib/profile-session-guard";
 
 type UpdateWorkspaceUserRoleRequest = {
   workspaceId: string;
@@ -19,29 +16,28 @@ type UpdateWorkspaceUserRoleRequest = {
 // rules around the `"owner"` role.
 function useUpdateWorkspaceUserRole() {
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
   return useMutation({
-    mutationFn: async ({
-      workspaceMemberId,
+    mutationFn: ({
+      workspaceMemberId: _workspaceMemberId,
       ...request
-    }: UpdateWorkspaceUserRoleRequest) => {
-      const userId = session?.user?.id;
-      const sessionId = session?.session?.id;
-      const result = await updateWorkspaceMemberRole(request);
-      if (workspaceMemberId && userId && sessionId)
-        refreshSettingsHistory(
-          queryClient,
-          [
-            "settings-history",
-            "workspace_member",
-            workspaceMemberId,
-            "agent",
-            userId,
-            sessionId,
-          ],
-          profileSessionGuard(userId, sessionId),
-        );
-      return result;
+    }: UpdateWorkspaceUserRoleRequest) => updateWorkspaceMemberRole(request),
+    meta: {
+      audits: {
+        targets: (variables: UpdateWorkspaceUserRoleRequest) =>
+          variables.workspaceMemberId
+            ? [
+                {
+                  kind: "entity",
+                  type: "workspace_member",
+                  id: variables.workspaceMemberId,
+                  scope: {
+                    kind: "workspace",
+                    workspaceId: variables.workspaceId,
+                  },
+                } as const,
+              ]
+            : [],
+      },
     },
     onSuccess: (_data, variables) => {
       // The members page reads from useGetFullWorkspace which keys by

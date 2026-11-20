@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { expect, it, vi } from "vitest";
@@ -8,22 +12,7 @@ import {
   useUpsertNotificationWorkspaceRule,
 } from "./use-notification-preferences";
 
-const mocks = vi.hoisted(() => ({
-  write: vi.fn(),
-  refresh: vi.fn(),
-  capture: vi.fn(),
-}));
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    useSession: () => ({ data: { user: { id: "u" }, session: { id: "s" } } }),
-  },
-}));
-vi.mock("@/fetchers/settings/personal-history", () => ({
-  captureNotificationHistoryRefresh: (...args: unknown[]) => {
-    mocks.capture(...args);
-    return mocks.refresh;
-  },
-}));
+const mocks = vi.hoisted(() => ({ write: vi.fn(), audited: vi.fn() }));
 vi.mock(
   "@/fetchers/notification-preferences/update-notification-preferences",
   () => ({ default: (...args: unknown[]) => mocks.write(...args) }),
@@ -39,10 +28,16 @@ vi.mock(
 vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 it.each(["delivery", "upsert", "delete"] as const)(
-  "refreshes captured history after successful %s and not failed writes",
+  "declares the notifications History target after successful %s and not failed writes",
   async (kind) => {
     const client = new QueryClient({
       defaultOptions: { mutations: { retry: false } },
+      mutationCache: new MutationCache({
+        onSuccess: (data, variables, _context, mutation) =>
+          mocks.audited(
+            mutation.meta?.audits?.targets(variables as never, data as never),
+          ),
+      }),
     });
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
@@ -55,8 +50,7 @@ it.each(["delivery", "upsert", "delete"] as const)(
       }),
       { wrapper },
     );
-    mocks.capture.mockClear();
-    mocks.refresh.mockReset();
+    mocks.audited.mockReset();
     mocks.write
       .mockReset()
       .mockResolvedValueOnce({})
@@ -73,14 +67,13 @@ it.each(["delivery", "upsert", "delete"] as const)(
     await act(async () => {
       await save();
     });
-    expect(mocks.capture).toHaveBeenCalledWith(client, "staff", {
-      user: { id: "u" },
-      session: { id: "s" },
-    });
-    expect(mocks.refresh).toHaveBeenCalledOnce();
+    expect(mocks.audited).toHaveBeenCalledOnce();
+    expect(mocks.audited).toHaveBeenCalledWith([
+      { kind: "self", audience: "staff", section: "notifications" },
+    ]);
     await act(async () => {
       await expect(save()).rejects.toThrow("failed");
     });
-    expect(mocks.refresh).toHaveBeenCalledOnce();
+    expect(mocks.audited).toHaveBeenCalledOnce();
   },
 );

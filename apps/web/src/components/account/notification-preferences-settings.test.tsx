@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   cleanup,
   fireEvent,
@@ -7,9 +11,9 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as personalHistory from "@/fetchers/settings/personal-history";
 import { NotificationPreferencesSettings } from "./notification-preferences-settings";
 
+const mocks = vi.hoisted(() => ({ audited: vi.fn() }));
 const updatePreferences = vi.fn();
 const preferenceToast = vi.fn();
 const preferences = {
@@ -68,7 +72,18 @@ function renderSettings() {
   return render(
     <QueryClientProvider
       client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        new QueryClient({
+          defaultOptions: { queries: { retry: false } },
+          mutationCache: new MutationCache({
+            onSuccess: (data, variables, _context, mutation) =>
+              mocks.audited(
+                mutation.meta?.audits?.targets(
+                  variables as never,
+                  data as never,
+                ),
+              ),
+          }),
+        })
       }
     >
       <NotificationPreferencesSettings />
@@ -230,10 +245,7 @@ describe("NotificationPreferencesSettings", () => {
   });
 
   it("offers the report.export_ready email preference and saves it on its own (P5-R3-02)", async () => {
-    const refreshed = vi.fn();
-    const capture = vi
-      .spyOn(personalHistory, "captureNotificationHistoryRefresh")
-      .mockReturnValue(refreshed);
+    mocks.audited.mockClear();
     renderSettings();
     const block = screen.getByTestId("report-export-email-preference");
     const save = screen.getByRole("button", {
@@ -250,9 +262,11 @@ describe("NotificationPreferencesSettings", () => {
     await waitFor(() =>
       expect(canonical.saveReportExport).toHaveBeenCalledTimes(1),
     );
-    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce());
-    expect(capture.mock.calls[0][1]).toBe("staff");
-    capture.mockRestore();
+    await waitFor(() =>
+      expect(mocks.audited).toHaveBeenCalledWith([
+        { kind: "self", audience: "staff", section: "notifications" },
+      ]),
+    );
     expect(canonical.saveReportExport.mock.calls[0]?.[0]).toEqual({
       enabled: false,
     });

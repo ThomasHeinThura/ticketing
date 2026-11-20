@@ -1,9 +1,4 @@
-import {
-  type QueryClient,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import {
   Alert,
@@ -35,7 +30,6 @@ import { parseAttachmentDeletionSummary } from "@/components/pending-action/atta
 import { parseCommentDeletionSummary } from "@/components/pending-action/comment-deletion-summary";
 import { parseImportChunkSummary } from "@/components/pending-action/import-chunk-summary";
 import { parseImportRunSummary } from "@/components/pending-action/import-run-summary";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import {
   getCurrentFactorStatus,
   getInstanceUser,
@@ -47,17 +41,12 @@ import {
   createPendingActionProof,
   getOwnPendingAction,
 } from "@/fetchers/pending-actions";
-import {
-  assertNotificationHistorySession,
-  capturePersonalSelfHistoryRefresh,
-} from "@/fetchers/settings/personal-history";
-import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
 import { instanceUsersKey } from "@/hooks/queries/god-mode/use-instance-users";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
-import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
+import type { HistoryTarget } from "@/query-client/settings-history-key";
 import type Task from "@/types/task";
 import {
   PENDING_ACTION_TARGET_QUERY_PREFIXES,
@@ -105,51 +94,6 @@ const TASK_PAGE_PATH =
 
 /** The canonical work-item page: `/agent/work-items/:key`. */
 const CANONICAL_PAGE_PATH = /^\/agent\/work-items\/([^/]+)\/?$/;
-
-function refreshExecutedServiceKeyDeletion(
-  client: QueryClient,
-  captured: {
-    workspaceId: string;
-    keyId: string;
-    host: string;
-    userId: string;
-    sessionId: string;
-  },
-) {
-  const { workspaceId, keyId, host, userId, sessionId } = captured;
-  const historyKey = settingsHistoryQueryKey(
-    "service_api_key",
-    keyId,
-    userId,
-    sessionId,
-  );
-  const admissionKey = [
-    "service-key-history-admission",
-    host,
-    userId,
-    sessionId,
-    workspaceId,
-    keyId,
-  ];
-  for (const key of [historyKey, admissionKey]) {
-    void client.cancelQueries({ queryKey: key, exact: true }).catch(() => {});
-    client.removeQueries({ queryKey: key, exact: true });
-  }
-  let sessionCheck: Promise<void> | undefined;
-  const guard = () =>
-    (sessionCheck ??= assertNotificationHistorySession(
-      "staff",
-      userId,
-      sessionId,
-      host,
-    ));
-  refreshSettingsHistory(client, ["service-keys", workspaceId], guard);
-  refreshSettingsHistory(
-    client,
-    ["service-key-history-list", workspaceId, host, userId, sessionId],
-    guard,
-  );
-}
 
 function summaryRows(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value)
@@ -292,7 +236,6 @@ export function PendingActionApproval({
 }: PendingActionApprovalProps) {
   const { i18n, t } = useTranslation();
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
   const navigate = useNavigate();
   const location = useLocation();
   const { data: activeWorkspace } = useActiveWorkspace();
@@ -368,6 +311,42 @@ export function PendingActionApproval({
   }, [factor.data]);
   const approve = useMutation({
     mutationFn: approveOwnPendingAction,
+    meta: {
+      audits: {
+        // An executed key deletion changes that key's History; `action.data` is what was approved.
+        targets: (
+          _: unknown,
+          approved: ApprovedAction | null | undefined,
+        ): HistoryTarget[] => {
+          const data = action.data;
+          if (
+            approved?.state !== "executed" ||
+            data?.action !== "delete" ||
+            data.targetType !== "api_key"
+          )
+            return [];
+          if (data.summary?.kind === "personal")
+            return [{ kind: "self", audience: "staff", section: "apiKeys" }];
+          const keyId = data.summary?.apiKeyId;
+          if (
+            data.summary?.kind !== "service" ||
+            typeof keyId !== "string" ||
+            data.targetIds.length !== 1 ||
+            keyId !== data.targetIds[0] ||
+            !data.targetWorkspaceId
+          )
+            return [];
+          return [
+            {
+              kind: "entity",
+              type: "service_api_key",
+              id: keyId,
+              scope: { kind: "workspace", workspaceId: data.targetWorkspaceId },
+            },
+          ];
+        },
+      },
+    },
   });
   const cancel = useMutation({
     mutationFn: cancelOwnPendingAction,
@@ -740,41 +719,6 @@ export function PendingActionApproval({
       return;
     const capturedIntent = actionLifecycle.capture();
     const isCurrentIntent = () => actionLifecycle.isCurrent(capturedIntent);
-    const refreshPersonalKeyHistory =
-      action.data?.action === "delete" &&
-      action.data.targetType === "api_key" &&
-      action.data.summary?.kind === "personal"
-        ? capturePersonalSelfHistoryRefresh(
-            queryClient,
-            "apiKeys",
-            "staff",
-            session,
-          )
-        : null;
-    const serviceSessionScope = session?.session as
-      | { portal?: string | null; impersonatedBy?: string | null }
-      | undefined;
-    const serviceKeyDeletion =
-      action.data?.action === "delete" &&
-      action.data.targetType === "api_key" &&
-      action.data.summary?.kind === "service" &&
-      typeof action.data.summary.apiKeyId === "string" &&
-      action.data.targetIds.length === 1 &&
-      action.data.summary.apiKeyId === action.data.targetIds[0] &&
-      typeof action.data.targetWorkspaceId === "string" &&
-      action.data.targetWorkspaceId.length > 0 &&
-      session?.user?.id &&
-      session.session?.id &&
-      !serviceSessionScope?.impersonatedBy &&
-      (!serviceSessionScope?.portal || serviceSessionScope.portal === "agent")
-        ? {
-            workspaceId: action.data.targetWorkspaceId,
-            keyId: action.data.summary.apiKeyId,
-            host: window.location.host,
-            userId: session.user.id,
-            sessionId: session.session.id,
-          }
-        : null;
     setError(null);
     try {
       let approved: unknown;
@@ -806,9 +750,14 @@ export function PendingActionApproval({
       }
       const executed =
         (approved as ApprovedAction | null | undefined)?.state === "executed";
-      if (executed) refreshPersonalKeyHistory?.();
-      if (executed && serviceKeyDeletion)
-        refreshExecutedServiceKeyDeletion(queryClient, serviceKeyDeletion);
+      if (
+        executed &&
+        action.data?.targetType === "api_key" &&
+        action.data.targetWorkspaceId
+      )
+        void queryClient.invalidateQueries({
+          queryKey: ["service-keys", action.data.targetWorkspaceId],
+        });
       // A deleted workspace or project must not stay the shell's active context. Leave
       // before the cache refetches below, so nothing re-reads the deleted record (404).
       if (executed && action.data?.targetType === "workspace") {

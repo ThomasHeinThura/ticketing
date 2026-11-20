@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -15,7 +15,6 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import updateProjectHealth from "@/fetchers/project/update-health";
 import {
   getProjectSettingsInheritance,
@@ -27,10 +26,9 @@ import { getSlaPolicies } from "@/fetchers/sla-policy";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
 import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import useGetProject from "@/hooks/queries/project/use-get-project";
+import type { HistoryTarget } from "@/hooks/queries/settings/use-settings-history";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
-import { profileSessionGuard } from "@/lib/profile-session-guard";
 import { toast } from "@/lib/toast";
 import {
   buildEngagementPayload,
@@ -93,7 +91,6 @@ function ProjectEngagementSettings({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
   const { canUpdateProjects, canManageProjectSettings, isCheckingPermissions } =
     useWorkspacePermission();
   const {
@@ -104,6 +101,22 @@ function ProjectEngagementSettings({
   } = useGetProject({ id: projectId, workspaceId });
   const { mutateAsync: updateProject, isPending: isSaving } =
     useUpdateProject();
+  const updateHealth = useMutation({
+    mutationFn: (value: Parameters<typeof updateProjectHealth>[1]) =>
+      updateProjectHealth(projectId, value),
+    meta: {
+      audits: {
+        targets: (): HistoryTarget[] => [
+          {
+            kind: "entity",
+            type: "project",
+            id: projectId,
+            scope: { kind: "project", workspaceId, projectId },
+          },
+        ],
+      },
+    },
+  });
 
   const [draft, setDraft] = useState<ReturnType<
     typeof toEngagementValues
@@ -247,25 +260,10 @@ function ProjectEngagementSettings({
   const handleHealth = async (value: unknown) => {
     if (typeof value !== "string" || value === health) return;
     if (value !== NONE && !isProjectHealth(value)) return;
-    const userId = session?.user?.id;
-    const sessionId = session?.session?.id;
     setHealthFailure(null);
     setPendingHealth(value);
     try {
-      await updateProjectHealth(project.id, value === NONE ? null : value);
-      if (userId && sessionId)
-        refreshSettingsHistory(
-          queryClient,
-          [
-            "settings-history",
-            "project",
-            project.id,
-            "agent",
-            userId,
-            sessionId,
-          ],
-          profileSessionGuard(userId, sessionId),
-        );
+      await updateHealth.mutateAsync(value === NONE ? null : value);
       await invalidateProject();
     } catch (error) {
       const failure = failureOf(error);
@@ -487,9 +485,24 @@ function ProjectInheritanceSettings({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
   // P4R2-M1: SLA policy and service calendar are `feature.sla` workspace settings; while the
   // flag is off for the workspace this section is not offered (the lists would answer 404).
+  const patchInheritance = useMutation({
+    mutationFn: (body: Parameters<typeof patchProjectSettingsInheritance>[1]) =>
+      patchProjectSettingsInheritance(projectId, body),
+    meta: {
+      audits: {
+        targets: (): HistoryTarget[] => [
+          {
+            kind: "entity",
+            type: "project",
+            id: projectId,
+            scope: { kind: "project", workspaceId, projectId: projectId },
+          },
+        ],
+      },
+    },
+  });
   const workspaceFeatures = useWorkspaceFeatures(workspaceId);
   const slaOn = workspaceFeatures.isOn("feature.sla");
   const queryKey = ["projects", projectId, "settings-inheritance"] as const;
@@ -666,13 +679,11 @@ function ProjectInheritanceSettings({
           current.serviceCalendar.overrideId);
   const save = async () => {
     if (!isDirty || saving || !canEdit) return;
-    const userId = session?.user?.id;
-    const sessionId = session?.session?.id;
     setSaving(true);
     setInheritanceSaved(false);
     setFailure(null);
     try {
-      const result = await patchProjectSettingsInheritance(projectId, {
+      const result = await patchInheritance.mutateAsync({
         expectedProjectVersion: current.projectVersion,
         expectedWorkspaceVersion: current.workspaceVersion,
         ...(slaChoice !==
@@ -707,19 +718,6 @@ function ProjectInheritanceSettings({
             }
           : {}),
       });
-      if (userId && sessionId)
-        refreshSettingsHistory(
-          queryClient,
-          [
-            "settings-history",
-            "project",
-            projectId,
-            "agent",
-            userId,
-            sessionId,
-          ],
-          profileSessionGuard(userId, sessionId),
-        );
       queryClient.setQueryData(queryKey, result);
       await queryClient.invalidateQueries({
         queryKey: ["projects", workspaceId, projectId],

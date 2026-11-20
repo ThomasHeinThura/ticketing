@@ -29,9 +29,7 @@ import {
   saveMentionEmailPreference,
   saveTeamNotificationEmailPreference,
 } from "@/fetchers/notification-preferences/canonical-mention-preference";
-import { captureNotificationHistoryRefresh } from "@/fetchers/settings/personal-history";
 import useGetNotificationPreferences from "@/hooks/queries/notification-preferences/use-get-notification-preferences";
-import { authClient } from "@/lib/auth-client";
 
 type PreferenceKind = "mention" | "comment" | "teamNotification";
 
@@ -292,7 +290,6 @@ function MentionEmailForm({
 }) {
   const { t } = useTranslation("notificationProvider");
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
   const [enabled, setEnabled] = useState(preference.enabled);
   const [digest, setDigest] = useState(preference.digest);
   const savePreference =
@@ -302,15 +299,14 @@ function MentionEmailForm({
         ? saveTeamNotificationEmailPreference
         : saveMentionEmailPreference;
   const mutation = useMutation({
-    mutationFn: async (input: Parameters<typeof savePreference>[0]) => {
-      const refresh = captureNotificationHistoryRefresh(
-        queryClient,
-        "staff",
-        session,
-      );
-      const result = await savePreference(input);
-      refresh();
-      return result;
+    mutationFn: (input: Parameters<typeof savePreference>[0]) =>
+      savePreference(input),
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "notifications" },
+        ],
+      },
     },
   });
   return (

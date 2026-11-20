@@ -22,10 +22,16 @@ import {
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
-import { SettingsHistory } from "@/components/settings/settings-history";
 import { TerminologyEditor } from "@/components/settings/terminology-editor";
 import {
   getInstanceSettings,
@@ -34,11 +40,15 @@ import {
   type InstanceSettingsResponse,
   patchInstanceSettings,
 } from "@/fetchers/god-mode/instance-settings";
-import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
-import { useInstanceAdminSignal } from "@/hooks/use-instance-admin-signal";
+import type { HistoryTarget } from "@/hooks/queries/settings/use-settings-history";
 import { authClient } from "@/lib/auth-client";
 import { formatDateTime } from "@/lib/format";
-import { profileSessionGuard } from "@/lib/profile-session-guard";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 /** Prefix of every browser session's settings entry. */
 const queryKey = ["instance", "settings"] as const;
@@ -143,38 +153,25 @@ function diff(
   return changes;
 }
 
-type HistoryIdentity = { userId: string; sessionId: string };
+type SettingsScope = { userId: string; sessionId: string };
 
 /**
  * The browser user and session the settings belong to: they scope the read, the write result and
- * the draft, so another session's answer or draft can never stand in for this one's. History also
- * needs a staff session: an administrator, never impersonated or portal.
+ * the draft, so another session's answer or draft can never stand in for this one's.
  */
-function useSettingsIdentity(): {
-  scope: HistoryIdentity | null;
-  history: HistoryIdentity | null;
-} {
-  const isAdmin = useInstanceAdminSignal();
+function useSettingsScope(): SettingsScope | null {
   const { data: session } = authClient.useSession();
-  const flags = session?.session as
-    | { portal?: string | null; impersonatedBy?: string | null }
-    | undefined;
   const userId = session?.user?.id;
   const sessionId = session?.session?.id;
-  const scope = userId && sessionId ? { userId, sessionId } : null;
-  const staff =
-    isAdmin &&
-    !flags?.impersonatedBy &&
-    (!flags?.portal || flags.portal === "agent");
-  return { scope, history: staff ? scope : null };
+  return userId && sessionId ? { userId, sessionId } : null;
 }
 
-const scopeKey = (scope: HistoryIdentity | null) =>
+const scopeKey = (scope: SettingsScope | null) =>
   scope ? `${scope.userId}:${scope.sessionId}` : null;
 
 export function InstanceSettingsForm() {
   const { t } = useTranslation("godModeSettings");
-  const { scope, history: identity } = useSettingsIdentity();
+  const scope = useSettingsScope();
   const scopeId = scopeKey(scope);
   // Which scope the Saved feedback belongs to: a late answer for another session never shows here.
   const [completedFor, setCompletedFor] = useState<string | null>(null);
@@ -242,7 +239,6 @@ export function InstanceSettingsForm() {
       <SettingsFields
         key={`${scopeId}:${query.data.updatedAt}`}
         loaded={query.data}
-        identity={identity}
         scopeId={scopeId}
         settingsKey={settingsKey}
         completed={completed}
@@ -256,27 +252,28 @@ export function InstanceSettingsForm() {
         onConflict={ifCurrent(setConflictFor)}
       />
       {/* Mounted only after the settings read succeeded; outside the keyed fields so a save does not remount it. */}
-      {identity ? (
+      <Suspense fallback={null}>
         <SettingsHistory
-          type="instance"
-          id="singleton"
-          userId={identity.userId}
+          target={{
+            kind: "entity",
+            type: "instance",
+            id: "singleton",
+            scope: { kind: "instance" },
+          }}
         />
-      ) : null}
+      </Suspense>
       <TerminologyEditor target={{ scope: "instance" }} />
     </div>
   );
 }
 
 type SaveVariables = {
-  identity: HistoryIdentity | null;
   scopeId: string | null;
   settingsKey: readonly unknown[];
 };
 
 function SettingsFields({
   loaded,
-  identity,
   scopeId,
   settingsKey,
   completed,
@@ -287,7 +284,6 @@ function SettingsFields({
   onConflict,
 }: {
   loaded: InstanceSettingsResponse;
-  identity: HistoryIdentity | null;
   scopeId: string | null;
   settingsKey: readonly unknown[];
   completed: boolean;
@@ -315,26 +311,24 @@ function SettingsFields({
   const dirty = Object.keys(changes).length > 0;
   const save = useMutation({
     // The session scope is captured when the write starts, so a later session change cannot
-    // redirect the result, the Saved feedback or the History refresh.
+    // redirect the result or the Saved feedback.
+    meta: {
+      audits: {
+        targets: (): HistoryTarget[] => [
+          {
+            kind: "entity",
+            type: "instance",
+            id: "singleton",
+            scope: { kind: "instance" },
+          },
+        ],
+      },
+    },
     mutationFn: (_captured: SaveVariables) =>
       patchInstanceSettings({ expectedUpdatedAt: loaded.updatedAt, changes }),
-    onSuccess: (
-      next,
-      { identity: savedIdentity, scopeId: savedScope, settingsKey: savedKey },
-    ) => {
+    onSuccess: (next, { scopeId: savedScope, settingsKey: savedKey }) => {
       queryClient.setQueryData(savedKey, next);
       onSaved(savedScope);
-      if (savedIdentity)
-        refreshSettingsHistory(
-          queryClient,
-          settingsHistoryQueryKey(
-            "instance",
-            "singleton",
-            savedIdentity.userId,
-            savedIdentity.sessionId,
-          ),
-          profileSessionGuard(savedIdentity.userId, savedIdentity.sessionId),
-        );
     },
     // Only the submitting session's entry: a late conflict must not refetch another session's form.
     onError: (error, { settingsKey: savedKey, scopeId: savedScope }) => {
@@ -384,7 +378,7 @@ function SettingsFields({
         event.preventDefault();
         if (dirty && !save.isPending) {
           onStart();
-          save.mutate({ identity, scopeId, settingsKey });
+          save.mutate({ scopeId, settingsKey });
         }
       }}
     >

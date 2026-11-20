@@ -18,9 +18,9 @@ vi.mock("@/fetchers/user-settings/user-settings", () => ({
   getUserSettings: vi.fn(),
   patchUserSettings,
 }));
-vi.mock("@/components/settings/personal-preferences-history", () => ({
-  PersonalPreferencesHistory: ({ userId }: { userId: string }) => (
-    <div data-testid="preferences-history">{userId}</div>
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({ target }: { target: { section: string } }) => (
+    <div data-testid="preferences-history">{target.section}</div>
   ),
 }));
 vi.mock("@/lib/auth-client", () => ({
@@ -89,8 +89,8 @@ describe("preferences page density setter (#673)", () => {
       </QueryClientProvider>,
     );
     expect(document.documentElement).not.toHaveClass("compact-mode");
-    expect(screen.getByTestId("preferences-history")).toHaveTextContent(
-      "user-1",
+    expect(await screen.findByTestId("preferences-history")).toHaveTextContent(
+      "preferences",
     );
     expect(document.title).toContain("settings:preferencesPage.title");
 

@@ -24,8 +24,7 @@ const sesConfig = {
 };
 const mocks = vi.hoisted(() => ({
   save: vi.fn(),
-  refresh: vi.fn(),
-  assertSession: vi.fn(),
+  audited: vi.fn(),
   id: null as string | null,
   sourceError: false,
   session: { user: { id: "user-1" }, session: { id: "session-1" } },
@@ -172,19 +171,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth-client", () => ({
   authClient: { useSession: () => ({ data: mocks.session }) },
 }));
-vi.mock("@/components/settings/refresh-settings-history", () => ({
-  refreshSettingsHistory: mocks.refresh,
-}));
 vi.mock("@/components/settings/settings-history", () => ({
-  SettingsHistory: ({ id, userId }: { id: string; userId: string }) => (
-    <div data-testid="provider-history" data-user={userId}>
-      {id}
-    </div>
+  SettingsHistory: ({ target }: { target: { id: string } }) => (
+    <div data-testid="provider-history">{target.id}</div>
   ),
-}));
-vi.mock("@/fetchers/settings/personal-history", () => ({
-  assertNotificationHistorySession: (...args: unknown[]) =>
-    mocks.assertSession(...args),
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -289,9 +279,20 @@ vi.mock("@tanstack/react-query", () => ({
   }),
   useMutation: ({
     mutationFn,
+    meta,
   }: {
     mutationFn: (value: unknown) => Promise<unknown>;
-  }) => ({ isPending: false, mutateAsync: mutationFn }),
+    meta?: {
+      audits: { targets: (variables: unknown, result: unknown) => unknown };
+    };
+  }) => ({
+    isPending: false,
+    mutateAsync: async (variables: unknown) => {
+      const result = await mutationFn(variables);
+      if (meta) mocks.audited(meta.audits.targets(variables, result));
+      return result;
+    },
+  }),
 }));
 
 import { NotificationProviderEditor } from "./notification-provider-editor";
@@ -301,7 +302,7 @@ beforeEach(() => {
   mocks.id = null;
   mocks.sourceError = false;
   mocks.session = { user: { id: "user-1" }, session: { id: "session-1" } };
-  mocks.refresh.mockReset();
+  mocks.audited.mockReset();
   mocks.setData.mockReset();
   mocks.version = 3;
   mocks.unconfigured = false;
@@ -866,27 +867,25 @@ describe("Amazon SES", () => {
   });
 });
 
-it("shows History only for a persisted provider and refreshes its captured key after save", async () => {
+const providerTarget = (id: string) => [
+  {
+    kind: "entity",
+    type: "instance_notification_provider",
+    id,
+    scope: { kind: "instance" },
+  },
+];
+
+it("shows History only for a persisted provider and audits its id after save", async () => {
   mocks.id = "provider-row";
   mocks.save.mockResolvedValue({ id: "provider-row" });
   render(<NotificationProviderEditor />);
-  expect(screen.getByTestId("provider-history")).toHaveTextContent(
+  expect(await screen.findByTestId("provider-history")).toHaveTextContent(
     "provider-row",
   );
   fireEvent.click(screen.getByRole("button", { name: "save" }));
   await waitFor(() =>
-    expect(mocks.refresh).toHaveBeenCalledWith(
-      expect.anything(),
-      [
-        "settings-history",
-        "instance_notification_provider",
-        "provider-row",
-        "agent",
-        "user-1",
-        "session-1",
-      ],
-      expect.any(Function),
-    ),
+    expect(mocks.audited).toHaveBeenCalledWith(providerTarget("provider-row")),
   );
 });
 
@@ -895,9 +894,8 @@ it("does not mount History before the first persisted provider", () => {
   expect(screen.queryByTestId("provider-history")).toBeNull();
 });
 
-it("uses the returned ID for the first save and never waits for History", async () => {
+it("audits the returned ID for the first save and mounts History for it", async () => {
   mocks.save.mockResolvedValue({ id: "new-provider", version: 4 });
-  mocks.refresh.mockImplementation(() => new Promise(() => {}));
   mocks.setData.mockImplementationOnce((_key, result) => {
     mocks.id = result.id;
   });
@@ -910,27 +908,16 @@ it("uses the returned ID for the first save and never waits for History", async 
     ),
   );
   view.rerender(<NotificationProviderEditor />);
-  expect(screen.getByTestId("provider-history")).toHaveTextContent(
+  expect(await screen.findByTestId("provider-history")).toHaveTextContent(
     "new-provider",
   );
-  expect(mocks.refresh).toHaveBeenCalledWith(
-    expect.anything(),
-    [
-      "settings-history",
-      "instance_notification_provider",
-      "new-provider",
-      "agent",
-      "user-1",
-      "session-1",
-    ],
-    expect.any(Function),
-  );
+  expect(mocks.audited).toHaveBeenCalledWith(providerTarget("new-provider"));
   expect(
     await screen.findByText("saved", { selector: '[role="status"]' }),
   ).toBeTruthy();
 });
 
-it("does not refresh History on failed save or test email", async () => {
+it("does not audit a failed save or test email", async () => {
   mocks.id = "provider-row";
   mocks.save.mockRejectedValueOnce(new Error("refused"));
   render(<NotificationProviderEditor />);
@@ -938,70 +925,7 @@ it("does not refresh History on failed save or test email", async () => {
   await waitFor(() => expect(mocks.save).toHaveBeenCalled());
   fireEvent.click(screen.getByRole("button", { name: "testSend.button" }));
   await waitFor(() => expect(mocks.verify).toHaveBeenCalled());
-  expect(mocks.refresh).not.toHaveBeenCalled();
-});
-
-it("keeps the saved refresh bound to the original session after a switch", async () => {
-  mocks.id = "provider-row";
-  let finish!: (value: { id: string }) => void;
-  mocks.save.mockReturnValue(
-    new Promise((resolve) => {
-      finish = resolve;
-    }),
-  );
-  const view = render(<NotificationProviderEditor />);
-  fireEvent.click(screen.getByRole("button", { name: "save" }));
-  await waitFor(() => expect(mocks.save).toHaveBeenCalled());
-  mocks.session = { user: { id: "user-2" }, session: { id: "session-2" } };
-  view.rerender(<NotificationProviderEditor />);
-  expect(screen.getByTestId("provider-history")).toHaveAttribute(
-    "data-user",
-    "user-2",
-  );
-  finish({ id: "provider-row" });
-  await waitFor(() =>
-    expect(mocks.refresh).toHaveBeenCalledWith(
-      expect.anything(),
-      [
-        "settings-history",
-        "instance_notification_provider",
-        "provider-row",
-        "agent",
-        "user-1",
-        "session-1",
-      ],
-      expect.any(Function),
-    ),
-  );
-});
-
-it("guards a saved refresh with the captured host and identity", async () => {
-  mocks.id = "provider-row";
-  mocks.save.mockResolvedValue({ id: "provider-row" });
-  render(<NotificationProviderEditor />);
-  fireEvent.click(screen.getByRole("button", { name: "save" }));
-  await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
-  await mocks.refresh.mock.calls[0][2]();
-  expect(mocks.assertSession).toHaveBeenCalledWith(
-    "staff",
-    "user-1",
-    "session-1",
-    window.location.host,
-  );
-});
-
-it("does not mount History in an impersonated or customer session", () => {
-  mocks.id = "provider-row";
-  Object.assign(mocks.session.session, { impersonatedBy: "admin" });
-  const view = render(<NotificationProviderEditor />);
-  expect(screen.queryByTestId("provider-history")).toBeNull();
-  mocks.session = {
-    user: { id: "customer" },
-    session: { id: "customer-session" },
-  };
-  Object.assign(mocks.session.session, { portal: "customer" });
-  view.rerender(<NotificationProviderEditor />);
-  expect(screen.queryByTestId("provider-history")).toBeNull();
+  expect(mocks.audited).not.toHaveBeenCalled();
 });
 
 it("hides provider History when its source read is refused", () => {

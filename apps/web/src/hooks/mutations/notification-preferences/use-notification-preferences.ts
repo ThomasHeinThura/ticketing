@@ -7,24 +7,21 @@ import updateNotificationPreferences, {
 import upsertNotificationWorkspaceRule, {
   type UpsertNotificationWorkspaceRuleRequest,
 } from "@/fetchers/notification-preferences/upsert-notification-workspace-rule";
-import { captureNotificationHistoryRefresh } from "@/fetchers/settings/personal-history";
-import { authClient } from "@/lib/auth-client";
 import { toast } from "@/lib/toast";
 
 export function useUpdateNotificationPreferences() {
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
 
   return useMutation({
-    mutationFn: async (json: UpdateNotificationPreferencesRequest) => {
-      const refresh = captureNotificationHistoryRefresh(
-        queryClient,
-        "staff",
-        session,
-      );
-      const result = await updateNotificationPreferences(json);
-      refresh();
-      return result;
+    mutationFn: (json: UpdateNotificationPreferencesRequest) => {
+      return updateNotificationPreferences(json);
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "notifications" },
+        ],
+      },
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({
@@ -44,7 +41,6 @@ export function useUpdateNotificationPreferences() {
 
 export function useUpsertNotificationWorkspaceRule() {
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
 
   return useMutation({
     mutationFn: async ({
@@ -54,14 +50,14 @@ export function useUpsertNotificationWorkspaceRule() {
       workspaceId: string;
       json: UpsertNotificationWorkspaceRuleRequest;
     }) => {
-      const refresh = captureNotificationHistoryRefresh(
-        queryClient,
-        "staff",
-        session,
-      );
-      const result = await upsertNotificationWorkspaceRule(workspaceId, json);
-      refresh();
-      return result;
+      return upsertNotificationWorkspaceRule(workspaceId, json);
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "notifications" },
+        ],
+      },
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({
@@ -81,18 +77,17 @@ export function useUpsertNotificationWorkspaceRule() {
 
 export function useDeleteNotificationWorkspaceRule() {
   const queryClient = useQueryClient();
-  const { data: session } = authClient.useSession();
 
   return useMutation({
     mutationFn: async (workspaceId: string) => {
-      const refresh = captureNotificationHistoryRefresh(
-        queryClient,
-        "staff",
-        session,
-      );
-      const result = await deleteNotificationWorkspaceRule(workspaceId);
-      refresh();
-      return result;
+      return deleteNotificationWorkspaceRule(workspaceId);
+    },
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "notifications" },
+        ],
+      },
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({
