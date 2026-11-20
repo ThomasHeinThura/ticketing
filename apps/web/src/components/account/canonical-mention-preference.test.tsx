@@ -10,6 +10,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  audits: undefined as unknown,
   save: vi.fn(),
   saveComment: vi.fn(),
   saveTeamNotification: vi.fn(),
@@ -95,9 +96,12 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useMutation: ({
     mutationFn,
+    meta,
   }: {
     mutationFn: (value: unknown) => Promise<unknown>;
+    meta: { audits: { targets: () => unknown } };
   }) => {
+    mocks.audits = meta.audits.targets();
     const [isSuccess, setSuccess] = useState(false);
     return {
       isPending: false,
@@ -150,6 +154,9 @@ describe("email preference landing", () => {
         digest: "off",
       }),
     );
+    expect(mocks.audits).toEqual([
+      { kind: "self", audience: "staff", section: "notifications" },
+    ]);
   });
   it("announces a successful preference save once when the form stays mounted", async () => {
     render(<CanonicalMentionPreference />);

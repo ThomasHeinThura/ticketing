@@ -52,6 +52,7 @@ import { cn } from "@/lib/cn";
 import { resolveLabelColor } from "@/lib/label-color";
 import type { LabelCatalogueSearch } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 const STABLE_KEY_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/u;
 
@@ -116,6 +117,25 @@ export function LabelCatalogue({
         name: values.name,
         color: values.color,
       }),
+    meta: {
+      audits: {
+        targets: (
+          _: unknown,
+          l: {
+            id: string;
+            workspaceId: string | null;
+            projectId: string | null;
+          },
+        ) =>
+          l.workspaceId && l.projectId
+            ? auditEntity("project_label", l.id, {
+                kind: "project",
+                workspaceId: l.workspaceId,
+                projectId: l.projectId,
+              })
+            : [],
+      },
+    },
     onSuccess: invalidate,
   });
   const projectUpdate = useMutation({
@@ -127,6 +147,25 @@ export function LabelCatalogue({
       name: string;
       color: string;
     }) => updateProjectLabel(projectId ?? "", id, values),
+    meta: {
+      audits: {
+        targets: (
+          _: unknown,
+          l: {
+            id: string;
+            workspaceId: string | null;
+            projectId: string | null;
+          },
+        ) =>
+          l.workspaceId && l.projectId
+            ? auditEntity("project_label", l.id, {
+                kind: "project",
+                workspaceId: l.workspaceId,
+                projectId: l.projectId,
+              })
+            : [],
+      },
+    },
     onSuccess: invalidate,
   });
   const projectDelete = useMutation({

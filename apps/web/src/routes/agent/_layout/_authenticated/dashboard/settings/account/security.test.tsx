@@ -1,12 +1,17 @@
 import { randomBytes } from "node:crypto";
 import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import {
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ComponentType } from "react";
+import { type ComponentType, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Route } from "./security";
 
@@ -21,6 +26,8 @@ const fixture = vi.hoisted(() => ({
   enable: vi.fn(),
   verifyTotp: vi.fn(),
   navigate: vi.fn(),
+  history: vi.fn(),
+  audited: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -35,6 +42,12 @@ vi.mock("react-i18next", async (importOriginal) => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: (props: unknown) => {
+    fixture.history(props);
+    return null;
+  },
+}));
 vi.mock("@/components/settings/connected-accounts-panel", async () => {
   const { Button } = await import("@taskdesk/ui");
   return {
@@ -56,11 +69,29 @@ vi.mock("@/hooks/mutations/use-change-password", () => ({
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
     twoFactor: { enable: fixture.enable, verifyTotp: fixture.verifyTotp },
+    useSession: () => ({ data: { user: { id: "u1" }, session: { id: "s1" } } }),
   },
 }));
 
-const SecurityPage = (Route as unknown as { component: ComponentType })
-  .component;
+const Page = (Route as unknown as { component: ComponentType }).component;
+function SecurityPage() {
+  const [client] = useState(
+    () =>
+      new QueryClient({
+        mutationCache: new MutationCache({
+          onSuccess: (data, variables, _context, mutation) =>
+            fixture.audited(
+              mutation.meta?.audits?.targets(variables as never, data as never),
+            ),
+        }),
+      }),
+  );
+  return (
+    <QueryClientProvider client={client}>
+      <Page />
+    </QueryClientProvider>
+  );
+}
 
 function factorStatus(
   passwordRequiredForEnrollment: boolean,
@@ -94,6 +125,8 @@ describe("account security factor enrollment", () => {
     fixture.enable.mockReset();
     fixture.verifyTotp.mockReset();
     fixture.navigate.mockReset();
+    fixture.history.mockReset();
+    fixture.audited.mockReset();
     fixture.enable.mockResolvedValue({
       data: {
         method: "totp",
@@ -248,6 +281,49 @@ describe("account security factor enrollment", () => {
     expect(
       screen.getByRole("button", { name: "auth:changePassword.submit" }),
     ).toBeInTheDocument();
+  });
+
+  it("mounts staff security History by target and audits only after first TOTP verification", async () => {
+    render(<SecurityPage />);
+    await screen.findByText("auth:accountSecurity.required");
+    await waitFor(() =>
+      expect(fixture.history).toHaveBeenCalledWith({
+        target: { kind: "self", audience: "staff", section: "security" },
+      }),
+    );
+    expect(fixture.audited).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.setupButton" }),
+    );
+    const code = await screen.findByLabelText("auth:accountSecurity.codeLabel");
+    fireEvent.change(code, { target: { value: "123456" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.verify" }),
+    );
+    await waitFor(() =>
+      expect(fixture.audited).toHaveBeenCalledWith([
+        { kind: "self", audience: "staff", section: "security" },
+      ]),
+    );
+  });
+
+  it("does not claim MFA History when verification fails", async () => {
+    fixture.verifyTotp.mockResolvedValueOnce({
+      data: null,
+      error: { code: "INVALID_CODE" },
+    });
+    render(<SecurityPage />);
+    await screen.findByText("auth:accountSecurity.required");
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.setupButton" }),
+    );
+    const code = await screen.findByLabelText("auth:accountSecurity.codeLabel");
+    fireEvent.change(code, { target: { value: "123456" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "auth:accountSecurity.verify" }),
+    );
+    await screen.findByText("auth:accountSecurity.codeError");
+    expect(fixture.audited).not.toHaveBeenCalled();
   });
 
   it("clears the callback intent while preserving the TOTP enrollment query", async () => {

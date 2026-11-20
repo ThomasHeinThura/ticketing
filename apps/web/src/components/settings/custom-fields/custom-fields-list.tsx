@@ -63,6 +63,7 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 function moved<T>(list: readonly T[], from: number, to: number): T[] {
   const next = [...list];
@@ -91,6 +92,15 @@ function SectionDialog({
       section
         ? renameCustomFieldSection(section.id, name.trim())
         : createCustomFieldSection(workspaceId, name.trim()),
+    meta: {
+      audits: {
+        targets: (_: unknown, r: { id: string; workspaceId: string }) =>
+          auditEntity("custom_field_section", r.id, {
+            kind: "workspace",
+            workspaceId: r.workspaceId,
+          }),
+      },
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: customFieldSectionsKey(workspaceId),
@@ -316,12 +326,36 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
     onError: (error) => toast.error(error.message),
   });
   const removeSection = useMutation({
-    mutationFn: (id: string) => deleteCustomFieldSection(id),
+    mutationFn: ({
+      id,
+      workspaceId: ws,
+    }: {
+      id: string;
+      workspaceId: string;
+    }) => deleteCustomFieldSection(id).then(() => ({ id, workspaceId: ws })),
+    meta: {
+      audits: {
+        targets: (_: unknown, r: { id: string; workspaceId: string }) =>
+          auditEntity("custom_field_section", r.id, {
+            kind: "workspace",
+            workspaceId: r.workspaceId,
+          }),
+      },
+    },
     onSettled: refresh,
     onError: (error) => toast.error(error.message),
   });
   const restore = useMutation({
     mutationFn: (id: string) => restoreCustomField(id),
+    meta: {
+      audits: {
+        targets: (_: unknown, r: { id: string; workspaceId: string }) =>
+          auditEntity("custom_field", r.id, {
+            kind: "workspace",
+            workspaceId: r.workspaceId,
+          }),
+      },
+    },
     onSettled: refresh,
     onError: (error) => toast.error(error.message),
   });
@@ -509,7 +543,12 @@ export function CustomFieldsList({ showDeleted }: { showDeleted: boolean }) {
                           aria-label={t("customFields:sections.deleteNamed", {
                             name: section.name,
                           })}
-                          onClick={() => removeSection.mutate(section.id)}
+                          onClick={() =>
+                            removeSection.mutate({
+                              id: section.id,
+                              workspaceId,
+                            })
+                          }
                         >
                           <Trash2 />
                         </Button>

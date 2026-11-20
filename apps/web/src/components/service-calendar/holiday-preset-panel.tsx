@@ -23,6 +23,7 @@ import {
 import { useHolidayPresets } from "@/hooks/queries/service-management";
 import { formatDateMedium } from "@/lib/format";
 import { useServerToday } from "@/lib/server-clock";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 /**
  * `CAL-10`, `CAL-11`: generate a country's holidays for a year from the dataset bundled with the
@@ -49,6 +50,7 @@ export function HolidayPresetPanel({
   const yearValid =
     Number.isInteger(yearNumber) && yearNumber >= 1900 && yearNumber <= 2200;
   const generate = useMutation({
+    // no-audits: a preview writes nothing
     mutationFn: () =>
       applyHolidayPreset(calendar.id, {
         country,
@@ -61,12 +63,29 @@ export function HolidayPresetPanel({
     },
   });
   const confirm = useMutation({
-    mutationFn: () =>
-      applyHolidayPreset(
-        calendar.id,
+    mutationFn: async () => {
+      const { id, workspaceId } = calendar; // captured at submit, not at settle
+      const result = await applyHolidayPreset(
+        id,
         { country, year: yearNumber, preview: false },
         calendar.version,
-      ),
+      );
+      return { ...result, id, workspaceId };
+    },
+    meta: {
+      audits: {
+        targets: (
+          _: unknown,
+          r: { id: string; workspaceId: string; applied: boolean },
+        ) =>
+          r.applied
+            ? auditEntity("service_calendar", r.id, {
+                kind: "workspace",
+                workspaceId: r.workspaceId,
+              })
+            : [],
+      },
+    },
     onSuccess: (result) => {
       setPreview(null);
       setApplied(result);

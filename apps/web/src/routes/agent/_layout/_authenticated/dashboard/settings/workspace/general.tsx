@@ -25,6 +25,8 @@ import {
   Separator,
 } from "@taskdesk/ui";
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -47,7 +49,6 @@ import {
   useCapabilityCheckFailed,
 } from "@/components/settings/settings-access";
 import { SettingsAccessPage } from "@/components/settings/settings-access-page";
-import { SettingsHistory } from "@/components/settings/settings-history";
 import { WorkspaceProjectDefaultsPanel } from "@/components/settings/workspace-project-defaults-panel";
 import useDeleteWorkspace from "@/hooks/mutations/workspace/use-delete-workspace";
 import useTransferWorkspaceOwnership from "@/hooks/mutations/workspace/use-transfer-workspace-ownership";
@@ -69,6 +70,12 @@ type WorkspaceFormValues = {
   name: string;
   description?: string;
 };
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 type NormalizedWorkspaceValues = {
   name: string;
@@ -147,7 +154,6 @@ function WorkspaceGeneral({
   const transferStepUp = useStepUpAction();
   const {
     canManageWorkspace,
-    canManageWorkspaceSettings,
     canDeleteWorkspace,
     isOwner,
     isCheckingPermissions,
@@ -429,12 +435,17 @@ function WorkspaceGeneral({
             </p>
           </div>
 
-          {canManageWorkspaceSettings() && workspace?.id && currentUser?.id ? (
-            <SettingsHistory
-              type="workspace"
-              id={workspace.id}
-              userId={currentUser.id}
-            />
+          {workspace?.id ? (
+            <Suspense fallback={null}>
+              <SettingsHistory
+                target={{
+                  kind: "entity",
+                  type: "workspace",
+                  id: workspace.id,
+                  scope: { kind: "workspace", workspaceId: workspace.id },
+                }}
+              />
+            </Suspense>
           ) : null}
           <div className="space-y-4 border border-border rounded-md p-4 bg-sidebar">
             <Form {...workspaceForm}>

@@ -136,6 +136,11 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock("@tanstack/react-query", () => ({
+  useMutation: ({
+    mutationFn,
+  }: {
+    mutationFn: (variables: unknown) => Promise<unknown>;
+  }) => ({ mutateAsync: mutationFn }),
   useQueryClient: () => ({
     invalidateQueries: mocks.invalidateQueries,
     setQueryData: mocks.setQueryData,

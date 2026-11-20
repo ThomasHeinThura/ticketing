@@ -22,7 +22,7 @@ import {
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   getTerminology,
@@ -34,6 +34,10 @@ import {
   type TerminologyTarget,
   type TerminologyTermKey,
 } from "@/fetchers/terminology";
+import type {
+  HistoryScope,
+  HistoryTarget,
+} from "@/query-client/settings-history-key";
 
 const terminologyKey = (target: TerminologyTarget) =>
   [
@@ -57,6 +61,17 @@ function localeLabel(locale: string): string {
     return locale;
   }
 }
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
+const historyScope = (target: TerminologyTarget): HistoryScope =>
+  target.scope === "workspace"
+    ? { kind: "workspace", workspaceId: target.workspaceId }
+    : { kind: "instance" };
 
 export function sampleCountForCategory(locale: string, category: string) {
   const rules = new Intl.PluralRules(locale);
@@ -96,7 +111,8 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
       item.termKey === termKey &&
       item.locale === locale,
   );
-  const identity = `${audience}:${termKey}:${locale}:${query.data?.etag ?? ""}`;
+  const historyId = `${termKey}:${audience}:${locale}`;
+  const identity = `${target.scope}:${target.scope === "workspace" ? target.workspaceId : "instance"}:${historyId}:${query.data?.etag ?? ""}`;
   const [draftState, setDraftState] = useState<{
     identity: string;
     forms: TerminologyForms;
@@ -125,16 +141,42 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
     }));
   };
   const save = useMutation({
-    mutationFn: (forms: TerminologyForms | null) => {
+    mutationFn: async ({
+      forms,
+      target: savedTarget,
+    }: {
+      forms: TerminologyForms | null;
+      id: string;
+      target: TerminologyTarget;
+    }) => {
       const snapshot = query.data;
       if (!snapshot) throw new Error("Terminology settings are not loaded");
-      return saveTerminology(target, {
+      const result = await saveTerminology(savedTarget, {
         expectedEtag: snapshot.etag,
         override: { audience, termKey, locale, forms },
       });
+      return { result, savedTarget };
     },
-    onSuccess: (result) => {
-      queryClient.setQueryData(queryKey, result);
+    meta: {
+      audits: {
+        targets: ({
+          id,
+          target: savedTarget,
+        }: {
+          id: string;
+          target: TerminologyTarget;
+        }): HistoryTarget[] => [
+          {
+            kind: "entity",
+            type: "terminology_override",
+            id,
+            scope: historyScope(savedTarget),
+          },
+        ],
+      },
+    },
+    onSuccess: ({ result, savedTarget }) => {
+      queryClient.setQueryData(terminologyKey(savedTarget), result);
       void queryClient.invalidateQueries({
         queryKey: ["terminology-runtime"],
       });
@@ -331,6 +373,16 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
             </Select>
           </div>
         </div>
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{
+              kind: "entity",
+              type: "terminology_override",
+              id: historyId,
+              scope: historyScope(target),
+            }}
+          />
+        </Suspense>
         <div className="grid gap-4 sm:grid-cols-2">
           {categories.map((category) => (
             <div key={category} className="space-y-2">
@@ -400,21 +452,21 @@ export function TerminologyEditor({ target }: { target: TerminologyTarget }) {
           <SaveButton
             disabled={
               (!formsDirty && !save.isPending) ||
-              (save.isPending && save.variables === null) ||
+              (save.isPending && save.variables?.forms === null) ||
               categories.some((category) => !draft[category]?.trim())
             }
-            pending={save.isPending && save.variables !== null}
-            success={save.isSuccess && save.variables !== null}
+            pending={save.isPending && save.variables?.forms !== null}
+            success={save.isSuccess && save.variables?.forms !== null}
             savedLabel={t("common:actions.saved")}
             workingLabel={t("common:actions.saving")}
-            onClick={() => save.mutate(draft)}
+            onClick={() => save.mutate({ forms: draft, id: historyId, target })}
           >
             {t("common:actions.save", { defaultValue: "Save" })}
           </SaveButton>
           <Button
             variant="outline"
             disabled={save.isPending || !current}
-            onClick={() => save.mutate(null)}
+            onClick={() => save.mutate({ forms: null, id: historyId, target })}
           >
             {t("terminology.useDefault", { defaultValue: "Use default" })}
           </Button>

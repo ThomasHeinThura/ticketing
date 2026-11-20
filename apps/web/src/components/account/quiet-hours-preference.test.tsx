@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 
 const mocks = vi.hoisted(() => ({
+  audits: undefined as unknown,
   save: vi.fn(),
   invalidate: vi.fn(),
   quietHours: null as { start: string; end: string; timezone: string } | null,
@@ -40,14 +41,18 @@ vi.mock("@tanstack/react-query", () => ({
   useMutation: ({
     mutationFn,
     onSuccess,
+    meta,
   }: {
     mutationFn: (value: unknown) => Promise<unknown>;
     onSuccess: (data: unknown, variables: unknown) => Promise<void>;
+    meta: { audits: { targets: () => unknown } };
   }) => ({
     isPending: mocks.pending,
     isError: false,
-    mutate: (value: unknown) =>
-      void mutationFn(value).then((data) => onSuccess(data, value)),
+    mutate: (value: unknown) => {
+      mocks.audits = meta.audits.targets();
+      void mutationFn(value).then((data) => onSuccess(data, value));
+    },
   }),
 }));
 
@@ -108,6 +113,9 @@ describe("quiet hours preference", () => {
     expect(mocks.save).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Save quiet hours" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    expect(mocks.audits).toEqual([
+      { kind: "self", audience: "staff", section: "notifications" },
+    ]);
     await screen.findByRole("button", { name: "Saved" });
     const announcements = screen
       .getAllByRole("status")
@@ -168,6 +176,9 @@ describe("quiet hours preference", () => {
       screen.getByRole("button", { name: "Turn off quiet hours" }),
     );
     await waitFor(() => expect(mocks.save).toHaveBeenCalledWith(null));
+    expect(mocks.audits).toEqual([
+      { kind: "self", audience: "staff", section: "notifications" },
+    ]);
   });
 
   it("preserves the local minute boundaries of an overnight window", async () => {

@@ -22,7 +22,6 @@ const mocks = vi.hoisted(() => ({
   createWorkflowVersion: vi.fn(),
   previewWorkflowPublication: vi.fn(),
   publishWorkflowVersion: vi.fn(),
-  history: vi.fn(),
   session: { user: { id: "u1" }, session: { id: "s1" } },
 }));
 
@@ -32,11 +31,10 @@ vi.mock("@/lib/auth-client", () => ({
     getSession: vi.fn(async () => ({ data: mocks.session })),
   },
 }));
-vi.mock("@/fetchers/settings/settings-history", async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import("@/fetchers/settings/settings-history")
-  >()),
-  getSettingsHistory: mocks.history,
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({ target }: { target: unknown }) => (
+    <div data-testid="history" data-target={JSON.stringify(target)} />
+  ),
 }));
 vi.mock("@/lib/format", () => ({ formatDateTime: (date: string) => date }));
 
@@ -192,19 +190,32 @@ function renderPage() {
   };
 }
 
+const workflowTarget = (id: string) => ({
+  kind: "entity",
+  type: "workflow",
+  id,
+  scope: { kind: "workspace", workspaceId: "ws-1" },
+});
+/** The History targets a write declared through its mutation meta (the last write by default). */
+const declaredTargets = (client: QueryClient, index = -1) => {
+  const mutation = client.getMutationCache().getAll().at(index);
+  return mutation?.meta?.audits?.targets(
+    mutation.state.variables as never,
+    mutation.state.data as never,
+  );
+};
+
 describe("workflow settings (WF-9)", () => {
   it("hides history when the active workspace changes with the workflow id retained", async () => {
     const view = renderPage();
-    await screen.findByRole("button", { name: /settings:history.title/ });
+    await screen.findByTestId("history");
     mocks.workspaceId = "ws-2";
     view.rerender(
       <QueryClientProvider client={view.client}>
         <Page />
       </QueryClientProvider>,
     );
-    expect(
-      screen.queryByRole("button", { name: /settings:history.title/ }),
-    ).toBeNull();
+    expect(screen.queryByTestId("history")).toBeNull();
   });
 
   beforeEach(() => {
@@ -213,9 +224,6 @@ describe("workflow settings (WF-9)", () => {
     mocks.search = { workflowId: "wf-1" };
     mocks.navigate.mockReset();
     mocks.session = { user: { id: "u1" }, session: { id: "s1" } };
-    mocks.history
-      .mockReset()
-      .mockResolvedValue({ lastChanged: null, rows: [] });
     mocks.getWorkflows.mockReset().mockResolvedValue([workflow]);
     mocks.createWorkflow.mockReset().mockResolvedValue(workflow);
     mocks.getWorkflow.mockReset().mockResolvedValue(workflow);
@@ -246,16 +254,9 @@ describe("workflow settings (WF-9)", () => {
       mocks.canManage = false;
       renderPage();
       await screen.findByRole("heading", { level: 1, name: "Service flow" });
-      await waitFor(() =>
-        expect(mocks.history).toHaveBeenCalledWith(
-          "workflow",
-          "wf-1",
-          expect.any(AbortSignal),
-        ),
-      );
       expect(
-        screen.getByRole("button", { name: "settings:history.title" }),
-      ).toBeInTheDocument();
+        JSON.parse((await screen.findByTestId("history")).dataset.target ?? ""),
+      ).toEqual(workflowTarget("wf-1"));
       expect(
         screen.queryByRole("button", {
           name: "settings:workflows.transitions.add",
@@ -269,13 +270,8 @@ describe("workflow settings (WF-9)", () => {
     },
   );
 
-  it("refreshes the selected target after a draft without waiting for History", async () => {
-    mocks.history
-      .mockResolvedValueOnce({ lastChanged: null, rows: [] })
-      .mockImplementation(() => new Promise(() => {}));
-    renderPage();
-    await screen.findByRole("button", { name: "settings:history.title" });
-    await waitFor(() => expect(mocks.history).toHaveBeenCalledTimes(1));
+  it("declares the saved workflow after a draft", async () => {
+    const { client } = renderPage();
     const removes = await screen.findAllByRole("button", {
       name: "settings:workflows.transitions.remove",
     });
@@ -285,32 +281,15 @@ describe("workflow settings (WF-9)", () => {
         name: "settings:workflows.transitions.saveDraft",
       }),
     );
-    await waitFor(() => expect(mocks.history).toHaveBeenCalledTimes(2));
     expect(
       await screen.findByText("common:actions.saved", {
         selector: "span:not([aria-hidden])",
       }),
     ).toBeInTheDocument();
+    expect(declaredTargets(client, 0)).toEqual([workflowTarget("wf-1")]);
   });
 
-  it("does not refresh History after a failed draft", async () => {
-    mocks.createWorkflowVersion.mockRejectedValue(new Error("failed"));
-    renderPage();
-    await screen.findByRole("button", { name: "settings:history.title" });
-    const removes = await screen.findAllByRole("button", {
-      name: "settings:workflows.transitions.remove",
-    });
-    fireEvent.click(removes[0] as HTMLElement);
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "settings:workflows.transitions.saveDraft",
-      }),
-    );
-    await screen.findByText("settings:workflows.errorTitle");
-    expect(mocks.history).toHaveBeenCalledTimes(1);
-  });
-
-  it("refreshes only the saved workflow and captured session after a switch", async () => {
+  it("declares the workflow the draft was saved for, even after the screen switched", async () => {
     let finish!: (value: { number: number }) => void;
     mocks.createWorkflowVersion.mockImplementationOnce(
       () =>
@@ -319,7 +298,6 @@ describe("workflow settings (WF-9)", () => {
         }),
     );
     const { client, rerender } = renderPage();
-    const invalidate = vi.spyOn(client, "invalidateQueries");
     const removes = await screen.findAllByRole("button", {
       name: "settings:workflows.transitions.remove",
     });
@@ -332,7 +310,6 @@ describe("workflow settings (WF-9)", () => {
     await waitFor(() =>
       expect(mocks.createWorkflowVersion).toHaveBeenCalledTimes(1),
     );
-    mocks.session = { user: { id: "u2" }, session: { id: "s2" } };
     mocks.search = { workflowId: "wf-2" };
     mocks.getWorkflow.mockResolvedValue({
       ...workflow,
@@ -347,17 +324,11 @@ describe("workflow settings (WF-9)", () => {
     await screen.findByRole("heading", { name: "Second flow" });
     finish({ number: 3 });
     await waitFor(() =>
-      expect(invalidate).toHaveBeenCalledWith({
-        queryKey: ["settings-history", "workflow", "wf-1", "agent", "u1", "s1"],
-        exact: true,
-        refetchType: "none",
-      }),
+      expect(client.getMutationCache().getAll()[0]?.state.status).toBe(
+        "success",
+      ),
     );
-    expect(invalidate).not.toHaveBeenCalledWith({
-      queryKey: ["settings-history", "workflow", "wf-2", "agent", "u2", "s2"],
-      exact: true,
-      refetchType: "none",
-    });
+    expect(declaredTargets(client, 0)).toEqual([workflowTarget("wf-1")]);
   });
 
   it("preserves a newer draft edit when an older save completes", async () => {
@@ -435,7 +406,6 @@ describe("workflow settings (WF-9)", () => {
 
   it("lists the work items a publish would strand, each linking to the item", async () => {
     const { client } = renderPage();
-    const invalidate = vi.spyOn(client, "invalidateQueries");
     fireEvent.click(
       await screen.findByRole("button", {
         name: "settings:workflows.versions.validate",
@@ -472,18 +442,16 @@ describe("workflow settings (WF-9)", () => {
       }),
     );
     await waitFor(() =>
-      expect(invalidate).toHaveBeenCalledWith({
-        queryKey: ["settings-history", "workflow", "wf-1", "agent", "u1", "s1"],
-        exact: true,
-        refetchType: "none",
-      }),
+      expect(client.getMutationCache().getAll().at(-1)?.state.status).toBe(
+        "success",
+      ),
     );
+    expect(declaredTargets(client)).toEqual([workflowTarget("wf-1")]);
   });
 
-  it("refreshes the newly created workflow", async () => {
+  it("declares the newly created workflow", async () => {
     mocks.search = {};
     const { client } = renderPage();
-    const invalidate = vi.spyOn(client, "invalidateQueries");
     fireEvent.click(
       await screen.findByRole("button", { name: "settings:workflows.new" }),
     );
@@ -497,56 +465,8 @@ describe("workflow settings (WF-9)", () => {
       screen.getByRole("button", { name: "settings:workflows.create.submit" }),
     );
     await waitFor(() =>
-      expect(invalidate).toHaveBeenCalledWith({
-        queryKey: ["settings-history", "workflow", "wf-1", "agent", "u1", "s1"],
-        exact: true,
-        refetchType: "none",
-      }),
+      expect(declaredTargets(client)).toEqual([workflowTarget("wf-1")]),
     );
-  });
-
-  it("does not refresh history when creation fails", async () => {
-    mocks.search = {};
-    mocks.createWorkflow.mockRejectedValue(new Error("failed"));
-    const { client } = renderPage();
-    const invalidate = vi.spyOn(client, "invalidateQueries");
-    fireEvent.click(
-      await screen.findByRole("button", { name: "settings:workflows.new" }),
-    );
-    fireEvent.change(screen.getByLabelText("settings:workflows.create.name"), {
-      target: { value: "Service flow" },
-    });
-    fireEvent.change(screen.getByLabelText("settings:workflows.create.key"), {
-      target: { value: "SERVICE" },
-    });
-    fireEvent.click(
-      screen.getByRole("button", { name: "settings:workflows.create.submit" }),
-    );
-    await screen.findByText("settings:workflows.create.error");
-    expect(invalidate).not.toHaveBeenCalled();
-  });
-
-  it("does not refresh history when publication fails", async () => {
-    mocks.publishWorkflowVersion.mockRejectedValue(new Error("failed"));
-    const { client } = renderPage();
-    const invalidate = vi.spyOn(client, "invalidateQueries");
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "settings:workflows.versions.validate",
-      }),
-    );
-    await screen.findByTestId("workflow-validation");
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "settings:workflows.validation.publishAnyway:2",
-      }),
-    );
-    await screen.findByText("settings:workflows.errorTitle");
-    expect(invalidate).not.toHaveBeenCalledWith({
-      queryKey: ["settings-history", "workflow", "wf-1", "agent", "u1", "s1"],
-      exact: true,
-      refetchType: "none",
-    });
   });
 
   it("saves a removed transition as a new draft and keeps the guards it did not touch", async () => {

@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -50,6 +50,7 @@ import { useDndAccessibility } from "@/hooks/use-dnd-accessibility";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import StateWipLimitField from "./state-wip-limit-field";
 
 const NONE = "none";
@@ -142,6 +143,24 @@ export default function ProjectStatesEditor({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const inheritStateSet = useMutation({
+    mutationFn: ({
+      workspaceId: _workspaceId,
+      ...input
+    }: Parameters<typeof inheritProjectStateSet>[0] & {
+      workspaceId: string;
+    }) => inheritProjectStateSet(input),
+    meta: {
+      audits: {
+        targets: (v: { workspaceId: string; projectId: string }) =>
+          auditEntity("project", v.projectId, {
+            kind: "project",
+            workspaceId: v.workspaceId,
+            projectId: v.projectId,
+          }),
+      },
+    },
+  });
   const { canManageProjectSettings } = useWorkspacePermission();
   const canEdit = canManageProjectSettings();
   const {
@@ -291,6 +310,7 @@ export default function ProjectStatesEditor({
     setFailure(null);
     try {
       await updateState({
+        workspaceId,
         projectId,
         stateId: String(active.id),
         position: to,
@@ -305,7 +325,7 @@ export default function ProjectStatesEditor({
   const handleDefault = async (stateId: string) => {
     setFailure(null);
     try {
-      await updateState({ projectId, stateId, isDefault: true });
+      await updateState({ workspaceId, projectId, stateId, isDefault: true });
       await refresh();
       toast.success(t("settings:projectStates.defaultSaved"));
     } catch (error) {
@@ -317,7 +337,11 @@ export default function ProjectStatesEditor({
     if (templateId === NONE) return;
     setFailure(null);
     try {
-      await createState({ projectId, stateTemplateId: templateId });
+      await createState({
+        workspaceId,
+        projectId,
+        stateTemplateId: templateId,
+      });
       setTemplateId(NONE);
       await refresh();
       toast.success(t("settings:projectStates.created"));
@@ -332,7 +356,8 @@ export default function ProjectStatesEditor({
     setInheritanceFailure(null);
     setSyncingInheritance(true);
     try {
-      const updated = await inheritProjectStateSet({
+      const updated = await inheritStateSet.mutateAsync({
+        workspaceId,
         projectId,
         expectedProjectVersion: current.projectVersion,
         expectedWorkspaceVersion: current.workspaceVersion,

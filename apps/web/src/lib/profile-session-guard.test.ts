@@ -24,3 +24,16 @@ it("distinguishes session verification failure after a confirmed save", async ()
     "Profile saved; session could not be checked",
   );
 });
+it("keeps a refused check's status and reports a different person as 403", async () => {
+  getSession.mockResolvedValueOnce({ data: null, error: { status: 503 } });
+  await expect(profileSessionGuard("u1", "s1")()).rejects.toMatchObject({
+    status: 503,
+  });
+  getSession.mockResolvedValueOnce({
+    data: { user: { id: "u2" }, session: { id: "s1" } },
+    error: null,
+  });
+  await expect(profileSessionGuard("u1", "s1")()).rejects.toMatchObject({
+    status: 403,
+  });
+});

@@ -23,7 +23,7 @@ import {
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { parseAttachmentDeletionSummary } from "@/components/pending-action/attachment-deletion-summary";
@@ -46,6 +46,7 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
+import type { HistoryTarget } from "@/query-client/settings-history-key";
 import type Task from "@/types/task";
 import {
   PENDING_ACTION_TARGET_QUERY_PREFIXES,
@@ -308,8 +309,50 @@ export function PendingActionApproval({
       setSecret("");
     }
   }, [factor.data]);
+  const pendingApproval = useRef<
+    Parameters<typeof approveOwnPendingAction>[0] | null
+  >(null);
   const approve = useMutation({
-    mutationFn: approveOwnPendingAction,
+    mutationFn: () => {
+      if (!pendingApproval.current) throw new Error("No approval pending");
+      return approveOwnPendingAction(pendingApproval.current);
+    },
+    meta: {
+      audits: {
+        // An executed key deletion changes that key's History; `action.data` is what was approved.
+        targets: (
+          _: unknown,
+          approved: ApprovedAction | null | undefined,
+        ): HistoryTarget[] => {
+          const data = action.data;
+          if (
+            approved?.state !== "executed" ||
+            data?.action !== "delete" ||
+            data.targetType !== "api_key"
+          )
+            return [];
+          if (data.summary?.kind === "personal")
+            return [{ kind: "self", audience: "staff", section: "apiKeys" }];
+          const keyId = data.summary?.apiKeyId;
+          if (
+            data.summary?.kind !== "service" ||
+            typeof keyId !== "string" ||
+            data.targetIds.length !== 1 ||
+            keyId !== data.targetIds[0] ||
+            !data.targetWorkspaceId
+          )
+            return [];
+          return [
+            {
+              kind: "entity",
+              type: "service_api_key",
+              id: keyId,
+              scope: { kind: "workspace", workspaceId: data.targetWorkspaceId },
+            },
+          ];
+        },
+      },
+    },
   });
   const cancel = useMutation({
     mutationFn: cancelOwnPendingAction,
@@ -680,19 +723,19 @@ export function PendingActionApproval({
       !isImportRun
     )
       return;
+    if (pendingApproval.current) return;
     const capturedIntent = actionLifecycle.capture();
     const isCurrentIntent = () => actionLifecycle.isCurrent(capturedIntent);
     setError(null);
     try {
-      let approved: unknown;
       if (needsStepUp) {
         const stepUpToken = await createPendingActionProof({
           pendingActionId: id,
           method: effectiveMethod,
           secret,
         });
-        if (!isCurrentIntent()) return;
-        approved = await approve.mutateAsync({
+        if (!isCurrentIntent() || pendingApproval.current) return;
+        pendingApproval.current = {
           id,
           ...(isDeactivationContract ||
           isRegisteredTypedName ||
@@ -700,19 +743,30 @@ export function PendingActionApproval({
             ? { typedName }
             : { typedCount }),
           stepUpToken,
-        });
+        };
       } else {
-        approved = await approve.mutateAsync({
+        pendingApproval.current = {
           id,
           ...(isRegisteredTypedName
             ? { typedName }
             : isBulkDeletion
               ? { typedCount }
               : {}),
-        });
+        };
       }
+      const approved: unknown = await approve.mutateAsync().finally(() => {
+        pendingApproval.current = null;
+      });
       const executed =
         (approved as ApprovedAction | null | undefined)?.state === "executed";
+      if (
+        executed &&
+        action.data?.targetType === "api_key" &&
+        action.data.targetWorkspaceId
+      )
+        void queryClient.invalidateQueries({
+          queryKey: ["service-keys", action.data.targetWorkspaceId],
+        });
       // A deleted workspace or project must not stay the shell's active context. Leave
       // before the cache refetches below, so nothing re-reads the deleted record (404).
       if (executed && action.data?.targetType === "workspace") {

@@ -13,6 +13,20 @@ const terminologyMocks = vi.hoisted(() => ({
   preview: vi.fn(),
   save: vi.fn(),
 }));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({
+    target,
+  }: {
+    target: { id: string; scope: { kind: string; workspaceId?: string } };
+  }) => (
+    <div
+      data-testid="term-history"
+      data-id={target.id}
+      data-scope={target.scope.kind}
+      data-workspace={target.scope.workspaceId}
+    />
+  ),
+}));
 
 vi.mock("@/fetchers/terminology", () => ({
   TERMINOLOGY_TERM_KEYS: [
@@ -35,8 +49,8 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function renderEditor() {
-  terminologyMocks.get.mockResolvedValue({ overrides: [], etag: '"v1"' });
+async function renderEditor(overrides: unknown[] = []) {
+  terminologyMocks.get.mockResolvedValue({ overrides, etag: '"v1"' });
   const i18n = createInstance();
   await i18n.init({
     lng: "en-US",
@@ -86,7 +100,7 @@ async function renderEditor() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <TerminologyEditor
@@ -95,6 +109,7 @@ async function renderEditor() {
       </I18nextProvider>
     </QueryClientProvider>,
   );
+  return { queryClient, ...view };
 }
 
 describe("TerminologyEditor live preview", () => {
@@ -186,4 +201,114 @@ describe("TerminologyEditor live preview", () => {
     expect(terminologyMocks.save).not.toHaveBeenCalled();
     await waitFor(() => expect(terminologyMocks.get).toHaveBeenCalledTimes(1));
   });
+});
+
+it("keeps History on the selected catalogue cell across term, audience and locale switches", async () => {
+  await renderEditor();
+  await screen.findByLabelText("One");
+  expect(screen.getByTestId("term-history")).toHaveAttribute(
+    "data-id",
+    "request:both:en-US",
+  );
+  fireEvent.click(screen.getByRole("combobox", { name: "Term" }));
+  const project = await screen.findByRole("option", { name: "project" });
+  fireEvent.pointerDown(project, { button: 0, pointerType: "mouse" });
+  fireEvent.pointerUp(project, { button: 0, pointerType: "mouse" });
+  fireEvent.click(project);
+  fireEvent.click(screen.getByRole("combobox", { name: "Audience" }));
+  const staff = await screen.findByRole("option", { name: "Staff" });
+  fireEvent.pointerDown(staff, { button: 0, pointerType: "mouse" });
+  fireEvent.pointerUp(staff, { button: 0, pointerType: "mouse" });
+  fireEvent.click(staff);
+  fireEvent.click(screen.getByRole("combobox", { name: "Locale" }));
+  const german = await screen.findByRole("option", { name: /\(de-DE\)/ });
+  fireEvent.pointerDown(german, { button: 0, pointerType: "mouse" });
+  fireEvent.pointerUp(german, { button: 0, pointerType: "mouse" });
+  fireEvent.click(german);
+  await waitFor(() =>
+    expect(screen.getByTestId("term-history")).toHaveAttribute(
+      "data-id",
+      "project:agent:de-DE",
+    ),
+  );
+  expect(screen.getByTestId("term-history")).toHaveAttribute(
+    "data-workspace",
+    "workspace-a",
+  );
+});
+
+/** The History targets the global MutationCache would withdraw for the last save. */
+const savedTargets = (queryClient: QueryClient) => {
+  const mutation = queryClient.getMutationCache().getAll().at(-1);
+  return mutation?.options.meta?.audits?.targets(
+    mutation.state.variables as never,
+    undefined as never,
+  );
+};
+const cell = (id: string) => [
+  {
+    kind: "entity",
+    type: "terminology_override",
+    id,
+    scope: { kind: "workspace", workspaceId: "workspace-a" },
+  },
+];
+
+it("declares only the captured cell for a save even if selection changes", async () => {
+  let finish!: (value: { overrides: unknown[]; etag: string }) => void;
+  terminologyMocks.save.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const { queryClient } = await renderEditor();
+  fireEvent.change(await screen.findByLabelText("One"), {
+    target: { value: "Case" },
+  });
+  fireEvent.change(screen.getByLabelText("Other"), {
+    target: { value: "Cases" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(terminologyMocks.save).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByRole("combobox", { name: "Term" }));
+  fireEvent.click(await screen.findByRole("option", { name: "project" }));
+  finish({ overrides: [], etag: '"v2"' });
+  await waitFor(() =>
+    expect(queryClient.getMutationCache().getAll().at(-1)?.state.status).toBe(
+      "success",
+    ),
+  );
+  expect(savedTargets(queryClient)).toEqual(cell("request:both:en-US"));
+});
+
+it("retains History after reset and keeps the screen usable after a failed save", async () => {
+  terminologyMocks.save.mockResolvedValueOnce({ overrides: [], etag: '"v2"' });
+  const { queryClient } = await renderEditor([
+    {
+      audience: "both",
+      termKey: "request",
+      locale: "en-US",
+      forms: { one: "Case", other: "Cases" },
+    },
+  ]);
+  await screen.findByDisplayValue("Case");
+  fireEvent.click(screen.getByRole("button", { name: "Use default" }));
+  await waitFor(() =>
+    expect(queryClient.getMutationCache().getAll().at(-1)?.state.status).toBe(
+      "success",
+    ),
+  );
+  expect(savedTargets(queryClient)).toEqual(cell("request:both:en-US"));
+  expect(screen.getByTestId("term-history")).toHaveAttribute(
+    "data-id",
+    "request:both:en-US",
+  );
+  terminologyMocks.save.mockRejectedValueOnce(new Error("refused"));
+  fireEvent.change(screen.getByLabelText("One"), { target: { value: "New" } });
+  fireEvent.change(screen.getByLabelText("Other"), {
+    target: { value: "News" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await screen.findByRole("alert");
 });

@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,8 +16,13 @@ import {
 const api = vi.hoisted(() => ({
   get: vi.fn(),
   patch: vi.fn(),
+  audited: vi.fn(),
+  identity: { user: { id: "user-1" }, session: { id: "s1" } },
 }));
 
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { useSession: () => ({ data: api.identity }) },
+}));
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
   default: () => ({ user: { id: "user-1" } }),
 }));
@@ -25,6 +34,12 @@ vi.mock("@/fetchers/user-settings/user-settings", () => ({
 function setup(projectId: string | undefined = "proj_1") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    mutationCache: new MutationCache({
+      onSuccess: (data, variables, _context, mutation) =>
+        api.audited(
+          mutation.meta?.audits?.targets(variables as never, data as never),
+        ),
+    }),
   });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -44,6 +59,7 @@ function setup(projectId: string | undefined = "proj_1") {
 beforeEach(() => {
   api.get.mockReset();
   api.patch.mockReset();
+  api.audited.mockReset();
   api.get.mockResolvedValue({
     settings: { "listGroups.proj_1": ["open"], density: "compact" },
   });
@@ -159,4 +175,13 @@ describe("stored value parsers", () => {
       parseTableColumns(Array.from({ length: 101 }, (_, i) => `cf.f${i}`)),
     ).toBeUndefined();
   });
+});
+
+it("declares the preferences History target once a queued save completes", async () => {
+  const { result } = setup();
+  act(() => result.current.set(["done"]));
+  await waitFor(() => expect(api.audited).toHaveBeenCalledOnce());
+  expect(api.audited).toHaveBeenCalledWith([
+    { kind: "self", audience: "staff", section: "preferences" },
+  ]);
 });

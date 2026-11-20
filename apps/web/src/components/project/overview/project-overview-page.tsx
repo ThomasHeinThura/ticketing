@@ -470,6 +470,7 @@ export function ProjectOverviewPage({
           {listed?.seenOnlyViaWorkspaceRole ? (
             <JoinProject
               projectId={project.id}
+              workspaceId={project.workspaceId}
               canJoin={listed?.canJoin === true}
             />
           ) : null}

@@ -5,6 +5,7 @@ type UpdateWorkspaceUserRoleRequest = {
   workspaceId: string;
   userId: string;
   role: string;
+  workspaceMemberId: string | null;
 };
 
 // S5 (issue #6, retrofit plan §3): native replacement for
@@ -16,8 +17,28 @@ type UpdateWorkspaceUserRoleRequest = {
 function useUpdateWorkspaceUserRole() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: UpdateWorkspaceUserRoleRequest) =>
-      updateWorkspaceMemberRole(request),
+    mutationFn: ({
+      workspaceMemberId: _workspaceMemberId,
+      ...request
+    }: UpdateWorkspaceUserRoleRequest) => updateWorkspaceMemberRole(request),
+    meta: {
+      audits: {
+        targets: (variables: UpdateWorkspaceUserRoleRequest) =>
+          variables.workspaceMemberId
+            ? [
+                {
+                  kind: "entity",
+                  type: "workspace_member",
+                  id: variables.workspaceMemberId,
+                  scope: {
+                    kind: "workspace",
+                    workspaceId: variables.workspaceId,
+                  },
+                } as const,
+              ]
+            : [],
+      },
+    },
     onSuccess: (_data, variables) => {
       // The members page reads from useGetFullWorkspace which keys by
       // ["workspace", "full", workspaceId], so invalidate that exact prefix

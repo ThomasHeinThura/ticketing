@@ -21,6 +21,14 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   pathname: { current: "" },
   invalidate: vi.fn(),
+  audited: vi.fn(),
+  cancelQueries: vi.fn(),
+  setQueryData: vi.fn(),
+  getSession: vi.fn(),
+  sessionId: "s1",
+  portal: null as string | null,
+  impersonatedBy: null as string | null,
+  activeWorkspaceId: "workspace-1",
   remove: vi.fn(),
   cachedTask: { current: undefined as unknown },
   cachedProject: { current: undefined as unknown },
@@ -46,6 +54,8 @@ vi.mock("@tanstack/react-query", () => ({
         : { data: undefined, isLoading: false, isError: false },
   useQueryClient: () => ({
     invalidateQueries: mocks.invalidate,
+    cancelQueries: mocks.cancelQueries,
+    setQueryData: mocks.setQueryData,
     removeQueries: mocks.remove,
     getQueryData: (key: unknown[]) =>
       key[0] === "projects"
@@ -54,12 +64,35 @@ vi.mock("@tanstack/react-query", () => ({
   }),
   useMutation: ({
     mutationFn,
+    meta,
   }: {
     mutationFn: (v: unknown) => Promise<unknown>;
+    meta?: {
+      audits: { targets: (variables: unknown, result: unknown) => unknown };
+    };
   }) => ({
     isPending: false,
-    mutateAsync: (value: unknown) => mutationFn(value),
+    mutateAsync: async (value: unknown) => {
+      const result = await mutationFn(value);
+      if (meta) mocks.audited(meta.audits.targets(value, result));
+      return result;
+    },
   }),
+}));
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({
+      data: {
+        user: { id: "u1" },
+        session: {
+          id: mocks.sessionId,
+          portal: mocks.portal,
+          impersonatedBy: mocks.impersonatedBy,
+        },
+      },
+    }),
+    getSession: mocks.getSession,
+  },
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -90,7 +123,7 @@ vi.mock("@/hooks/queries/god-mode/use-instance-users", () => ({
   instanceUsersKey: ["instance-users"],
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: { id: "workspace-1" } }),
+  default: () => ({ data: { id: mocks.activeWorkspaceId } }),
 }));
 
 function workItemAction(over: Record<string, unknown>) {
@@ -123,6 +156,8 @@ describe("executed work-item deletion", () => {
     mocks.approve.mockReset().mockResolvedValue({ state: "executed" });
     mocks.navigate.mockReset().mockResolvedValue(undefined);
     mocks.invalidate.mockReset().mockResolvedValue(undefined);
+    mocks.cancelQueries.mockReset().mockResolvedValue(undefined);
+    mocks.setQueryData.mockReset();
     mocks.remove.mockReset();
     mocks.pathname.current =
       "/dashboard/workspace/workspace-1/project/project-1/task/t-1";
@@ -144,6 +179,7 @@ describe("executed work-item deletion", () => {
     expect(mocks.remove).toHaveBeenCalledWith({ queryKey: ["task", "t-1"] });
     expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["tasks"] });
     expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["work-items"] });
+    expect(mocks.cancelQueries).not.toHaveBeenCalled();
   });
 
   it("returns from the canonical work-item page to the project board", async () => {
@@ -494,6 +530,129 @@ describe("personal API-key deletion confirmation", () => {
     expect(
       screen.getByText("pendingActions:registered.confirmName"),
     ).toBeInTheDocument();
+  });
+});
+
+describe("API-key deletion History", () => {
+  const keyAction = (summary: Record<string, unknown>, over = {}) => ({
+    id: "pa-api-key",
+    action: "delete",
+    targetType: "api_key",
+    targetIds: ["key-1"],
+    targetWorkspaceId: "workspace-target",
+    confirmation: "typed_name_step_up",
+    approvalSupported: true,
+    state: "pending",
+    origin: "web",
+    expiresAt: "2026-10-25T00:00:00.000Z",
+    summary: { name: "Retired local credential", ...summary },
+    ...over,
+  });
+  const personal = () => keyAction({ kind: "personal" });
+  const service = (over = {}, summary = {}) =>
+    keyAction({ kind: "service", apiKeyId: "key-1", ...summary }, over);
+
+  async function submit(onExecuted = vi.fn()) {
+    render(
+      <PendingActionApproval
+        id="pa-api-key"
+        layout="page"
+        onExecuted={onExecuted}
+      />,
+    );
+    fireEvent.change(
+      screen.getByLabelText("pendingActions:registered.confirmName"),
+      { target: { value: "Retired local credential" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText("pendingActions:dynamic.accountPassword"),
+      { target: { value: "fresh-password" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "common:actions.delete" }),
+    );
+    await waitFor(() => expect(mocks.approve).toHaveBeenCalled());
+    return onExecuted;
+  }
+
+  beforeEach(() => {
+    mocks.action.current = personal();
+    mocks.sessionId = "s1";
+    mocks.activeWorkspaceId = "workspace-1";
+    mocks.approve.mockReset().mockResolvedValue({ state: "executed" });
+    mocks.proof.mockReset().mockResolvedValue("step-up-proof");
+    mocks.invalidate.mockReset().mockResolvedValue(undefined);
+    mocks.audited.mockReset();
+    mocks.cancelQueries.mockReset().mockResolvedValue(undefined);
+    mocks.setQueryData.mockReset();
+    mocks.remove.mockReset();
+    mocks.navigate.mockReset().mockResolvedValue(undefined);
+    mocks.pathname.current = "/dashboard/settings/account/developer";
+  });
+  afterEach(cleanup);
+
+  it("does not audit merely by opening the pending action", () => {
+    render(<PendingActionApproval id="pa-api-key" layout="page" />);
+    expect(mocks.audited).not.toHaveBeenCalled();
+    expect(mocks.approve).not.toHaveBeenCalled();
+  });
+
+  it("audits the personal-key section on confirmed execution", async () => {
+    const onExecuted = await submit();
+    await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
+    expect(mocks.audited).toHaveBeenCalledExactlyOnceWith([
+      { kind: "self", audience: "staff", section: "apiKeys" },
+    ]);
+  });
+
+  it("audits the deleted service key in its workspace and reloads that list", async () => {
+    mocks.action.current = service();
+    const onExecuted = await submit();
+    await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
+    expect(mocks.audited).toHaveBeenCalledExactlyOnceWith([
+      {
+        kind: "entity",
+        type: "service_api_key",
+        id: "key-1",
+        scope: { kind: "workspace", workspaceId: "workspace-target" },
+      },
+    ]);
+    expect(mocks.invalidate).toHaveBeenCalledWith({
+      queryKey: ["service-keys", "workspace-target"],
+    });
+    expect(
+      screen.getByLabelText("pendingActions:dynamic.accountPassword"),
+    ).toHaveValue("");
+  });
+
+  it.each([
+    ["missing workspace", { targetWorkspaceId: null }, {}],
+    ["mismatched key id", {}, { apiKeyId: "another-key" }],
+    ["extra target id", { targetIds: ["key-1", "another-key"] }, {}],
+  ])(
+    "audits nothing for a service key with %s metadata",
+    async (_label, over, summary) => {
+      mocks.action.current = service(over, summary);
+      const onExecuted = await submit();
+      await waitFor(() => expect(onExecuted).toHaveBeenCalledOnce());
+      expect(mocks.audited).toHaveBeenCalledExactlyOnceWith([]);
+    },
+  );
+
+  it.each(["pending", "expired"])(
+    "does not audit a %s approval",
+    async (state) => {
+      mocks.approve.mockResolvedValue({ state });
+      await submit();
+      expect(mocks.audited).toHaveBeenCalledExactlyOnceWith([]);
+    },
+  );
+
+  it("does not audit when approval is refused", async () => {
+    mocks.approve.mockRejectedValue(new Error("refused"));
+    await submit();
+    await screen.findByRole("alert");
+    expect(mocks.audited).not.toHaveBeenCalled();
   });
 });
 

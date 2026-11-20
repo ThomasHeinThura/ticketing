@@ -10,6 +10,7 @@ export type RosterRoleView = {
 
 export type RosterMemberView = {
   personId: string;
+  membershipId: string | null;
   displayName: string | null;
   active: boolean;
   jobTitle: string | null;

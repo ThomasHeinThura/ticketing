@@ -10,6 +10,7 @@ import { appendAuditLog } from "../../apps/api/src/audit/audit-writer";
 import { runWithImpersonator } from "../../apps/api/src/auth/impersonation-context";
 import db, { schema } from "../../apps/api/src/database";
 import { webhookTable } from "../../apps/api/src/database/schema";
+import { availableHoursTable } from "../../apps/api/src/database/schema-p5-time";
 import { createApp } from "../../apps/api/src/index";
 import { sweepExpiredImpersonations } from "../../apps/api/src/instance/impersonation/finish";
 import { impersonationRefusal } from "../../apps/api/src/instance/impersonation/guard";
@@ -211,6 +212,113 @@ describe("impersonation (GM-7..GM-11)", () => {
       .from(schema.sessionTable)
       .where(eq(schema.sessionTable.impersonatedBy, adminId));
   }
+
+  it("refuses time settings and available-hours writes while impersonating", async () => {
+    const w = await world();
+    const { project } = await createProjectFixture({
+      workspaceId: w.workspace.id,
+    });
+    await grantWorkItemProjectAccess(w.target.id, project.id);
+    const [person] = await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, w.target.id));
+    const personId = requireRow([person], "target person").id;
+    await db
+      .insert(schema.instanceFeatureFlagTable)
+      .values({
+        featureKey: "feature.time_tracking",
+        enabled: true,
+        locked: false,
+      })
+      .onConflictDoUpdate({
+        target: schema.instanceFeatureFlagTable.featureKey,
+        set: { enabled: true, locked: false },
+      });
+    await db
+      .insert(schema.workspaceFeatureFlagTable)
+      .values({
+        workspaceId: w.workspace.id,
+        featureKey: "feature.time_tracking",
+        enabled: true,
+      })
+      .onConflictDoUpdate({
+        target: [
+          schema.workspaceFeatureFlagTable.workspaceId,
+          schema.workspaceFeatureFlagTable.featureKey,
+        ],
+        set: { enabled: true },
+      });
+    const cookie = await startImpersonation(w);
+    const query = `workspaceId=${w.workspace.id}&projectId=${project.id}`;
+    const settingsRead = await w.app.request(`/api/time-settings?${query}`, {
+      headers: { cookie },
+    });
+    expect(settingsRead.status, await settingsRead.clone().text()).toBe(200);
+    const hoursRead = await w.app.request(
+      `/api/available-hours?workspaceId=${w.workspace.id}`,
+      { headers: { cookie } },
+    );
+    expect(hoursRead.status, await hoursRead.clone().text()).toBe(200);
+
+    const snapshot = async () => ({
+      workspace: await db
+        .select({ days: schema.workspaceTable.timeEntryBackdateLimitDays })
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, w.workspace.id)),
+      project: await db
+        .select({ billable: schema.projectTable.defaultBillable })
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.id, project.id)),
+      hours: await db
+        .select()
+        .from(availableHoursTable)
+        .where(eq(availableHoursTable.workspaceId, w.workspace.id)),
+      settingsAudit: await auditRows("time_settings.updated"),
+      hoursAudit: await auditRows("available_hours.created"),
+    });
+    const before = await snapshot();
+    const originalProject = requireRow(before.project, "project");
+    const originalWorkspace = requireRow(before.workspace, "workspace");
+    for (const [method, path, body] of [
+      [
+        "PATCH",
+        "/api/time-settings",
+        {
+          workspaceId: w.workspace.id,
+          backdateLimitDays: originalWorkspace.days === 17 ? 18 : 17,
+        },
+      ],
+      [
+        "PATCH",
+        "/api/time-settings",
+        {
+          workspaceId: w.workspace.id,
+          project: {
+            id: project.id,
+            defaultBillable: !originalProject.billable,
+          },
+        },
+      ],
+      [
+        "POST",
+        "/api/available-hours",
+        {
+          workspaceId: w.workspace.id,
+          personId,
+          minutesPerWeek: 2400,
+          effectiveFrom: "2026-01-01",
+        },
+      ],
+    ] as const) {
+      const refused = await post(w.app, cookie, path, body, {}, method);
+      expect(refused.status, `${method} ${path}`).toBe(403);
+      expect(await refused.text(), `${method} ${path}`).toMatch(
+        /impersonation/iu,
+      );
+      expect(await snapshot()).toEqual(before);
+    }
+  });
 
   it("ends the session on the next request once the impersonating administrator is suspended, demoted or deactivated (P4R1-M3)", async () => {
     for (const change of ["suspended", "demoted", "deactivated"] as const) {
@@ -607,6 +715,8 @@ describe("impersonation (GM-7..GM-11)", () => {
       "POST /api/workspaces/{id}/api-keys",
       "POST /api/me/api-keys",
       "POST /api/workflows/{id}/versions",
+      "PATCH /api/time-settings",
+      "POST /api/available-hours",
       "POST /api/some-future-route",
     ])
       expect(impersonationRefusal(key, false), key).toMatch(/ordinary work/u);

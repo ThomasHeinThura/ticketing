@@ -22,6 +22,7 @@ import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { dbNowUtc } from "../utils/db-time";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { writeAuditRead } from "./controllers/audit-read-common";
+import { HISTORY_ACTIONS } from "./history-actions";
 import { safePreferenceAuditFields } from "./settings-history";
 
 const PROFILE_FIELDS = new Set(["name", "locale", "image"]);
@@ -172,14 +173,14 @@ async function read(
   const identity = await resolveIdentity({ userId, credential: "session" });
   if (!identity || identity.side !== side)
     throw new HTTPException(404, { message: "Not found" });
-  const action =
-    section === "profile"
-      ? "user.profile_updated"
-      : section === "preferences"
-        ? "user_preference.updated"
-        : section === "notifications"
-          ? "notification.settings_updated"
-          : null;
+  const actions =
+    HISTORY_ACTIONS.personal[
+      section === "security"
+        ? side === "staff"
+          ? "security_staff"
+          : "security_customer"
+        : section
+    ];
   const entityType =
     section === "profile"
       ? "user_profile"
@@ -235,16 +236,7 @@ async function read(
               auditLogTable.entityId,
               section === "security" ? userId : identity.personId,
             ),
-        section === "security"
-          ? inArray(
-              auditLogTable.action,
-              side === "staff"
-                ? ["auth.password_changed", "auth.mfa_enrolled"]
-                : ["auth.password_changed"],
-            )
-          : section === "apiKeys"
-            ? sql`${auditLogTable.action} IN ('api_key.created', 'api_key.revoked')`
-            : eq(auditLogTable.action, action as string),
+        inArray(auditLogTable.action, [...actions]),
         section === "apiKeys"
           ? sql`${auditLogTable.after} ->> 'kind' = 'personal'`
           : undefined,

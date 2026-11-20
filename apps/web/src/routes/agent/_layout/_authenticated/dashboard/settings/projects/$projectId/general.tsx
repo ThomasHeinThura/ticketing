@@ -23,6 +23,8 @@ import {
   Skeleton,
 } from "@taskdesk/ui";
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -46,13 +48,11 @@ import {
 } from "@/components/project/project-planning-form";
 import ProjectPlanningSettings from "@/components/project/project-planning-settings";
 import { TasksImportExport } from "@/components/project/tasks-import-export.tsx";
-import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
   isForbiddenError,
   useCapabilityCheckFailed,
 } from "@/components/settings/settings-access";
 import { SettingsAccessPage } from "@/components/settings/settings-access-page";
-import { SettingsHistory } from "@/components/settings/settings-history";
 import icons from "@/constants/project-icons";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
@@ -84,6 +84,12 @@ type NormalizedProjectValues = {
   icon: string;
 };
 
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
 function normalizeProjectValues(
   data: ProjectFormValues,
 ): NormalizedProjectValues {
@@ -112,7 +118,6 @@ function RouteComponent() {
 
 function ProjectGeneral() {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const { projectId: rawProjectId } = useParams({ strict: false });
   const projectId = rawProjectId ?? "";
   const {
@@ -196,10 +201,6 @@ function ProjectGeneral() {
     canExportTasks,
     isCheckingPermissions,
   } = useWorkspacePermission();
-  const { canManageProjectSettings } = useWorkspacePermission(
-    workspace?.id,
-    project?.id,
-  );
   const capabilityCheckFailed = useCapabilityCheckFailed(
     isCheckingPermissions ? workspace?.id : undefined,
   );
@@ -621,8 +622,21 @@ function ProjectGeneral() {
             </p>
           </div>
 
-          {user?.id && canManageProjectSettings() ? (
-            <SettingsHistory type="project" id={project.id} userId={user.id} />
+          {workspace?.id ? (
+            <Suspense fallback={null}>
+              <SettingsHistory
+                target={{
+                  kind: "entity",
+                  type: "project",
+                  id: project.id,
+                  scope: {
+                    kind: "project",
+                    workspaceId: workspace.id,
+                    projectId: project.id,
+                  },
+                }}
+              />
+            </Suspense>
           ) : null}
           <div className="space-y-4 border border-border rounded-md p-4 bg-sidebar">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">

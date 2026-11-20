@@ -37,8 +37,8 @@ import {
   TableRow,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { Ban, ServerCog, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Ban, History, ServerCog, Trash2 } from "lucide-react";
+import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FailureAlert,
@@ -56,12 +56,18 @@ import {
   revokeServiceKey,
 } from "@/fetchers/service-keys";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { authClient } from "@/lib/auth-client";
 import { HttpError, localizedAdminErrorMessage } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import type { ApiKey } from "@/types/api-key";
+
+const ServiceKeyHistoryDialog = lazy(
+  () => import("@/components/settings/service-key-history-dialog"),
+);
 
 function formatDate(value: string | null) {
   if (!value) return "-";
@@ -72,47 +78,78 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+type HistoryDialogTarget = { id: string; name: string; workspaceId: string };
+
+/** Revoke and re-attest change the key's own History row. */
+const keyAudit = {
+  audits: {
+    targets: (_: unknown, key: { id: string; workspaceId?: string | null }) => [
+      {
+        kind: "entity" as const,
+        type: "service_api_key" as const,
+        id: key.id,
+        scope: {
+          kind: "workspace" as const,
+          workspaceId: key.workspaceId ?? "",
+        },
+      },
+    ],
+  },
+};
+
 function ReattestServiceKeyDialog({
   workspaceId,
   apiKey,
   onClose,
+  captureIntent,
+  isCurrent,
 }: {
   workspaceId: string;
   apiKey: ApiKey;
   onClose: () => void;
+  captureIntent: () => number;
+  isCurrent: (intent: number) => boolean;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const stepUp = useStepUpAction();
   const reattest = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({
+      keyId,
+      savedWorkspaceId,
+      version,
+    }: {
+      keyId: string;
+      savedWorkspaceId: string;
+      version: number;
+      intent: number;
+    }) => {
       const outcome = await stepUp.run(
         {
           operation: "service_key_reattest",
-          workspaceId,
-          keyId: apiKey.id,
-          expectedVersion: apiKey.accountabilityVersion,
+          workspaceId: savedWorkspaceId,
+          keyId,
+          expectedVersion: version,
         },
-        (token) =>
-          reattestServiceKey(
-            workspaceId,
-            apiKey.id,
-            apiKey.accountabilityVersion,
-            token,
-          ),
+        (token) => reattestServiceKey(savedWorkspaceId, keyId, version, token),
       );
       if (!outcome.ok) return undefined;
       return outcome.value;
     },
-    onSuccess: async (updated) => {
+    meta: keyAudit,
+    onSuccess: async (updated, { savedWorkspaceId, intent }) => {
       if (!updated) return;
+      if (!isCurrent(intent)) return;
       toast.success(t("settings:serviceKeys.reattest.success"));
       onClose();
       await queryClient.invalidateQueries({
-        queryKey: serviceKeysKey(workspaceId),
+        queryKey: serviceKeysKey(savedWorkspaceId),
       });
     },
-    onError: () => toast.error(t("settings:serviceKeys.reattest.failure")),
+    onError: (_error, { intent }) => {
+      if (isCurrent(intent))
+        toast.error(t("settings:serviceKeys.reattest.failure"));
+    },
   });
 
   return (
@@ -142,7 +179,14 @@ function ReattestServiceKeyDialog({
           </Button>
           <Button
             disabled={stepUp.busy || !stepUp.canRun || reattest.isPending}
-            onClick={() => reattest.mutate()}
+            onClick={() =>
+              reattest.mutate({
+                keyId: apiKey.id,
+                savedWorkspaceId: workspaceId,
+                version: apiKey.accountabilityVersion,
+                intent: captureIntent(),
+              })
+            }
           >
             {t("settings:serviceKeys.reattest.submit")}
           </Button>
@@ -164,6 +208,13 @@ export function ServiceKeysCard() {
   const queryClient = useQueryClient();
   const { data: workspace } = useActiveWorkspace();
   const workspaceId = workspace?.id ?? "";
+  const { data: session } = authClient.useSession();
+  const host = window.location.host;
+  const userId = session?.user?.id;
+  const sessionId = session?.session?.id;
+  const sessionScope = session?.session as
+    | { portal?: string | null; impersonatedBy?: string | null }
+    | undefined;
   const { canManageApiKeys, isCheckingPermissions } = useWorkspacePermission();
   const canManage = canManageApiKeys();
   const [creating, setCreating] = useState(false);
@@ -172,6 +223,25 @@ export function ServiceKeysCard() {
   );
   const [revoking, setRevoking] = useState<ApiKey | null>(null);
   const [reattesting, setReattesting] = useState<ApiKey | null>(null);
+  const [historyTarget, setHistoryTarget] =
+    useState<HistoryDialogTarget | null>(null);
+  const lifecycle = useIntentLifecycle(
+    JSON.stringify([
+      host,
+      userId,
+      sessionId,
+      sessionScope?.portal,
+      sessionScope?.impersonatedBy,
+      workspaceId,
+    ]),
+    () => {
+      setHistoryTarget(null);
+      setRevoking(null);
+      setReattesting(null);
+      setCreating(false);
+      setCreated(null);
+    },
+  );
 
   const query = useQuery({
     queryKey: serviceKeysKey(workspaceId),
@@ -193,40 +263,61 @@ export function ServiceKeysCard() {
   });
 
   const revoke = useMutation({
-    mutationFn: (key: ApiKey) => revokeServiceKey(workspaceId, key.id),
-    onSuccess: async () => {
+    mutationFn: ({
+      key,
+      savedWorkspaceId,
+    }: {
+      key: ApiKey;
+      savedWorkspaceId: string;
+      intent: number;
+    }) => revokeServiceKey(savedWorkspaceId, key.id),
+    meta: keyAudit,
+    onSuccess: async (_updated, { savedWorkspaceId, intent }) => {
+      if (!lifecycle.isCurrent(intent)) return;
       toast.success(t("settings:serviceKeys.toastRevoked"));
       setRevoking(null);
       await queryClient.invalidateQueries({
-        queryKey: serviceKeysKey(workspaceId),
+        queryKey: serviceKeysKey(savedWorkspaceId),
       });
     },
-    onError: (error) =>
-      toast.error(
-        localizedAdminErrorMessage(
-          error,
-          t,
-          t("settings:serviceKeys.toastRevokeError"),
-        ),
-        { error },
-      ),
+    onError: (error, { intent }) => {
+      if (lifecycle.isCurrent(intent))
+        toast.error(
+          localizedAdminErrorMessage(
+            error,
+            t,
+            t("settings:serviceKeys.toastRevokeError"),
+          ),
+          { error },
+        );
+    },
   });
 
   const requestDeletion = useMutation({
-    mutationFn: (key: ApiKey) => requestServiceKeyDeletion(workspaceId, key.id),
-    onSuccess: () => {
+    mutationFn: ({
+      key,
+      savedWorkspaceId,
+    }: {
+      key: ApiKey;
+      savedWorkspaceId: string;
+      intent: number;
+    }) => requestServiceKeyDeletion(savedWorkspaceId, key.id),
+    onSuccess: (_result, { intent }) => {
+      if (!lifecycle.isCurrent(intent)) return;
       toast.success(t("settings:serviceKeys.deleteRequested"));
       void navigate({ to: routes.pendingActions.path as never });
     },
-    onError: (error) =>
-      toast.error(
-        localizedAdminErrorMessage(
-          error,
-          t,
-          t("settings:serviceKeys.deleteFailed"),
-        ),
-        { error },
-      ),
+    onError: (error, { intent }) => {
+      if (lifecycle.isCurrent(intent))
+        toast.error(
+          localizedAdminErrorMessage(
+            error,
+            t,
+            t("settings:serviceKeys.deleteFailed"),
+          ),
+          { error },
+        );
+    },
   });
 
   if (!workspaceId || isCheckingPermissions || !canManage) return null;
@@ -328,7 +419,7 @@ export function ServiceKeysCard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {keys.map((key) => (
+                    {keys.map((key, index) => (
                       <TableRow key={key.id}>
                         <TableCell className="font-medium">
                           <div className="flex max-w-[18rem] flex-wrap items-center gap-1">
@@ -391,6 +482,41 @@ export function ServiceKeysCard() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            {key.workspaceId === workspaceId &&
+                            key.kind === "service" &&
+                            !key.isMcp ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label={t(
+                                  "settings:history.memberHistory",
+                                  {
+                                    name:
+                                      key.name ||
+                                      t("settings:apiKey.table.unnamedKey"),
+                                    number: index + 1,
+                                  },
+                                )}
+                                onClick={() =>
+                                  setHistoryTarget({
+                                    id: key.id,
+                                    workspaceId,
+                                    name: t("settings:history.memberHistory", {
+                                      name:
+                                        key.name ||
+                                        t("settings:apiKey.table.unnamedKey"),
+                                      number: index + 1,
+                                    }),
+                                  })
+                                }
+                              >
+                                <History
+                                  className="h-4 w-4"
+                                  aria-hidden="true"
+                                />
+                              </Button>
+                            ) : null}
                             {key.requiresReattestation && (
                               <Button
                                 variant="outline"
@@ -424,7 +550,13 @@ export function ServiceKeysCard() {
                               aria-label={t("settings:serviceKeys.deleteAria", {
                                 name: key.name ?? key.id,
                               })}
-                              onClick={() => requestDeletion.mutate(key)}
+                              onClick={() =>
+                                requestDeletion.mutate({
+                                  key,
+                                  savedWorkspaceId: workspaceId,
+                                  intent: lifecycle.capture(),
+                                })
+                              }
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -488,7 +620,14 @@ export function ServiceKeysCard() {
             <Button
               variant="destructive"
               disabled={revoke.isPending}
-              onClick={() => revoking && revoke.mutate(revoking)}
+              onClick={() =>
+                revoking &&
+                revoke.mutate({
+                  key: revoking,
+                  savedWorkspaceId: workspaceId,
+                  intent: lifecycle.capture(),
+                })
+              }
             >
               {revoke.isPending
                 ? t("settings:apiKey.table.revoking")
@@ -498,10 +637,30 @@ export function ServiceKeysCard() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {historyTarget ? (
+        <Suspense fallback={null}>
+          <ServiceKeyHistoryDialog
+            target={{
+              kind: "entity",
+              type: "service_api_key",
+              id: historyTarget.id,
+              scope: {
+                kind: "workspace",
+                workspaceId: historyTarget.workspaceId,
+              },
+            }}
+            name={historyTarget.name}
+            onClose={() => setHistoryTarget(null)}
+          />
+        </Suspense>
+      ) : null}
+
       {reattesting ? (
         <ReattestServiceKeyDialog
           workspaceId={workspaceId}
           apiKey={reattesting}
+          captureIntent={lifecycle.capture}
+          isCurrent={lifecycle.isCurrent}
           onClose={() => setReattesting(null)}
         />
       ) : null}

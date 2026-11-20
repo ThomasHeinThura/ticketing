@@ -37,6 +37,7 @@ import { useProjectBudget } from "@/hooks/queries/time-tracking/use-time-trackin
 import { formatMinor, parseMinor } from "@/lib/money-minor";
 import { formatMinutes } from "@/lib/time-minutes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 import { DateField } from "./date-field";
 import { useInvalidateTime, useTimeErrorMessage } from "./time-shared";
 
@@ -209,7 +210,13 @@ function BudgetCard({ budget }: { budget: Budget }) {
   );
 }
 
-function CreateBudgetForm({ projectId }: { projectId: string }) {
+function CreateBudgetForm({
+  projectId,
+  workspaceId,
+}: {
+  projectId: string;
+  workspaceId?: string;
+}) {
   const { t } = useTranslation();
   const invalidate = useInvalidateTime();
   const message = useTimeErrorMessage();
@@ -227,7 +234,7 @@ function CreateBudgetForm({ projectId }: { projectId: string }) {
     periodEnd !== "" &&
     periodEnd >= periodStart;
   const create = useMutation({
-    mutationFn: () =>
+    mutationFn: (_workspaceId: string) =>
       createProjectBudget(projectId, {
         name: name.trim(),
         plannedAmountMinor: minor as number,
@@ -235,6 +242,22 @@ function CreateBudgetForm({ projectId }: { projectId: string }) {
         periodStart,
         periodEnd,
       }),
+    // The response lists the project's budgets; the new one is not marked, so withdraw each.
+    meta: {
+      audits: {
+        targets: (
+          workspaceId: string,
+          result: { data: { id: string; projectId: string }[] },
+        ) =>
+          result.data.flatMap((b) =>
+            auditEntity("budget", b.id, {
+              kind: "project",
+              workspaceId,
+              projectId: b.projectId,
+            }),
+          ),
+      },
+    },
     onSuccess: async () => {
       setName("");
       setAmount("");
@@ -248,7 +271,8 @@ function CreateBudgetForm({ projectId }: { projectId: string }) {
       className="flex flex-wrap items-end gap-3"
       onSubmit={(event) => {
         event.preventDefault();
-        if (valid && !create.isPending) create.mutate();
+        if (valid && workspaceId && !create.isPending)
+          create.mutate(workspaceId);
       }}
     >
       <div className="w-48 space-y-1">
@@ -325,7 +349,13 @@ function CreateBudgetForm({ projectId }: { projectId: string }) {
  * period, other currencies reported apart and never converted. The minutes breakdowns appear only
  * for callers who may also see rates (minutes next to a cost total would reveal one).
  */
-export function ProjectBudget({ projectId }: { projectId: string }) {
+export function ProjectBudget({
+  projectId,
+  workspaceId,
+}: {
+  projectId: string;
+  workspaceId?: string;
+}) {
   const { t } = useTranslation();
   const budget = useProjectBudget(projectId);
   const placeholderVisible = useDelayedPending(budget.isLoading, {
@@ -390,7 +420,9 @@ export function ProjectBudget({ projectId }: { projectId: string }) {
           {t("timeTracking:budget.description")}
         </p>
       </div>
-      {data.canManage ? <CreateBudgetForm projectId={projectId} /> : null}
+      {data.canManage ? (
+        <CreateBudgetForm projectId={projectId} workspaceId={workspaceId} />
+      ) : null}
       {data.data.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           {t("timeTracking:budget.empty")}

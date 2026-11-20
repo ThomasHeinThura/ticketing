@@ -1,4 +1,5 @@
 import {
+  MutationCache,
   QueryCache,
   QueryClient,
   QueryClientProvider,
@@ -18,6 +19,9 @@ import { translate } from "@/test/en-translation";
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
+  audited: vi.fn(),
+  workspaceId: "ws-1",
+  session: { user: { id: "u1" }, session: { id: "s1" } },
   revoke: vi.fn(),
   reattest: vi.fn(),
   requestDeletion: vi.fn(),
@@ -27,6 +31,23 @@ const mocks = vi.hoisted(() => ({
   isCheckingPermissions: { value: false },
 }));
 
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { useSession: () => ({ data: mocks.session }) },
+}));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({
+    target,
+  }: {
+    target: { type: string; id: string; scope: { workspaceId: string } };
+  }) => (
+    <div
+      data-testid="key-history"
+      data-type={target.type}
+      data-id={target.id}
+      data-workspace={target.scope.workspaceId}
+    />
+  ),
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: (namespace?: string) => ({
     t: (rawKey: string, options: Record<string, unknown> = {}) =>
@@ -41,7 +62,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: { id: "ws-1" } }),
+  default: () => ({ data: { id: mocks.workspaceId } }),
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
@@ -106,23 +127,36 @@ const key = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-function renderCard(onQueryError?: (error: unknown) => void) {
-  return render(
-    <QueryClientProvider
-      client={
-        new QueryClient({
-          queryCache: new QueryCache({ onError: onQueryError }),
-          defaultOptions: { queries: { retry: false } },
-        })
-      }
-    >
+function renderCard(
+  onQueryError?: (error: unknown) => void,
+  existingClient?: QueryClient,
+) {
+  const client =
+    existingClient ??
+    new QueryClient({
+      queryCache: new QueryCache({ onError: onQueryError }),
+      mutationCache: new MutationCache({
+        onSuccess: (data, variables, _context, mutation) =>
+          mocks.audited(
+            mutation.meta?.audits?.targets(variables as never, data as never),
+          ),
+      }),
+      defaultOptions: { queries: { retry: false } },
+    });
+  const view = render(
+    <QueryClientProvider client={client}>
       <ServiceKeysCard />
     </QueryClientProvider>,
   );
+  return { ...view, client };
 }
 
 beforeEach(() => {
   vi.mocked(toast.error).mockClear();
+  vi.mocked(toast.success).mockClear();
+  mocks.workspaceId = "ws-1";
+  mocks.session = { user: { id: "u1" }, session: { id: "s1" } };
+  mocks.audited.mockReset();
   mocks.list.mockReset();
   mocks.revoke.mockReset().mockResolvedValue(key({ enabled: false }));
   mocks.reattest.mockReset().mockResolvedValue(
@@ -179,7 +213,7 @@ describe("ServiceKeysCard", () => {
     const onQueryError = vi.fn();
     mocks.list
       .mockRejectedValueOnce(new HttpError(500, "internal error"))
-      .mockResolvedValueOnce([key()]);
+      .mockResolvedValue([key()]);
     renderCard(onQueryError);
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(
@@ -315,4 +349,141 @@ describe("ServiceKeysCard", () => {
     );
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
+});
+
+const keyTarget = [
+  {
+    kind: "entity",
+    type: "service_api_key",
+    id: "k1",
+    scope: { kind: "workspace", workspaceId: "ws-1" },
+  },
+];
+
+it("opens History for the service key by target only", async () => {
+  mocks.list.mockResolvedValue([
+    key({ enabled: false, createdByFormerMember: true }),
+  ]);
+  renderCard();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "History for Pipeline (1)" }),
+  );
+  const history = await screen.findByTestId("key-history");
+  expect(history).toHaveAttribute("data-type", "service_api_key");
+  expect(history).toHaveAttribute("data-id", "k1");
+  expect(history).toHaveAttribute("data-workspace", "ws-1");
+});
+
+it("offers History for service keys only, never for MCP keys", async () => {
+  mocks.list.mockResolvedValue([key({ id: "m1", isMcp: true })]);
+  renderCard();
+  await screen.findByText("Pipeline");
+  expect(
+    screen.queryByRole("button", { name: "History for Pipeline (1)" }),
+  ).toBeNull();
+});
+
+it("audits the revoked key after confirmed revocation", async () => {
+  mocks.list.mockResolvedValue([key()]);
+  mocks.revoke.mockResolvedValue(key({ enabled: false }));
+  renderCard();
+  fireEvent.click(await screen.findByLabelText("Revoke Pipeline"));
+  fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
+  await waitFor(() => expect(mocks.audited).toHaveBeenCalledWith(keyTarget));
+});
+
+it("gives same-name keys distinct accessible History controls", async () => {
+  mocks.list.mockResolvedValue([key(), key({ id: "k2" })]);
+  renderCard();
+  expect(
+    await screen.findByRole("button", { name: "History for Pipeline (1)" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "History for Pipeline (2)" }),
+  ).toBeInTheDocument();
+});
+
+it("closes History when the session or workspace changes", async () => {
+  mocks.list.mockResolvedValue([key()]);
+  const view = renderCard();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "History for Pipeline (1)" }),
+  );
+  await screen.findByTestId("key-history");
+  mocks.session = { user: { id: "u2" }, session: { id: "s2" } };
+  view.rerender(
+    <QueryClientProvider client={view.client}>
+      <ServiceKeysCard />
+    </QueryClientProvider>,
+  );
+  expect(screen.queryByTestId("key-history")).toBeNull();
+});
+
+it("audits the re-attested key after a successful re-attestation", async () => {
+  mocks.list.mockResolvedValue([key({ requiresReattestation: true })]);
+  renderCard();
+  fireEvent.click(await screen.findByRole("button", { name: "Re-attest" }));
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Re-attest",
+    }),
+  );
+  await waitFor(() => expect(mocks.audited).toHaveBeenCalledWith(keyTarget));
+  expect(toast.success).toHaveBeenCalledWith(
+    translate("settings:serviceKeys.reattest.success"),
+  );
+});
+
+it("audits a committed re-attestation even if the session changes before it returns", async () => {
+  mocks.list.mockResolvedValue([key({ requiresReattestation: true })]);
+  let finish!: (value: ReturnType<typeof key>) => void;
+  mocks.reattest.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const view = renderCard();
+  fireEvent.click(await screen.findByRole("button", { name: "Re-attest" }));
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Re-attest",
+    }),
+  );
+  await waitFor(() => expect(mocks.reattest).toHaveBeenCalled());
+  mocks.session = { user: { id: "u2" }, session: { id: "s2" } };
+  view.rerender(
+    <QueryClientProvider client={view.client}>
+      <ServiceKeysCard />
+    </QueryClientProvider>,
+  );
+  finish(key({ requiresReattestation: false }));
+  await waitFor(() => expect(mocks.audited).toHaveBeenCalledWith(keyTarget));
+  expect(toast.success).not.toHaveBeenCalled();
+});
+
+it("does not audit a deletion request or a failed revocation", async () => {
+  mocks.list.mockResolvedValue([key()]);
+  mocks.revoke.mockRejectedValue(new Error("refused"));
+  renderCard();
+  fireEvent.click(await screen.findByLabelText("Request deletion of Pipeline"));
+  await waitFor(() => expect(mocks.requestDeletion).toHaveBeenCalled());
+  fireEvent.click(screen.getByLabelText("Revoke Pipeline"));
+  fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
+  await waitFor(() => expect(mocks.revoke).toHaveBeenCalled());
+  expect(mocks.audited).not.toHaveBeenCalledWith(keyTarget);
+});
+
+it("does not audit a refused re-attestation proof", async () => {
+  mocks.list.mockResolvedValue([key({ requiresReattestation: true })]);
+  mocks.stepRun.mockResolvedValueOnce({ ok: false });
+  renderCard();
+  fireEvent.click(await screen.findByRole("button", { name: "Re-attest" }));
+  fireEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Re-attest",
+    }),
+  );
+  await waitFor(() => expect(mocks.stepRun).toHaveBeenCalled());
+  expect(mocks.reattest).not.toHaveBeenCalled();
+  expect(mocks.audited).not.toHaveBeenCalledWith(keyTarget);
 });

@@ -25,7 +25,14 @@ import {
   Separator,
 } from "@taskdesk/ui";
 import { Loader2, Pencil, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
@@ -41,6 +48,12 @@ import useUpdateUserProfile from "@/hooks/mutations/use-update-user-profile";
 import { getInitials } from "@/lib/get-initials";
 import { ACCEPTED_AVATAR_TYPES } from "@/lib/prepare-avatar-image";
 import { toast } from "@/lib/toast";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/account/information",
@@ -267,6 +280,12 @@ function RouteComponent() {
             {t("settings:informationPage.subtitle")}
           </p>
         </div>
+
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{ kind: "self", audience: "staff", section: "profile" }}
+          />
+        </Suspense>
 
         <div className="space-y-6">
           <div className="space-y-1">

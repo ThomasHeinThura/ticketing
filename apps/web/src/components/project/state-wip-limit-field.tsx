@@ -11,6 +11,7 @@ import { setWipLimit } from "@/fetchers/agile";
 import useWipLimits from "@/hooks/queries/agile/use-wip-limits";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
 
 /**
  * `VW-12`: the optional work-in-progress limit of one board column (a project state), set from
@@ -39,8 +40,26 @@ export default function StateWipLimitField({
   const [draft, setDraft] = useState<number | null | undefined>(undefined);
   const value = draft === undefined ? stored : draft;
   const save = useMutation({
-    mutationFn: (limit: number | null) =>
-      setWipLimit(projectKey as string, stateId, limit),
+    mutationFn: (v: {
+      limit: number | null;
+      stateId: string;
+      projectId: string;
+      workspaceId: string;
+    }) => setWipLimit(projectKey as string, v.stateId, v.limit),
+    meta: {
+      audits: {
+        targets: (v: {
+          stateId: string;
+          projectId: string;
+          workspaceId: string;
+        }) =>
+          auditEntity("state", v.stateId, {
+            kind: "project",
+            workspaceId: v.workspaceId,
+            projectId: v.projectId,
+          }),
+      },
+    },
     onSuccess: async () => {
       setDraft(undefined);
       toast.success(t("settings:projectStates.wip.saved", { name: stateName }));
@@ -76,7 +95,9 @@ export default function StateWipLimitField({
         size="sm"
         className="h-7"
         disabled={!dirty || save.isPending}
-        onClick={() => save.mutate(value ?? null)}
+        onClick={() =>
+          save.mutate({ limit: value ?? null, stateId, projectId, workspaceId })
+        }
       >
         {value === null
           ? t("settings:projectStates.wip.clear")

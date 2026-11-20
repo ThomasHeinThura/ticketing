@@ -12,6 +12,12 @@ import {
   CardFrame,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogPanel,
+  DialogTitle,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -21,8 +27,15 @@ import {
   Switch,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { FlaskConical, History, Pencil, Plus, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import {
+  ClipboardList,
+  FlaskConical,
+  History,
+  Pencil,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
+import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
@@ -37,19 +50,30 @@ import {
 } from "@/fetchers/automation/automations";
 import { formatRelativeTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
+import type {
+  HistoryScope,
+  HistoryTarget,
+} from "@/query-client/settings-history-key";
 import { AutomationDryRunDialog } from "./automation-dry-run-dialog";
 import { AutomationEditorDialog } from "./automation-editor-dialog";
 import type { draftToInput } from "./automation-model";
 import { AutomationRunsDialog } from "./automation-runs-dialog";
 
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
 function errorText(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-type Dialog =
+type ActiveDialog =
   | { kind: "edit"; rule: Automation | null }
   | { kind: "dry-run"; rule: Automation }
   | { kind: "runs"; rule: Automation }
+  | { kind: "changes"; rule: Automation }
   | null;
 
 function RuleCard({
@@ -63,7 +87,7 @@ function RuleCard({
   canManage: boolean;
   busy: boolean;
   onToggle: (rule: Automation, enabled: boolean) => void;
-  onOpen: (dialog: NonNullable<Dialog>) => void;
+  onOpen: (dialog: NonNullable<ActiveDialog>) => void;
 }) {
   const { t } = useTranslation("automations");
   const switchId = `automation-enabled-${rule.id}`;
@@ -125,6 +149,15 @@ function RuleCard({
             <History aria-hidden="true" />
             {t("list.history")}
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={t("changes.title", { name: rule.name })}
+            onClick={() => onOpen({ kind: "changes", rule })}
+          >
+            <ClipboardList aria-hidden="true" />
+            {t("list.changeHistory")}
+          </Button>
           {canManage ? (
             <>
               <Button
@@ -176,9 +209,29 @@ export function AutomationRulesPanel({
 }) {
   const { t } = useTranslation("automations");
   const cache = useQueryClient();
-  const [dialog, setDialog] = useState<Dialog>(null);
+  const [dialog, setDialog] = useState<ActiveDialog>(null);
   const scopeKey =
     scope.kind === "workspace" ? scope.workspaceId : scope.projectKey;
+  const historyScope: HistoryScope | null =
+    scope.kind === "workspace"
+      ? { kind: "workspace", workspaceId }
+      : projectId
+        ? { kind: "project", workspaceId, projectId }
+        : null;
+  const auditSaved = (
+    _variables: unknown,
+    saved: Automation,
+  ): HistoryTarget[] =>
+    historyScope
+      ? [
+          {
+            kind: "entity",
+            type: "automation",
+            id: saved.id,
+            scope: historyScope,
+          },
+        ]
+      : [];
   const queryKey = ["automations", scope.kind, scopeKey];
   const query = useQuery({
     queryKey,
@@ -202,6 +255,7 @@ export function AutomationRulesPanel({
       rule
         ? updateAutomation(rule.id, { ...input, version: rule.version })
         : createAutomation(scope, input),
+    meta: { audits: { targets: auditSaved } },
     onSuccess: async (saved, variables) => {
       await refresh();
       setDialog(null);
@@ -217,6 +271,7 @@ export function AutomationRulesPanel({
   const toggle = useMutation({
     mutationFn: ({ rule, enabled }: { rule: Automation; enabled: boolean }) =>
       setAutomationEnabled(rule.id, enabled, rule.version),
+    meta: { audits: { targets: auditSaved } },
     onSuccess: async (rule) => {
       await refresh();
       toast.success(rule.enabled ? t("toast.enabled") : t("toast.disabled"));
@@ -341,6 +396,35 @@ export function AutomationRulesPanel({
           rule={dialog.rule}
           onClose={() => setDialog(null)}
         />
+      ) : null}
+      {dialog?.kind === "changes" &&
+      historyScope &&
+      rules.some((rule) => rule.id === dialog.rule.id) ? (
+        <Dialog open onOpenChange={(open) => !open && setDialog(null)}>
+          <DialogContent
+            className="max-w-xl"
+            closeLabel={t("common:actions.close")}
+          >
+            <DialogHeader>
+              <DialogTitle>
+                {t("changes.title", { name: dialog.rule.name })}
+              </DialogTitle>
+              <DialogDescription>{t("changes.description")}</DialogDescription>
+            </DialogHeader>
+            <DialogPanel>
+              <Suspense fallback={null}>
+                <SettingsHistory
+                  target={{
+                    kind: "entity",
+                    type: "automation",
+                    id: dialog.rule.id,
+                    scope: historyScope,
+                  }}
+                />
+              </Suspense>
+            </DialogPanel>
+          </DialogContent>
+        </Dialog>
       ) : null}
       {dialog?.kind === "runs" ? (
         <AutomationRunsDialog

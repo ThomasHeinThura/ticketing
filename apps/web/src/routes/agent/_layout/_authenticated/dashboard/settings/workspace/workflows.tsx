@@ -34,17 +34,15 @@ import {
 } from "@taskdesk/ui";
 
 import { ChevronLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import {
   isForbiddenError,
   useCapabilityCheckFailed,
 } from "@/components/settings/settings-access";
 import { SettingsAccessPage } from "@/components/settings/settings-access-page";
-import { SettingsHistory } from "@/components/settings/settings-history";
 import { CabTemplatePanel } from "@/components/workflow/cab-template-panel";
 import {
   type NamedOption,
@@ -70,9 +68,15 @@ import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
-import { profileSessionGuard } from "@/lib/profile-session-guard";
 import { parseWorkflowSettingsSearch, routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
+import { auditEntity } from "@/query-client/audit-invalidation";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/workspace/workflows",
@@ -80,6 +84,16 @@ export const Route = createFileRoute(
   validateSearch: parseWorkflowSettingsSearch,
   component: WorkflowSettingsRoute,
 });
+
+/** The workflow a write touched, read from the result so a later navigation cannot change it. */
+const workflowTarget = (
+  _: unknown,
+  r: { workflowId: string; workspaceId: string },
+) =>
+  auditEntity("workflow", r.workflowId, {
+    kind: "workspace",
+    workspaceId: r.workspaceId,
+  });
 
 function versionStatus(
   workflow: WorkflowDetail,
@@ -351,20 +365,19 @@ function CreateWorkflowDialog({
         key: key.trim(),
         name: name.trim(),
       });
-      if (userId && sessionId)
-        refreshSettingsHistory(
-          cache,
-          [
-            "settings-history",
-            "workflow",
-            workflow.id,
-            "agent",
-            userId,
-            sessionId,
-          ],
-          profileSessionGuard(userId, sessionId),
-        );
-      return { workflow, userId, sessionId };
+      return { workflow, userId, sessionId, workspaceId };
+    },
+    meta: {
+      audits: {
+        targets: (
+          _: unknown,
+          result: { workflow: { id: string }; workspaceId: string },
+        ) =>
+          auditEntity("workflow", result.workflow.id, {
+            kind: "workspace",
+            workspaceId: result.workspaceId,
+          }),
+      },
     },
     onSuccess: async ({ workflow, userId, sessionId }) => {
       await cache.invalidateQueries({ queryKey: ["workflows"] });
@@ -474,7 +487,6 @@ function WorkflowDetailView({
 }) {
   const { t } = useTranslation();
   const cache = useQueryClient();
-  const { data: session } = authClient.useSession();
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -535,28 +547,19 @@ function WorkflowDetailView({
   });
   const saveDraft = useMutation({
     mutationFn: async () => {
-      const userId = session?.user?.id;
-      const sessionId = session?.session?.id;
       const savedWorking = working;
       const version = await createWorkflowVersion({
         id: workflowId,
         transitions: savedWorking ?? [],
       });
-      if (userId && sessionId)
-        refreshSettingsHistory(
-          cache,
-          [
-            "settings-history",
-            "workflow",
-            workflowId,
-            "agent",
-            userId,
-            sessionId,
-          ],
-          profileSessionGuard(userId, sessionId),
-        );
-      return { version, savedWorking };
+      return {
+        version,
+        savedWorking,
+        workflowId,
+        workspaceId: workspaceId ?? "",
+      };
     },
+    meta: { audits: { targets: workflowTarget } },
     onSuccess: async ({ version, savedWorking }) => {
       await cache.invalidateQueries({ queryKey: ["workflows"] });
       if (!mounted.current) return;
@@ -570,25 +573,11 @@ function WorkflowDetailView({
   });
   const publish = useMutation({
     mutationFn: async (number: number) => {
-      const userId = session?.user?.id;
-      const sessionId = session?.session?.id;
       const version = await publishWorkflowVersion({ id: workflowId, number });
-      if (userId && sessionId)
-        refreshSettingsHistory(
-          cache,
-          [
-            "settings-history",
-            "workflow",
-            workflowId,
-            "agent",
-            userId,
-            sessionId,
-          ],
-          profileSessionGuard(userId, sessionId),
-        );
-      return version;
+      return { version, workflowId, workspaceId: workspaceId ?? "" };
     },
-    onSuccess: async (version) => {
+    meta: { audits: { targets: workflowTarget } },
+    onSuccess: async ({ version }) => {
       await cache.invalidateQueries({ queryKey: ["workflows"] });
       if (!mounted.current) return;
       setValidating(null);
@@ -653,14 +642,17 @@ function WorkflowDetailView({
         )
       ) : (
         <>
-          {session?.user?.id &&
-          workspaceId &&
-          workflow.workspaceId === workspaceId ? (
-            <SettingsHistory
-              type="workflow"
-              id={workflow.id}
-              userId={session.user.id}
-            />
+          {workspaceId && workflow.workspaceId === workspaceId ? (
+            <Suspense fallback={null}>
+              <SettingsHistory
+                target={{
+                  kind: "entity",
+                  type: "workflow",
+                  id: workflow.id,
+                  scope: { kind: "workspace", workspaceId },
+                }}
+              />
+            </Suspense>
           ) : null}
           <section
             className="space-y-3"

@@ -1,8 +1,4 @@
-import {
-  QueryClient,
-  QueryClientProvider,
-  QueryObserver,
-} from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
   cleanup,
@@ -20,17 +16,13 @@ import {
   useState,
 } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
-import { HttpError } from "@/lib/http-error";
 import { translate } from "@/test/en-translation";
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   patch: vi.fn(),
-  getHistory: vi.fn(),
   getSession: vi.fn(),
   sessionHook: null as null | (() => { data: unknown }),
-  role: "admin" as string | null,
   session: {
     user: { id: "user-one" },
     session: { id: "session-one" } as {
@@ -50,9 +42,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/components/settings/terminology-editor", () => ({
   TerminologyEditor: () => null,
 }));
-vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
-  default: () => ({ user: { role: mocks.role } }),
-}));
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
     // A test may supply a reactive hook to drive the session through React state.
@@ -61,11 +50,10 @@ vi.mock("@/lib/auth-client", () => ({
     getSession: (...args: unknown[]) => mocks.getSession(...args),
   },
 }));
-vi.mock("@/fetchers/settings/settings-history", async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import("@/fetchers/settings/settings-history")
-  >()),
-  getSettingsHistory: (...args: unknown[]) => mocks.getHistory(...args),
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({ target }: { target: unknown }) => (
+    <div data-testid="history" data-target={JSON.stringify(target)} />
+  ),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -120,34 +108,15 @@ const response = {
   },
 };
 
-const historyEntry = (name: string) => ({
-  entityType: "instance",
-  entityId: "singleton",
-  lastChanged: {
-    actor: { kind: "person", name },
-    at: "2026-10-25T00:00:00Z",
-  },
-  rows: [
-    {
-      at: "2026-10-25T00:00:00Z",
-      actor: { kind: "person", name },
-      action: "instance.settings_changed",
-      changedFields: ["mcpWriteCeilingPerMinute"],
-    },
-  ],
-});
 beforeEach(() => {
   mocks.get.mockReset();
   mocks.patch.mockReset();
   mocks.get.mockResolvedValue(response);
-  mocks.getHistory.mockReset();
-  mocks.getHistory.mockResolvedValue(historyEntry("Alice"));
   mocks.getSession.mockReset();
   mocks.getSession.mockImplementation(async () => ({
     data: mocks.session,
     error: null,
   }));
-  mocks.role = "admin";
   mocks.sessionHook = null;
   mocks.session = {
     user: { id: "user-one" },
@@ -340,9 +309,7 @@ describe("customer invitation runtime settings", () => {
   });
 });
 
-const instanceKey = (user = "user-one", session = "session-one") =>
-  settingsHistoryQueryKey("instance", "singleton", user, session);
-const historyButton = () => screen.findByRole("button", { name: /History/ });
+const historyPanel = () => screen.findByTestId("history");
 const mcpInput = () =>
   screen.findByLabelText(
     translate("godModeSettings:fields.mcpWriteCeilingPerMinute.label"),
@@ -357,8 +324,8 @@ const changed = {
   settings: { ...response.settings, mcpWriteCeilingPerMinute: 12 },
 };
 
-describe("instance settings History (HIST-FULL)", () => {
-  it("mounts History for the literal singleton only after the settings read succeeded", async () => {
+describe("instance settings History", () => {
+  it("mounts the History panel for the literal singleton only after the settings read succeeded", async () => {
     let finish: (value: unknown) => void = () => {};
     mocks.get.mockImplementationOnce(
       () =>
@@ -367,242 +334,33 @@ describe("instance settings History (HIST-FULL)", () => {
         }),
     );
     renderForm();
-    expect(screen.queryByRole("button", { name: /History/ })).toBeNull();
-    expect(mocks.getHistory).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("history")).toBeNull();
     await act(async () => finish(response));
-    await historyButton();
-    await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledOnce());
-    expect(mocks.getHistory).toHaveBeenCalledWith(
-      "instance",
-      "singleton",
-      expect.any(AbortSignal),
-    );
-    await screen.findByText(/Last changed by Alice/);
+    expect(JSON.parse((await historyPanel()).dataset.target ?? "")).toEqual({
+      kind: "entity",
+      type: "instance",
+      id: "singleton",
+      scope: { kind: "instance" },
+    });
   });
 
-  it("offers no History while the settings read failed, and mounts it once Retry succeeds", async () => {
-    mocks.get.mockRejectedValueOnce(new HttpError(404, "missing"));
-    renderForm();
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: translate("godModeSettings:retry"),
-      }),
-    );
-    await historyButton();
-    expect(mocks.get).toHaveBeenCalledTimes(2);
-    expect(mocks.getHistory).toHaveBeenCalledOnce();
-  });
-
-  it.each([
-    ["a non-administrator", () => (mocks.role = "user")],
-    [
-      "an impersonated session",
-      () =>
-        (mocks.session = {
-          user: { id: "user-one" },
-          session: { id: "session-one", impersonatedBy: "admin-9" },
-        }),
-    ],
-    [
-      "a portal session",
-      () =>
-        (mocks.session = {
-          user: { id: "user-one" },
-          session: { id: "session-one", portal: "customer" },
-        }),
-    ],
-  ])(
-    "shows no History and sends no History read for %s",
-    async (_name, arrange) => {
-      arrange();
-      renderForm();
-      await mcpInput();
-      expect(screen.queryByRole("button", { name: /History/ })).toBeNull();
-      expect(mocks.getHistory).not.toHaveBeenCalled();
-    },
-  );
-
-  it("keeps a seeded earlier entry hidden while the History read is held, then shows only the fresh result", async () => {
-    let finish: (value: unknown) => void = () => {};
-    mocks.getHistory.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          finish = resolve;
-        }),
-    );
-    const { client } = renderForm();
-    client.setQueryData(instanceKey(), historyEntry("Private Pat"));
-    await historyButton();
-    await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledOnce());
-    expect(screen.queryByText(/Private Pat/)).toBeNull();
-    await act(async () => finish(historyEntry("Fresh Fran")));
-    await screen.findByText(/Last changed by Fresh Fran/);
-  });
-
-  it("shows an alert and a working Retry when the History row is absent (404)", async () => {
-    mocks.getHistory
-      .mockRejectedValueOnce(new HttpError(404, "no singleton row"))
-      .mockResolvedValueOnce(historyEntry("Alice"));
-    renderForm();
-    await screen.findByRole("alert");
-    fireEvent.click(screen.getByRole("button", { name: /Retry/ }));
-    await screen.findByText(/Last changed by Alice/);
-  });
-});
-
-describe("instance settings writes refresh only the singleton key", () => {
-  async function arrange() {
+  it("declares the singleton as the audited target of a confirmed save", async () => {
+    mocks.patch.mockResolvedValue(changed);
     const view = renderForm();
-    await historyButton();
-    await screen.findByText(/Last changed by Alice/);
-    const keys = {
-      other: instanceKey("user-one", "session-old"),
-      user: instanceKey("user-other", "session-one"),
-      workspace: settingsHistoryQueryKey(
-        "workspace",
-        "singleton",
-        "user-one",
-        "session-one",
-      ),
-      terminology: settingsHistoryQueryKey(
-        "terminology_override",
-        "instance",
-        "user-one",
-        "session-one",
-        { scope: "instance" },
-      ),
-    };
-    for (const key of Object.values(keys))
-      view.client.setQueryData(key, historyEntry("Seed"));
-    const stale = (key: readonly unknown[]) =>
-      view.client.getQueryState(key)?.isInvalidated === true;
-    return { ...view, keys, stale };
-  }
-
-  it("a confirmed change marks the singleton key stale and re-reads it behind the session check", async () => {
-    mocks.patch.mockResolvedValue(changed);
-    const { keys, stale } = await arrange();
-    fireEvent.change(await mcpInput(), { target: { value: "12" } });
-    save();
-    await screen.findByRole("button", {
-      name: translate("common:actions.saved"),
-    });
-    await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledTimes(2));
-    expect(mocks.getSession).toHaveBeenCalled();
-    for (const key of Object.values(keys)) expect(stale(key)).toBe(false);
-  });
-
-  it("does not hold the Saved feedback for a stalled session check", async () => {
-    let finishCheck: (value: unknown) => void = () => {};
-    mocks.getSession.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          finishCheck = resolve;
-        }),
-    );
-    mocks.patch.mockResolvedValue(changed);
-    await arrange();
-    fireEvent.change(await mcpInput(), { target: { value: "12" } });
-    save();
-    await screen.findByRole("button", {
-      name: translate("common:actions.saved"),
-    });
-    expect(mocks.getHistory).toHaveBeenCalledOnce();
-    await act(async () => finishCheck({ data: mocks.session, error: null }));
-    await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledTimes(2));
-  });
-
-  it("refreshes the identity captured at submit, not the session that exists when the write completes", async () => {
-    let finish: (value: unknown) => void = () => {};
-    mocks.patch.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          finish = resolve;
-        }),
-    );
-    const { client } = await arrange();
-    const observer = new QueryObserver(client, {
-      queryKey: instanceKey("user-one", "session-one"),
-      staleTime: Number.POSITIVE_INFINITY,
-    });
-    const stop = observer.subscribe(() => {});
     fireEvent.change(await mcpInput(), { target: { value: "12" } });
     save();
     await waitFor(() => expect(mocks.patch).toHaveBeenCalledOnce());
-    // The session rotates before the old write finishes: the new identity's key must stay untouched.
-    mocks.session = {
-      user: { id: "user-one" },
-      session: { id: "session-two" },
-    };
-    client.setQueryData(
-      instanceKey("user-one", "session-two"),
-      historyEntry("New"),
-    );
-    await act(async () => finish(changed));
-    await waitFor(() =>
-      expect(
-        client.getQueryState(instanceKey("user-one", "session-one"))
-          ?.isInvalidated,
-      ).toBe(true),
-    );
+    const [mutation] = view.client.getMutationCache().getAll();
     expect(
-      client.getQueryState(instanceKey("user-one", "session-two"))
-        ?.isInvalidated,
-    ).toBe(false);
-    stop();
-  });
-
-  it("does not re-read History when the session rotated before the guard ran", async () => {
-    mocks.getSession.mockImplementation(async () => ({
-      data: { user: { id: "user-one" }, session: { id: "session-rotated" } },
-      error: null,
-    }));
-    mocks.patch.mockResolvedValue(changed);
-    await arrange();
-    fireEvent.change(await mcpInput(), { target: { value: "12" } });
-    save();
-    await screen.findByRole("button", {
-      name: translate("common:actions.saved"),
-    });
-    await waitFor(() => expect(mocks.getSession).toHaveBeenCalled());
-    // Let the guard's rotated-session answer settle before asserting no re-read.
-    await act(async () => {
-      await mocks.getSession.mock.results[0]?.value;
-    });
-    expect(mocks.getHistory).toHaveBeenCalledOnce();
-  });
-
-  it.each([
-    [
-      "a version conflict",
-      () => Promise.reject(new InstanceSettingsConflictError()),
-    ],
-    ["a refusal", () => Promise.reject(new HttpError(403, "denied"))],
-    ["a server failure", () => Promise.reject(new HttpError(500, "boom"))],
-  ])("%s refreshes nothing", async (_name, reject) => {
-    mocks.patch.mockImplementation(reject);
-    const { keys, stale } = await arrange();
-    fireEvent.change(await mcpInput(), { target: { value: "12" } });
-    save();
-    await waitFor(() => expect(mocks.patch).toHaveBeenCalledOnce());
-    // The failure callbacks have run once the form shows its notice.
-    await screen.findByRole("alert");
-    for (const key of [...Object.values(keys), instanceKey()])
-      expect(stale(key)).toBe(false);
-    expect(mocks.getSession).not.toHaveBeenCalled();
-    expect(mocks.getHistory).toHaveBeenCalledOnce();
-  });
-
-  it("saving unchanged values sends nothing and refreshes nothing", async () => {
-    const { stale } = await arrange();
-    await mcpInput();
-    expect(
-      screen.getByRole("button", { name: translate("godModeSettings:save") }),
-    ).toBeDisabled();
-    save();
-    expect(mocks.patch).not.toHaveBeenCalled();
-    expect(stale(instanceKey())).toBe(false);
-    expect(mocks.getHistory).toHaveBeenCalledOnce();
+      mutation?.meta?.audits?.targets(undefined as never, undefined as never),
+    ).toEqual([
+      {
+        kind: "entity",
+        type: "instance",
+        id: "singleton",
+        scope: { kind: "instance" },
+      },
+    ]);
   });
 });
 
@@ -650,8 +408,7 @@ describe("instance settings are scoped to the browser user and session", () => {
     renderForm();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(mocks.get).not.toHaveBeenCalled();
-    expect(mocks.getHistory).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: /History/ })).toBeNull();
+    expect(screen.queryByTestId("history")).toBeNull();
   });
 
   it("keeps a late response for A out of B's settings, fields, Saved state and History", async () => {
@@ -659,7 +416,7 @@ describe("instance settings are scoped to the browser user and session", () => {
     const readB = held();
     mocks.patch.mockImplementationOnce(() => patchA.promise);
     const view = renderForm();
-    await historyButton();
+    await historyPanel();
     fireEvent.change(await mcpInput(), { target: { value: "12" } });
     save();
     await waitFor(() => expect(mocks.patch).toHaveBeenCalledOnce());
@@ -679,18 +436,13 @@ describe("instance settings are scoped to the browser user and session", () => {
         translate("godModeSettings:fields.mcpWriteCeilingPerMinute.label"),
       ),
     ).toBeNull();
-    expect(screen.queryByRole("button", { name: /History/ })).toBeNull();
+    expect(screen.queryByTestId("history")).toBeNull();
     expect(
       screen.queryByRole("button", { name: translate("common:actions.saved") }),
     ).toBeNull();
-    // The reset itself may re-read A's still-mounted entry once; B's own entry must stay empty.
-    expect(
-      view.client.getQueryData(instanceKey("user-two", "session-b")),
-    ).toBeUndefined();
-
     await act(async () => readB.release(valueB));
     expect(await mcpInput()).toHaveValue(45);
-    await historyButton();
+    await historyPanel();
     expect(
       view.client.getQueryData<typeof valueB>(
         settingsKey("user-two", "session-b"),
@@ -702,7 +454,7 @@ describe("instance settings are scoped to the browser user and session", () => {
     const patchA = held();
     mocks.patch.mockImplementationOnce(() => patchA.promise);
     const view = renderForm();
-    await historyButton();
+    await historyPanel();
     fireEvent.change(await mcpInput(), { target: { value: "12" } });
     save();
     await waitFor(() => expect(mocks.patch).toHaveBeenCalledOnce());
@@ -762,7 +514,7 @@ describe("instance settings are scoped to the browser user and session", () => {
         mocks.session?.session.id === "session-one" ? response : valueB,
       );
       const view = renderForm();
-      await historyButton();
+      await historyPanel();
       fireEvent.change(await mcpInput(), { target: { value: "12" } });
       save();
       await waitFor(() => expect(mocks.patch).toHaveBeenCalledOnce());
@@ -882,7 +634,7 @@ describe("instance settings are scoped to the browser user and session", () => {
           mocks.session?.session.id === "session-one" ? response : valueB,
         );
         const view = renderForm();
-        await historyButton();
+        await historyPanel();
         fireEvent.change(await mcpInput(), { target: { value: "12" } });
         save();
         await waitFor(() => expect(mocks.patch).toHaveBeenCalledOnce());

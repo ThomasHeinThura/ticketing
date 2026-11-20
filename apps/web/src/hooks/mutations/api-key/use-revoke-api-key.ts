@@ -6,6 +6,13 @@ function useRevokeApiKey() {
 
   return useMutation({
     mutationFn: (keyId: string) => revokeMyApiKey(keyId),
+    meta: {
+      audits: {
+        targets: () => [
+          { kind: "self", audience: "staff", section: "apiKeys" },
+        ],
+      },
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
     },

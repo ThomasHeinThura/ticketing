@@ -12,7 +12,6 @@ import { Route } from "./general";
 const mocks = vi.hoisted(() => ({
   workspace: { id: "ws", name: "Original", description: "" },
   edit: true,
-  history: true,
   update: vi.fn(),
   historyRequest: vi.fn(),
 }));
@@ -50,15 +49,14 @@ vi.mock("@/components/settings/workspace-project-defaults-panel", () => ({
   WorkspaceProjectDefaultsPanel: () => null,
 }));
 vi.mock("@/components/settings/settings-history", () => ({
-  SettingsHistory: () => {
-    mocks.historyRequest();
+  SettingsHistory: (props: unknown) => {
+    mocks.historyRequest(props);
     return <div>History</div>;
   },
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canManageWorkspace: () => mocks.edit,
-    canManageWorkspaceSettings: () => mocks.history,
     canDeleteWorkspace: () => false,
     isOwner: false,
     isCheckingPermissions: false,
@@ -75,7 +73,6 @@ beforeEach(() => {
   vi.useFakeTimers();
   mocks.workspace = { id: "ws", name: "Original", description: "" };
   mocks.edit = true;
-  mocks.history = true;
   mocks.update.mockReset();
   mocks.historyRequest.mockReset();
 });
@@ -230,21 +227,22 @@ describe("workspace general", () => {
       ).value,
     ).toBe("Second");
   });
-  it("shows history for a history-only grant without enabling edits", () => {
+  it("passes only the workspace target to History, whatever the edit grant", async () => {
     mocks.edit = false;
     render(<Page />);
+    // The lazy History chunk resolves on a microtask; the file runs on fake timers.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
     expect(screen.getByText("History")).toBeTruthy();
     expect(screen.queryByRole("textbox")).toBeNull();
-    expect(mocks.historyRequest).toHaveBeenCalled();
-  });
-  it("does not request history for an edit-only grant", () => {
-    mocks.history = false;
-    render(<Page />);
-    expect(
-      screen.getByRole("textbox", {
-        name: "settings:workspaceGeneral.nameLabel",
-      }),
-    ).toBeTruthy();
-    expect(mocks.historyRequest).not.toHaveBeenCalled();
+    expect(mocks.historyRequest).toHaveBeenCalledWith({
+      target: {
+        kind: "entity",
+        type: "workspace",
+        id: "ws",
+        scope: { kind: "workspace", workspaceId: "ws" },
+      },
+    });
   });
 });

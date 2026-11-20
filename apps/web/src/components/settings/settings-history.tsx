@@ -1,4 +1,3 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Collapsible,
@@ -8,17 +7,14 @@ import {
   Skeleton,
 } from "@taskdesk/ui";
 import { ChevronDown, History } from "lucide-react";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { SettingsHistoryTarget } from "@/fetchers/settings/settings-history";
 import {
-  getSettingsHistory,
-  type SettingsHistoryScope,
-  type SettingsHistoryTarget,
-  settingsHistoryQueryKey,
-} from "@/fetchers/settings/settings-history";
-import { authClient } from "@/lib/auth-client";
+  type HistoryTarget,
+  useSettingsHistory,
+} from "@/hooks/queries/settings/use-settings-history";
 import { formatDateTime } from "@/lib/format";
-import { HttpError } from "@/lib/http-error";
 
 // Closed field sets for types whose labels already exist on their own screens; the API
 // projects only these names, so anything else is never rendered.
@@ -144,96 +140,36 @@ function fieldLabelKey(
   return (Object.hasOwn(map, field) ? map[field] : undefined) ?? UNKNOWN_FIELD;
 }
 
-export function SettingsHistory({
-  type,
-  id,
-  userId,
-  selector,
-}: {
-  type: SettingsHistoryTarget;
-  id: string;
-  userId: string;
-  selector?: SettingsHistoryScope;
-}) {
-  const { data: session } = authClient.useSession();
-  const sessionId =
-    session?.user?.id === userId ? session.session?.id : undefined;
-  return (
-    <SettingsHistoryForSession
-      key={JSON.stringify([type, id, userId, sessionId, selector])}
-      type={type}
-      id={id}
-      userId={userId}
-      sessionId={sessionId}
-      selector={selector}
-    />
-  );
-}
+// Labels of the closed change markers of each personal section.
+const SELF_LABELS: Record<string, (marker: string) => string> = {
+  profile: (marker) =>
+    ({
+      name: "settings:informationPage.fullName",
+      image: "settings:informationPage.profilePicture",
+      locale: "settings:history.profileLocale",
+    })[marker] ?? UNKNOWN_FIELD,
+  preferences: (marker) => `settings:history.preferenceFields.${marker}`,
+  notifications: (marker) =>
+    ({
+      delivery: "settings:history.notificationDelivery",
+      digest: "settings:history.notificationDigest",
+      quietHours: "settings:history.notificationQuietHours",
+      workspaceRule: "settings:history.notificationWorkspaceRule",
+    })[marker] ?? UNKNOWN_FIELD,
+  security: (marker) =>
+    ({
+      password: "settings:history.securityPassword",
+      mfa: "settings:history.securityMfa",
+    })[marker] ?? UNKNOWN_FIELD,
+  apiKeys: () => "settings:history.personalKey",
+};
 
-function SettingsHistoryForSession({
-  type,
-  id,
-  userId,
-  sessionId,
-  selector,
-}: {
-  type: SettingsHistoryTarget;
-  id: string;
-  userId: string;
-  sessionId: string | undefined;
-  selector?: SettingsHistoryScope;
-}) {
+/** Lazy-load this component; screens pass a target and nothing else. */
+export function SettingsHistory({ target }: { target: HistoryTarget }) {
   const { t, i18n } = useTranslation();
-  const queryClient = useQueryClient();
-  const [disclosureReady, setDisclosureReady] = useState(true);
-  const disclosureRead = useRef(0);
-  const queryKey = settingsHistoryQueryKey(
-    type,
-    id,
-    userId,
-    sessionId ?? "",
-    selector,
-  );
-  const enabled = Boolean(id && userId && sessionId);
-  const history = useQuery({
-    queryKey,
-    queryFn: async ({ signal }) => {
-      const read = disclosureRead.current;
-      try {
-        const result = await (selector
-          ? getSettingsHistory(type, id, signal, selector)
-          : getSettingsHistory(type, id, signal));
-        if (!signal.aborted && read === disclosureRead.current)
-          setDisclosureReady(true);
-        return result;
-      } catch (error) {
-        if (
-          !signal.aborted &&
-          error instanceof HttpError &&
-          [401, 403, 404].includes(error.status)
-        ) {
-          queryClient.setQueryData(queryKey, null);
-        }
-        throw error;
-      }
-    },
-    enabled,
-    // The app client sets refetchOnMount: false; a cached entry is only shown after a read of this mount.
-    refetchOnMount: "always",
-  });
-  const admitted =
-    disclosureReady &&
-    history.isFetchedAfterMount &&
-    history.isSuccess &&
-    history.fetchStatus === "idle";
-  const data = admitted ? history.data : null;
-  // A cancelled read leaves nothing running: offer Retry instead of a blank panel.
-  const stranded =
-    enabled &&
-    !history.isError &&
-    !admitted &&
-    history.fetchStatus === "idle" &&
-    !history.isPending;
+  const { state, revalidate } = useSettingsHistory(target);
+  if (state.status === "hidden") return null;
+  const data = state.status === "ready" ? state.data : null;
   // Settings label first, then a work-item style label, else the localized generic one (never a raw or humanized key).
   const actionLabelKey = (action: string) => {
     const name = action.replace(/\./g, "_");
@@ -265,38 +201,66 @@ function SettingsHistoryForSession({
         return t("settings:history.system", { defaultValue: "System" });
     }
   };
+  const you = t("settings:history.profileYou");
+  const type: SettingsHistoryTarget | null =
+    data && "entityType" in data ? data.entityType : null;
+  const lines = !data
+    ? []
+    : "section" in data
+      ? data.rows.map((row) => ({
+          title: `${you} · ${formatDateTime(row.at)}`,
+          detail: row.changed
+            .map((marker) =>
+              t(SELF_LABELS[data.section]?.(marker) ?? UNKNOWN_FIELD),
+            )
+            .join(", "),
+          value: JSON.stringify(row),
+        }))
+      : data.rows.map((row) => {
+          const flat =
+            type === "terminology_override" || type === "project_estimates";
+          return {
+            title: `${
+              row.action === "membership.changed"
+                ? t("settings:history.roleChanged")
+                : flat
+                  ? t("common:actions.saved")
+                  : t(actionLabelKey(row.action))
+            } · ${actorLabel(row.actor)} · ${formatDateTime(row.at)}`,
+            detail:
+              row.changedFields.length > 0 && !flat && type
+                ? [
+                    ...new Set(
+                      row.changedFields.map((field) =>
+                        t(fieldLabelKey(type, row.action, field)),
+                      ),
+                    ),
+                  ].join(", ")
+                : "",
+            value: JSON.stringify(row),
+          };
+        });
   const occurrences = new Map<string, number>();
-  const rows = data?.rows.map((row) => {
-    const value = JSON.stringify(row);
-    const count = occurrences.get(value) ?? 0;
-    occurrences.set(value, count + 1);
-    return { row, key: `${value}-${count}` };
+  const rows = lines.map((line) => {
+    const count = occurrences.get(line.value) ?? 0;
+    occurrences.set(line.value, count + 1);
+    return { ...line, key: `${line.value}-${count}` };
   });
+  const last = data?.lastChanged;
   return (
     <HistoryPresentation
-      loading={history.isLoading || history.isFetching}
-      error={history.isError || stranded}
-      retry={() => {
-        ++disclosureRead.current;
-        setDisclosureReady(false);
-        void history.refetch();
-      }}
-      onOpen={() => {
-        if (!enabled) return;
-        const read = ++disclosureRead.current;
-        setDisclosureReady(false);
-        void queryClient.cancelQueries({ queryKey, exact: true }).then(() => {
-          if (read !== disclosureRead.current) return;
-          void history.refetch();
-        });
-      }}
+      loading={state.status === "checking"}
+      error={state.status === "error"}
+      retry={revalidate}
+      onOpen={revalidate}
       summary={
         data
-          ? data.lastChanged
+          ? last
             ? t("settings:history.lastChanged", {
                 defaultValue: "Last changed by {{actor}} on {{at}}",
-                actor: actorLabel(data.lastChanged.actor),
-                at: formatDateTime(data.lastChanged.at),
+                actor:
+                  typeof last.actor === "string" ? you : actorLabel(last.actor),
+                at: formatDateTime(last.at),
               })
             : t("settings:history.empty", {
                 defaultValue: "No recorded changes yet.",
@@ -304,29 +268,10 @@ function SettingsHistoryForSession({
           : undefined
       }
     >
-      {rows?.map(({ row, key }) => (
+      {rows.map(({ key, title, detail }) => (
         <div className="py-2 border-b border-border" key={key}>
-          <p>
-            {row.action === "membership.changed"
-              ? t("settings:history.roleChanged")
-              : type === "terminology_override" || type === "project_estimates"
-                ? t("common:actions.saved")
-                : t(actionLabelKey(row.action))}{" "}
-            · {actorLabel(row.actor)} · {formatDateTime(row.at)}
-          </p>
-          {row.changedFields.length > 0 &&
-          type !== "terminology_override" &&
-          type !== "project_estimates" ? (
-            <p className="text-muted-foreground">
-              {[
-                ...new Set(
-                  row.changedFields.map((field) =>
-                    t(fieldLabelKey(type, row.action, field)),
-                  ),
-                ),
-              ].join(", ")}
-            </p>
-          ) : null}
+          <p>{title}</p>
+          {detail ? <p className="text-muted-foreground">{detail}</p> : null}
         </div>
       ))}
     </HistoryPresentation>

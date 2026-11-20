@@ -49,7 +49,26 @@ export function CabTemplatePanel({
     enabled: Boolean(workspaceId),
   });
   const apply = useMutation({
-    mutationFn: () => applyCabTemplate(workspaceId ?? "", selected),
+    mutationFn: (input: { workspaceId: string; projectIds: string[] }) =>
+      applyCabTemplate(input.workspaceId, input.projectIds),
+    meta: {
+      audits: {
+        targets: (
+          input: { workspaceId: string },
+          result: { workflowId: string },
+        ) => [
+          {
+            kind: "entity" as const,
+            type: "workflow" as const,
+            id: result.workflowId,
+            scope: {
+              kind: "workspace" as const,
+              workspaceId: input.workspaceId,
+            },
+          },
+        ],
+      },
+    },
     onSuccess: async () => {
       toast.success(t("settings:workflows.cabTemplate.applied"));
       setOpen(false);
@@ -182,7 +201,9 @@ export function CabTemplatePanel({
             </Button>
             <Button
               disabled={apply.isPending || selected.length === 0}
-              onClick={() => apply.mutate()}
+              onClick={() =>
+                apply.mutate({ workspaceId, projectIds: selected })
+              }
             >
               {t("settings:workflows.cabTemplate.confirm")}
             </Button>

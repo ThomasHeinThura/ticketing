@@ -23,7 +23,7 @@ import {
   Separator,
   Switch,
 } from "@taskdesk/ui";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorReference } from "@/components/errors/error-reference";
 import {
@@ -37,8 +37,11 @@ import {
 } from "@/components/settings/create-api-key-dialog";
 import { translatedCapabilityDescription } from "@/components/settings/roles/capability-model";
 import { createServiceKey } from "@/fetchers/service-keys";
+import { useIntentLifecycle } from "@/hooks/use-intent-lifecycle";
 import { useStepUpAction } from "@/hooks/use-step-up-action";
+import { authClient } from "@/lib/auth-client";
 import { localizedAdminErrorMessage } from "@/lib/http-error";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 import { toast } from "@/lib/toast";
 import type { CreateApiKeyResponse } from "@/types/api-key";
 
@@ -46,6 +49,12 @@ export const serviceKeysKey = (workspaceId: string) =>
   ["service-keys", workspaceId] as const;
 
 const EXPIRY_CHOICES = ["30d", "90d", "never"] as const;
+type PendingHandoff = {
+  created: CreateApiKeyResponse;
+  captured: { host: string; userId: string; sessionId: string } | null;
+  savedWorkspaceId: string;
+  intent: number;
+};
 
 /**
  * AK-1 / AK-7: a workspace service key. Creating one is elevated, so the create spends a fresh,
@@ -64,6 +73,31 @@ export function CreateServiceKeyDialog({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { data: session } = authClient.useSession();
+  const host = window.location.host;
+  const userId = session?.user?.id;
+  const sessionId = session?.session?.id;
+  const sessionScope = session?.session as
+    | { portal?: string | null; impersonatedBy?: string | null }
+    | undefined;
+  const [pendingHandoff, setPendingHandoff] = useState<PendingHandoff | null>(
+    null,
+  );
+  const [checkingHandoff, setCheckingHandoff] = useState(false);
+  const lifecycle = useIntentLifecycle(
+    JSON.stringify([
+      host,
+      userId,
+      sessionId,
+      sessionScope?.portal,
+      sessionScope?.impersonatedBy,
+      workspaceId,
+    ]),
+    () => {
+      setPendingHandoff(null);
+      setCheckingHandoff(false);
+    },
+  );
   const stepUp = useStepUpAction();
   const [name, setName] = useState("");
   const [expiry, setExpiry] = useState<(typeof EXPIRY_CHOICES)[number]>("90d");
@@ -79,8 +113,43 @@ export function CreateServiceKeyDialog({
       return next;
     });
 
+  async function handOff({
+    created,
+    captured,
+    savedWorkspaceId,
+    intent,
+  }: PendingHandoff) {
+    if (!lifecycle.isCurrent(intent)) return;
+    setCheckingHandoff(true);
+    try {
+      if (captured) {
+        if (window.location.host !== captured.host)
+          throw new Error("Host changed");
+        await profileSessionGuard(captured.userId, captured.sessionId)();
+      }
+    } catch {
+      if (lifecycle.isCurrent(intent))
+        setPendingHandoff({ created, captured, savedWorkspaceId, intent });
+      return;
+    } finally {
+      if (lifecycle.isCurrent(intent)) setCheckingHandoff(false);
+    }
+    if (!lifecycle.isCurrent(intent)) return;
+    setPendingHandoff(null);
+    void queryClient.invalidateQueries({
+      queryKey: serviceKeysKey(savedWorkspaceId),
+    });
+    toast.success(t("common:actions.saved"));
+    onCreated(created);
+    onClose();
+  }
+
+  const pendingCreated = useRef<PendingHandoff | null>(null);
   const mutation = useMutation({
     mutationFn: async () => {
+      const captured = userId && sessionId ? { host, userId, sessionId } : null;
+      const savedWorkspaceId = workspaceId;
+      const intent = lifecycle.capture();
       const addresses = ipAllowlist
         .split(/[\s,]+/)
         .map((entry) => entry.trim())
@@ -100,15 +169,35 @@ export function CreateServiceKeyDialog({
         throw new Error(t("settings:serviceKeys.stepUpFailed"), {
           cause: "step_up",
         });
-      return outcome.value;
+      pendingCreated.current = {
+        created: outcome.value,
+        captured,
+        savedWorkspaceId,
+        intent,
+      };
+      return { id: outcome.value.id, savedWorkspaceId };
     },
-    onSuccess: async (created) => {
-      await queryClient.invalidateQueries({
-        queryKey: serviceKeysKey(workspaceId),
-      });
-      toast.success(t("common:actions.saved"));
-      onCreated(created);
-      onClose();
+    meta: {
+      audits: {
+        targets: (
+          _: unknown,
+          { id, savedWorkspaceId }: { id: string; savedWorkspaceId: string },
+        ) => [
+          {
+            kind: "entity",
+            type: "service_api_key",
+            id,
+            scope: { kind: "workspace", workspaceId: savedWorkspaceId },
+          },
+        ],
+      },
+    },
+    onSuccess: async () => {
+      const created = pendingCreated.current;
+      if (created) await handOff(created);
+    },
+    onSettled: () => {
+      pendingCreated.current = null;
     },
   });
 
@@ -116,7 +205,8 @@ export function CreateServiceKeyDialog({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !mutation.isPending) onClose();
+        if (!open && !mutation.isPending && !pendingHandoff && !checkingHandoff)
+          onClose();
       }}
     >
       <DialogContent
@@ -132,7 +222,13 @@ export function CreateServiceKeyDialog({
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            if (nameValid && stepUp.canRun && !mutation.isPending)
+            if (
+              nameValid &&
+              stepUp.canRun &&
+              !mutation.isPending &&
+              !pendingHandoff &&
+              !checkingHandoff
+            )
               mutation.mutate();
           }}
         >
@@ -144,7 +240,11 @@ export function CreateServiceKeyDialog({
               <Input
                 id="service-key-name"
                 value={name}
-                disabled={mutation.isPending}
+                disabled={
+                  mutation.isPending ||
+                  Boolean(pendingHandoff) ||
+                  checkingHandoff
+                }
                 placeholder={t("settings:serviceKeys.create.namePlaceholder")}
                 onChange={(event) => setName(event.target.value)}
               />
@@ -159,7 +259,11 @@ export function CreateServiceKeyDialog({
                   label: t(`settings:serviceKeys.create.expiry.${value}`),
                 }))}
                 value={expiry}
-                disabled={mutation.isPending}
+                disabled={
+                  mutation.isPending ||
+                  Boolean(pendingHandoff) ||
+                  checkingHandoff
+                }
                 onValueChange={(value) => {
                   if (
                     value !== null &&
@@ -187,7 +291,11 @@ export function CreateServiceKeyDialog({
               <Input
                 id="service-key-ips"
                 value={ipAllowlist}
-                disabled={mutation.isPending}
+                disabled={
+                  mutation.isPending ||
+                  Boolean(pendingHandoff) ||
+                  checkingHandoff
+                }
                 placeholder={t(
                   "settings:apiKey.createDialog.ipAllowlistPlaceholder",
                 )}
@@ -238,7 +346,11 @@ export function CreateServiceKeyDialog({
                             </div>
                             <Switch
                               checked={writes.has(capability)}
-                              disabled={mutation.isPending}
+                              disabled={
+                                mutation.isPending ||
+                                Boolean(pendingHandoff) ||
+                                checkingHandoff
+                              }
                               onCheckedChange={() => toggle(capability)}
                             />
                           </div>
@@ -248,7 +360,26 @@ export function CreateServiceKeyDialog({
                 )}
               </div>
             </ScrollArea>
-            <StepUpFields action={stepUp} idPrefix="create-service-key" />
+            {pendingHandoff ? (
+              <Alert variant="error">
+                <AlertTitle>
+                  {t("settings:apiKey.createdModal.title")}
+                </AlertTitle>
+                <AlertDescription>
+                  {t("common:error.sessionUnavailable")}
+                </AlertDescription>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={checkingHandoff}
+                  onClick={() => void handOff(pendingHandoff)}
+                >
+                  {t("common:actions.retry")}
+                </Button>
+              </Alert>
+            ) : (
+              <StepUpFields action={stepUp} idPrefix="create-service-key" />
+            )}
             <FailureAlert
               failure={stepUp.failure}
               title={t("settings:serviceKeys.stepUpFailed")}
@@ -270,15 +401,21 @@ export function CreateServiceKeyDialog({
             <Button
               type="button"
               variant="outline"
-              disabled={mutation.isPending}
+              disabled={
+                mutation.isPending || Boolean(pendingHandoff) || checkingHandoff
+              }
               onClick={onClose}
             >
               {t("common:actions.cancel")}
             </Button>
             <SaveButton
               type="submit"
-              disabled={!mutation.isPending && (!nameValid || !stepUp.canRun)}
-              pending={mutation.isPending}
+              disabled={
+                Boolean(pendingHandoff) ||
+                checkingHandoff ||
+                (!mutation.isPending && (!nameValid || !stepUp.canRun))
+              }
+              pending={mutation.isPending || checkingHandoff}
               success={false}
               savedLabel={t("common:actions.saved")}
               workingLabel={t("common:actions.saving")}

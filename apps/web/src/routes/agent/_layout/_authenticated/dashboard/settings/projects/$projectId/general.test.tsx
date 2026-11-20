@@ -22,7 +22,6 @@ type Project = {
 
 const mocks = vi.hoisted(() => ({
   canUpdate: true,
-  canManage: false,
   projectId: "p-1",
   historyRequest: vi.fn(),
   checking: false,
@@ -56,9 +55,6 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
-}));
-vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
-  default: () => ({ user: { id: "u1" } }),
 }));
 vi.mock("@/components/settings/settings-history", () => ({
   SettingsHistory: (props: unknown) => {
@@ -110,7 +106,6 @@ vi.mock("@/hooks/use-open-pending-action", () => ({
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canUpdateProjects: () => mocks.canUpdate,
-    canManageProjectSettings: () => mocks.canManage,
     isCheckingPermissions: mocks.checking,
     canDeleteProjects: () => false,
     canExportTasks: () => true,
@@ -165,7 +160,6 @@ function renderPage() {
 beforeEach(() => {
   mocks.capabilityFailed = false;
   mocks.canUpdate = true;
-  mocks.canManage = false;
   mocks.projectId = "p-1";
   mocks.historyRequest.mockReset();
   mocks.checking = false;
@@ -338,26 +332,21 @@ describe("project General settings load the project itself", () => {
     );
   });
 
-  it("uses the project history grant independently of edit permission", () => {
+  it("passes only the project target to History, whatever the edit grant", async () => {
     mocks.canUpdate = false;
-    mocks.canManage = true;
     renderPage();
+    await screen.findByText("History");
     expect(mocks.historyRequest).toHaveBeenCalledWith({
-      type: "project",
-      id: "p-1",
-      userId: "u1",
+      target: {
+        kind: "entity",
+        type: "project",
+        id: "p-1",
+        scope: { kind: "project", workspaceId: "ws-1", projectId: "p-1" },
+      },
     });
     expect(
       screen.queryByPlaceholderText(NAME_PLACEHOLDER),
     ).not.toBeInTheDocument();
-  });
-
-  it("does not request history for an edit-only grant", () => {
-    mocks.canUpdate = true;
-    mocks.canManage = false;
-    renderPage();
-    expect(screen.getByPlaceholderText(NAME_PLACEHOLDER)).toBeInTheDocument();
-    expect(mocks.historyRequest).not.toHaveBeenCalled();
   });
 
   it("keeps the latest draft while an earlier save is pending and saves it next", async () => {

@@ -7,6 +7,11 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createQueryClient } from "@/query-client";
+import {
+  historyStamp,
+  historyTargetHash,
+} from "@/query-client/settings-history-key";
 import { CabTemplatePanel } from "./cab-template-panel";
 
 const mocks = vi.hoisted(() => ({
@@ -135,4 +140,37 @@ describe("CabTemplatePanel (CH-2)", () => {
     expect(await screen.findByRole("checkbox", { name: "Beta" })).toBeTruthy();
     expect(screen.queryByRole("checkbox", { name: "Alpha" })).toBeNull();
   });
+});
+
+it("withdraws workflow History after a template is applied", async () => {
+  const client = createQueryClient();
+  const target = {
+    kind: "entity",
+    type: "workflow",
+    id: "wf1",
+    scope: { kind: "workspace", workspaceId: "ws-1" },
+  };
+  const hash = historyTargetHash(target);
+  const before = historyStamp(hash);
+  mocks.applyCabTemplate.mockResolvedValue({
+    workflowId: "wf1",
+    adoptedProjectIds: ["p2"],
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <CabTemplatePanel workspaceId="ws-1" canManage projects={projects} />
+    </QueryClientProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "settings:workflows.cabTemplate.action",
+    }),
+  );
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Beta" }));
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "settings:workflows.cabTemplate.confirm",
+    }),
+  );
+  await waitFor(() => expect(historyStamp(hash)).not.toBe(before));
 });
