@@ -93,6 +93,7 @@ function ProjectEngagementSettings({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { data: session } = authClient.useSession();
   const { canUpdateProjects, canManageProjectSettings, isCheckingPermissions } =
     useWorkspacePermission();
   const {
@@ -246,10 +247,25 @@ function ProjectEngagementSettings({
   const handleHealth = async (value: unknown) => {
     if (typeof value !== "string" || value === health) return;
     if (value !== NONE && !isProjectHealth(value)) return;
+    const userId = session?.user?.id;
+    const sessionId = session?.session?.id;
     setHealthFailure(null);
     setPendingHealth(value);
     try {
       await updateProjectHealth(project.id, value === NONE ? null : value);
+      if (userId && sessionId)
+        refreshSettingsHistory(
+          queryClient,
+          [
+            "settings-history",
+            "project",
+            project.id,
+            "agent",
+            userId,
+            sessionId,
+          ],
+          profileSessionGuard(userId, sessionId),
+        );
       await invalidateProject();
     } catch (error) {
       const failure = failureOf(error);

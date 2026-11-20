@@ -10,6 +10,10 @@ const mocks = vi.hoisted(() => ({
   history: vi.fn(),
   patchWorkspace: vi.fn(),
   patchProject: vi.fn(),
+  updateHealth: vi.fn(),
+}));
+vi.mock("@/fetchers/project/update-health", () => ({
+  default: mocks.updateHealth,
 }));
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
@@ -201,3 +205,37 @@ it.each(["workspace", "project"] as const)(
     await screen.findByText(/Last changed by After/);
   },
 );
+
+it("refreshes open project History after changing health", async () => {
+  mocks.history.mockReset();
+  let name = "Before";
+  mocks.history.mockImplementation(async () => ({
+    entityType: "project",
+    entityId: "p1",
+    lastChanged: { actor: { kind: "person", name }, at: "2026-01-01" },
+    rows: [],
+  }));
+  mocks.updateHealth.mockImplementation(async () => {
+    name = "After";
+  });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <SettingsHistory type="project" id="p1" userId="u1" />
+      <ProjectEngagementSettings workspaceId="w1" projectId="p1" />
+    </QueryClientProvider>,
+  );
+  await screen.findByText(/Last changed by Before/);
+  fireEvent.click(screen.getByRole("button", { name: /History/ }));
+  await waitFor(() => expect(mocks.history).toHaveBeenCalledTimes(2));
+  fireEvent.change(
+    screen.getByLabelText("settings:projectGeneral.engagement.health"),
+    {
+      target: { value: "amber" },
+    },
+  );
+  await screen.findByText(/Last changed by After/);
+  expect(mocks.updateHealth).toHaveBeenCalledWith("p1", "amber");
+});
