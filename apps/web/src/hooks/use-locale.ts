@@ -2,8 +2,10 @@ import type { AppLocale } from "@i18n/resources";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
-import { profileHistoryKey } from "@/fetchers/settings/personal-history";
+import {
+  profileHistoryKey,
+  refreshPersonalHistory,
+} from "@/fetchers/settings/personal-history";
 import { authClient } from "@/lib/auth-client";
 import { getBrowserLocale, resolveLocale } from "@/lib/i18n";
 import { profileSessionGuard } from "@/lib/profile-session-guard";
@@ -30,7 +32,7 @@ export function useLocale() {
       throw new Error(error.message || "Failed to update locale");
     }
 
-    refreshSettingsHistory(queryClient, key, () => check(true));
+    refreshPersonalHistory(queryClient, key);
     await check(true);
     const resolved = resolveLocale(nextLocale, null);
     await queryClient.invalidateQueries({ queryKey: ["session"] });

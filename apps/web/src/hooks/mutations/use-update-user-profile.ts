@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
-import { profileHistoryKey } from "@/fetchers/settings/personal-history";
+import {
+  profileHistoryKey,
+  refreshPersonalHistory,
+} from "@/fetchers/settings/personal-history";
 import { authClient } from "@/lib/auth-client";
 import { profileSessionGuard } from "@/lib/profile-session-guard";
 import invalidateUserProfileQueries from "./invalidate-user-profile-queries";
@@ -34,15 +36,13 @@ function useUpdateUserProfile() {
         throw new Error(error.message || "Failed to update user profile");
       }
 
-      refreshSettingsHistory(queryClient, key, () => check(true));
+      refreshPersonalHistory(queryClient, key);
       await check(true);
       return { data, check };
     },
     onSuccess: async ({ check }) => {
       await check(true);
       await invalidateUserProfileQueries(queryClient);
-      await check(true);
-
       await check(true);
     },
   });

@@ -34,6 +34,7 @@ export function PersonalSelfHistory({
   );
   const history = useQuery({
     queryKey: key,
+    refetchOnMount: "always",
     enabled: Boolean(
       userId && sessionId && (section !== "apiKeys" || audience === "staff"),
     ),

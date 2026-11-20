@@ -12,8 +12,12 @@ import {
 const api = vi.hoisted(() => ({
   get: vi.fn(),
   patch: vi.fn(),
+  identity: { user: { id: "user-1" }, session: { id: "s1" } },
 }));
 
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { useSession: () => ({ data: api.identity }) },
+}));
 vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
   default: () => ({ user: { id: "user-1" } }),
 }));
@@ -159,4 +163,40 @@ describe("stored value parsers", () => {
       parseTableColumns(Array.from({ length: 101 }, (_, i) => `cf.f${i}`)),
     ).toBeUndefined();
   });
+});
+
+it("refreshes the captured preferences history after a queued save completes", async () => {
+  let finish!: (value: { settings: object }) => void;
+  api.patch.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const { result, queryClient, rerender } = setup();
+  const oldKey = [
+    "personal-settings-history",
+    window.location.host,
+    "preferences",
+    "user-1",
+    "s1",
+  ];
+  const newKey = [
+    "personal-settings-history",
+    window.location.host,
+    "preferences",
+    "user-1",
+    "s2",
+  ];
+  queryClient.setQueryData(oldKey, { rows: ["old"] });
+  queryClient.setQueryData(newKey, { rows: ["other"] });
+  act(() => result.current.set(["done"]));
+  await waitFor(() => expect(api.patch).toHaveBeenCalledOnce());
+  api.identity = { user: { id: "user-1" }, session: { id: "s2" } };
+  rerender();
+  await act(async () => {
+    finish({ settings: {} });
+  });
+  await waitFor(() => expect(queryClient.getQueryData(oldKey)).toBeNull());
+  expect(queryClient.getQueryData(newKey)).toEqual({ rows: ["other"] });
+  api.identity = { user: { id: "user-1" }, session: { id: "s1" } };
 });

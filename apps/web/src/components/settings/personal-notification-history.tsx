@@ -25,6 +25,7 @@ export function PersonalNotificationHistory({
   const key = notificationHistoryKey(audience, userId ?? "", sessionId ?? "");
   const history = useQuery({
     queryKey: key,
+    refetchOnMount: "always",
     enabled: Boolean(userId && sessionId),
     queryFn: async ({ signal }) => {
       try {

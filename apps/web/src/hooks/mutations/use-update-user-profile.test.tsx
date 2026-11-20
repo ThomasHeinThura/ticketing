@@ -10,18 +10,19 @@ import useUpdateUserProfile from "./use-update-user-profile";
 
 const mock = vi.hoisted(() => ({
   update: vi.fn(),
+  getSession: vi.fn(),
   identity: { id: "u1", session: "s1" },
 }));
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
     updateUser: mock.update,
-    getSession: async () => ({
+    getSession: mock.getSession.mockImplementation(async () => ({
       data: {
         user: { id: mock.identity.id },
         session: { id: mock.identity.session },
       },
       error: null,
-    }),
+    })),
     useSession: () => ({
       data: {
         user: { id: mock.identity.id },
@@ -76,7 +77,7 @@ it("invalidates only the initiating profile history after a successful save", as
       "s1",
     ],
     exact: true,
-    refetchType: "none",
+    refetchType: "active",
   });
   expect(client.getQueryState(key)?.isInvalidated).toBe(true);
   expect(invalidate).toHaveBeenCalledTimes(1);
@@ -177,7 +178,7 @@ it("finishes a successful save while the active history refresh remains pending"
       "s1",
     ],
     exact: true,
-    refetchType: "none",
+    refetchType: "active",
   });
 });
 it("replaces the initial pre-save personal history after successive profile writes", async () => {
@@ -224,4 +225,19 @@ it("replaces the initial pre-save personal history after successive profile writ
   );
   stop();
   client.clear();
+});
+
+it("checks the session only at required save boundaries", async () => {
+  mock.identity = { id: "u1", session: "s1" };
+  mock.getSession.mockClear();
+  mock.update.mockReset().mockResolvedValue({ error: null });
+  const client = new QueryClient();
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  const hook = renderHook(() => useUpdateUserProfile(), { wrapper });
+  await act(async () => {
+    await hook.result.current.mutateAsync({ name: "saved" });
+  });
+  expect(mock.getSession).toHaveBeenCalledTimes(4);
 });

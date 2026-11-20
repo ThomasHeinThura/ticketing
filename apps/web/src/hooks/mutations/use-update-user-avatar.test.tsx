@@ -11,6 +11,7 @@ import useUpdateUserAvatar from "./use-update-user-avatar";
 
 const mock = vi.hoisted(() => ({
   update: vi.fn(),
+  getSession: vi.fn(),
   remove: vi.fn(),
   prep: vi.fn(async () => ({ contentType: "image/png", data: "synthetic" })),
   upload: vi.fn(async () => ({ url: "synthetic" })),
@@ -19,13 +20,13 @@ const mock = vi.hoisted(() => ({
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
     updateUser: mock.update,
-    getSession: async () => ({
+    getSession: mock.getSession.mockImplementation(async () => ({
       data: {
         user: { id: mock.identity.id },
         session: { id: mock.identity.session },
       },
       error: null,
-    }),
+    })),
     useSession: () => ({
       data: {
         user: { id: mock.identity.id },
@@ -99,7 +100,7 @@ for (const mode of ["add", "remove"] as const) {
         "s1",
       ],
       exact: true,
-      refetchType: "none",
+      refetchType: "active",
     });
     expect(client.getQueryState(key)?.isInvalidated).toBe(true);
     expect(invalidate).not.toHaveBeenCalledWith({
@@ -226,7 +227,7 @@ it("invalidates a successful image clear even when file deletion fails", async (
       "s1",
     ],
     exact: true,
-    refetchType: "none",
+    refetchType: "active",
   });
 });
 it("invalidates exact profile history after a successful avatar upload", async () => {
@@ -318,7 +319,26 @@ for (const mode of ["add", "remove"] as const) {
         "s1",
       ],
       exact: true,
-      refetchType: "none",
+      refetchType: "active",
     });
   });
 }
+
+it("checks the session only at required save boundaries", async () => {
+  mock.identity = { id: "u1", session: "s1" };
+  mock.getSession.mockClear();
+  mock.update.mockReset().mockResolvedValue({ error: null });
+  mock.prep
+    .mockReset()
+    .mockResolvedValue({ contentType: "image/png", data: "synthetic" });
+  mock.upload.mockReset().mockResolvedValue({ url: "synthetic" });
+  const client = new QueryClient();
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  const hook = renderHook(() => useUpdateUserAvatar(), { wrapper });
+  await act(async () => {
+    await hook.result.current.mutateAsync(new File([], "a.png"));
+  });
+  expect(mock.getSession).toHaveBeenCalledTimes(5);
+});

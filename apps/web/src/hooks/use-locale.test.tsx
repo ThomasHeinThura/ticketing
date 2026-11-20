@@ -86,7 +86,7 @@ it("invalidates the initiating session after locale save even if the session cha
       "s1",
     ],
     exact: true,
-    refetchType: "none",
+    refetchType: "active",
   });
   expect(client.getQueryState(key)?.isInvalidated).toBe(true);
   expect(invalidate).toHaveBeenCalledTimes(1);
@@ -188,6 +188,6 @@ it("applies the saved language without waiting for history refresh", async () =>
       "s1",
     ],
     exact: true,
-    refetchType: "none",
+    refetchType: "active",
   });
 });

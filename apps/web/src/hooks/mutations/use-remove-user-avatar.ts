@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
-import { profileHistoryKey } from "@/fetchers/settings/personal-history";
+import {
+  profileHistoryKey,
+  refreshPersonalHistory,
+} from "@/fetchers/settings/personal-history";
 import deleteAvatar from "@/fetchers/user/delete-avatar";
 import { authClient } from "@/lib/auth-client";
 import { profileSessionGuard } from "@/lib/profile-session-guard";
@@ -27,7 +29,7 @@ function useRemoveUserAvatar() {
         throw new Error(error.message || "Failed to remove profile picture");
       }
 
-      refreshSettingsHistory(queryClient, key, () => check(true));
+      refreshPersonalHistory(queryClient, key);
       await check(true);
       const result = await deleteAvatar();
       await check(true);

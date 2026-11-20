@@ -209,32 +209,30 @@ it("rejects a changed host before requesting session data", async () => {
 });
 
 it.each(["staff", "portal"] as const)(
-  "marks the captured %s session stale immediately and guards refresh",
+  "clears the captured %s cache and starts its guarded reader",
   async (audience) => {
-    const client = new QueryClient();
-    const key = notificationHistoryKey(audience, "u", "s");
-    client.setQueryData(key, { rows: [] });
-    auth.getSession.mockReset().mockResolvedValue({
-      data: { user: { id: "other" }, session: { id: "new" } },
-      error: null,
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
     });
-    const invalidate = vi.spyOn(client, "invalidateQueries");
-    const refresh = captureNotificationHistoryRefresh(client, audience, {
+    const key = notificationHistoryKey(audience, "u", "s");
+    client.setQueryData(key, { rows: ["old"] });
+    const read = vi.fn().mockRejectedValue(new Error("session unavailable"));
+    const observer = new QueryObserver(client, {
+      queryKey: key,
+      queryFn: read,
+      staleTime: Number.POSITIVE_INFINITY,
+    });
+    const stop = observer.subscribe(() => {});
+    captureNotificationHistoryRefresh(client, audience, {
       user: { id: "u" },
       session: { id: "s" },
-    });
-    refresh();
-    expect(invalidate).toHaveBeenCalledWith({
-      queryKey: key,
-      exact: true,
-      refetchType: "none",
-    });
-    await vi.waitFor(() => expect(auth.getSession).toHaveBeenCalled());
-    expect(invalidate).not.toHaveBeenCalledWith({
-      queryKey: key,
-      exact: true,
-      refetchType: "active",
-    });
+    })();
+    expect(client.getQueryData(key)).toBeNull();
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult().isError).toBe(true),
+    );
+    expect(read).toHaveBeenCalledOnce();
+    stop();
     client.clear();
   },
 );

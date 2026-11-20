@@ -1,8 +1,14 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import { getApiUrl } from "@/fetchers/get-api-url";
 import { HttpError } from "@/lib/http-error";
+import { refreshPersonalHistory } from "./personal-history-refresh";
+
+export {
+  capturePreferencesHistoryRefresh,
+  preferencesHistoryKey,
+  refreshPersonalHistory,
+} from "./personal-history-refresh";
 
 export const profileHistoryKey = (userId: string, sessionId: string) =>
   [
@@ -65,11 +71,7 @@ export function captureNotificationHistoryRefresh(
   const host = window.location.host;
   if (!userId || !sessionId) return () => {};
   const key = notificationHistoryKey(audience, userId, sessionId, host);
-  return () => {
-    refreshSettingsHistory(client, key, () =>
-      assertNotificationHistorySession(audience, userId, sessionId, host),
-    );
-  };
+  return () => refreshPersonalHistory(client, key);
 }
 
 export async function getNotificationHistory(
@@ -134,34 +136,6 @@ export async function getProfileHistory(signal: AbortSignal) {
       ),
     })
     .parse(await response.json());
-}
-
-export const preferencesHistoryKey = (
-  userId: string,
-  sessionId: string,
-  host = window.location.host,
-) =>
-  [
-    "personal-settings-history",
-    host,
-    "preferences",
-    userId,
-    sessionId,
-  ] as const;
-
-export function capturePreferencesHistoryRefresh(
-  client: QueryClient,
-  identity?: { user?: { id: string }; session?: { id: string } } | null,
-) {
-  const userId = identity?.user?.id;
-  const sessionId = identity?.session?.id;
-  const host = window.location.host;
-  if (!userId || !sessionId) return () => {};
-  const key = preferencesHistoryKey(userId, sessionId, host);
-  return () =>
-    refreshSettingsHistory(client, key, () =>
-      assertNotificationHistorySession("staff", userId, sessionId, host),
-    );
 }
 
 export async function getPreferencesHistory(signal: AbortSignal) {
@@ -234,18 +208,7 @@ export function capturePersonalSelfHistoryRefresh(
     sessionId,
     host,
   );
-  return () => {
-    void client.cancelQueries({ queryKey: key, exact: true });
-    client.setQueryData(key, null);
-    // The active self query reads again through its own queryFn, which checks the fresh session
-    // before and after the credentialed read. A transient guard failure therefore reaches the
-    // query's error state and the existing Retry control instead of being swallowed here, and a
-    // refused session never reaches the network. With no mounted observer the entry is only marked
-    // invalid and is read, behind the same guard, when it is next shown.
-    void client
-      .invalidateQueries({ queryKey: key, exact: true, refetchType: "active" })
-      .catch(() => {});
-  };
+  return () => refreshPersonalHistory(client, key);
 }
 
 export async function getPersonalSelfHistory(

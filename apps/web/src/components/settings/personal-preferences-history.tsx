@@ -20,6 +20,7 @@ export function PersonalPreferencesHistory({ userId }: { userId: string }) {
   const client = useQueryClient();
   const history = useQuery({
     queryKey: key,
+    refetchOnMount: "always",
     enabled: Boolean(userId && sessionId),
     queryFn: async ({ signal }) => {
       try {

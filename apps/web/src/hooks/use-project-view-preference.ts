@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
+import { capturePreferencesHistoryRefresh } from "@/fetchers/settings/personal-history-refresh";
 import {
   patchUserSettings,
   type UserSettings,
@@ -9,6 +10,7 @@ import {
   useGetUserSettings,
   userSettingsQueryKey,
 } from "@/hooks/queries/user-settings/use-get-user-settings";
+import { authClient } from "@/lib/auth-client";
 import {
   isWorkItemSearchColumn,
   type WorkItemSearchColumn,
@@ -34,6 +36,7 @@ export function useProjectViewPreference<T>({
 }) {
   const { user } = useAuth();
   const userId = user?.id;
+  const { data: session } = authClient.useSession();
   const queryClient = useQueryClient();
   const { data, isFetched } = useGetUserSettings(userId);
   const settingKey = projectId ? `${name}.${projectId}` : undefined;
@@ -48,8 +51,10 @@ export function useProjectViewPreference<T>({
     }: {
       patch: Record<string, unknown>;
       seed: boolean;
+      refresh: () => void;
     }) => patchUserSettings(patch),
-    onSuccess: (response, { seed }) => {
+    onSuccess: (response, { seed, refresh }) => {
+      refresh();
       // The write answers with the person's full settings. When there was nothing cached to
       // update optimistically, that answer is what the screen shows; otherwise the cache
       // already holds the newest choice and an older response must not overwrite it.
@@ -87,7 +92,14 @@ export function useProjectViewPreference<T>({
         } as UserSettings);
       }
       mutate(
-        { patch: { [settingKey]: next }, seed: !cached },
+        {
+          patch: { [settingKey]: next },
+          seed: !cached,
+          refresh: capturePreferencesHistoryRefresh(
+            queryClient,
+            session?.user?.id === userId ? session : null,
+          ),
+        },
         {
           onSuccess: () => callbacks?.onSuccess?.(),
           onError: (error) => callbacks?.onError?.(error),
@@ -95,7 +107,7 @@ export function useProjectViewPreference<T>({
       );
       return true;
     },
-    [mutate, queryClient, settingKey, userId],
+    [mutate, queryClient, session, settingKey, userId],
   );
 
   // `settled`: the server has answered (or failed, or there is no signed-in user), so a
