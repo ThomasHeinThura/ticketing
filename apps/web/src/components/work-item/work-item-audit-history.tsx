@@ -18,6 +18,7 @@ import {
 import { ChevronDown, History } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import useGetWorkItemApprovals from "@/hooks/queries/approval/use-get-work-item-approvals";
 import useGetProjectStates from "@/hooks/queries/project/use-get-project-states";
 import {
   useGetWorkItemAuditHistory,
@@ -66,6 +67,10 @@ export default function WorkItemAuditHistory({
   const fields = Object.entries(snapshot.data?.snapshot?.fields ?? {});
   const states = useGetProjectStates(projectId, open);
   const people = useGetActiveWorkspaceUsers(workspaceId ?? "", open);
+  const approvals = useGetWorkItemApprovals({
+    key: workItemKey,
+    enabled: open,
+  });
   const lookups = useMemo(
     () => ({
       states: new Map(
@@ -170,7 +175,18 @@ export default function WorkItemAuditHistory({
                             {row.actorType === "person"
                               ? people.data?.members.find(
                                   (member) => member.personId === row.actorId,
-                                )?.user.name || t("common:people.unknown")
+                                )?.user.name ||
+                                approvals.data?.approvals
+                                  .filter(
+                                    (approval) => approval.id === row.entityId,
+                                  )
+                                  .flatMap((approval) => [
+                                    approval.requester,
+                                    approval.approver,
+                                  ])
+                                  .find((person) => person.id === row.actorId)
+                                  ?.displayName ||
+                                t("common:people.unknown")
                               : t("common:people.unknown")}
                             {row.after &&
                               typeof row.after === "object" &&

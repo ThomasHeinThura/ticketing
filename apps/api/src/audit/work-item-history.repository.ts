@@ -1,5 +1,5 @@
 import type { ActivityRow } from "@taskdesk/domain";
-import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, inArray } from "drizzle-orm";
 import { type Executor, executorOrDefault } from "../database/executor";
 import {
   activityTable,
@@ -103,34 +103,34 @@ export async function listEntityAuditRows(
     .where(
       and(
         eq(auditLogTable.workspaceId, workspaceId),
-        or(
+        eq(auditLogTable.entityType, entityType),
+        eq(auditLogTable.entityId, entityId),
+      ),
+    )
+    .unionAll(
+      tx
+        .select(getTableColumns(auditLogTable))
+        .from(approvalTable)
+        .innerJoin(
+          auditLogTable,
           and(
-            eq(auditLogTable.entityType, entityType),
-            eq(auditLogTable.entityId, entityId),
-          ),
-          and(
+            eq(auditLogTable.entityId, approvalTable.id),
             eq(auditLogTable.entityType, "approval"),
+            eq(auditLogTable.workspaceId, workspaceId),
             inArray(auditLogTable.action, [
               "approval.requested",
               "approval.decided",
               "approval.withdrawn",
               "approval.closed",
             ]),
-            inArray(
-              auditLogTable.entityId,
-              tx
-                .select({ id: approvalTable.id })
-                .from(approvalTable)
-                .where(
-                  and(
-                    eq(approvalTable.workspaceId, workspaceId),
-                    eq(approvalTable.workItemId, entityId),
-                  ),
-                ),
-            ),
+          ),
+        )
+        .where(
+          and(
+            eq(approvalTable.workspaceId, workspaceId),
+            eq(approvalTable.workItemId, entityId),
           ),
         ),
-      ),
     )
     .orderBy(desc(auditLogTable.seq))
     .limit(ENTITY_AUDIT_HISTORY_LIMIT);

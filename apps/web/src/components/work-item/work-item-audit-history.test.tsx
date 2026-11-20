@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   reconstruct: vi.fn(),
   states: vi.fn(),
   users: vi.fn(),
+  approvals: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -29,6 +30,9 @@ vi.mock("@/fetchers/project/get-project-states", () => ({
 }));
 vi.mock("@/fetchers/workspace-user/get-active-workspace-users", () => ({
   default: mocks.users,
+}));
+vi.mock("@/fetchers/approval/get-work-item-approvals", () => ({
+  default: mocks.approvals,
 }));
 
 const AT = "2026-10-23T08:15:30.123Z";
@@ -71,6 +75,7 @@ describe("WorkItemAuditHistory reconstruction", () => {
       { id: "g5wmja2nnr3kcbz0grphl020", name: "In Progress", position: 1 },
     ]);
     mocks.users.mockResolvedValue({ members: [] });
+    mocks.approvals.mockResolvedValue({ approvals: [] });
   });
 
   it("shows labelled values from the API shape, with null assignee as None", async () => {
@@ -123,5 +128,34 @@ describe("WorkItemAuditHistory reconstruction", () => {
     renderHistory();
     fireEvent.click(screen.getByText("Audit history"));
     expect(await screen.findByText("Casey · Approved")).toBeTruthy();
+  });
+
+  it("shows the customer approver's permitted name", async () => {
+    mocks.history.mockResolvedValue({
+      rows: [
+        {
+          id: "event-1",
+          entityId: "approval-1",
+          createdAt: AT,
+          action: "approval.decided",
+          entityType: "approval",
+          actorId: "customer-1",
+          actorType: "person",
+          after: { state: "approved" },
+        },
+      ],
+    });
+    mocks.approvals.mockResolvedValue({
+      approvals: [
+        {
+          id: "approval-1",
+          requester: { id: "staff-1", displayName: "Staff" },
+          approver: { id: "customer-1", displayName: "Customer Casey" },
+        },
+      ],
+    });
+    renderHistory();
+    fireEvent.click(screen.getByText("Audit history"));
+    expect(await screen.findByText("Customer Casey · Approved")).toBeTruthy();
   });
 });
