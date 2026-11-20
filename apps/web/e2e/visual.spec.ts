@@ -5848,11 +5848,33 @@ async function installAuthenticatedFixture(page: Page) {
 
     if (
       path === "/api/audit" &&
-      url.searchParams.get("entity_type") === "state_template"
+      (url.search ===
+        "?entity_type=state_template&entity_id=visual-backlog-template" ||
+        url.search ===
+          "?entity_type=state_template&entity_id=visual-state-template" ||
+        url.search ===
+          "?entity_type=state_template&entity_id=visual-state-approved" ||
+        url.search ===
+          "?entity_type=state_template&entity_id=visual-done-template" ||
+        url.search ===
+          "?entity_type=state_template&entity_id=visual-cancelled-template")
     ) {
       body = {
         entityType: "state_template",
-        entityId: url.searchParams.get("entity_id"),
+        entityId:
+          url.search ===
+          "?entity_type=state_template&entity_id=visual-backlog-template"
+            ? "visual-backlog-template"
+            : url.search ===
+                "?entity_type=state_template&entity_id=visual-state-template"
+              ? "visual-state-template"
+              : url.search ===
+                  "?entity_type=state_template&entity_id=visual-state-approved"
+                ? "visual-state-approved"
+                : url.search ===
+                    "?entity_type=state_template&entity_id=visual-done-template"
+                  ? "visual-done-template"
+                  : "visual-cancelled-template",
         workspaceId: "visual-workspace",
         projectId: null,
         lastChanged: null,
