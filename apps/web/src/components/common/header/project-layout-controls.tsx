@@ -129,7 +129,7 @@ function ViewTab({
           aria-current={active ? "page" : undefined}
           className={cn(
             "h-6 scroll-mx-6 cursor-not-allowed gap-1.5 rounded-md px-2 text-xs opacity-64",
-            clipped && "invisible",
+            clipped && "opacity-0",
           )}
         >
           <Icon className="size-3.5" />
@@ -150,7 +150,7 @@ function ViewTab({
         // active tab scrolled into view is never left under the fade.
         "h-6 scroll-mx-6 gap-1.5 rounded-md px-2 text-xs",
         !active && "text-muted-foreground",
-        clipped && "invisible",
+        clipped && "opacity-0",
       )}
     >
       <Icon className="size-3.5" />

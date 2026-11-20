@@ -689,6 +689,10 @@ describe("ProjectLayoutControls tab strip overflow", () => {
     expect(
       screen.getByRole("button", { name: "Documents" }),
     ).toBeInTheDocument();
+    const clipped = screen.getByRole("button", { name: "Documents" });
+    expect(clipped).toHaveClass("opacity-0");
+    clipped.focus();
+    expect(clipped).toHaveFocus();
   });
 
   it("keeps the strip's slot at least as wide as the widest tab plus both fade margins", async () => {

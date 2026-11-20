@@ -9,7 +9,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Sign in (legacy `/agent/sign-in` redirects) | `/auth/sign-in` | route | P0 | 🟡 |
 | MFA challenge | `/auth/two-factor` | route | P0 | 🟡 |
 | MFA enrolment | `/dashboard/settings/account/security` | route | P0 | 🟡 |
-| Accept invitation | `/agent/invitation/accept/{inviteId}` | route | P3 | 🟡 |
+| Accept invitation (planned inventory; existing route is `/invitation/accept/{inviteId}`) | `/agent/invite` | route | P3 | ⬜ |
 | Workspace home (default dashboard) | `/agent` | route | P1 | 🟡 |
 | Inbox | `/agent/inbox` | route | P1 | 🟡 |
 | My work | `/agent/my-work` | route | P1 | 🟡 |
@@ -68,7 +68,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Team detail | `/dashboard/settings/workspace/teams/{id}` | route | P4 | 🟡 |
 | **Workspace — roles** | `/dashboard/settings/workspace/roles` | route | P4 | 🟡 |
 | **Role editor** | `/dashboard/settings/workspace/roles/{id}` | route | P4 | 🟡 |
-| Workspace — work item types (planned, no route) | `/dashboard/settings/workspace/work-item-types` | planned | P2 | ⬜ |
+| Workspace — work item types (planned, no route) | `/dashboard/settings/workspace/work-item-types` | route | P2 | ⬜ |
 | Workspace — states | `/dashboard/settings/workspace/states` | route | P1 | 🟡 |
 | Workspace — workflows | `/dashboard/settings/workspace/workflows` | route | P2 | 🟡 |
 | Workflow editor | `/dashboard/settings/workspace/workflows/{id}` | route | P2 | ⬜ |
@@ -89,13 +89,13 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Workspace — webhooks | `/dashboard/settings/workspace/webhooks` | route | P4 | 🟡 |
 | Webhook editor | `/dashboard/settings/workspace/webhooks/{id}` | route | P4 | 🟡 |
 | Webhook delivery history | `/dashboard/settings/workspace/webhooks/{id}/deliveries` | route | P4 | 🟡 |
-| Workspace — import (superseded by God Mode import runs) | `/dashboard/settings/workspace/import` | superseded | P6 | ⬜ |
+| Workspace — import (superseded by God Mode import runs) | `/dashboard/settings/workspace/import` | route | P6 | ⬜ |
 | Workspace — danger zone | `/dashboard/settings/workspace/danger` | route | P1 | 🟡 |
 | Project — general | `/agent/projects/{key}/settings` | route | P1 | 🟡 |
 | Project — members | `/agent/projects/{key}/settings/members` | route | P1 | 🟡 |
 | Project — states | `/agent/projects/{key}/settings/states` | route | P1 | 🟡 |
 | Project — labels | `/agent/projects/{key}/settings/labels` | route | P1 | 🟡 |
-| Project — SLA & calendar (planned, no route) | `/agent/projects/{key}/settings/sla` | planned | P2 | ⬜ |
+| Project — SLA & calendar (planned, no route) | `/agent/projects/{key}/settings/sla` | route | P2 | ⬜ |
 | Project — features | `/agent/projects/{key}/settings/features` | route | P4 | 🟡 |
 | Project — automations | `/agent/projects/{key}/settings/automations` | route | P4 | 🟡 |
 | Project — budget | `/agent/projects/{key}/settings/budget` | route | P5 | 🟡 |

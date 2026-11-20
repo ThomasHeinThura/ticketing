@@ -86,7 +86,10 @@ function RouteComponent() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <PageTitle title={t("estimates.pageTitle")} />
-      <h1 className="text-2xl font-semibold">{t("estimates.pageTitle")}</h1>
+      <h1 className="sr-only">{t("estimates.pageTitle")}</h1>
+      <div className="text-2xl font-semibold" aria-hidden="true">
+        {t("estimates.pageTitle")}
+      </div>
       <EstimateSettings
         projectId={project.id}
         projectKey={project.slug}

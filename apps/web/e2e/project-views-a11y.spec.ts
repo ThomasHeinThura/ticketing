@@ -467,6 +467,7 @@ for (const [name, path, activeLabel] of STRIP_VIEWS)
         await expect
           .poll(() => stripInset(page, "header :focus"))
           .toMatchObject({ clearOfFade: true });
+        await expect(tabs.nth(index)).toHaveCSS("opacity", "1");
       }
 
       expect(
