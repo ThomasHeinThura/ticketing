@@ -237,10 +237,6 @@ it.each([401, 403, 404, 200])(
         secret: "A",
       });
       queryClient.setQueryData(
-        ["personal-settings-history", "host", "security", "portal", "a", "s-a"],
-        { secret: "A" },
-      );
-      queryClient.setQueryData(
         [
           "terminology-runtime",
           "customer",
@@ -420,16 +416,6 @@ it.each([401, 403, 404, 200])(
     expect(screen.queryByText("A private announcement")).toBeNull();
     expect(
       queryClient.getQueryData(["portal", "session", "private"]),
-    ).toBeUndefined();
-    expect(
-      queryClient.getQueryData([
-        "personal-settings-history",
-        "host",
-        "security",
-        "portal",
-        "a",
-        "s-a",
-      ]),
     ).toBeUndefined();
     expect(queryClient.getQueryData(["portal", "auth-methods"])).toEqual({
       public: true,

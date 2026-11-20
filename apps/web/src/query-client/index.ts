@@ -140,9 +140,7 @@ const queryClient = new QueryClient({
                 (queryKey[1] === "session" || queryKey[1] === "auth-methods")
               )) ||
             (queryKey[0] === "terminology-runtime" &&
-              queryKey[1] === "customer") ||
-            (queryKey[0] === "personal-settings-history" &&
-              queryKey[3] === "portal"),
+              queryKey[1] === "customer"),
         });
       }
       verifiedPortalUserId = userId;
