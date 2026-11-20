@@ -70,10 +70,62 @@ else.
 **Postgres** — `pg_dump -Fc`, compressed, checksummed, encrypted at rest.
 
 ```bash
-scripts/backup.sh              # local dump, verification, attachment archive and checksums
+scripts/backup-maintenance.sh --project-name <name> --backup <new-id>   # standard command
 ```
 
 For SIT or UAT restore, select the matching Compose overlay with `--mode sit` or `--mode uat`.
+
+A database/file backup is taken only under a held maintenance barrier, so no row can
+reference an object deleted between the dump and the archive. Plan a maintenance window and
+freeze deployments and client changes for it. `scripts/backup-maintenance.sh` is the one
+command that holds and releases the barrier for its own run:
+
+1. **Preflight, no change.** It pins the project's `taskdesk` and `postgres` containers, the
+   database name/user and the data volume. It refuses a running `migrate`, one-off or
+   unknown service; a data-volume user outside that project's known long-lived services
+   (`taskdesk`, `valkey`, `seaweedfs`, `mailpit`, `traefik`, `proxy`, `web`); and a database
+   network record whose IDs or aliases cannot be restored exactly (no `postgres` alias,
+   malformed or duplicate aliases, or an already-isolated database).
+2. **Hold.** It stops those running services, requires zero client sessions on every database
+   of that PostgreSQL server before any disconnect (it never terminates sessions), then
+   disconnects PostgreSQL from every recorded network.
+3. **Backup.** It runs `scripts/backup.sh`, which only verifies and never changes Docker
+   state. That script pins the same containers, requires the host `POSTGRES_DB`/`POSTGRES_USER`
+   to equal the database container's values, refuses `TASKDESK_STORAGE_DRIVER` other than
+   empty or `filesystem`, and checks the barrier before the dump, before the archive and
+   before publishing checksums: only PostgreSQL runs in the project, nothing mounts the data
+   volume, PostgreSQL has no network and only loopback inside, and no client sessions on any
+   database. It writes only into a new directory it creates exclusively (an existing
+   directory, file or symlink is refused untouched), enters it and confirms it is empty and
+   owned before writing, then works only inside it, so a path swapped afterwards cannot
+   redirect its writes or cleanup to another archive. It publishes `SHA256SUMS` last.
+4. **Release.** Whatever happened, it reconnects the recorded networks with their exact
+   aliases, restarts only the services that were running, and checks DNS and readiness when
+   the application was running before. Release counts as verified only if a final check
+   still finds the original networks, aliases and running states; the outcome records those
+   same observations, which are sequential rather than an atomic snapshot. It never runs
+   `compose up`, `restart`, migrations or pulls.
+
+Exit codes: `0` backup published and release verified; `1` backup not published and release
+verified (or nothing changed); `2` release failed or unknown; `3` release verified or not
+needed, but the outcome evidence could not be written (the backup and release lines on
+standard error are then the only report; fix the record storage). A private record directory
+(`backups/.maintenance-<project>-<UTC>`, mode 0700, files 0600, never under an OS temp
+directory) is kept after every run. The wrapper enters the newly created owned directory and
+uses it for all record writes even if its pathname is moved; locate the directory if the
+reported original path has moved. It holds container and network IDs, aliases, prior
+running state and an `outcome` file, never passwords. Remove old records by hand. A record
+is context only: after `2`, SIGKILL or host loss, leave writers as they are and recover with a
+separately reviewed, environment-specific plan built from current, independently checked
+facts. Never run `compose up`, `restart`, migrations, a wipe or a reseed from a record. An
+interrupted `backup.sh` can leave a directory without `SHA256SUMS`; `restore.sh` refuses it
+and it is removed by hand. Scheduled backups with the application running now refuse, and
+`--output-dir` must name a new directory. Maintenance output and record-root paths containing
+control characters are unsupported, including paths resolved through symlinks.
+
+Hosts, operators and Docker administrators who reconnect networks, start containers, write
+through `docker exec` or into the volume's host mountpoint during their own window are
+outside what the script can prevent.
 
 For an isolated restore drill, use `--project-name <name>` on both backup and restore.
 Both scripts resolve the named volume actually mounted at `/app/data` on that project's
@@ -97,7 +149,8 @@ the volume's mount point, or `tar` of it into the same offsite location as the d
 from a short-lived container that mounts it read-only. It is ordinary files on a Docker
 volume, so nothing S3-shaped applies to it.
 
-**Object storage** (`storage.s3`) — `rclone sync` (or `aws s3 sync`) incremental to a second
+**Object storage** (`storage.s3`) — `scripts/backup.sh` refuses this driver; back objects up
+with the separate paired procedure. `rclone sync` (or `aws s3 sync`) incremental to a second
 bucket in a different location. Backend-neutral; works for SeaweedFS, Garage and real S3
 alike. *(Not `mc` — that is the MinIO client, and MinIO is the dependency the stack
 dropped.)*
