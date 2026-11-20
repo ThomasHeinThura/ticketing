@@ -346,9 +346,9 @@ test("project key creation and rename respect role, viewport, theme and host", a
                 await expect(page.locator("html")).toHaveClass(
                   new RegExp(`\\b${theme}\\b`),
                 );
-                const create = page
-                  .locator("header")
-                  .getByRole("button", { name: /^Create project$/i });
+                const create = page.getByRole("button", {
+                  name: /^Create project$/i,
+                });
                 if (canCreate.has(role)) {
                   await create.click();
                   const dialog = page.getByRole("dialog");
