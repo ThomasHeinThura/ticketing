@@ -25993,6 +25993,18 @@
                     "entityId": {
                       "type": "string"
                     },
+                    "workspaceId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "projectId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "lastChanged": {
                       "type": [
                         "object",
@@ -26090,6 +26102,8 @@
                   "required": [
                     "entityType",
                     "entityId",
+                    "workspaceId",
+                    "projectId",
                     "lastChanged",
                     "rows"
                   ],

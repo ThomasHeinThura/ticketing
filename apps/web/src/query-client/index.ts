@@ -6,6 +6,7 @@ import {
 } from "@/lib/http-error";
 import { followAuditInvalidation, historyHooks } from "./audit-invalidation";
 import { configureNotifyScheduler } from "./notify-scheduler";
+import { SETTINGS_HISTORY_KEY } from "./settings-history-key";
 
 configureNotifyScheduler();
 
@@ -160,6 +161,13 @@ export function createQueryClient() {
           return;
         }
         historyHooks.onRefusal?.(client, query, error);
+        // A refused History read is the hidden panel, not a failure (403/404 for roles without audit reach).
+        if (
+          query.queryKey[0] === SETTINGS_HISTORY_KEY &&
+          error instanceof HttpError &&
+          (error.status === 403 || error.status === 404)
+        )
+          return;
         captureCacheError(error, "query");
       },
     }),

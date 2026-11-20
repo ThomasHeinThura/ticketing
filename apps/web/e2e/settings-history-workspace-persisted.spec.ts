@@ -26,6 +26,8 @@ const viewports = [
 type History = {
   entityType: string;
   entityId: string;
+  workspaceId: string | null;
+  projectId: string | null;
   lastChanged: {
     actor: { kind: string; name: string | null };
     at: string;
@@ -132,10 +134,14 @@ test("workspace general history records a persisted name change", async ({
           "entityId",
           "entityType",
           "lastChanged",
+          "projectId",
           "rows",
+          "workspaceId",
         ]);
         expect(recorded.entityType).toBe("workspace");
         expect(recorded.entityId).toBe(workspaceId);
+        expect(recorded.workspaceId).toBe(workspaceId);
+        expect(recorded.projectId).toBeNull();
         const row = recorded.rows[0];
         if (!row) throw new Error("Workspace history row missing");
         for (const item of recorded.rows) {

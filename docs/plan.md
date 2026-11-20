@@ -23,6 +23,8 @@ Owner: Thomas. Coordinator: Claude (this plan, merges, docs). Rules: [AGENTS.md]
 
 ### Stream Q — ponytail review and audit (20 Nov)
 
+Phase 2 backlog (sweep lows, 20 Nov): KB excerpt markdown, settings content offset, compact-density card headers, automation badge at 390 px, project estimates/budget page descriptions, request types read-only view for viewers, portal page widths, mobile toolbars and project context, members table on mobile, request type editor layout, notification preferences layout, restore-drill mount documented (#1219).
+
 **H** = high risk, Sol high review. Effort as in section 4.
 
 | ID | Item | Done when | Effort |
@@ -42,10 +44,10 @@ Owner: Thomas. Coordinator: Claude (this plan, merges, docs). Rules: [AGENTS.md]
 | Q-13 | Copy-invite-link limiter is per process | Uses the shared auth rate limiter; in-process Map removed | S |
 | Q-14 | `motion-rules.spec.ts` rule 9 tooltip hover flake | Waits for a stable trigger before hover; no retries added | XS |
 | Q-15 | Notification inbox query hit 32,967 bind parameters on a branch | Confirmed or ruled out on `main`; if present, bound as one array parameter | S |
-| Q-16 | Work list → detail first paint went from ~0.3 s to ~1.8 s after #1192 | Cause found and fixed; G11 thresholds unchanged | M |
+| Q-16 | Work list → detail first paint went from ~0.3 s to ~1.8 s after #1192 (20 Nov: slow samples also before #1192; moved to Stage 4B) | Cause found and fixed; G11 thresholds unchanged | M |
 | Q-17 | #1203 backup listing failure reported as success | Merged | XS |
 | Q-18 | Audit "nice to have": SLA scan per-item work, webhook quota race, realtime refetch of every page, board drag off during refetch, automation flag per item, digest logs raw errors, inline-asset detach queries | Each fixed with a test or closed with a recorded reason | M |
-| Q-19 | Lean: filesystem v1 portal token, SCIM `WindowCounter`, MCP 401 retry, duplicate permission parser, `resolveCallerIdentity`, unused domain rules (~600 lines) | Removed after a whole-tree grep; tests still green | M |
+| Q-19 | Lean (merged except e: `resolveCallerIdentity` is not a duplicate, kept): filesystem v1 portal token, SCIM `WindowCounter`, MCP 401 retry, duplicate permission parser, `resolveCallerIdentity`, unused domain rules (~600 lines) | Removed after a whole-tree grep; tests still green | M |
 
 ## 1. Goal and finish line
 

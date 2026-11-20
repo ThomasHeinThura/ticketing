@@ -28,6 +28,7 @@ import {
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { EntityHistoryButton } from "@/components/settings/entity-history-button";
 import {
   type ProjectBudget as Budget,
   createProjectBudget,
@@ -50,7 +51,13 @@ export function percentSpent(
   return Math.min(100, Math.floor((actualMinor * 100) / plannedMinor));
 }
 
-function BudgetCard({ budget }: { budget: Budget }) {
+function BudgetCard({
+  budget,
+  workspaceId,
+}: {
+  budget: Budget;
+  workspaceId?: string;
+}) {
   const { t } = useTranslation();
   const hidden = budget.figuresHidden || budget.actualMinor === undefined;
   const actualMinor = budget.actualMinor ?? 0;
@@ -68,6 +75,21 @@ function BudgetCard({ budget }: { budget: Budget }) {
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2">
           {budget.name}
+          {workspaceId ? (
+            <EntityHistoryButton
+              name={budget.name}
+              target={{
+                kind: "entity",
+                type: "budget",
+                id: budget.id,
+                scope: {
+                  kind: "project",
+                  workspaceId,
+                  projectId: budget.projectId,
+                },
+              }}
+            />
+          ) : null}
           {!hidden && budget.thresholdReached ? (
             <Badge
               variant={budget.thresholdReached === 90 ? "error" : "warning"}
@@ -430,7 +452,11 @@ export function ProjectBudget({
       ) : (
         <CardFrame>
           {data.data.map((entry) => (
-            <BudgetCard key={entry.id} budget={entry} />
+            <BudgetCard
+              key={entry.id}
+              budget={entry}
+              workspaceId={workspaceId}
+            />
           ))}
         </CardFrame>
       )}

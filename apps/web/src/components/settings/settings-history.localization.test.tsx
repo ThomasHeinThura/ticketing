@@ -124,6 +124,7 @@ const HISTORY_KEYS = [
   "apiKey",
   "automation",
   "personUnavailable",
+  "entityLabel",
 ] as const;
 const TEAM_ACTIONS = [
   ["team.created", "team_created", "Team created"],
@@ -188,14 +189,7 @@ const when = "2026-01-01T00:00:00Z";
 const person = { kind: "person" as const, name: "Alice" };
 async function renderHistory(
   locale: string,
-  type:
-    | "instance"
-    | "team"
-    | "workspace"
-    | "project"
-    | "time_activity"
-    | "workflow"
-    | "canned_response",
+  type: SettingsHistoryTarget,
   id: string,
   payload: Json,
 ) {
@@ -239,7 +233,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
       expect(Object.keys(settings).sort()).toEqual(
         Object.keys(expected).sort(),
       );
-      expect(Object.keys(settings)).toHaveLength(37);
+      expect(Object.keys(settings)).toHaveLength(74);
       for (const key of Object.keys(expected)) {
         expect(at(source, `settings.history.actions.${key}`)).not.toBe("");
         // `bulk_performed` already had a work-item label ("Bulk change"); the settings panel owns its own.
@@ -261,7 +255,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
         ...FIELDS.map((f) => `godModeSettings.fields.${f}.label`),
         ...TEAM_ACTIONS.map(([, key]) => `settings.history.actions.${key}`),
       ];
-      expect(paths).toHaveLength(33);
+      expect(paths).toHaveLength(34);
       for (const path of paths) {
         const value = at(own, path);
         const base = path.startsWith("settings.history.actions.team_")
@@ -663,8 +657,26 @@ type Inventory = Array<{
     | "project"
     | "workflow"
     | "canned_response"
+    | "service_calendar"
+    | "sla_policy"
+    | "request_type"
+    | "custom_field"
+    | "custom_field_section"
+    | "state_template"
+    | "team"
     | "time_activity"
-    | "instance";
+    | "instance"
+    | "webhook"
+    | "instance_auth_methods"
+    | "staff_self_registration"
+    | "instance_job"
+    | "identity_connection"
+    | "workspace_label"
+    | "project_label"
+    | "state"
+    | "cost_type"
+    | "hourly_rate"
+    | "budget";
   action: string;
   /** [API marker, settings.history.fields key]; written out here, independent of the renderer. */
   fields: Array<[string, string]>;
@@ -673,6 +685,13 @@ const same = (names: string[]): Array<[string, string]> =>
   names.map((n) => [n, n]);
 const INSTANCE_FIELDS = same(API_FIELDS);
 const CANNED_FIELDS = same(["name", "body", "visibilityDefault"]);
+const LABEL_FIELDS = same(["name", "color"]);
+const labelRows = (type: "workspace_label" | "project_label") =>
+  ["created", "updated", "deleted"].map((verb) => ({
+    type,
+    action: `label.catalogue_${verb}`,
+    fields: LABEL_FIELDS,
+  }));
 /** Every action and marker the settings History panel can show (API: HISTORY_FIELDS, entityHistoryRow, producers). */
 const INVENTORY: Inventory = [
   { type: "workspace", action: "workspace.created", fields: [] },
@@ -798,11 +817,118 @@ const INVENTORY: Inventory = [
       ["archived", "archived"],
     ],
   },
+  { type: "team", action: "team.deleted", fields: [] },
+  { type: "service_calendar", action: "service_calendar.created", fields: [] },
+  { type: "service_calendar", action: "service_calendar.updated", fields: [] },
+  { type: "service_calendar", action: "service_calendar.deleted", fields: [] },
+  { type: "sla_policy", action: "sla_policy.created", fields: [] },
+  { type: "sla_policy", action: "sla_policy.updated", fields: [] },
+  { type: "sla_policy", action: "sla_policy.published", fields: [] },
+  { type: "request_type", action: "request_type.created", fields: [] },
+  { type: "request_type", action: "request_type.updated", fields: [] },
+  { type: "request_type", action: "request_type.published", fields: [] },
+  { type: "request_type", action: "request_type.unpublished", fields: [] },
+  { type: "request_type", action: "request_type.deleted", fields: [] },
+  { type: "custom_field", action: "custom_field.created", fields: [] },
+  { type: "custom_field", action: "custom_field.updated", fields: [] },
+  { type: "custom_field", action: "custom_field.deleted", fields: [] },
+  { type: "custom_field", action: "custom_field.restored", fields: [] },
+  { type: "custom_field", action: "custom_field.purged", fields: [] },
+  {
+    type: "custom_field_section",
+    action: "custom_field_section.created",
+    fields: [],
+  },
+  {
+    type: "custom_field_section",
+    action: "custom_field_section.updated",
+    fields: [],
+  },
+  {
+    type: "custom_field_section",
+    action: "custom_field_section.deleted",
+    fields: [],
+  },
+  {
+    type: "state_template",
+    action: "state_template.created",
+    fields: [
+      ["created", "created"],
+      ["enabled", "enabled"],
+    ],
+  },
+  {
+    type: "state_template",
+    action: "state_template.updated",
+    fields: [
+      ["name", "name"],
+      ["group", "group"],
+      ["enabled", "enabled"],
+    ],
+  },
   {
     type: "instance",
     action: "instance.settings_changed",
     fields: INSTANCE_FIELDS,
   },
+  { type: "webhook", action: "webhook.created", fields: [] },
+  { type: "webhook", action: "webhook.updated", fields: [] },
+  { type: "webhook", action: "webhook.deleted", fields: [] },
+  { type: "webhook", action: "webhook.secret_rotated", fields: [] },
+  { type: "webhook", action: "webhook.auto_disabled", fields: [] },
+  {
+    type: "instance_auth_methods",
+    action: "plugin.changed",
+    fields: [
+      ["agent.password", "authAgentPassword"],
+      ["agent.magicLink", "authAgentMagicLink"],
+      ["agent.emailOtp", "authAgentEmailOtp"],
+      ["customer.password", "authCustomerPassword"],
+      ["customer.magicLink", "authCustomerMagicLink"],
+      ["customer.emailOtp", "authCustomerEmailOtp"],
+    ],
+  },
+  {
+    type: "staff_self_registration",
+    action: "plugin.changed",
+    fields: [["enabled", "staffSelfRegistration"]],
+  },
+  {
+    type: "instance_job",
+    action: "job.configuration_changed",
+    fields: [
+      ["pattern", "schedule"],
+      ["enabled", "enabled"],
+    ],
+  },
+  {
+    type: "identity_connection",
+    action: "identity_connection.changed",
+    fields: [],
+  },
+  ...labelRows("workspace_label"),
+  ...labelRows("project_label"),
+  {
+    type: "state",
+    action: "state.wip_limit_changed",
+    fields: same(["wipLimit"]),
+  },
+  {
+    type: "cost_type",
+    action: "cost_type.created",
+    fields: same(["name", "unit", "currency", "billable", "hasDefaultRate"]),
+  },
+  {
+    type: "cost_type",
+    action: "cost_type.updated",
+    fields: same(["name", "unit", "currency", "billable", "archived"]),
+  },
+  {
+    type: "hourly_rate",
+    action: "hourly_rate.created",
+    fields: same(["rateSet"]),
+  },
+  { type: "budget", action: "budget.created", fields: [] },
 ];
 const actionKey = (action: string) =>
   `settings.history.actions.${action.replace(/\./g, "_")}`;
@@ -819,6 +945,7 @@ const labelSameAsEnglish = new Set<string>([
   "de-DE:settings.history.fields.name",
   "de-DE:settings.history.fields.logo",
   "de-DE:settings.history.fields.position",
+  "es-ES:settings.history.fields.color",
   "fr-FR:settings.history.fields.description",
   "fr-FR:settings.history.fields.logo",
   "fr-FR:settings.history.fields.position",
@@ -835,8 +962,8 @@ const labelSameAsEnglish = new Set<string>([
 
 describe("full History inventory has dedicated localized labels", () => {
   it("covers every action and field of the API projection", () => {
-    expect(INVENTORY_ACTIONS).toHaveLength(26);
-    expect(new Set(INVENTORY_ACTIONS.map(actionKey)).size).toBe(26);
+    expect(INVENTORY_ACTIONS).toHaveLength(64);
+    expect(new Set(INVENTORY_ACTIONS.map(actionKey)).size).toBe(64);
   });
 
   it.each(all)(

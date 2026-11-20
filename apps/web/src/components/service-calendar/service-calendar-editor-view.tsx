@@ -16,6 +16,7 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw } from "lucide-react";
+import { lazy, Suspense } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
@@ -36,6 +37,12 @@ import type {
   useServiceCalendarEditor,
 } from "@/hooks/use-service-calendar-editor";
 import { routes } from "@/lib/routes";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 type EditorState = ReturnType<typeof useServiceCalendarEditor>;
 
@@ -291,6 +298,18 @@ export function ServiceCalendarEditorView({
             ) : null}
           </aside>
         </form>
+        {!isNew && calendar ? (
+          <Suspense fallback={null}>
+            <SettingsHistory
+              target={{
+                kind: "entity",
+                type: "service_calendar",
+                id: calendar.id,
+                scope: { kind: "workspace", workspaceId: calendar.workspaceId },
+              }}
+            />
+          </Suspense>
+        ) : null}
         <AlertDialog
           open={state.timezoneConfirmationOpen}
           onOpenChange={(open) => {

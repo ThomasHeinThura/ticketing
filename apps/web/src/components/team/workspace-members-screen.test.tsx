@@ -72,6 +72,8 @@ it("uses real capability and History query behavior independently of role editin
   getHistory.mockResolvedValue({
     entityType: "workspace_member",
     entityId: "membership-row",
+    workspaceId: "w1",
+    projectId: null,
     lastChanged: null,
     rows: [],
   });

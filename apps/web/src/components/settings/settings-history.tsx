@@ -52,12 +52,34 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     position: "settings:history.fields.position",
     isDefault: "settings:history.fields.isDefault",
   },
+  // The six `portal.method` markers the API projects for the local sign-in switches.
+  instance_auth_methods: {
+    "agent.password": "settings:history.fields.authAgentPassword",
+    "agent.magicLink": "settings:history.fields.authAgentMagicLink",
+    "agent.emailOtp": "settings:history.fields.authAgentEmailOtp",
+    "customer.password": "settings:history.fields.authCustomerPassword",
+    "customer.magicLink": "settings:history.fields.authCustomerMagicLink",
+    "customer.emailOtp": "settings:history.fields.authCustomerEmailOtp",
+  },
+  staff_self_registration: {
+    enabled: "settings:history.fields.staffSelfRegistration",
+  },
+  instance_job: {
+    pattern: "settings:history.fields.schedule",
+    enabled: "settings:history.fields.enabled",
+  },
   workspace_member: { role: "settings:projectMembers.role" },
   project_membership: { role: "settings:projectMembers.role" },
   canned_response: {
     name: "settings:history.fields.name",
     body: "settings:history.fields.body",
     visibilityDefault: "settings:history.fields.visibilityDefault",
+  },
+  state_template: {
+    created: "settings:history.fields.created",
+    enabled: "settings:history.fields.enabled",
+    name: "settings:history.fields.name",
+    group: "settings:history.fields.group",
   },
   // The 18 keys the API projects for `instance.settings_changed`.
   instance: {
@@ -89,6 +111,24 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     attachmentAllowedExtensions:
       "settings:history.fields.attachmentAllowedExtensions",
   },
+  workspace_label: {
+    name: "settings:history.fields.name",
+    color: "settings:history.fields.color",
+  },
+  project_label: {
+    name: "settings:history.fields.name",
+    color: "settings:history.fields.color",
+  },
+  state: { wipLimit: "settings:history.fields.wipLimit" },
+  cost_type: {
+    name: "settings:history.fields.name",
+    unit: "settings:history.fields.unit",
+    currency: "settings:history.fields.currency",
+    billable: "settings:history.fields.billable",
+    hasDefaultRate: "settings:history.fields.hasDefaultRate",
+    archived: "settings:history.fields.archived",
+  },
+  hourly_rate: { rateSet: "settings:history.fields.rateSet" },
   time_activity: {
     name: "settings:history.fields.activity",
     archived: "settings:history.fields.archived",

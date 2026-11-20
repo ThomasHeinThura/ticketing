@@ -12,6 +12,8 @@ describe("getSettingsHistory", () => {
       json: async () => ({
         entityType: "workspace",
         entityId: "other",
+        workspaceId: null,
+        projectId: null,
         rows: [],
         lastChanged: null,
       }),
@@ -37,6 +39,8 @@ it("forwards the optional abort signal to the entity request", async () => {
     json: async () => ({
       entityType: "workspace",
       entityId: "w1",
+      workspaceId: null,
+      projectId: null,
       rows: [],
       lastChanged: null,
     }),
@@ -57,6 +61,8 @@ it("sends the explicit instance or workspace scope of a terminology cell", async
     json: async () => ({
       entityType: "terminology_override",
       entityId: id,
+      workspaceId: null,
+      projectId: null,
       rows: [],
       lastChanged: null,
     }),
@@ -86,6 +92,8 @@ it("rejects malformed history rows before rendering", async () => {
     json: async () => ({
       entityType: "workspace",
       entityId: "w1",
+      workspaceId: null,
+      projectId: null,
       lastChanged: null,
       rows: null,
     }),
@@ -108,6 +116,8 @@ it.each(["row", "lastChanged"])(
       json: async () => ({
         entityType: "workspace",
         entityId: "w1",
+        workspaceId: null,
+        projectId: null,
         rows: field === "row" ? [entry] : [],
         lastChanged: field === "lastChanged" ? { actor, at: "" } : null,
       }),

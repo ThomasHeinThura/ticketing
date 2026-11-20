@@ -5848,11 +5848,64 @@ async function installAuthenticatedFixture(page: Page) {
 
     if (
       path === "/api/audit" &&
+      (url.search === "?entity_type=instance_job&entity_id=sla-scan" ||
+        url.search ===
+          "?entity_type=instance_job&entity_id=notification-digest")
+    ) {
+      body = {
+        entityType: "instance_job",
+        entityId:
+          url.search === "?entity_type=instance_job&entity_id=sla-scan"
+            ? "sla-scan"
+            : "notification-digest",
+        workspaceId: null,
+        projectId: null,
+        lastChanged: null,
+        rows: [],
+      };
+    } else if (
+      path === "/api/audit" &&
+      (url.search ===
+        "?entity_type=state_template&entity_id=visual-backlog-template" ||
+        url.search ===
+          "?entity_type=state_template&entity_id=visual-state-template" ||
+        url.search ===
+          "?entity_type=state_template&entity_id=visual-state-approved" ||
+        url.search ===
+          "?entity_type=state_template&entity_id=visual-done-template" ||
+        url.search ===
+          "?entity_type=state_template&entity_id=visual-cancelled-template")
+    ) {
+      body = {
+        entityType: "state_template",
+        entityId:
+          url.search ===
+          "?entity_type=state_template&entity_id=visual-backlog-template"
+            ? "visual-backlog-template"
+            : url.search ===
+                "?entity_type=state_template&entity_id=visual-state-template"
+              ? "visual-state-template"
+              : url.search ===
+                  "?entity_type=state_template&entity_id=visual-state-approved"
+                ? "visual-state-approved"
+                : url.search ===
+                    "?entity_type=state_template&entity_id=visual-done-template"
+                  ? "visual-done-template"
+                  : "visual-cancelled-template",
+        workspaceId: "visual-workspace",
+        projectId: null,
+        lastChanged: null,
+        rows: [],
+      };
+    } else if (
+      path === "/api/audit" &&
       url.search === "?entity_type=workspace&entity_id=visual-workspace"
     ) {
       body = {
         entityType: "workspace",
         entityId: "visual-workspace",
+        workspaceId: "visual-workspace",
+        projectId: null,
         lastChanged: {
           actor: { kind: "person", name: "Visual Tester" },
           at: "2026-01-01T12:00:00.000Z",
@@ -5871,6 +5924,8 @@ async function installAuthenticatedFixture(page: Page) {
             ? "project"
             : "project_estimates",
         entityId: "visual-project",
+        workspaceId: "visual-workspace",
+        projectId: "visual-project",
         lastChanged: {
           actor: { kind: "person", name: "Visual Tester" },
           at: "2026-01-01T12:00:00.000Z",
@@ -8028,6 +8083,10 @@ test("workspace settings states screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Northstar Support", { exact: true }),
   ).toBeVisible();
+  await expect(
+    // Fifth state row's History read finished (no skeleton left in the shot).
+    page.locator(':nth-match(:text-is("No recorded changes yet."), 5)'),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("workspace-settings-states.png", {
     animations: "disabled",
     caret: "hide",
@@ -9468,6 +9527,9 @@ test("god mode jobs screen @visual", async ({ page }) => {
     page.getByRole("heading", { name: "Background jobs", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("sla-scan", { exact: true })).toBeVisible();
+  await expect(
+    page.locator(':nth-match(:text-is("No recorded changes yet."), 2)'),
+  ).toBeVisible();
   await expect(
     page.getByText(
       "This job is available only through its dedicated elevated operation.",

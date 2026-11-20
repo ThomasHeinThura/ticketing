@@ -2479,7 +2479,61 @@
 								"visibilityDefault": {
 									"type": "string"
 								},
+								"authAgentPassword": {
+									"type": "string"
+								},
+								"authAgentMagicLink": {
+									"type": "string"
+								},
+								"authAgentEmailOtp": {
+									"type": "string"
+								},
+								"authCustomerPassword": {
+									"type": "string"
+								},
+								"authCustomerMagicLink": {
+									"type": "string"
+								},
+								"authCustomerEmailOtp": {
+									"type": "string"
+								},
+								"staffSelfRegistration": {
+									"type": "string"
+								},
+								"enabled": {
+									"type": "string"
+								},
+								"schedule": {
+									"type": "string"
+								},
 								"unknown": {
+									"type": "string"
+								},
+								"group": {
+									"type": "string"
+								},
+								"created": {
+									"type": "string"
+								},
+								"color": {
+									"type": "string"
+								},
+								"wipLimit": {
+									"type": "string"
+								},
+								"unit": {
+									"type": "string"
+								},
+								"currency": {
+									"type": "string"
+								},
+								"billable": {
+									"type": "string"
+								},
+								"hasDefaultRate": {
+									"type": "string"
+								},
+								"rateSet": {
 									"type": "string"
 								}
 							},
@@ -2531,7 +2585,25 @@
 								"attachmentAllowedExtensions",
 								"body",
 								"visibilityDefault",
-								"unknown"
+								"authAgentPassword",
+								"authAgentMagicLink",
+								"authAgentEmailOtp",
+								"authCustomerPassword",
+								"authCustomerMagicLink",
+								"authCustomerEmailOtp",
+								"staffSelfRegistration",
+								"enabled",
+								"schedule",
+								"unknown",
+								"group",
+								"created",
+								"color",
+								"wipLimit",
+								"unit",
+								"currency",
+								"billable",
+								"hasDefaultRate",
+								"rateSet"
 							]
 						},
 						"actions": {
@@ -2646,7 +2718,118 @@
 								"instance_settings_changed": {
 									"type": "string"
 								},
+								"webhook_created": {
+									"type": "string"
+								},
+								"webhook_updated": {
+									"type": "string"
+								},
+								"webhook_deleted": {
+									"type": "string"
+								},
+								"webhook_secret_rotated": {
+									"type": "string"
+								},
+								"webhook_auto_disabled": {
+									"type": "string"
+								},
+								"job_configuration_changed": {
+									"type": "string"
+								},
+								"identity_connection_changed": {
+									"type": "string"
+								},
 								"unknown": {
+									"type": "string"
+								},
+								"team_deleted": {
+									"type": "string"
+								},
+								"service_calendar_created": {
+									"type": "string"
+								},
+								"service_calendar_updated": {
+									"type": "string"
+								},
+								"service_calendar_deleted": {
+									"type": "string"
+								},
+								"sla_policy_created": {
+									"type": "string"
+								},
+								"sla_policy_updated": {
+									"type": "string"
+								},
+								"sla_policy_published": {
+									"type": "string"
+								},
+								"request_type_created": {
+									"type": "string"
+								},
+								"request_type_updated": {
+									"type": "string"
+								},
+								"request_type_published": {
+									"type": "string"
+								},
+								"request_type_unpublished": {
+									"type": "string"
+								},
+								"request_type_deleted": {
+									"type": "string"
+								},
+								"custom_field_created": {
+									"type": "string"
+								},
+								"custom_field_updated": {
+									"type": "string"
+								},
+								"custom_field_deleted": {
+									"type": "string"
+								},
+								"custom_field_restored": {
+									"type": "string"
+								},
+								"custom_field_purged": {
+									"type": "string"
+								},
+								"custom_field_section_created": {
+									"type": "string"
+								},
+								"custom_field_section_updated": {
+									"type": "string"
+								},
+								"custom_field_section_deleted": {
+									"type": "string"
+								},
+								"state_template_created": {
+									"type": "string"
+								},
+								"state_template_updated": {
+									"type": "string"
+								},
+								"label_catalogue_created": {
+									"type": "string"
+								},
+								"label_catalogue_updated": {
+									"type": "string"
+								},
+								"label_catalogue_deleted": {
+									"type": "string"
+								},
+								"cost_type_created": {
+									"type": "string"
+								},
+								"cost_type_updated": {
+									"type": "string"
+								},
+								"hourly_rate_created": {
+									"type": "string"
+								},
+								"budget_created": {
+									"type": "string"
+								},
+								"state_wip_limit_changed": {
 									"type": "string"
 								}
 							},
@@ -2687,8 +2870,48 @@
 								"bulk_performed",
 								"kb_settings_changed",
 								"instance_settings_changed",
-								"unknown"
+								"webhook_created",
+								"webhook_updated",
+								"webhook_deleted",
+								"webhook_secret_rotated",
+								"webhook_auto_disabled",
+								"job_configuration_changed",
+								"identity_connection_changed",
+								"unknown",
+								"team_deleted",
+								"service_calendar_created",
+								"service_calendar_updated",
+								"service_calendar_deleted",
+								"sla_policy_created",
+								"sla_policy_updated",
+								"sla_policy_published",
+								"request_type_created",
+								"request_type_updated",
+								"request_type_published",
+								"request_type_unpublished",
+								"request_type_deleted",
+								"custom_field_created",
+								"custom_field_updated",
+								"custom_field_deleted",
+								"custom_field_restored",
+								"custom_field_purged",
+								"custom_field_section_created",
+								"custom_field_section_updated",
+								"custom_field_section_deleted",
+								"state_template_created",
+								"state_template_updated",
+								"label_catalogue_created",
+								"label_catalogue_updated",
+								"label_catalogue_deleted",
+								"cost_type_created",
+								"cost_type_updated",
+								"hourly_rate_created",
+								"budget_created",
+								"state_wip_limit_changed"
 							]
+						},
+						"entityLabel": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -2716,7 +2939,8 @@
 						"automation",
 						"system",
 						"fields",
-						"actions"
+						"actions",
+						"entityLabel"
 					]
 				},
 				"account": {

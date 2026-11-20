@@ -27,6 +27,17 @@ vi.mock("react-i18next", () => ({
     },
   }),
 }));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({
+    target,
+  }: {
+    target: { type: string; id: string; scope: { kind: string } };
+  }) => (
+    <div data-testid="history-target">
+      {`${target.type}:${target.id}:${target.scope.kind}`}
+    </div>
+  ),
+}));
 vi.mock("@/lib/format", () => ({
   formatDateTime: (value: string) => value,
 }));
@@ -109,6 +120,11 @@ describe("InstanceJobsPanel", () => {
     expect(screen.getByText("secrets-rekey")).toBeInTheDocument();
     expect(screen.getByText("elevatedOperationOnly")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "runNow" })).toHaveLength(1);
+    // Only the configurable job has a History target.
+    expect(await screen.findAllByTestId("history-target")).toHaveLength(1);
+    expect(
+      screen.getByText("instance_job:outbox-drain:instance"),
+    ).toBeInTheDocument();
   });
 
   it("queues only the selected registered manual job", async () => {

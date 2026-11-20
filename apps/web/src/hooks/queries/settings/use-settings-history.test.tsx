@@ -13,8 +13,6 @@ import type { HistoryTarget } from "@/query-client/settings-history-key";
 import { useSettingsHistory } from "./use-settings-history";
 
 const read = vi.hoisted(() => vi.fn());
-const projectRead = vi.hoisted(() => vi.fn());
-vi.mock("@/fetchers/project/get-project", () => ({ default: projectRead }));
 const session = vi.hoisted(() => ({
   user: "u1",
   id: "s1",
@@ -42,6 +40,8 @@ const workspace = (id: string): HistoryTarget => ({
 const view = (id: string, count = 1) => ({
   entityType: "workspace",
   entityId: id,
+  workspaceId: id,
+  projectId: null,
   lastChanged: null,
   rows: Array.from({ length: count }, () => ({
     at: "2026-01-01T00:00:00Z",
@@ -319,6 +319,8 @@ describe("class 4: a remount is guarded by a fresh read", () => {
     const client = productionClient();
     read.mockImplementation(async (_type, id, _signal, selector) => ({
       ...view(id, selector?.scope === "workspace" ? 2 : 1),
+      workspaceId:
+        selector?.scope === "workspace" ? selector.workspaceId : null,
     }));
     const terminology = (scope: "instance" | "workspace"): HistoryTarget => ({
       kind: "entity",
@@ -463,16 +465,40 @@ it("uses the mutation's original metadata after its observer changes options", a
   expect(read.mock.calls[2]?.[1]).toBe("w1");
 });
 
-it("rejects a project in a different workspace before reading history", async () => {
-  projectRead.mockResolvedValue({ id: "p1", workspaceId: "w1" });
+it.each(["workspaceId", "projectId", "entityId", "entityType"])(
+  "rejects mismatched history %s",
+  async (field) => {
+    read.mockResolvedValue({
+      ...view("r1"),
+      entityType: "hourly_rate",
+      workspaceId: "w1",
+      projectId: "p1",
+      [field]: "other",
+    });
+    mountProbe(productionClient(), {
+      kind: "entity",
+      type: "hourly_rate",
+      id: "r1",
+      scope: { kind: "project", workspaceId: "w1", projectId: "p1" },
+    });
+    await waitFor(() => expect(status()).toBe("hidden"));
+  },
+);
+
+it("admits rate history without reading the project", async () => {
+  read.mockResolvedValue({
+    ...view("r1"),
+    entityType: "hourly_rate",
+    workspaceId: "w1",
+    projectId: "p1",
+  });
   mountProbe(productionClient(), {
     kind: "entity",
-    type: "project_membership",
-    id: "m1",
-    scope: { kind: "project", workspaceId: "w2", projectId: "p1" },
+    type: "hourly_rate",
+    id: "r1",
+    scope: { kind: "project", workspaceId: "w1", projectId: "p1" },
   });
-  await waitFor(() => expect(status()).toBe("hidden"));
-  expect(read).not.toHaveBeenCalled();
+  await waitFor(() => expect(status()).toBe("ready:1"));
 });
 
 it("admits an observer joining an already-running shared read", async () => {

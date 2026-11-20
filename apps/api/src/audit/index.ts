@@ -245,6 +245,8 @@ const audit = apiRouter<
       {
         entityType: result.entityType,
         entityId: result.entityId,
+        workspaceId: result.workspaceId,
+        projectId: result.projectId,
         lastChanged: latest ? { actor: latest.actor, at: latest.at } : null,
         rows: result.rows,
       },

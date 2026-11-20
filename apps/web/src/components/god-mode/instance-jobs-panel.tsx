@@ -23,7 +23,7 @@ import {
   TableRow,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   type InstanceJob,
@@ -34,6 +34,12 @@ import {
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
 import { auditEntity } from "@/query-client/audit-invalidation";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 function runVariant(state: string) {
   if (state === "succeeded") return "success" as const;
@@ -285,6 +291,18 @@ function JobCard({
             </TableBody>
           </Table>
         </Frame>
+        {canConfigure ? (
+          <Suspense fallback={null}>
+            <SettingsHistory
+              target={{
+                kind: "entity",
+                type: "instance_job",
+                id: job.name,
+                scope: { kind: "instance" },
+              }}
+            />
+          </Suspense>
+        ) : null}
         {job.manualRunAllowed && (
           <Button
             size="sm"

@@ -39,6 +39,8 @@ type Row = {
 type History = {
   entityType: string;
   entityId: string;
+  workspaceId: string | null;
+  projectId: string | null;
   lastChanged: { actor: Row["actor"]; at: string } | null;
   rows: Row[];
 };
@@ -155,10 +157,14 @@ test("canned response history records persisted snippet changes", async ({
           "entityId",
           "entityType",
           "lastChanged",
+          "projectId",
           "rows",
+          "workspaceId",
         ]);
         expect(afterCreate.entityType).toBe("canned_response");
         expect(afterCreate.entityId).toBe(snippetId);
+        expect(afterCreate.workspaceId).toBe(workspaceId);
+        expect(afterCreate.projectId).toBeNull();
         expect(afterCreate.rows).toHaveLength(1);
         const createdRow = afterCreate.rows[0];
         if (!createdRow) throw new Error("Snippet created row missing");
