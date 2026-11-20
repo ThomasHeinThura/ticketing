@@ -190,6 +190,18 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+describe("project icon control", () => {
+  it("draws the saved icon and a localized label, never the raw identifier", () => {
+    mocks.project = { ...mocks.project, icon: "Headset" } as Project;
+    renderPage();
+    const trigger = screen.getByRole("button", {
+      name: "settings:projectGeneral.pickIconTitle",
+    });
+    expect(trigger.querySelector("svg.lucide-headset")).not.toBeNull();
+    expect(trigger).not.toHaveTextContent("Headset");
+  });
+});
+
 describe("project General settings load the project itself", () => {
   it("hides editing when project update is not permitted", () => {
     mocks.canUpdate = false;

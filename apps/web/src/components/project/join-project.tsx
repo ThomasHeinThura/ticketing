@@ -23,7 +23,7 @@ export function JoinProject({
   });
   if (mutation.isSuccess) return null;
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex flex-wrap items-center gap-2">
       <span className="text-muted-foreground text-xs">
         {t("projects.notMember")}
       </span>

@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   guard: vi.fn(),
   history: vi.fn(),
   historyRows: 0,
+  empty: false,
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 vi.mock("@tanstack/react-router", () => ({
@@ -66,14 +67,17 @@ vi.mock("@/lib/auth-client", () => ({
   authClient: { useSession: () => ({ data: mocks.session }) },
 }));
 vi.mock("@/fetchers/canned-response/manage-canned-responses", () => ({
-  getCannedResponseLibrary: async () => [
-    {
-      id: "c1",
-      name: "Greeting",
-      body: { type: "doc", content: [] },
-      visibilityDefault: "public",
-    },
-  ],
+  getCannedResponseLibrary: async () =>
+    mocks.empty
+      ? []
+      : [
+          {
+            id: "c1",
+            name: "Greeting",
+            body: { type: "doc", content: [] },
+            visibilityDefault: "public",
+          },
+        ],
   saveCannedResponse: mocks.save,
   removeCannedResponse: mocks.remove,
 }));
@@ -103,6 +107,7 @@ function mount() {
 beforeEach(() => {
   mocks.search = {};
   mocks.historyRows = 0;
+  mocks.empty = false;
   mocks.session = { user: { id: "u1" }, session: { id: "s1" } };
   for (const fn of [
     mocks.save,
@@ -243,5 +248,31 @@ describe("canned responses history", () => {
     );
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.toast.success).not.toHaveBeenCalled();
+  });
+
+  it("offers a create action when the library is empty and no search is entered", async () => {
+    mocks.empty = true;
+    mount();
+    expect(
+      await screen.findByText("settings:cannedResponses.emptyLibrary"),
+    ).toBeVisible();
+    expect(screen.queryByText("settings:cannedResponses.empty")).toBeNull();
+    // The page header's button and the empty state's own button.
+    expect(
+      screen.getAllByRole("button", {
+        name: "settings:cannedResponses.create",
+      }).length,
+    ).toBe(2);
+  });
+
+  it("keeps the no-match copy for a search that finds nothing", async () => {
+    mocks.search = { q: "zzz" };
+    mount();
+    expect(
+      await screen.findByText("settings:cannedResponses.empty"),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("settings:cannedResponses.emptyLibrary"),
+    ).toBeNull();
   });
 });

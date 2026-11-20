@@ -11,6 +11,7 @@ import {
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
+import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AnnouncementSeverityBadge } from "@/components/announcements/announcement-severity-badge";
 import { PortalPageTitle } from "@/components/portal/portal-page-title";
@@ -42,6 +43,7 @@ export function PortalAnnouncementDetail({
       className="w-fit"
       render={<Link to={routes.portalAnnouncements.path} />}
     >
+      <ArrowLeft aria-hidden="true" />
       {t("portal:announcements.backToList")}
     </Button>
   );

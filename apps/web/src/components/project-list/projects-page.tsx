@@ -521,7 +521,7 @@ export default function ProjectsPage({
                   variant="outline"
                   size="xs"
                   onClick={handleCreateProject}
-                  className="gap-1"
+                  className="hidden gap-1 sm:inline-flex"
                 >
                   <Plus className="w-3 h-3" />
                   {t("workspace:projects.createProject")}
@@ -595,7 +595,7 @@ export default function ProjectsPage({
                 variant="outline"
                 size="xs"
                 onClick={handleCreateProject}
-                className="gap-1"
+                className="hidden gap-1 sm:inline-flex"
               >
                 <Plus className="w-3 h-3" />
                 {t("workspace:projects.createProject")}
@@ -604,8 +604,19 @@ export default function ProjectsPage({
           </div>
         }
       >
-        <div className="flex items-center gap-2 px-4 py-2 lg:hidden">
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2 lg:hidden">
           {renderKindSelect("project-kind-filter-mobile", "w-full sm:w-auto")}
+          {canCreate && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 sm:hidden"
+              onClick={handleCreateProject}
+            >
+              <Plus className="w-3 h-3" />
+              {t("workspace:projects.createProject")}
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -651,6 +662,7 @@ export default function ProjectsPage({
             <Table
               data-testid="g13-projects-content"
               scrollLabel={t("workspace:projects.pageTitle")}
+              className="max-sm:mx-4 max-sm:w-[calc(100%-2rem)]"
             >
               <TableHeader className="p-4">
                 <TableRow>
@@ -703,7 +715,7 @@ export default function ProjectsPage({
                         onClick={() => handleProjectClick(project.slug)}
                       >
                         <TableCell className="py-3">
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-3">
                             <IconComponent className="w-5 h-5 text-muted-foreground" />
                             <Link
                               to="/agent/projects/$projectKey"

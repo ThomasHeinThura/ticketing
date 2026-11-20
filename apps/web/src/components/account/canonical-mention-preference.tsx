@@ -135,7 +135,7 @@ export function CanonicalMentionPreference() {
         }
       >
         <Card>
-          <CardHeader>
+          <CardHeader className="p-4">
             <CardTitle>{t("mention.title")}</CardTitle>
             <CardDescription>{t("mention.description")}</CardDescription>
           </CardHeader>
@@ -198,7 +198,7 @@ export function CanonicalMentionPreference() {
         }
       >
         <Card>
-          <CardHeader>
+          <CardHeader className="p-4">
             <CardTitle>{t("teamNotification.title")}</CardTitle>
             <CardDescription>
               {t("teamNotification.description")}
@@ -243,7 +243,7 @@ export function CanonicalMentionPreference() {
         }
       >
         <Card>
-          <CardHeader>
+          <CardHeader className="p-4">
             <CardTitle>{t("comment.title")}</CardTitle>
             <CardDescription>{t("comment.description")}</CardDescription>
           </CardHeader>

@@ -48,9 +48,11 @@ function RouteComponent() {
     return <NoAccessPage />;
   if (!checking && isForbiddenError(budget.error)) return <NoAccessPage />;
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto space-y-6">
       <PageTitle title={t("timeTracking:budget.title")} />
-      <h1 className="sr-only">{t("timeTracking:budget.title")}</h1>
+      <h1 className="text-2xl font-semibold">
+        {t("timeTracking:budget.title")}
+      </h1>
       {failed ? (
         <SettingsAccessError />
       ) : checking ||

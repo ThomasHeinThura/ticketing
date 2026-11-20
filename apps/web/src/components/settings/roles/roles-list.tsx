@@ -8,7 +8,6 @@ import {
   Card,
   CardAction,
   CardDescription,
-  CardFrame,
   CardHeader,
   CardTitle,
   Empty,
@@ -88,7 +87,7 @@ export function RolesList() {
             </AlertDescription>
           </Alert>
         ) : roles.data?.length ? (
-          <CardFrame>
+          <div className="flex flex-col gap-2">
             {roles.data.map((role) => (
               <Card key={role.id} className="@container">
                 <CardHeader>
@@ -127,7 +126,7 @@ export function RolesList() {
                 </CardHeader>
               </Card>
             ))}
-          </CardFrame>
+          </div>
         ) : (
           <Empty>
             <EmptyHeader>

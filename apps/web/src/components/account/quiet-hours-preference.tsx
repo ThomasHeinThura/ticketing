@@ -54,7 +54,7 @@ export function QuietHoursPreference() {
   const quietHours = preferences.data?.quietHours ?? null;
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-4">
         <CardTitle>{t("quietHours.title")}</CardTitle>
         <CardDescription>{t("quietHours.description")}</CardDescription>
       </CardHeader>

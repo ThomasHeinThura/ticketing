@@ -461,7 +461,7 @@
 		"accountSecurity": {
 			"codeError": "The authenticator code was not accepted. Check the current code and retry.",
 			"codeLabel": "Enter the six-digit code",
-			"description": "Manage your authenticator factor and backup codes.",
+			"description": "管理您的密码、登录方式和身份验证器因素。",
 			"enabled": "Authenticator factor enabled",
 			"enabledDescription": "Sign-ins require an authenticator or an unused backup code.",
 			"enrollmentDisabled": "Local factor enrollment is disabled by instance policy.",
@@ -1771,7 +1771,9 @@
 			"title": "Canned responses",
 			"visibility": "默认可见性",
 			"save": "Save",
-			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
+			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending.",
+			"emptyLibrary": "还没有预设回复",
+			"emptyLibraryDescription": "创建可重复使用的回复，供客服在评论中插入。"
 		},
 		"projectLabels": {
 			"subtitle": "Create, edit, and delete labels for this {{term_project_one}}.",
@@ -4118,7 +4120,9 @@
 				"description": "{{ref}} will be closed and the team will not work on it. You cannot undo this; to continue later, submit a new {{term_request_one}}.",
 				"done": "{{ref}} was withdrawn.",
 				"pending": "Withdrawing…"
-			}
+			},
+			"typeNotFoundTitle": "此表单不可用。",
+			"typeNotFoundDescription": "链接可能已过期，或者您没有访问权限。"
 		},
 		"orientation": {
 			"body": "Raise a new {{term_request_one}} from the {{term_request_one}} catalogue. You can follow its progress, reply to our team and see what is due under My {{term_request_other}}.",

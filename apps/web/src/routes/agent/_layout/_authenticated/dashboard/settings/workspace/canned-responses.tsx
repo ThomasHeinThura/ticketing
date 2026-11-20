@@ -13,7 +13,6 @@ import {
   Card,
   CardAction,
   CardDescription,
-  CardFrame,
   CardHeader,
   CardTitle,
   Dialog,
@@ -24,6 +23,7 @@ import {
   DialogPanel,
   DialogTitle,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -402,14 +402,32 @@ function CannedResponsesPageContent() {
             {filtered.length === 0 ? (
               <Empty>
                 <EmptyHeader>
-                  <EmptyTitle>{t("settings:cannedResponses.empty")}</EmptyTitle>
+                  <EmptyTitle>
+                    {search.q
+                      ? t("settings:cannedResponses.empty")
+                      : t("settings:cannedResponses.emptyLibrary")}
+                  </EmptyTitle>
                   <EmptyDescription>
-                    {t("settings:cannedResponses.emptyDescription")}
+                    {search.q
+                      ? t("settings:cannedResponses.emptyDescription")
+                      : t("settings:cannedResponses.emptyLibraryDescription")}
                   </EmptyDescription>
                 </EmptyHeader>
+                {search.q ? null : (
+                  <EmptyContent>
+                    <Button
+                      onClick={() =>
+                        open({ ...search, id: "new", action: undefined })
+                      }
+                    >
+                      <Plus aria-hidden="true" />
+                      {t("settings:cannedResponses.create")}
+                    </Button>
+                  </EmptyContent>
+                )}
               </Empty>
             ) : (
-              <CardFrame>
+              <div className="flex flex-col gap-2">
                 {filtered.map((row) => (
                   <Card key={row.id}>
                     <CardHeader>
@@ -455,7 +473,7 @@ function CannedResponsesPageContent() {
                     </CardHeader>
                   </Card>
                 ))}
-              </CardFrame>
+              </div>
             )}
             {search.id && search.id !== "new" && !selected ? (
               <Alert>
