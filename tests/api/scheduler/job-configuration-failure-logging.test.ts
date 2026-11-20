@@ -276,6 +276,51 @@ describe("job configuration refresh failure logging", () => {
     expect(catalogEntry("automation-schedule")?.enabled).toBe(false);
   });
 
+  it("runs an enabled job once per tick after overlapping refreshes and never after shutdown", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-20T00:00:00Z"));
+    const name = "automation-schedule";
+    const pattern = "* * * * *";
+    const executions = () =>
+      h.runScheduledJobWithHistory.mock.calls.filter(([job]) => job === name)
+        .length;
+    h.runScheduledJobWithHistory.mockReset().mockResolvedValue(undefined);
+    h.readJobConfigurations.mockResolvedValue(
+      configFor(name, pattern, true, 1),
+    );
+
+    try {
+      initializeScheduler();
+      await refreshRegisteredJobConfiguration();
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(executions()).toBe(1);
+
+      const older = deferred();
+      const newer = deferred();
+      h.readJobConfigurations
+        .mockImplementationOnce(() => older.promise)
+        .mockImplementationOnce(() => newer.promise)
+        .mockResolvedValue(configFor(name, pattern, true, 3));
+      const first = refreshRegisteredJobConfiguration();
+      const second = refreshRegisteredJobConfiguration();
+      older.resolve(configFor(name, pattern, true, 2));
+      await first;
+      newer.resolve(configFor(name, pattern, true, 3));
+      await second;
+
+      for (let count = 2; count <= 4; count++) {
+        await vi.advanceTimersByTimeAsync(60_000);
+        expect(executions()).toBe(count);
+      }
+      await shutdownScheduler();
+      await vi.advanceTimersByTimeAsync(120_000);
+      expect(executions()).toBe(4);
+    } finally {
+      await shutdownScheduler();
+      vi.useRealTimers();
+    }
+  });
+
   it("makes progress while one read outlasts several polls: one follow-up read, then the newest wins", async () => {
     const slow = deferred();
     h.readJobConfigurations
