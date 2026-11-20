@@ -23,6 +23,7 @@ const sesConfig = {
   replyTo: null,
 };
 const mocks = vi.hoisted(() => ({
+  cache: null as null | import("@tanstack/react-query").MutationCache,
   save: vi.fn(),
   audited: vi.fn(),
   id: null as string | null,
@@ -229,76 +230,78 @@ vi.mock("@/fetchers/god-mode/notification-provider", () => ({
     mocks.save(value, token),
   sendEmailProviderTest: (value: unknown) => mocks.verify(value),
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: ({ queryKey }: { queryKey: string[] }) =>
-    queryKey[0] === "god-mode"
-      ? {
-          isPending: false,
-          isError: false,
-          data: {
-            plugins: [
-              {
-                id: "notify.email",
-                settingsForm: mocks.settingsForm,
-              },
-            ],
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  const client = new actual.QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+    mutationCache: new actual.MutationCache({
+      onSuccess: (data, variables, _context, mutation) => {
+        if (mutation.meta?.audits)
+          mocks.audited(
+            mutation.meta.audits.targets(variables as never, data as never),
+          );
+      },
+    }),
+  });
+  mocks.cache = client.getMutationCache();
+  return {
+    useQuery: ({ queryKey }: { queryKey: string[] }) =>
+      queryKey[0] === "god-mode"
+        ? {
+            isPending: false,
+            isError: false,
+            data: {
+              plugins: [
+                {
+                  id: "notify.email",
+                  settingsForm: mocks.settingsForm,
+                },
+              ],
+            },
+            refetch: vi.fn(),
+          }
+        : {
+            isPending: false,
+            isError: mocks.sourceError,
+            data: {
+              id: mocks.id,
+              version: mocks.version,
+              source: "runtime",
+              localMailpitCaptureAvailable: mocks.localMailpitCaptureAvailable,
+              enabled: !mocks.unconfigured,
+              passwordConfigured: true,
+              passwordPreview: "••••••••",
+              testStatus: mocks.testStatus,
+              sesRegions,
+              config: mocks.unconfigured
+                ? null
+                : (mocks.savedConfig ?? {
+                    host: "smtp.example.com",
+                    port: 587,
+                    secure: false,
+                    requireTLS: true,
+                    username: "service",
+                    fromAddress: "service@example.com",
+                    replyTo: null,
+                    captureToMailpit: mocks.persistedCaptureSelected,
+                  }),
+            },
+            refetch: vi.fn(),
           },
-          refetch: vi.fn(),
-        }
-      : {
-          isPending: false,
-          isError: mocks.sourceError,
-          data: {
-            id: mocks.id,
-            version: mocks.version,
-            source: "runtime",
-            localMailpitCaptureAvailable: mocks.localMailpitCaptureAvailable,
-            enabled: !mocks.unconfigured,
-            passwordConfigured: true,
-            passwordPreview: "••••••••",
-            testStatus: mocks.testStatus,
-            sesRegions,
-            config: mocks.unconfigured
-              ? null
-              : (mocks.savedConfig ?? {
-                  host: "smtp.example.com",
-                  port: 587,
-                  secure: false,
-                  requireTLS: true,
-                  username: "service",
-                  fromAddress: "service@example.com",
-                  replyTo: null,
-                  captureToMailpit: mocks.persistedCaptureSelected,
-                }),
-          },
-          refetch: vi.fn(),
-        },
-  useQueryClient: () => ({
-    invalidateQueries: mocks.invalidate,
-    setQueryData: mocks.setData,
-  }),
-  useMutation: ({
-    mutationFn,
-    meta,
-  }: {
-    mutationFn: (value: unknown) => Promise<unknown>;
-    meta?: {
-      audits: { targets: (variables: unknown, result: unknown) => unknown };
-    };
-  }) => ({
-    isPending: false,
-    mutateAsync: async (variables: unknown) => {
-      const result = await mutationFn(variables);
-      if (meta) mocks.audited(meta.audits.targets(variables, result));
-      return result;
-    },
-  }),
-}));
+    useQueryClient: () => ({
+      invalidateQueries: mocks.invalidate,
+      setQueryData: mocks.setData,
+    }),
+    useMutation: (options: Parameters<typeof actual.useMutation>[0]) =>
+      actual.useMutation(options, client),
+  };
+});
 
 import { NotificationProviderEditor } from "./notification-provider-editor";
 
 afterEach(cleanup);
 beforeEach(() => {
+  mocks.cache?.clear();
   mocks.id = null;
   mocks.sourceError = false;
   mocks.session = { user: { id: "user-1" }, session: { id: "session-1" } };
@@ -327,6 +330,31 @@ beforeEach(() => {
   mocks.invalidate.mockReset().mockResolvedValue(undefined);
 });
 describe("runtime email configuration", () => {
+  it("does not cache the test password when the request is rejected", async () => {
+    mocks.verify.mockRejectedValueOnce(new Error("failed"));
+    render(<NotificationProviderEditor />);
+    fireEvent.change(screen.getByLabelText("password"), {
+      target: { value: "synthetic-test-secret" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "testSend.button" }));
+    await waitFor(() =>
+      expect(screen.getByText("operationFailed")).toBeInTheDocument(),
+    );
+    expect(mocks.verify).toHaveBeenCalledWith(
+      expect.objectContaining({ password: "synthetic-test-secret" }),
+    );
+    const mutations = mocks.cache?.getAll() ?? [];
+    expect(mutations).toHaveLength(1);
+    expect(
+      JSON.stringify(
+        mutations.map((mutation) => ({
+          state: mutation.state,
+          meta: mutation.meta,
+        })),
+      ),
+    ).not.toContain("synthetic-test-secret");
+  });
+
   it("keeps the existing secret when the password field is untouched", async () => {
     render(<NotificationProviderEditor />);
     expect(screen.getByLabelText("password")).toHaveValue("");

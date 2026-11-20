@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import {
   getInstanceUser,
   getInstanceUsers,
@@ -41,8 +42,26 @@ export function useInstanceUserActions() {
     ]);
   };
 
+  const pending = useRef<unknown>(null);
+  async function submit<T extends { id: string }, R>(
+    input: T,
+    run: (safe: { id: string }) => Promise<R>,
+  ) {
+    if (pending.current) throw new Error("User action already pending");
+    pending.current = input;
+    try {
+      return await run({ id: input.id });
+    } finally {
+      pending.current = null;
+    }
+  }
+  function request<T>(): T {
+    if (!pending.current) throw new Error("No user action pending");
+    return pending.current as T;
+  }
   const suspend = useMutation({
-    mutationFn: suspendInstanceUser,
+    mutationFn: (_safe: { id: string }) =>
+      suspendInstanceUser(request<Parameters<typeof suspendInstanceUser>[0]>()),
     onSuccess: (_result, input) => refresh(input.id),
   });
   const unsuspend = useMutation({
@@ -58,27 +77,51 @@ export function useInstanceUserActions() {
     onSuccess: (_result, id) => refresh(id),
   });
   const grantAdmin = useMutation({
-    mutationFn: grantInstanceAdmin,
+    mutationFn: (_safe: { id: string }) =>
+      grantInstanceAdmin(request<Parameters<typeof grantInstanceAdmin>[0]>()),
     onSuccess: (_result, input) => refresh(input.id),
   });
   const resetMfa = useMutation({
-    mutationFn: resetInstanceUserMfa,
+    mutationFn: (_safe: { id: string }) =>
+      resetInstanceUserMfa(
+        request<Parameters<typeof resetInstanceUserMfa>[0]>(),
+      ),
     onSuccess: (_result, input) => refresh(input.id),
   });
 
   // The session cookie changes on success, so the caller reloads the app instead of refreshing
   // cached queries.
   const impersonate = useMutation({
-    mutationFn: startInstanceUserImpersonation,
+    mutationFn: (_safe: { id: string }) =>
+      startInstanceUserImpersonation(
+        request<Parameters<typeof startInstanceUserImpersonation>[0]>(),
+      ),
   });
 
   return {
-    suspend,
+    suspend: {
+      ...suspend,
+      mutateAsync: (input: Parameters<typeof suspendInstanceUser>[0]) =>
+        submit(input, suspend.mutateAsync),
+    },
     unsuspend,
     signOut,
     deactivate,
-    grantAdmin,
-    resetMfa,
-    impersonate,
+    grantAdmin: {
+      ...grantAdmin,
+      mutateAsync: (input: Parameters<typeof grantInstanceAdmin>[0]) =>
+        submit(input, grantAdmin.mutateAsync),
+    },
+    resetMfa: {
+      ...resetMfa,
+      mutateAsync: (input: Parameters<typeof resetInstanceUserMfa>[0]) =>
+        submit(input, resetMfa.mutateAsync),
+    },
+    impersonate: {
+      ...impersonate,
+      mutateAsync: (
+        input: Parameters<typeof startInstanceUserImpersonation>[0],
+      ) => submit(input, impersonate.mutateAsync),
+    },
   };
 }

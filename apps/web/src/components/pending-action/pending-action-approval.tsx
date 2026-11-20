@@ -23,7 +23,7 @@ import {
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { parseAttachmentDeletionSummary } from "@/components/pending-action/attachment-deletion-summary";
@@ -309,8 +309,14 @@ export function PendingActionApproval({
       setSecret("");
     }
   }, [factor.data]);
+  const pendingApproval = useRef<
+    Parameters<typeof approveOwnPendingAction>[0] | null
+  >(null);
   const approve = useMutation({
-    mutationFn: approveOwnPendingAction,
+    mutationFn: () => {
+      if (!pendingApproval.current) throw new Error("No approval pending");
+      return approveOwnPendingAction(pendingApproval.current);
+    },
     meta: {
       audits: {
         // An executed key deletion changes that key's History; `action.data` is what was approved.
@@ -717,19 +723,19 @@ export function PendingActionApproval({
       !isImportRun
     )
       return;
+    if (pendingApproval.current) return;
     const capturedIntent = actionLifecycle.capture();
     const isCurrentIntent = () => actionLifecycle.isCurrent(capturedIntent);
     setError(null);
     try {
-      let approved: unknown;
       if (needsStepUp) {
         const stepUpToken = await createPendingActionProof({
           pendingActionId: id,
           method: effectiveMethod,
           secret,
         });
-        if (!isCurrentIntent()) return;
-        approved = await approve.mutateAsync({
+        if (!isCurrentIntent() || pendingApproval.current) return;
+        pendingApproval.current = {
           id,
           ...(isDeactivationContract ||
           isRegisteredTypedName ||
@@ -737,17 +743,20 @@ export function PendingActionApproval({
             ? { typedName }
             : { typedCount }),
           stepUpToken,
-        });
+        };
       } else {
-        approved = await approve.mutateAsync({
+        pendingApproval.current = {
           id,
           ...(isRegisteredTypedName
             ? { typedName }
             : isBulkDeletion
               ? { typedCount }
               : {}),
-        });
+        };
       }
+      const approved: unknown = await approve.mutateAsync().finally(() => {
+        pendingApproval.current = null;
+      });
       const executed =
         (approved as ApprovedAction | null | undefined)?.state === "executed";
       if (

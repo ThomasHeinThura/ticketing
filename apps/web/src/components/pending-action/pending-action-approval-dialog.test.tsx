@@ -15,6 +15,7 @@ import usePendingActionDialogStore from "@/store/pending-action-dialog";
 import PendingActionApprovalDialog from "./pending-action-approval-dialog";
 
 const mocks = vi.hoisted(() => ({
+  cache: null as null | import("@tanstack/react-query").MutationCache,
   targetType: "label",
   action: { current: null as Record<string, unknown> | null },
   factor: {
@@ -90,42 +91,43 @@ vi.mock("@tanstack/react-router", () => ({
     <a href="/">{children}</a>
   ),
 }));
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: ({ queryKey }: { queryKey: unknown[] }) =>
-    queryKey[0] === "me"
-      ? {
-          data: mocks.action.current ?? {
-            id: String(queryKey[2]),
-            action: "delete",
-            targetType: mocks.targetType,
-            summary: { name: "Bug" },
-            targetIds: ["l1"],
-            approvalSupported: true,
-            confirmation: "click",
-            state: "pending",
-            origin: "web",
-            expiresAt: "2026-10-12T00:00:00.000Z",
-          },
-          isLoading: false,
-          isError: false,
-        }
-      : queryKey[0] === "god-mode"
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  const client = new actual.QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  });
+  mocks.cache = client.getMutationCache();
+  return {
+    useQuery: ({ queryKey }: { queryKey: unknown[] }) =>
+      queryKey[0] === "me"
         ? {
-            data: mocks.factor,
+            data: mocks.action.current ?? {
+              id: String(queryKey[2]),
+              action: "delete",
+              targetType: mocks.targetType,
+              summary: { name: "Bug" },
+              targetIds: ["l1"],
+              approvalSupported: true,
+              confirmation: "click",
+              state: "pending",
+              origin: "web",
+              expiresAt: "2026-10-12T00:00:00.000Z",
+            },
             isLoading: false,
             isError: false,
           }
-        : { data: undefined, isLoading: false, isError: false },
-  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
-  useMutation: ({
-    mutationFn,
-  }: {
-    mutationFn: (v: unknown) => Promise<unknown>;
-  }) => ({
-    isPending: false,
-    mutateAsync: (value: unknown) => mutationFn(value),
-  }),
-}));
+        : queryKey[0] === "god-mode"
+          ? {
+              data: mocks.factor,
+              isLoading: false,
+              isError: false,
+            }
+          : { data: undefined, isLoading: false, isError: false },
+    useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
+    useMutation: (options: Parameters<typeof actual.useMutation>[0]) =>
+      actual.useMutation(options, client),
+  };
+});
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     i18n: { language: "en", resolvedLanguage: "en" },
@@ -171,6 +173,7 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 
 describe("in-place deletion approval", () => {
   beforeEach(() => {
+    mocks.cache?.clear();
     mocks.targetType = "label";
     mocks.action.current = null;
     usePendingActionDialogStore.setState({
@@ -497,81 +500,97 @@ describe("in-place deletion approval", () => {
     expect(mocks.approve).not.toHaveBeenCalled();
   });
 
-  it("shows organisation purge impact and requires exact name plus fresh step-up", async () => {
-    mocks.action.current = {
-      id: "pa-purge-1",
-      action: "purge",
-      targetType: "organisation",
-      targetIds: ["opaque-org-id"],
-      summary: {
+  it.each([false, true])(
+    "shows organisation purge impact and protects the step-up proof (rejected: %s)",
+    async (rejected) => {
+      mocks.action.current = {
+        id: "pa-purge-1",
+        action: "purge",
         targetType: "organisation",
-        targetId: "opaque-org-id",
-        label: "QA Customer",
-        name: "QA Customer",
-        legalHold: "none",
-        retention: "soft_deleted",
-        workItems: 4,
-        comments: 5,
-        attachments: 6,
-        impact: {
-          organisations: 1,
-          projects: 2,
-          people: 3,
+        targetIds: ["opaque-org-id"],
+        summary: {
+          targetType: "organisation",
+          targetId: "opaque-org-id",
+          label: "QA Customer",
+          name: "QA Customer",
+          legalHold: "none",
+          retention: "soft_deleted",
           workItems: 4,
           comments: 5,
-          submissions: 5,
           attachments: 6,
-          storageObjectsQueued: 6,
+          impact: {
+            organisations: 1,
+            projects: 2,
+            people: 3,
+            workItems: 4,
+            comments: 5,
+            submissions: 5,
+            attachments: 6,
+            storageObjectsQueued: 6,
+          },
         },
-      },
-      approvalSupported: true,
-      confirmation: "typed_name_step_up",
-      state: "pending",
-      origin: "web",
-      expiresAt: "2026-10-26T00:00:00.000Z",
-    };
-    usePendingActionDialogStore.setState({ pendingActionId: "pa-purge-1" });
-    render(<PendingActionApprovalDialog />);
-    const dialog = await screen.findByRole("dialog");
-    expect(
-      screen.getByRole("heading", {
-        name: "pendingActions:hardPurge.organisationAction",
-      }),
-    ).toBeVisible();
-    expect(dialog).toHaveTextContent("QA Customer");
-    expect(dialog).toHaveTextContent("pendingActions:hardPurge.noLegalHold");
-    expect(dialog).toHaveTextContent("pendingActions:hardPurge.retention");
-    expect(dialog).not.toHaveTextContent("opaque-org-id");
+        approvalSupported: true,
+        confirmation: "typed_name_step_up",
+        state: "pending",
+        origin: "web",
+        expiresAt: "2026-10-26T00:00:00.000Z",
+      };
+      usePendingActionDialogStore.setState({ pendingActionId: "pa-purge-1" });
+      render(<PendingActionApprovalDialog />);
+      const dialog = await screen.findByRole("dialog");
+      expect(
+        screen.getByRole("heading", {
+          name: "pendingActions:hardPurge.organisationAction",
+        }),
+      ).toBeVisible();
+      expect(dialog).toHaveTextContent("QA Customer");
+      expect(dialog).toHaveTextContent("pendingActions:hardPurge.noLegalHold");
+      expect(dialog).toHaveTextContent("pendingActions:hardPurge.retention");
+      expect(dialog).not.toHaveTextContent("opaque-org-id");
 
-    fireEvent.change(
-      screen.getByLabelText("pendingActions:hardPurge.confirmTarget"),
-      { target: { value: "QA Customer" } },
-    );
-    const password = screen.getByLabelText(
-      "pendingActions:dynamic.accountPassword",
-    );
-    fireEvent.change(password, { target: { value: "fresh-password" } });
-    expect(password).toHaveValue("fresh-password");
-    const approveButton = screen.getByRole("button", {
-      name: "common:actions.delete",
-    });
-    expect(approveButton).toBeEnabled();
-    fireEvent.click(approveButton);
-    await waitFor(() =>
-      expect(mocks.proof).toHaveBeenCalledWith({
-        pendingActionId: "pa-purge-1",
-        method: "password",
-        secret: "fresh-password",
-      }),
-    );
-    await waitFor(() =>
-      expect(mocks.approve).toHaveBeenCalledWith({
-        id: "pa-purge-1",
-        typedName: "QA Customer",
-        stepUpToken: "proof-1",
-      }),
-    );
-  });
+      fireEvent.change(
+        screen.getByLabelText("pendingActions:hardPurge.confirmTarget"),
+        { target: { value: "QA Customer" } },
+      );
+      const password = screen.getByLabelText(
+        "pendingActions:dynamic.accountPassword",
+      );
+      fireEvent.change(password, { target: { value: "fresh-password" } });
+      expect(password).toHaveValue("fresh-password");
+      const approveButton = screen.getByRole("button", {
+        name: "common:actions.delete",
+      });
+      expect(approveButton).toBeEnabled();
+      if (rejected) mocks.approve.mockRejectedValueOnce(new Error("failed"));
+      fireEvent.click(approveButton);
+      await waitFor(() =>
+        expect(mocks.proof).toHaveBeenCalledWith({
+          pendingActionId: "pa-purge-1",
+          method: "password",
+          secret: "fresh-password",
+        }),
+      );
+      await waitFor(() =>
+        expect(mocks.approve).toHaveBeenCalledWith({
+          id: "pa-purge-1",
+          typedName: "QA Customer",
+          stepUpToken: "proof-1",
+        }),
+      );
+      await waitFor(() =>
+        expect(
+          mocks.cache
+            ?.getAll()
+            .some((m) => m.state.status === (rejected ? "error" : "success")),
+        ).toBe(true),
+      );
+      expect(
+        JSON.stringify(
+          mocks.cache?.getAll().map((m) => ({ state: m.state, meta: m.meta })),
+        ),
+      ).not.toContain("proof-1");
+    },
+  );
 
   it.each([
     { targetType: "project", label: "QA Project", workItems: 4 },

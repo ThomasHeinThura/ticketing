@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import transferWorkspaceOwnership from "@/fetchers/workspace/transfer-workspace-ownership";
 
 type TransferOwnershipRequest = {
@@ -15,9 +16,12 @@ type TransferOwnershipRequest = {
 // here at all: the server derives and enforces it inside one transaction.
 function useTransferWorkspaceOwnership() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (request: TransferOwnershipRequest) =>
-      transferWorkspaceOwnership(request),
+  const pending = useRef<TransferOwnershipRequest | null>(null);
+  const mutation = useMutation({
+    mutationFn: (_safe: { workspaceId: string }) => {
+      if (!pending.current) throw new Error("No ownership transfer pending");
+      return transferWorkspaceOwnership(pending.current);
+    },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["workspace", "full", variables.workspaceId],
@@ -39,6 +43,19 @@ function useTransferWorkspaceOwnership() {
       // identical calls in general.tsx.
     },
   });
+  return {
+    ...mutation,
+    mutateAsync: async (input: TransferOwnershipRequest) => {
+      if (pending.current)
+        throw new Error("Ownership transfer already pending");
+      pending.current = input;
+      try {
+        return await mutation.mutateAsync({ workspaceId: input.workspaceId });
+      } finally {
+        pending.current = null;
+      }
+    },
+  };
 }
 
 export default useTransferWorkspaceOwnership;

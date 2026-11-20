@@ -236,7 +236,15 @@ function ProviderForm({
     setError(null);
     setTestResult(null);
   });
-  const verify = useMutation({ mutationFn: sendEmailProviderTest });
+  const pendingTest = useRef<
+    Parameters<typeof sendEmailProviderTest>[0] | null
+  >(null);
+  const verify = useMutation({
+    mutationFn: () => {
+      if (!pendingTest.current) throw new Error("No provider test pending");
+      return sendEmailProviderTest(pendingTest.current);
+    },
+  });
   // The request carries the mail password: it travels by ref, never through mutation variables.
   const pending = useRef<{
     request: Parameters<typeof saveEmailProvider>[0];
@@ -498,7 +506,7 @@ function ProviderForm({
     }
   }
   async function sendTest() {
-    if (busy) return;
+    if (busy || pendingTest.current) return;
     const address = recipient.trim();
     if (!looksLikeAddress(address)) {
       setError(t("testSend.recipientRequired"));
@@ -522,11 +530,14 @@ function ProviderForm({
     setNotice(null);
     setTestResult(null);
     try {
-      const result = await verify.mutateAsync({
+      pendingTest.current = {
         version: provider.version,
         ...(requireConfig ? { config } : {}),
         ...secret,
         recipient: address,
+      };
+      const result = await verify.mutateAsync().finally(() => {
+        pendingTest.current = null;
       });
       if (!lifecycle.isCurrent(intent)) return;
       setTestResult(result);
