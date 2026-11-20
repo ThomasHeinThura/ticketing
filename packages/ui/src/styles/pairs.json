@@ -100152,6 +100152,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/team/invite-team-member-modal.tsx:InviteTeamMemberModal",
+					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/form.tsx::FormDescription::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/form.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/common/sidebar-toggle-tooltip.tsx:SidebarToggleTooltip",
 					"jsx:TooltipProvider[0]/Tooltip[0]/TooltipContent[0]/p[0]/KbdSequence[0]",
 					"component-slot:packages/ui/src/components/tooltip.tsx:TooltipPopup.children"
@@ -105799,6 +105810,17 @@
 				"chain": [
 					"apps/web/src/components/settings/create-api-key-dialog.tsx:CreateApiKeyDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/form.tsx::FormDescription::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/form.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/team/invite-team-member-modal.tsx:InviteTeamMemberModal",
+					"DialogPopup->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/form.tsx::FormDescription::p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",

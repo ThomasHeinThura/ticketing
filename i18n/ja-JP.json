@@ -3165,6 +3165,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
+			"bulkHint": "メールアドレスを10件まで、カンマまたは改行で区切って入力してください。",
+			"bulkLimit": "異なるメールアドレスを1〜10件入力してください。",
+			"bulkResult": {
+				"invalid": "無効なメールアドレスです。",
+				"conflict": "招待済みまたはメンバーです。",
+				"rateLimited": "招待が多すぎます。後でもう一度お試しください。",
+				"failed": "招待に失敗しました。もう一度お試しください。"
+			},
 			"sendInvitation": "招待を送信",
 			"success": "招待を送信しました",
 			"error": "チームメンバーの招待に失敗しました",

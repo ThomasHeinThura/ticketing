@@ -3176,6 +3176,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "kollege@firma.com",
+			"bulkHint": "Bis zu 10 E-Mail-Adressen, durch Kommas oder Zeilenumbrüche getrennt.",
+			"bulkLimit": "Geben Sie 1 bis 10 verschiedene E-Mail-Adressen ein.",
+			"bulkResult": {
+				"invalid": "Ungültige E-Mail-Adresse.",
+				"conflict": "Bereits eingeladen oder Mitglied.",
+				"rateLimited": "Zu viele Einladungen. Versuchen Sie es später erneut.",
+				"failed": "Einladung fehlgeschlagen. Versuchen Sie es erneut."
+			},
 			"sendInvitation": "Einladung senden",
 			"success": "Einladung erfolgreich gesendet",
 			"error": "Teammitglied konnte nicht eingeladen werden",

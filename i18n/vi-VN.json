@@ -3165,6 +3165,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
+			"bulkHint": "Nhập tối đa 10 địa chỉ email, cách nhau bằng dấu phẩy hoặc dòng mới.",
+			"bulkLimit": "Nhập từ 1 đến 10 địa chỉ email khác nhau.",
+			"bulkResult": {
+				"invalid": "Địa chỉ email không hợp lệ.",
+				"conflict": "Đã được mời hoặc đã là thành viên.",
+				"rateLimited": "Quá nhiều lời mời. Hãy thử lại sau.",
+				"failed": "Không thể gửi lời mời. Hãy thử lại."
+			},
 			"sendInvitation": "Gửi lời mời",
 			"success": "Gửi lời mời thành công",
 			"error": "Không thể mời thành viên nhóm",

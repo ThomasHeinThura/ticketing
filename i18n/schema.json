@@ -13074,6 +13074,31 @@
 						"emailPlaceholder": {
 							"type": "string"
 						},
+						"bulkHint": {
+							"type": "string"
+						},
+						"bulkLimit": {
+							"type": "string"
+						},
+						"bulkResult": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"invalid": {
+									"type": "string"
+								},
+								"conflict": {
+									"type": "string"
+								},
+								"rateLimited": {
+									"type": "string"
+								},
+								"failed": {
+									"type": "string"
+								}
+							},
+							"required": ["invalid", "conflict", "rateLimited", "failed"]
+						},
 						"sendInvitation": {
 							"type": "string"
 						},
@@ -13100,6 +13125,9 @@
 						"rolePlaceholder",
 						"rolesError",
 						"emailPlaceholder",
+						"bulkHint",
+						"bulkLimit",
+						"bulkResult",
 						"sendInvitation",
 						"success",
 						"error",

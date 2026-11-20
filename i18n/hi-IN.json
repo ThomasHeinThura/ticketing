@@ -3176,6 +3176,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
+			"bulkHint": "अधिकतम 10 ईमेल पते, कॉमा या नई पंक्ति से अलग करें।",
+			"bulkLimit": "1 से 10 अलग ईमेल पते दर्ज करें।",
+			"bulkResult": {
+				"invalid": "अमान्य ईमेल पता।",
+				"conflict": "पहले से आमंत्रित या सदस्य है।",
+				"rateLimited": "बहुत अधिक आमंत्रण। बाद में फिर प्रयास करें।",
+				"failed": "आमंत्रण विफल हुआ। फिर प्रयास करें।"
+			},
 			"sendInvitation": "निमंत्रण भेजें",
 			"success": "निमंत्रण सफलतापूर्वक भेजा गया",
 			"error": "टीम सदस्य आमंत्रित करने में विफल",

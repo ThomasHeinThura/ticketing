@@ -3187,6 +3187,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "collegue@entreprise.fr",
+			"bulkHint": "Jusqu’à 10 adresses e-mail, séparées par des virgules ou des retours à la ligne.",
+			"bulkLimit": "Saisissez entre 1 et 10 adresses distinctes.",
+			"bulkResult": {
+				"invalid": "Adresse e-mail invalide.",
+				"conflict": "Déjà invité ou membre.",
+				"rateLimited": "Trop d’invitations. Réessayez plus tard.",
+				"failed": "Échec de l’invitation. Réessayez."
+			},
 			"sendInvitation": "Envoyer l'invitation",
 			"success": "Invitation envoyée avec succès",
 			"error": "Échec de l'envoi de l'invitation",

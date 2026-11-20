@@ -3176,6 +3176,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "arkadas@sirket.com",
+			"bulkHint": "Virgül veya yeni satırla ayrılmış en fazla 10 e-posta adresi girin.",
+			"bulkLimit": "1 ile 10 arasında farklı e-posta adresi girin.",
+			"bulkResult": {
+				"invalid": "Geçersiz e-posta adresi.",
+				"conflict": "Zaten davet edilmiş veya üye.",
+				"rateLimited": "Çok fazla davet. Daha sonra tekrar deneyin.",
+				"failed": "Davet başarısız oldu. Tekrar deneyin."
+			},
 			"sendInvitation": "Davet Gönder",
 			"success": "Davet başarıyla gönderildi",
 			"error": "Ekip üyesi davet edilemedi",

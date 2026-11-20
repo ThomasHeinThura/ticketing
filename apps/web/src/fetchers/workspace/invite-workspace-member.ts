@@ -13,6 +13,15 @@ type InviteWorkspaceMemberRequest = InviteWorkspaceMemberBody & {
 // authClient.organization.inviteMember(). The server
 // (apps/api/src/workspace/controllers/invite-workspace-member.ts) refuses a
 // `role` of `"owner"` and sends the invitation email itself on success.
+export class InvitationRequestError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 const inviteWorkspaceMember = async ({
   workspaceId,
   ...body
@@ -27,7 +36,10 @@ const inviteWorkspaceMember = async ({
     // the other native workspace writes use (see update-workspace.ts): an
     // empty non-2xx body must not become a blank `new Error("")`.
     const error = await response.text();
-    throw new Error(error || "Failed to invite workspace member");
+    throw new InvitationRequestError(
+      response.status,
+      error || "Failed to invite workspace member",
+    );
   }
 
   return await response.json();

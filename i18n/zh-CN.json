@@ -3165,6 +3165,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
+			"bulkHint": "输入最多 10 个电子邮件地址，用逗号或换行分隔。",
+			"bulkLimit": "请输入 1 至 10 个不同的电子邮件地址。",
+			"bulkResult": {
+				"invalid": "电子邮件地址无效。",
+				"conflict": "已受邀或已是成员。",
+				"rateLimited": "邀请次数过多，请稍后重试。",
+				"failed": "邀请失败，请重试。"
+			},
 			"sendInvitation": "发送邀请",
 			"success": "邀请已成功发送",
 			"error": "邀请团队成员失败",

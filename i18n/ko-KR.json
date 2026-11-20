@@ -3165,6 +3165,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
+			"bulkHint": "이메일 주소를 쉼표 또는 줄 바꿈으로 구분하여 최대 10개 입력하세요.",
+			"bulkLimit": "서로 다른 이메일 주소를 1~10개 입력하세요.",
+			"bulkResult": {
+				"invalid": "잘못된 이메일 주소입니다.",
+				"conflict": "이미 초대되었거나 구성원입니다.",
+				"rateLimited": "초대가 너무 많습니다. 나중에 다시 시도하세요.",
+				"failed": "초대에 실패했습니다. 다시 시도하세요."
+			},
 			"sendInvitation": "초대 전송",
 			"success": "초대가 전송되었습니다",
 			"error": "팀 멤버 초대에 실패했습니다",

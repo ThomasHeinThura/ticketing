@@ -3198,6 +3198,14 @@
 			"rolePlaceholder": "Choose a role",
 			"rolesError": "Could not load available roles.",
 			"emailPlaceholder": "colleague@company.com",
+			"bulkHint": "Введіть до 10 адрес електронної пошти через кому або з нового рядка.",
+			"bulkLimit": "Введіть від 1 до 10 різних адрес.",
+			"bulkResult": {
+				"invalid": "Недійсна адреса електронної пошти.",
+				"conflict": "Уже запрошено або є учасником.",
+				"rateLimited": "Забагато запрошень. Спробуйте пізніше.",
+				"failed": "Не вдалося надіслати запрошення. Спробуйте ще раз."
+			},
 			"sendInvitation": "Надіслати запрошення",
 			"success": "Запрошення успішно надіслано",
 			"error": "Не вдалося запросити учасника команди",
