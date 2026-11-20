@@ -1,10 +1,51 @@
-# UAT completion plan — 12 to 23 November 2026
+# Completion plan — from 20 November 2026
 
-**17 Nov owner feature — #1199:** support project keys of 2–15 uppercase ASCII letters, descriptive editable suggestions and preserved manual edits. Existing keys and stored work-item prefixes remain unchanged unless an explicit rename is confirmed. The separate project-key slice includes serialized intended-field project saves so sibling settings cannot restore an old key. Source-bound role/browser, contract, independent review, 17 required CI checks and signed acceptance remain gates; historical project URLs after explicit rename remain tracked in #1200.
+Owner: Thomas. Coordinator: Claude (this plan, merges, docs). Rules: [AGENTS.md](../AGENTS.md). Audit behind Stream Q: [ponytail audit 20 Nov](archive/reports/ponytail-audit-2026-11-20.md). Sections 1–11 below are the 12 Nov UAT plan; its finish line still applies, and its Stages 3A–4C table is Phase 4 here.
 
-Owner: Thomas. Coordinator: Codex, running Codex workers through existing Orca Run `run_fcfd513c447f`. This plan replaces the 30 Oct UAT week plan and the 8 Nov A8 order in the [roadmap](roadmap.md). Background: [audit of 12 Nov](archive/reports/project-audit-2026-11-12.md). Rules: [AGENTS.md](../AGENTS.md). Current state: [handover](handover.md). An independent Opus review of this plan was folded in on 12 Nov.
+## 0. Plan of 20 Nov (Thomas approved all phases)
 
-**16 Nov continuation:** Stage 2 Batch 4 is merged in #1194. The 93-issue ledger has 30 closed and 63 open; Stage 3A is active. #1195 (#910) and #1197 (#903) are draft candidates; #1196 (#901) is merged and deployed as signed `08575e865`, with canonical seven-role deletion acceptance passed (42/42 cells) and #901 closed. #899/#900 cover persisted settings only; browser-only appearance is exempt. G11 remains frozen and report-only, and Technexus remains deferred while Azure is unavailable. See [current status](status.md) for exact checks and acceptance boundaries.
+**State on 20 Nov.** `main` is `e6db5ea6d` (17 Nov), green, signed. Nothing merged 17–20 Nov. Local SIT runs `08575e865` (upgrade, not a clean install). The UAT host last ran `1f9d94910` (7 Nov). No 7-role self-review has run. The picomatch audit advisory that blocked every PR on 17 Nov is gone (`pnpm audit` clean on 20 Nov).
+
+**Decisions (Thomas, 20 Nov).**
+- Claude subagents run on **Sonnet only**, never Opus. Codex workers run through Orca: `gpt-6.1-terra` builds, `gpt-6.1-luna` mechanical work, `gpt-6.1-sol` (high) reviews, risky design and council votes. At most three heavy workers at a time.
+- Reviews may run to a **sixth round**. Each round must shrink the findings clearly; if it does not, stop and run a council (Sol + Sonnet + coordinator) instead of another round.
+- Local SIT is the coordinator's job: builds from `main` are tested there without a signed-image gate. Thomas tests signed images on UAT only, and only after Phases 0–4 are all finished. UAT may be deployed after Phase 2.
+- Delete only merged or closed-PR branches and worktrees; keep and list anything with unique work.
+- Every task uses the matching skill, ponytail (smallest complete change) and humanizer (prose). Follow the coordinator's recommendation; use a council when unsure; stop only when everything is finished.
+
+| Phase | Work | Done when |
+| --- | --- | --- |
+| 0 | Housekeeping: fast-forward the main checkout (Thomas's local edits stashed as `thomas-local-2026-11-20-before-ff`), remove merged/closed branches (108 remote, 25 local) and clean worktrees, this docs PR | Docs merged; kept branches listed in [status](status.md) |
+| 1 | Stream Q-1…Q-17 (below) and #1203 | Each PR reviewed by Sol, all required checks green, merged |
+| 2 | Local SIT backup + isolated restore, clean install of latest `main`, seed; every row of [screens](screens.md) × 7 roles × 3 widths × light/dark, and every journey in section 7 | No high or medium open; evidence in the PRs |
+| 3 | UAT host: verified backup, clean install of the same signed digest, first-admin TOTP (Thomas present), settings, seed, smoke and journeys on both hosts | Both hosts healthy; rollback digest recorded |
+| 4 | Stages 3A–4C (section 4 table, 63 open historical issues), Q-18, Q-19, Decision 21 rows, reference-comparison items | Open issue count 0 (except explicit Thomas sign-offs); rolling UAT redeploys; then Thomas reviews |
+
+### Stream Q — ponytail review and audit (20 Nov)
+
+**H** = high risk, Sol high review. Effort as in section 4.
+
+| ID | Item | Done when | Effort |
+| --- | --- | --- | --- |
+| Q-1 | `restore.sh` drops the old database and empties `/data` before readiness (H) | Old DB dropped only after readiness passes; files extracted over the tree; failure names the recovery DB; recovery test covers a failed probe | S |
+| Q-2 | `restore.sh` has no `sit`/`uat` mode (H) | `--mode sit|uat` add the matching overlay; usage, docs and `compose-recovery.test.mjs` updated | S |
+| Q-3 | Attachment backup layout depends on the mount point (H) | Backup records the mount; restore refuses a mismatch before any change; test both mounts | S |
+| Q-4 | A failed staging restore leaves the app stopped | Cleanup restarts `taskdesk` when the live DB was never touched; DO-2 failure test asserts it | XS |
+| Q-5 | `deploy.sh upgrade` saves the new digest before migrate/probe pass (H) | Digest persisted after `probe_api`; rollback command printed before migrate; test covers failed migrate | S |
+| Q-6 | Installed hosts lack backup/restore scripts and the SIT overlay | `release.yml` archive and `install.sh` member list include them (workflow edit approved 20 Nov) | XS |
+| Q-7 | Full task update (Gantt drag) keeps old reminder markers | `clearTaskReminders` on due-date change in `update-task.ts`; integration test | XS |
+| Q-8 | Due-date reminders lost when the job misses a 10-minute window | 24 h catch-up window; markers keep one send; test | XS |
+| Q-9 | Notification bell stops after ~31 s offline | Unlimited capped backoff like `use-native-work-item-realtime.ts`; test | XS |
+| Q-10 | Internal-note and portal form drafts survive sign-out | Draft keys cleared on sign-out in both apps; unit test | S |
+| Q-11 | API-key failure lockout keyed on raw IPv6 and off without a client IP (H) | Uses `rateLimitClientAddress` with a no-IP bucket; /64 test | S |
+| Q-12 | Invite rate limit shared per client IP | Keyed on the signed-in user; integration test with two users | XS |
+| Q-13 | Copy-invite-link limiter is per process | Uses the shared auth rate limiter; in-process Map removed | S |
+| Q-14 | `motion-rules.spec.ts` rule 9 tooltip hover flake | Waits for a stable trigger before hover; no retries added | XS |
+| Q-15 | Notification inbox query hit 32,967 bind parameters on a branch | Confirmed or ruled out on `main`; if present, bound as one array parameter | S |
+| Q-16 | Work list → detail first paint went from ~0.3 s to ~1.8 s after #1192 | Cause found and fixed; G11 thresholds unchanged | M |
+| Q-17 | #1203 backup listing failure reported as success | Merged | XS |
+| Q-18 | Audit "nice to have": SLA scan per-item work, webhook quota race, realtime refetch of every page, board drag off during refetch, automation flag per item, digest logs raw errors, inline-asset detach queries | Each fixed with a test or closed with a recorded reason | M |
+| Q-19 | Lean: filesystem v1 portal token, SCIM `WindowCounter`, MCP 401 retry, duplicate permission parser, `resolveCallerIdentity`, unused domain rules (~600 lines) | Removed after a whole-tree grep; tests still green | M |
 
 ## 1. Goal and finish line
 
