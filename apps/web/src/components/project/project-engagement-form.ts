@@ -68,11 +68,21 @@ export function isEngagementDirty(
   return saved.kind !== draft.kind || saved.supportLevel !== draft.supportLevel;
 }
 
-/** Engagement fields owned by this editor; SLA and calendar are configured separately. */
-export function buildEngagementPayload(values: EngagementValues) {
+/**
+ * Engagement fields owned by this editor that the draft CHANGED. Only a changed field is sent
+ * (the API applies only what it carries), so saving the kind never rewrites a support level
+ * another editor just changed, and the other way round; a cleared support level is an explicit
+ * null. SLA and calendar are configured separately.
+ */
+export function buildEngagementPayload(
+  saved: EngagementValues,
+  draft: EngagementValues,
+) {
   return {
-    kind: values.kind,
-    supportLevel: values.supportLevel,
+    ...(draft.kind !== saved.kind ? { kind: draft.kind } : {}),
+    ...(draft.supportLevel !== saved.supportLevel
+      ? { supportLevel: draft.supportLevel }
+      : {}),
   };
 }
 

@@ -10727,7 +10727,7 @@
           "Projects"
         ],
         "summary": "Update project",
-        "description": "Replace a project's name, icon, slug, description, and visibility. defaultCommentVisibility (CA-2), the engagement fields kind, supportLevel and serviceCalendarId (#766), and managerId, startDate, endDate and defaultAssigneeId (PR-6, PR-10, AS-11) are optional and each needs project:manage_settings. parentId is never accepted here: re-parenting is PATCH /api/projects/{id}/ownership.",
+        "description": "Update a project. Only the supplied fields apply: an omitted field is unchanged, and a body with no known field is invalid. name, icon, slug and description are optional like the rest. There is no optimistic version: two writes to the same field are last-writer-wins, and a client that sends all four base fields still overwrites them. defaultCommentVisibility (CA-2), the engagement fields kind, supportLevel and serviceCalendarId (#766), and managerId, startDate, endDate and defaultAssigneeId (PR-6, PR-10, AS-11) are optional and each needs project:manage_settings. parentId is never accepted here: re-parenting is PATCH /api/projects/{id}/ownership. The generated request schema does not express the at-least-one-known-field rule: the server returns 400 for an empty or unknown-only body.",
         "parameters": [
           {
             "schema": {
@@ -10753,7 +10753,7 @@
                   },
                   "slug": {
                     "type": "string",
-                    "description": "PR-13: when it differs from the stored key it must be 2-15 uppercase letters. Existing work items keep the old prefix (PR-14)."
+                    "description": "PR-13: when it differs from the stored key it must be 2-15 uppercase letters. Existing work items keep the old prefix (PR-14). Omit to leave the key unchanged."
                   },
                   "description": {
                     "type": "string"
@@ -10824,13 +10824,7 @@
                     ],
                     "description": "CA-2: the visibility the comment composer starts on for this project. Omit to leave it unchanged. Sending the field requires the strict project:manage_settings capability (and the matching API-key scope), not just project:update."
                   }
-                },
-                "required": [
-                  "name",
-                  "icon",
-                  "slug",
-                  "description"
-                ]
+                }
               }
             }
           }
@@ -10847,7 +10841,7 @@
             }
           },
           "400": {
-            "description": "Invalid body",
+            "description": "Invalid body, including a body with no known field",
             "content": {
               "text/plain": {
                 "schema": {

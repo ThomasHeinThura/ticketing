@@ -862,7 +862,11 @@ attachments as entries are a follow-up (the `attachment` single-parent rule must
   no automatic rename or work-item key rewrite. Creation suggests a more descriptive,
   editable name-based key instead of only three initials and preserves manual edits.
 - `PR-14` Renaming a key is allowed but discouraged; existing work items keep the old
-  prefix and a warning explains this before confirming.
+  prefix and a warning explains this before confirming. `PUT /api/project/{id}` applies only
+  supplied known fields; omitted fields are unchanged, and an empty or unknown-only body is
+  invalid. The endpoint has no optimistic version: concurrent writes to the same field use
+  last writer wins, and clients that submit full base-field bodies can still overwrite
+  intervening base-field changes.
 - `PR-15` Archiving (`project.archived_at`) hides a project from navigation and makes its
   work read-only. Data is retained.
 - `PR-16` Deletion is soft for 30 days (`project.deleted_at`), then purges work items,

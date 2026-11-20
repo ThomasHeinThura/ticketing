@@ -51,7 +51,13 @@ export async function exerciseCallerRace(
   expect(race.writes).toHaveBeenCalledTimes(1);
   releaseWrite();
   await vi.waitFor(() => expect(race.writes).toHaveBeenCalledTimes(2));
-  expect(race.writes.mock.calls[1][0].json.slug).toBe("NEW");
+  // The two writes keep their call order, the rename carries the key and the sibling save
+  // carries none of the four base fields, so it cannot restore the old key (PTM-04).
+  const renameCall = order === "rename first" ? 0 : 1;
+  expect(race.writes.mock.calls[renameCall][0].json.slug).toBe("NEW");
+  const siblingJson = race.writes.mock.calls[1 - renameCall][0].json;
+  for (const field of ["name", "icon", "slug", "description"])
+    expect(siblingJson).not.toHaveProperty(field);
   releaseWrite();
   await renameResult;
   await vi.waitFor(() =>
