@@ -24,6 +24,8 @@ import {
   findApiKeyOwnerStatus,
 } from "./access-lookups.repository";
 
+import { apiKeyScopeFromStoredPermissions } from "./require-api-key-permission-scope";
+
 const verifiedSecrets = new VerifiedSecretCache();
 const gate = new ArgonGate();
 const failures = new FailureLimiter();
@@ -144,31 +146,6 @@ function tooMany(status: 429 | 503, message: string, retryAfter: number) {
   });
 }
 
-function parsePermissions(raw: string | null): Record<string, string[]> | null {
-  if (raw === null) return null;
-
-  let value: unknown;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return {};
-  }
-
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-
-  const permissions: Record<string, string[]> = {};
-  for (const [resource, actions] of Object.entries(
-    value as Record<string, unknown>,
-  )) {
-    if (!Array.isArray(actions)) return {};
-    if (actions.some((action) => typeof action !== "string")) return {};
-    permissions[resource] = actions as string[];
-  }
-  return permissions;
-}
-
 async function apiKeyOwnerIsActive(ownerId: string): Promise<boolean> {
   if (!ownerId) return false;
   const owner = await findApiKeyOwnerStatus(ownerId);
@@ -227,7 +204,11 @@ export async function verifyApiKey(
       start: apiKey.start,
       enabled: apiKey.enabled ?? false,
       expiresAt: apiKey.expiresAt,
-      permissions: parsePermissions(apiKey.permissions),
+      permissions:
+        apiKey.permissions === null
+          ? null
+          : (apiKeyScopeFromStoredPermissions(apiKey.permissions).permissions ??
+            {}),
       refillInterval: apiKey.refillInterval,
       refillAmount: apiKey.refillAmount,
       lastRefillAt: apiKey.lastRefillAt,

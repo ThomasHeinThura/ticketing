@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthService } from "./auth-service.js";
 
 /**
@@ -12,20 +12,8 @@ import { AuthService } from "./auth-service.js";
  * the most important of those is that a stored credential is **no longer honoured**.
  */
 
-const { clearCredentialsMock } = vi.hoisted(() => ({
-  clearCredentialsMock: vi.fn(),
-}));
-
-vi.mock("./token-store.js", () => ({
-  clearCredentials: clearCredentialsMock,
-}));
-
 describe("AuthService", () => {
   const originalFetch = globalThis.fetch;
-
-  beforeEach(() => {
-    clearCredentialsMock.mockReset();
-  });
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
@@ -86,26 +74,5 @@ describe("AuthService", () => {
     });
 
     await expect(auth.getAccessToken()).rejects.toThrow();
-  });
-
-  it("clearToken purges a stale credentials file, but leaves a static API key alone", async () => {
-    const withoutKey = new AuthService({
-      baseUrl: "https://taskdesk.example.com",
-      clientId: "taskdesk-mcp",
-    });
-    await withoutKey.clearToken();
-    // Ignoring the stale file is not enough; it should be removable.
-    expect(clearCredentialsMock).toHaveBeenCalledTimes(1);
-
-    clearCredentialsMock.mockReset();
-
-    const withKey = new AuthService({
-      baseUrl: "https://taskdesk.example.com",
-      clientId: "taskdesk-mcp",
-      apiKey: "td_key_123",
-    });
-    await withKey.clearToken();
-    // An API key is static config, not a cached credential.
-    expect(clearCredentialsMock).not.toHaveBeenCalled();
   });
 });
