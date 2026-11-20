@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "Zulässige Dateitypen",
 				"body": "Antworttext",
 				"visibilityDefault": "Standardsichtbarkeit",
+				"authAgentPassword": "Anmeldung Mitarbeiter: Passwort",
+				"authAgentMagicLink": "Anmeldung Mitarbeiter: Magic Link",
+				"authAgentEmailOtp": "Anmeldung Mitarbeiter: E-Mail-Code",
+				"authCustomerPassword": "Anmeldung Kunden: Passwort",
+				"authCustomerMagicLink": "Anmeldung Kunden: Magic Link",
+				"authCustomerEmailOtp": "Anmeldung Kunden: E-Mail-Code",
+				"staffSelfRegistration": "Selbstregistrierung für Mitarbeiter",
+				"enabled": "Aktiviert",
+				"schedule": "Zeitplan",
 				"unknown": "Weitere Einstellung"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "Massenaktion ausgeführt",
 				"kb_settings_changed": "Einstellungen der Wissensdatenbank geändert",
 				"instance_settings_changed": "Instanzeinstellungen aktualisiert",
+				"webhook_created": "Webhook erstellt",
+				"webhook_updated": "Webhook aktualisiert",
+				"webhook_deleted": "Webhook gelöscht",
+				"webhook_secret_rotated": "Webhook-Geheimnis rotiert",
+				"webhook_auto_disabled": "Webhook automatisch deaktiviert",
+				"job_configuration_changed": "Jobkonfiguration geändert",
+				"identity_connection_changed": "Identitätsverbindung geändert",
 				"unknown": "Einstellungen geändert"
 			}
 		},

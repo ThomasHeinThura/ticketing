@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "Allowed file types",
 				"body": "Response body",
 				"visibilityDefault": "Default visibility",
+				"authAgentPassword": "Staff sign-in: Password",
+				"authAgentMagicLink": "Staff sign-in: Magic link",
+				"authAgentEmailOtp": "Staff sign-in: Email code",
+				"authCustomerPassword": "Customer sign-in: Password",
+				"authCustomerMagicLink": "Customer sign-in: Magic link",
+				"authCustomerEmailOtp": "Customer sign-in: Email code",
+				"staffSelfRegistration": "Staff self-registration",
+				"enabled": "Enabled",
+				"schedule": "Schedule",
 				"unknown": "Other setting"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "Bulk action performed",
 				"kb_settings_changed": "Knowledge base settings changed",
 				"instance_settings_changed": "Instance settings updated",
+				"webhook_created": "Webhook created",
+				"webhook_updated": "Webhook updated",
+				"webhook_deleted": "Webhook deleted",
+				"webhook_secret_rotated": "Webhook secret rotated",
+				"webhook_auto_disabled": "Webhook disabled automatically",
+				"job_configuration_changed": "Job configuration changed",
+				"identity_connection_changed": "Identity connection changed",
 				"unknown": "Settings changed"
 			}
 		},

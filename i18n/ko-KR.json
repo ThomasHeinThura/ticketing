@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "허용되는 파일 형식",
 				"body": "응답 본문",
 				"visibilityDefault": "기본 공개 범위",
+				"authAgentPassword": "직원 로그인: 비밀번호",
+				"authAgentMagicLink": "직원 로그인: 매직 링크",
+				"authAgentEmailOtp": "직원 로그인: 이메일 코드",
+				"authCustomerPassword": "고객 로그인: 비밀번호",
+				"authCustomerMagicLink": "고객 로그인: 매직 링크",
+				"authCustomerEmailOtp": "고객 로그인: 이메일 코드",
+				"staffSelfRegistration": "직원 자체 등록",
+				"enabled": "사용",
+				"schedule": "일정",
 				"unknown": "기타 설정"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "일괄 작업 수행됨",
 				"kb_settings_changed": "지식 베이스 설정 변경됨",
 				"instance_settings_changed": "인스턴스 설정 업데이트됨",
+				"webhook_created": "웹훅 생성됨",
+				"webhook_updated": "웹훅 업데이트됨",
+				"webhook_deleted": "웹훅 삭제됨",
+				"webhook_secret_rotated": "웹훅 시크릿 교체됨",
+				"webhook_auto_disabled": "웹훅 자동 비활성화됨",
+				"job_configuration_changed": "작업 구성 변경됨",
+				"identity_connection_changed": "ID 연결 변경됨",
 				"unknown": "설정 변경됨"
 			}
 		},

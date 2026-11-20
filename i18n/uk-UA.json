@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "Дозволені типи файлів",
 				"body": "Текст відповіді",
 				"visibilityDefault": "Видимість за замовчуванням",
+				"authAgentPassword": "Вхід співробітників: Пароль",
+				"authAgentMagicLink": "Вхід співробітників: Чарівне посилання",
+				"authAgentEmailOtp": "Вхід співробітників: Код електронною поштою",
+				"authCustomerPassword": "Вхід клієнтів: Пароль",
+				"authCustomerMagicLink": "Вхід клієнтів: Чарівне посилання",
+				"authCustomerEmailOtp": "Вхід клієнтів: Код електронною поштою",
+				"staffSelfRegistration": "Саморегістрація співробітників",
+				"enabled": "Увімкнено",
+				"schedule": "Розклад",
 				"unknown": "Інше налаштування"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "Виконано масову дію",
 				"kb_settings_changed": "Налаштування бази знань змінено",
 				"instance_settings_changed": "Налаштування екземпляра оновлено",
+				"webhook_created": "Webhook створено",
+				"webhook_updated": "Webhook оновлено",
+				"webhook_deleted": "Webhook видалено",
+				"webhook_secret_rotated": "Секрет webhook змінено",
+				"webhook_auto_disabled": "Webhook автоматично вимкнено",
+				"job_configuration_changed": "Конфігурацію завдання змінено",
+				"identity_connection_changed": "Підключення ідентичності змінено",
 				"unknown": "Налаштування змінено"
 			}
 		},

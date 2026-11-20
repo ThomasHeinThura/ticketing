@@ -23,7 +23,7 @@ import {
   Switch,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { useId, useState } from "react";
+import { lazy, Suspense, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { identityAdminFailureKind } from "@/fetchers/god-mode/identity-admin-error";
 import {
@@ -42,6 +42,12 @@ import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import { auditEntity } from "@/query-client/audit-invalidation";
 import { FailureAlert, StepUpFields } from "./step-up-fields";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 type Audience = keyof LocalAuthMethodsByPortal;
 type Method = keyof LocalAuthMethodSet;
@@ -249,6 +255,26 @@ export function LocalSignInMethodsCard() {
             {t("signInMethods.registrationEnvironmentDisabled")}
           </p>
         )}
+      </CardContent>
+      <CardContent className="space-y-4">
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{
+              kind: "entity",
+              type: "instance_auth_methods",
+              id: "auth.local-methods",
+              scope: { kind: "instance" },
+            }}
+          />
+          <SettingsHistory
+            target={{
+              kind: "entity",
+              type: "staff_self_registration",
+              id: "staff_self_registration_enabled",
+              scope: { kind: "instance" },
+            }}
+          />
+        </Suspense>
       </CardContent>
       <CardFooter className="flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
         <Button

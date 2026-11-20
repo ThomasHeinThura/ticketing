@@ -56,6 +56,17 @@ vi.mock("@/fetchers/god-mode/instance-users", async (importOriginal) => ({
   >()),
   getCurrentFactorStatus: async () => mocks.factorStatus,
 }));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({
+    target,
+  }: {
+    target: { type: string; id: string; scope: { kind: string } };
+  }) => (
+    <div data-testid="history-target">
+      {`${target.type}:${target.id}:${target.scope.kind}`}
+    </div>
+  ),
+}));
 vi.mock("@/lib/toast", () => ({
   toast: { success: (...args: unknown[]) => mocks.toast(...args) },
 }));
@@ -189,6 +200,20 @@ describe("LocalSignInMethodsCard", () => {
     expect(
       screen.getByRole("button", { name: "Save sign-in methods" }),
     ).toBeDisabled();
+  });
+
+  it("mounts History for the methods and the registration switch", async () => {
+    renderCard();
+    expect(
+      await screen.findByText(
+        "instance_auth_methods:auth.local-methods:instance",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "staff_self_registration:staff_self_registration_enabled:instance",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("saves the exact six switches with one bound proof", async () => {

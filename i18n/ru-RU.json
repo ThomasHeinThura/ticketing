@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "Разрешённые типы файлов",
 				"body": "Текст ответа",
 				"visibilityDefault": "Видимость по умолчанию",
+				"authAgentPassword": "Вход сотрудников: Пароль",
+				"authAgentMagicLink": "Вход сотрудников: Волшебная ссылка",
+				"authAgentEmailOtp": "Вход сотрудников: Код по электронной почте",
+				"authCustomerPassword": "Вход клиентов: Пароль",
+				"authCustomerMagicLink": "Вход клиентов: Волшебная ссылка",
+				"authCustomerEmailOtp": "Вход клиентов: Код по электронной почте",
+				"staffSelfRegistration": "Саморегистрация сотрудников",
+				"enabled": "Включено",
+				"schedule": "Расписание",
 				"unknown": "Другая настройка"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "Выполнено массовое действие",
 				"kb_settings_changed": "Настройки базы знаний изменены",
 				"instance_settings_changed": "Настройки экземпляра обновлены",
+				"webhook_created": "Webhook создан",
+				"webhook_updated": "Webhook обновлён",
+				"webhook_deleted": "Webhook удалён",
+				"webhook_secret_rotated": "Секрет webhook заменён",
+				"webhook_auto_disabled": "Webhook автоматически отключён",
+				"job_configuration_changed": "Конфигурация задания изменена",
+				"identity_connection_changed": "Подключение удостоверения изменено",
 				"unknown": "Настройки изменены"
 			}
 		},

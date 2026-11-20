@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "Дозволени типови датотеки",
 				"body": "Содржина на одговорот",
 				"visibilityDefault": "Стандардна видливост",
+				"authAgentPassword": "Најава на персонал: Лозинка",
+				"authAgentMagicLink": "Најава на персонал: Магична врска",
+				"authAgentEmailOtp": "Најава на персонал: Код по е-пошта",
+				"authCustomerPassword": "Најава на клиенти: Лозинка",
+				"authCustomerMagicLink": "Најава на клиенти: Магична врска",
+				"authCustomerEmailOtp": "Најава на клиенти: Код по е-пошта",
+				"staffSelfRegistration": "Саморегистрација на персонал",
+				"enabled": "Овозможено",
+				"schedule": "Распоред",
 				"unknown": "Друга поставка"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "Извршена е масовна акција",
 				"kb_settings_changed": "Поставките на базата на знаење се променети",
 				"instance_settings_changed": "Поставките на инстанцата се ажурирани",
+				"webhook_created": "Webhook е создаден",
+				"webhook_updated": "Webhook е ажуриран",
+				"webhook_deleted": "Webhook е избришан",
+				"webhook_secret_rotated": "Тајната на webhook е сменета",
+				"webhook_auto_disabled": "Webhook е автоматски оневозможен",
+				"job_configuration_changed": "Конфигурацијата на задачата е променета",
+				"identity_connection_changed": "Врската за идентитет е променета",
 				"unknown": "Поставките се променети"
 			}
 		},

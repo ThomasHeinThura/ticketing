@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "Tipi di file consentiti",
 				"body": "Corpo della risposta",
 				"visibilityDefault": "Visibilità predefinita",
+				"authAgentPassword": "Accesso del personale: Password",
+				"authAgentMagicLink": "Accesso del personale: Link magico",
+				"authAgentEmailOtp": "Accesso del personale: Codice via email",
+				"authCustomerPassword": "Accesso dei clienti: Password",
+				"authCustomerMagicLink": "Accesso dei clienti: Link magico",
+				"authCustomerEmailOtp": "Accesso dei clienti: Codice via email",
+				"staffSelfRegistration": "Autoregistrazione del personale",
+				"enabled": "Attivo",
+				"schedule": "Pianificazione",
 				"unknown": "Altra impostazione"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "Azione di massa eseguita",
 				"kb_settings_changed": "Impostazioni della knowledge base modificate",
 				"instance_settings_changed": "Impostazioni dell’istanza aggiornate",
+				"webhook_created": "Webhook creato",
+				"webhook_updated": "Webhook aggiornato",
+				"webhook_deleted": "Webhook eliminato",
+				"webhook_secret_rotated": "Segreto del webhook ruotato",
+				"webhook_auto_disabled": "Webhook disattivato automaticamente",
+				"job_configuration_changed": "Configurazione del job modificata",
+				"identity_connection_changed": "Connessione di identità modificata",
 				"unknown": "Impostazioni modificate"
 			}
 		},

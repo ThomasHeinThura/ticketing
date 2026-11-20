@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "Επιτρεπόμενοι τύποι αρχείων",
 				"body": "Κείμενο απάντησης",
 				"visibilityDefault": "Προεπιλεγμένη ορατότητα",
+				"authAgentPassword": "Σύνδεση προσωπικού: Κωδικός πρόσβασης",
+				"authAgentMagicLink": "Σύνδεση προσωπικού: Σύνδεσμος σύνδεσης",
+				"authAgentEmailOtp": "Σύνδεση προσωπικού: Κωδικός email",
+				"authCustomerPassword": "Σύνδεση πελατών: Κωδικός πρόσβασης",
+				"authCustomerMagicLink": "Σύνδεση πελατών: Σύνδεσμος σύνδεσης",
+				"authCustomerEmailOtp": "Σύνδεση πελατών: Κωδικός email",
+				"staffSelfRegistration": "Αυτοεγγραφή προσωπικού",
+				"enabled": "Ενεργό",
+				"schedule": "Πρόγραμμα",
 				"unknown": "Άλλη ρύθμιση"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "Εκτελέστηκε μαζική ενέργεια",
 				"kb_settings_changed": "Οι ρυθμίσεις της βάσης γνώσεων άλλαξαν",
 				"instance_settings_changed": "Οι ρυθμίσεις της εγκατάστασης ενημερώθηκαν",
+				"webhook_created": "Το webhook δημιουργήθηκε",
+				"webhook_updated": "Το webhook ενημερώθηκε",
+				"webhook_deleted": "Το webhook διαγράφηκε",
+				"webhook_secret_rotated": "Το μυστικό του webhook άλλαξε",
+				"webhook_auto_disabled": "Το webhook απενεργοποιήθηκε αυτόματα",
+				"job_configuration_changed": "Η ρύθμιση της εργασίας άλλαξε",
+				"identity_connection_changed": "Η σύνδεση ταυτότητας άλλαξε",
 				"unknown": "Οι ρυθμίσεις άλλαξαν"
 			}
 		},

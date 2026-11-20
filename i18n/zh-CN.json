@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "允许的文件类型",
 				"body": "回复正文",
 				"visibilityDefault": "默认可见性",
+				"authAgentPassword": "员工登录：密码",
+				"authAgentMagicLink": "员工登录：魔法链接",
+				"authAgentEmailOtp": "员工登录：邮箱验证码",
+				"authCustomerPassword": "客户登录：密码",
+				"authCustomerMagicLink": "客户登录：魔法链接",
+				"authCustomerEmailOtp": "客户登录：邮箱验证码",
+				"staffSelfRegistration": "员工自助注册",
+				"enabled": "已启用",
+				"schedule": "计划",
 				"unknown": "其他设置"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "已执行批量操作",
 				"kb_settings_changed": "已更改知识库设置",
 				"instance_settings_changed": "已更新实例设置",
+				"webhook_created": "已创建 Webhook",
+				"webhook_updated": "已更新 Webhook",
+				"webhook_deleted": "已删除 Webhook",
+				"webhook_secret_rotated": "已轮换 Webhook 密钥",
+				"webhook_auto_disabled": "Webhook 已自动停用",
+				"job_configuration_changed": "已更改作业配置",
+				"identity_connection_changed": "已更改身份连接",
 				"unknown": "设置已更改"
 			}
 		},
