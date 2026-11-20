@@ -19,10 +19,10 @@ const actor = z.strictObject({
 const responseSchema = z.strictObject({
   entityType: z.string(),
   entityId: z.string(),
-  lastChanged: z.strictObject({ actor, at: z.string() }).nullable(),
+  lastChanged: z.strictObject({ actor, at: z.string().datetime() }).nullable(),
   rows: z.array(
     z.strictObject({
-      at: z.string(),
+      at: z.string().datetime(),
       actor,
       action: z.string(),
       changedFields: z.array(z.string()),

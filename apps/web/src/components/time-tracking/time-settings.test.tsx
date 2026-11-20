@@ -747,3 +747,18 @@ it.each(["workspace", "project"])(
     );
   },
 );
+
+it("shows the disabled state without History or Retry for project settings", async () => {
+  const { TimeTrackingDisabledError } = await import(
+    "@/fetchers/time-tracking"
+  );
+  mocks.getTimeSettings.mockRejectedValue(new TimeTrackingDisabledError());
+  wrap(<ProjectBillableSetting projectId="p1" />);
+  expect(
+    await screen.findByText("timeTracking:timesheet.disabledTitle"),
+  ).toBeVisible();
+  expect(screen.queryByTestId("settings-history")).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "common:actions.retry" }),
+  ).toBeNull();
+});

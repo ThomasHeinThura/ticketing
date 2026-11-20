@@ -161,6 +161,7 @@ describe("project states editor reorder (PR-17)", () => {
     mocks.onDragEnd?.({ active: { id: "c" }, over: { id: "a" } });
     await waitFor(() =>
       expect(mocks.updateState).toHaveBeenCalledWith({
+        workspaceId: "w1",
         projectId: "p1",
         stateId: "c",
         position: 0,

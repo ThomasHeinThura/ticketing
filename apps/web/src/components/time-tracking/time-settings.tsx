@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
+  AlertTitle,
   Button,
   Input,
   Label,
@@ -24,6 +25,7 @@ import { lazy, Suspense, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   createAvailableHours,
+  TimeTrackingDisabledError,
   updateTimeSettings,
 } from "@/fetchers/time-tracking";
 import {
@@ -319,13 +321,21 @@ export function ProjectBillableSetting({ projectId }: { projectId: string }) {
       if (lifecycle.isCurrent(intent)) toast.error(message(error));
     },
   });
+  const disabled = settings.error instanceof TimeTrackingDisabledError;
   const project = settings.data?.project;
   const canEdit = Boolean(
     settings.data?.canManage && !sessionScope?.impersonatedBy,
   );
   return (
     <>
-      {settings.isError ? (
+      {disabled ? (
+        <Alert>
+          <AlertTitle>{t("timeTracking:timesheet.disabledTitle")}</AlertTitle>
+          <AlertDescription>
+            {t("timeTracking:timesheet.disabledDescription")}
+          </AlertDescription>
+        </Alert>
+      ) : settings.isError ? (
         <Alert variant="error">
           <AlertDescription>{message(settings.error)}</AlertDescription>
           <Button variant="outline" onClick={() => void settings.refetch()}>
@@ -373,7 +383,7 @@ export function ProjectBillableSetting({ projectId }: { projectId: string }) {
           </div>
         </div>
       ) : null}
-      {workspace?.id ? (
+      {workspace?.id && !disabled ? (
         <Suspense fallback={null}>
           <SettingsHistory
             target={{

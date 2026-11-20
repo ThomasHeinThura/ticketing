@@ -291,6 +291,7 @@ export default function ProjectStatesEditor({
     setFailure(null);
     try {
       await updateState({
+        workspaceId,
         projectId,
         stateId: String(active.id),
         position: to,
@@ -305,7 +306,7 @@ export default function ProjectStatesEditor({
   const handleDefault = async (stateId: string) => {
     setFailure(null);
     try {
-      await updateState({ projectId, stateId, isDefault: true });
+      await updateState({ workspaceId, projectId, stateId, isDefault: true });
       await refresh();
       toast.success(t("settings:projectStates.defaultSaved"));
     } catch (error) {
@@ -317,7 +318,11 @@ export default function ProjectStatesEditor({
     if (templateId === NONE) return;
     setFailure(null);
     try {
-      await createState({ projectId, stateTemplateId: templateId });
+      await createState({
+        workspaceId,
+        projectId,
+        stateTemplateId: templateId,
+      });
       setTemplateId(NONE);
       await refresh();
       toast.success(t("settings:projectStates.created"));

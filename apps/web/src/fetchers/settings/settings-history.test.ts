@@ -92,3 +92,26 @@ it("rejects malformed history rows before rendering", async () => {
   });
   await expect(getSettingsHistory("workspace", "w1")).rejects.toThrow();
 });
+
+it.each(["row", "lastChanged"])(
+  "rejects an invalid %s timestamp",
+  async (field) => {
+    const actor = { kind: "person", name: "A" };
+    const entry = {
+      actor,
+      at: "",
+      action: "workspace.settings_updated",
+      changedFields: [],
+    };
+    get.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entityType: "workspace",
+        entityId: "w1",
+        rows: field === "row" ? [entry] : [],
+        lastChanged: field === "lastChanged" ? { actor, at: "" } : null,
+      }),
+    });
+    await expect(getSettingsHistory("workspace", "w1")).rejects.toThrow();
+  },
+);
