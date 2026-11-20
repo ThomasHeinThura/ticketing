@@ -88,6 +88,24 @@ describe("query cache error log", () => {
       }),
     ).rejects.toThrow("version_conflict");
     expect(log).toHaveBeenCalledWith("[api.query]", expect.any(HttpError));
+
+    // The silence is History-only and refusal-only.
+    log.mockClear();
+    await expect(
+      queryClient.fetchQuery({
+        queryKey: ["test", "forbidden"],
+        queryFn: () => Promise.reject(new HttpError(403, "forbidden")),
+        retry: false,
+      }),
+    ).rejects.toThrow("forbidden");
+    await expect(
+      queryClient.fetchQuery({
+        queryKey: ["settings-history", "server-error"],
+        queryFn: () => Promise.reject(new HttpError(500, "server_error")),
+        retry: false,
+      }),
+    ).rejects.toThrow("server_error");
+    expect(log).toHaveBeenCalledTimes(2);
     queryClient.clear();
   });
 });
