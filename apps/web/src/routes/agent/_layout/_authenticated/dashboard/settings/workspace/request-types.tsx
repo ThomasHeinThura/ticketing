@@ -388,6 +388,9 @@ function RequestTypesEditor() {
   const selectedType = (
     types.data as unknown as { requestTypes: RequestType[] } | undefined
   )?.requestTypes.find((item) => item.id === selected);
+  const loadedType = detail.isSuccess
+    ? (detail.data as unknown as RequestType & { workspaceId: string })
+    : undefined;
   const titleMappingValid =
     fields.filter(
       (field) =>
@@ -1439,16 +1442,18 @@ function RequestTypesEditor() {
                 </ol>
               </section>
             ) : null}
-            {selected && workspace.data?.id ? (
+            {loadedType &&
+            loadedType.id === selected &&
+            loadedType.workspaceId ? (
               <Suspense fallback={null}>
                 <SettingsHistory
                   target={{
                     kind: "entity",
                     type: "request_type",
-                    id: selected,
+                    id: loadedType.id,
                     scope: {
                       kind: "workspace",
-                      workspaceId: workspace.data.id,
+                      workspaceId: loadedType.workspaceId,
                     },
                   }}
                 />

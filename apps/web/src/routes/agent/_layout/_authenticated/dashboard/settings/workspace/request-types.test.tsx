@@ -26,6 +26,14 @@ const mocks = vi.hoisted(() => ({
   saveRequestType: vi.fn(),
   publishRequestType: vi.fn(),
   unpublishRequestType: vi.fn(),
+  historyTarget: vi.fn(),
+}));
+
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({ target }: { target: unknown }) => {
+    mocks.historyTarget(target);
+    return null;
+  },
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -96,6 +104,7 @@ const RequestTypesPage = (Route as unknown as { component: ComponentType })
 
 const type = {
   id: "rt-1",
+  workspaceId: "workspace-1",
   key: "access",
   name: "Access",
   description: "",
@@ -157,6 +166,7 @@ describe("request type editor", () => {
     });
     mocks.getRequestType.mockReset().mockResolvedValue(type);
     mocks.saveRequestType.mockReset().mockResolvedValue(type);
+    mocks.historyTarget.mockClear();
     mocks.getRequestTypeGroupOrder.mockReset().mockResolvedValue({
       groups: ["Accounts", "Support"],
       version: 3,
@@ -171,6 +181,24 @@ describe("request type editor", () => {
       );
   });
   afterEach(() => cleanup());
+
+  it("uses the loaded request type workspace for history opened from another workspace", async () => {
+    const otherType = { ...type, workspaceId: "workspace-2" };
+    mocks.getRequestTypes.mockResolvedValue({ requestTypes: [] });
+    mocks.getRequestType.mockResolvedValue(otherType);
+    mocks.saveRequestType.mockResolvedValue(otherType);
+    renderPage();
+    await waitFor(() =>
+      expect(mocks.historyTarget).toHaveBeenLastCalledWith({
+        kind: "entity",
+        type: "request_type",
+        id: "rt-1",
+        scope: { kind: "workspace", workspaceId: "workspace-2" },
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    await waitFor(() => expect(mocks.saveRequestType).toHaveBeenCalled());
+  });
 
   it.each(["denied", "checking"])(
     "does not fetch editor data while %s",
