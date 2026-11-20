@@ -1,9 +1,15 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   Input,
   Label,
   LoadingStatus,
@@ -20,16 +26,19 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 
-import { Plus } from "lucide-react";
+import { History, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import {
   isForbiddenError,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
 import { SettingsAccessPage } from "@/components/settings/settings-access-page";
+import { SettingsHistory } from "@/components/settings/settings-history";
+import { settingsHistoryQueryKey } from "@/fetchers/settings/settings-history";
 import {
   createTimeActivity,
   type TimeActivity,
@@ -39,21 +48,64 @@ import {
 import { useTimeActivities } from "@/hooks/queries/time-tracking/use-time-tracking";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { authClient } from "@/lib/auth-client";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 import { toast } from "@/lib/toast";
 import { AvailableHoursSetting, BackdateLimitSetting } from "./time-settings";
 import { useInvalidateTime, useTimeErrorMessage } from "./time-shared";
+
+type HistoryIdentity = { userId: string; sessionId: string };
+
+/** The staff browser session that may read and refresh History (never impersonated or portal). */
+function useHistoryIdentity(): HistoryIdentity | null {
+  const { data: session } = authClient.useSession();
+  const scope = session?.session as
+    | { portal?: string | null; impersonatedBy?: string | null }
+    | undefined;
+  const userId = session?.user?.id;
+  const sessionId = session?.session?.id;
+  return userId &&
+    sessionId &&
+    !scope?.impersonatedBy &&
+    (!scope?.portal || scope.portal === "agent")
+    ? { userId, sessionId }
+    : null;
+}
+
+/** After a confirmed write: mark exactly that row's captured key stale, then refetch behind a session check. */
+function useRefreshActivityHistory() {
+  const client = useQueryClient();
+  return (activityId: string, identity: HistoryIdentity | null) => {
+    if (!identity) return;
+    refreshSettingsHistory(
+      client,
+      settingsHistoryQueryKey(
+        "time_activity",
+        activityId,
+        identity.userId,
+        identity.sessionId,
+      ),
+      profileSessionGuard(identity.userId, identity.sessionId),
+    );
+  };
+}
 
 function ActivityRow({
   activity,
   workspaceId,
   canManage,
+  identity,
+  onHistory,
 }: {
   activity: TimeActivity;
   workspaceId: string;
   canManage: boolean;
+  identity: HistoryIdentity | null;
+  onHistory: () => void;
 }) {
   const { t } = useTranslation();
   const invalidate = useInvalidateTime();
+  const refreshHistory = useRefreshActivityHistory();
   const message = useTimeErrorMessage();
   const [name, setName] = useState(activity.name);
   const [nameSaved, setNameSaved] = useState(false);
@@ -69,11 +121,25 @@ function ActivityRow({
     const timer = setTimeout(() => setNameSaved(false), SAVE_FEEDBACK_HOLD_MS);
     return () => clearTimeout(timer);
   }, [nameSaved]);
+  // The row, workspace and session are captured when the write starts, so a later change of any
+  // of them cannot redirect the History refresh.
   const save = useMutation({
-    mutationFn: (changes: { name?: string; archived?: boolean }) =>
-      updateTimeActivity(activity.id, workspaceId, changes),
+    mutationFn: (changes: {
+      id: string;
+      workspaceId: string;
+      identity: HistoryIdentity | null;
+      name?: string;
+      archived?: boolean;
+    }) =>
+      updateTimeActivity(changes.id, changes.workspaceId, {
+        ...(changes.name === undefined ? {} : { name: changes.name }),
+        ...(changes.archived === undefined
+          ? {}
+          : { archived: changes.archived }),
+      }),
     onMutate: () => setNameSaved(false),
     onSuccess: async (_result, changes) => {
+      refreshHistory(changes.id, changes.identity);
       await invalidate();
       if (changes.name !== undefined) setNameSaved(true);
     },
@@ -83,6 +149,7 @@ function ActivityRow({
     },
   });
   const dirty = name.trim() !== activity.name && name.trim() !== "";
+  const captured = { id: activity.id, workspaceId, identity };
   return (
     <TableRow data-testid="time-activity-row">
       <TableCell>
@@ -106,7 +173,7 @@ function ActivityRow({
                   !save.isPending &&
                   canManage
                 )
-                  save.mutate({ name: name.trim() });
+                  save.mutate({ ...captured, name: name.trim() });
               }}
             />
           ) : (
@@ -128,7 +195,7 @@ function ActivityRow({
               }
               onClick={() => {
                 if (!save.isPending && dirty)
-                  save.mutate({ name: name.trim() });
+                  save.mutate({ ...captured, name: name.trim() });
               }}
             >
               {t("timeTracking:actions.save")}
@@ -149,7 +216,9 @@ function ActivityRow({
                 id={`activity-active-${activity.id}`}
                 checked={!activity.archived}
                 disabled={save.isPending}
-                onCheckedChange={(active) => save.mutate({ archived: !active })}
+                onCheckedChange={(active) =>
+                  save.mutate({ ...captured, archived: !active })
+                }
               />
               <Label
                 htmlFor={`activity-active-${activity.id}`}
@@ -169,6 +238,21 @@ function ActivityRow({
           )}
         </div>
       </TableCell>
+      <TableCell className="w-32">
+        {identity ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+            aria-label={`${t("settings:history.title", { defaultValue: "History" })}: ${activity.name}`}
+            onClick={onHistory}
+          >
+            <History className="size-4" />
+            {t("settings:history.title", { defaultValue: "History" })}
+          </Button>
+        ) : null}
+      </TableCell>
     </TableRow>
   );
 }
@@ -183,15 +267,31 @@ function TimeActivitiesSettingsContent() {
     useWorkspacePermission();
   const canManage = canManageWorkspaceSettings() && !isCheckingPermissions;
   const activities = useTimeActivities(workspace?.id, true);
+  const identity = useHistoryIdentity();
+  const refreshHistory = useRefreshActivityHistory();
   const [name, setName] = useState("");
+  // The History being read, pinned to the row, workspace and session it was opened for.
+  const [history, setHistory] = useState<{
+    activityId: string;
+    workspaceId: string;
+    userId: string;
+    sessionId: string;
+  } | null>(null);
   const add = useMutation({
-    mutationFn: () =>
+    mutationFn: (captured: {
+      workspaceId: string;
+      name: string;
+      identity: HistoryIdentity | null;
+    }) =>
       createTimeActivity({
-        workspaceId: workspace?.id as string,
-        name: name.trim(),
+        workspaceId: captured.workspaceId,
+        name: captured.name,
       }),
-    onSuccess: async () => {
+    onSuccess: async (created, captured) => {
       setName("");
+      // The new row's identity is the persisted one from the response.
+      if (typeof created?.id === "string")
+        refreshHistory(created.id, captured.identity);
       await invalidate();
     },
     onError: (error) => toast.error(message(error)),
@@ -201,6 +301,21 @@ function TimeActivitiesSettingsContent() {
     releaseNow:
       !loading && activities.isSuccess && activities.data.length === 0,
   });
+  // Open only while the row is still listed for the same workspace and browser session.
+  const openHistory =
+    history &&
+    identity &&
+    history.workspaceId === workspace?.id &&
+    history.userId === identity.userId &&
+    history.sessionId === identity.sessionId
+      ? activities.data?.find((activity) => activity.id === history.activityId)
+      : undefined;
+  // Once the pinned workspace, user, session or listed row stops matching, the selection is
+  // dropped for good so a later round trip cannot reopen it.
+  const selectionStale = history !== null && !openHistory;
+  useEffect(() => {
+    if (selectionStale) setHistory(null);
+  }, [selectionStale]);
   const disabled = activities.error instanceof TimeTrackingDisabledError;
   if (isForbiddenError(activities.error)) return <NoAccessPage />;
   return (
@@ -237,7 +352,12 @@ function TimeActivitiesSettingsContent() {
               className="flex flex-wrap items-end gap-2"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (name.trim() && !add.isPending) add.mutate();
+                if (name.trim() && !add.isPending)
+                  add.mutate({
+                    workspaceId: workspace?.id as string,
+                    name: name.trim(),
+                    identity,
+                  });
               }}
             >
               <div className="w-64 space-y-1">
@@ -272,6 +392,9 @@ function TimeActivitiesSettingsContent() {
                 <TableHead className="w-40">
                   {t("timeTracking:activities.status")}
                 </TableHead>
+                <TableHead className="w-32">
+                  {t("settings:history.title", { defaultValue: "History" })}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -281,10 +404,41 @@ function TimeActivitiesSettingsContent() {
                   activity={activity}
                   workspaceId={workspace?.id ?? ""}
                   canManage={canManage}
+                  identity={identity}
+                  onHistory={() =>
+                    identity &&
+                    workspace?.id &&
+                    setHistory({
+                      activityId: activity.id,
+                      workspaceId: workspace.id,
+                      userId: identity.userId,
+                      sessionId: identity.sessionId,
+                    })
+                  }
                 />
               ))}
             </TableBody>
           </Table>
+          {openHistory ? (
+            <Dialog open onOpenChange={(open) => !open && setHistory(null)}>
+              <DialogContent closeLabel={t("common:actions.close")}>
+                <DialogHeader>
+                  <DialogTitle>
+                    {t("settings:history.title", { defaultValue: "History" })}
+                  </DialogTitle>
+                  <DialogDescription>{openHistory.name}</DialogDescription>
+                </DialogHeader>
+                <div className="px-6 pb-6">
+                  <SettingsHistory
+                    key={`${openHistory.id}:${history?.userId}:${history?.sessionId}:${history?.workspaceId}`}
+                    type="time_activity"
+                    id={openHistory.id}
+                    userId={history?.userId as string}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          ) : null}
         </>
       )}
     </TimeActivitiesSettingsFrame>

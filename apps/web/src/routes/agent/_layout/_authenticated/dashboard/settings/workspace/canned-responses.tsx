@@ -47,11 +47,13 @@ import CommentEditor, {
 } from "@/components/activity/comment-editor";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import {
   isForbiddenError,
   useSettingsAccess,
 } from "@/components/settings/settings-access";
 import { SettingsAccessPage } from "@/components/settings/settings-access-page";
+import { SettingsHistory } from "@/components/settings/settings-history";
 import {
   type CannedResponseInput,
   getCannedResponseLibrary,
@@ -60,6 +62,8 @@ import {
 } from "@/fetchers/canned-response/manage-canned-responses";
 import { useOpenPendingAction } from "@/hooks/use-open-pending-action";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { authClient } from "@/lib/auth-client";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 import {
   type CannedResponseSearch,
   parseCannedResponseSearch,
@@ -77,12 +81,14 @@ const EMPTY_DOCUMENT = { type: "doc", content: [{ type: "paragraph" }] };
 
 function CannedResponseEditor({
   snippet,
+  userId,
   pending,
   error,
   onSave,
   onClose,
 }: {
   snippet?: Snippet;
+  userId?: string;
   pending: boolean;
   error: unknown;
   onSave: (input: CannedResponseInput) => void;
@@ -192,6 +198,13 @@ function CannedResponseEditor({
                 </SelectContent>
               </Select>
             </div>
+            {snippet && userId ? (
+              <SettingsHistory
+                type="canned_response"
+                id={snippet.id}
+                userId={userId}
+              />
+            ) : null}
             {error ? (
               <Alert variant="error">
                 <AlertDescription>
@@ -250,6 +263,7 @@ function CannedResponsesPageContent() {
   const navigate = useNavigate({ from: Route.fullPath });
   const openPendingAction = useOpenPendingAction();
   const cache = useQueryClient();
+  const { data: session } = authClient.useSession();
   const { workspace, canManageWorkspaceSettings, isCheckingPermissions } =
     useWorkspacePermission();
   const canManage = canManageWorkspaceSettings();
@@ -277,11 +291,28 @@ function CannedResponsesPageContent() {
           throw new Error(t("settings:cannedResponses.notFound"));
         return removeCannedResponse(target);
       }
-      return saveCannedResponse(
+      const userId = session?.user?.id;
+      const sessionId = session?.session?.id;
+      const saved = await saveCannedResponse(
         workspace.id,
         input.value,
         search.id === "new" ? undefined : search.id,
       );
+      // Nonblocking: a refresh failure never turns a saved change into a failed one.
+      if (userId && sessionId && typeof saved?.id === "string")
+        refreshSettingsHistory(
+          cache,
+          [
+            "settings-history",
+            "canned_response",
+            saved.id,
+            "agent",
+            userId,
+            sessionId,
+          ],
+          profileSessionGuard(userId, sessionId),
+        );
+      return saved;
     },
     onSuccess: async (result, input) => {
       if (input.kind === "delete") {
@@ -441,6 +472,7 @@ function CannedResponsesPageContent() {
               <CannedResponseEditor
                 key={`${workspace?.id}:${search.id}`}
                 snippet={selected}
+                userId={session?.user?.id}
                 pending={mutation.isPending}
                 error={mutation.error}
                 onSave={(value) => mutation.mutate({ kind: "save", value })}

@@ -46,11 +46,13 @@ import {
 } from "@/components/project/project-planning-form";
 import ProjectPlanningSettings from "@/components/project/project-planning-settings";
 import { TasksImportExport } from "@/components/project/tasks-import-export.tsx";
+import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import {
   isForbiddenError,
   useCapabilityCheckFailed,
 } from "@/components/settings/settings-access";
 import { SettingsAccessPage } from "@/components/settings/settings-access-page";
+import { SettingsHistory } from "@/components/settings/settings-history";
 import icons from "@/constants/project-icons";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
@@ -110,6 +112,7 @@ function RouteComponent() {
 
 function ProjectGeneral() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { projectId: rawProjectId } = useParams({ strict: false });
   const projectId = rawProjectId ?? "";
   const {
@@ -193,6 +196,10 @@ function ProjectGeneral() {
     canExportTasks,
     isCheckingPermissions,
   } = useWorkspacePermission();
+  const { canManageProjectSettings } = useWorkspacePermission(
+    workspace?.id,
+    project?.id,
+  );
   const capabilityCheckFailed = useCapabilityCheckFailed(
     isCheckingPermissions ? workspace?.id : undefined,
   );
@@ -614,6 +621,9 @@ function ProjectGeneral() {
             </p>
           </div>
 
+          {user?.id && canManageProjectSettings() ? (
+            <SettingsHistory type="project" id={project.id} userId={user.id} />
+          ) : null}
           <div className="space-y-4 border border-border rounded-md p-4 bg-sidebar">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="space-y-0.5">

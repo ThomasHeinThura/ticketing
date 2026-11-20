@@ -34,15 +34,17 @@ import {
 } from "@taskdesk/ui";
 
 import { ChevronLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import {
   isForbiddenError,
   useCapabilityCheckFailed,
 } from "@/components/settings/settings-access";
 import { SettingsAccessPage } from "@/components/settings/settings-access-page";
+import { SettingsHistory } from "@/components/settings/settings-history";
 import { CabTemplatePanel } from "@/components/workflow/cab-template-panel";
 import {
   type NamedOption,
@@ -66,7 +68,9 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 import { parseWorkflowSettingsSearch, routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 
@@ -93,6 +97,7 @@ const STATUS_VARIANT = {
 
 function WorkflowSettingsRoute() {
   const navigate = useNavigate({ from: Route.fullPath });
+  const { data: session } = authClient.useSession();
   const { workflowId } = Route.useSearch();
   const { data: workspace } = useActiveWorkspace();
   const { canManageWorkflows, isCheckingPermissions } =
@@ -134,6 +139,7 @@ function WorkflowSettingsRoute() {
     <div className="flex h-full w-full min-w-0 flex-col gap-6 overflow-y-auto p-6">
       {workflowId ? (
         <WorkflowDetailView
+          key={`${workflowId}:${session?.session?.id ?? ""}`}
           workflowId={workflowId}
           canManage={canManage}
           states={states}
@@ -323,13 +329,50 @@ function CreateWorkflowDialog({
 }) {
   const { t } = useTranslation();
   const cache = useQueryClient();
+  const { data: session } = authClient.useSession();
+  const currentSession = useRef(session);
+  currentSession.current = session;
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [key, setKey] = useState("");
   const [name, setName] = useState("");
   const create = useMutation({
-    mutationFn: () =>
-      createWorkflow({ workspaceId, key: key.trim(), name: name.trim() }),
-    onSuccess: async (workflow) => {
+    mutationFn: async () => {
+      const userId = session?.user?.id;
+      const sessionId = session?.session?.id;
+      const workflow = await createWorkflow({
+        workspaceId,
+        key: key.trim(),
+        name: name.trim(),
+      });
+      if (userId && sessionId)
+        refreshSettingsHistory(
+          cache,
+          [
+            "settings-history",
+            "workflow",
+            workflow.id,
+            "agent",
+            userId,
+            sessionId,
+          ],
+          profileSessionGuard(userId, sessionId),
+        );
+      return { workflow, userId, sessionId };
+    },
+    onSuccess: async ({ workflow, userId, sessionId }) => {
       await cache.invalidateQueries({ queryKey: ["workflows"] });
+      if (
+        !mounted.current ||
+        currentSession.current?.user?.id !== userId ||
+        currentSession.current?.session?.id !== sessionId
+      )
+        return;
       setKey("");
       setName("");
       toast.success(t("common:actions.saved"));
@@ -428,6 +471,14 @@ function WorkflowDetailView({
 }) {
   const { t } = useTranslation();
   const cache = useQueryClient();
+  const { data: session } = authClient.useSession();
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const detail = useQuery({
     queryKey: ["workflows", "detail", workflowId],
     queryFn: () => getWorkflow(workflowId),
@@ -480,11 +531,33 @@ function WorkflowDetailView({
     onSuccess: (report, number) => setValidating({ number, report }),
   });
   const saveDraft = useMutation({
-    mutationFn: () =>
-      createWorkflowVersion({ id: workflowId, transitions: working ?? [] }),
-    onSuccess: async (version) => {
+    mutationFn: async () => {
+      const userId = session?.user?.id;
+      const sessionId = session?.session?.id;
+      const savedWorking = working;
+      const version = await createWorkflowVersion({
+        id: workflowId,
+        transitions: savedWorking ?? [],
+      });
+      if (userId && sessionId)
+        refreshSettingsHistory(
+          cache,
+          [
+            "settings-history",
+            "workflow",
+            workflowId,
+            "agent",
+            userId,
+            sessionId,
+          ],
+          profileSessionGuard(userId, sessionId),
+        );
+      return { version, savedWorking };
+    },
+    onSuccess: async ({ version, savedWorking }) => {
       await cache.invalidateQueries({ queryKey: ["workflows"] });
-      setWorking(null);
+      if (!mounted.current) return;
+      setWorking((current) => (current === savedWorking ? null : current));
       setDraftSaved(true);
       toast.success(
         t("settings:workflows.draftSaved", { number: version.number }),
@@ -493,10 +566,28 @@ function WorkflowDetailView({
     },
   });
   const publish = useMutation({
-    mutationFn: (number: number) =>
-      publishWorkflowVersion({ id: workflowId, number }),
+    mutationFn: async (number: number) => {
+      const userId = session?.user?.id;
+      const sessionId = session?.session?.id;
+      const version = await publishWorkflowVersion({ id: workflowId, number });
+      if (userId && sessionId)
+        refreshSettingsHistory(
+          cache,
+          [
+            "settings-history",
+            "workflow",
+            workflowId,
+            "agent",
+            userId,
+            sessionId,
+          ],
+          profileSessionGuard(userId, sessionId),
+        );
+      return version;
+    },
     onSuccess: async (version) => {
       await cache.invalidateQueries({ queryKey: ["workflows"] });
+      if (!mounted.current) return;
       setValidating(null);
       toast.success(
         t("settings:workflows.published", { number: version.number }),
@@ -559,6 +650,13 @@ function WorkflowDetailView({
         )
       ) : (
         <>
+          {session?.user?.id ? (
+            <SettingsHistory
+              type="workflow"
+              id={workflow.id}
+              userId={session.user.id}
+            />
+          ) : null}
           <section
             className="space-y-3"
             aria-label={t("settings:workflows.versions.title")}
@@ -661,7 +759,7 @@ function WorkflowDetailView({
                       <SaveButton
                         disabled={!working && !saveDraft.isPending}
                         pending={saveDraft.isPending}
-                        success={draftSaved}
+                        success={draftSaved && !working}
                         savedLabel={t("common:actions.saved")}
                         workingLabel={t("common:actions.saving")}
                         announceSuccess={false}

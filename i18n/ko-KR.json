@@ -18,7 +18,7 @@
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
 			"save": "Save",
-			"saved": "Saved",
+			"saved": "저장됨",
 			"saving": "Saving…",
 			"previous": "Previous",
 			"next": "Next",
@@ -556,6 +556,37 @@
 		}
 	},
 	"settings": {
+		"history": {
+			"providerConfiguration": "구성",
+			"providerCredential": "자격 증명",
+			"memberHistory": "{{name}} 기록 ({{number}})",
+			"roleChanged": "역할 변경",
+			"preferenceFields": {
+				"density": "밀도",
+				"layout": "레이아웃",
+				"listGroups": "목록 그룹",
+				"columns": "표시되는 열",
+				"columnWidths": "열 너비"
+			},
+			"notificationDelivery": "알림 전달",
+			"notificationDigest": "전달 시점",
+			"notificationQuietHours": "방해 금지 시간",
+			"notificationWorkspaceRule": "워크스페이스 전송 규칙",
+			"securityPassword": "비밀번호",
+			"securityMfa": "2단계 인증",
+			"personalKey": "개인 API 키",
+			"profileYou": "나",
+			"profileLocale": "Locale",
+			"title": "기록",
+			"lastChanged": "마지막 변경: {{actor}}, {{at}}",
+			"empty": "기록된 변경 사항이 아직 없습니다.",
+			"error": "기록을 불러오지 못했습니다.",
+			"retry": "다시 시도",
+			"personUnavailable": "표시할 수 없는 사용자",
+			"apiKey": "API 키",
+			"automation": "자동화",
+			"system": "시스템"
+		},
 		"account": "계정",
 		"developer": "개발자",
 		"information": "정보",
@@ -1633,7 +1664,7 @@
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number."
 		},
 		"cannedResponses": {
-			"body": "Response body",
+			"body": "응답 본문",
 			"create": "New response",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
 			"deleteNamed": "Delete {{name}}",
@@ -1645,11 +1676,11 @@
 			"failed": "Unable to save this response.",
 			"forbidden": "You need workspace settings permission to manage canned responses.",
 			"loadFailed": "Unable to load canned responses.",
-			"name": "Name",
+			"name": "이름",
 			"notFound": "This response is no longer available in this workspace.",
 			"search": "Search responses",
 			"title": "Canned responses",
-			"visibility": "Default visibility",
+			"visibility": "기본 공개 범위",
 			"save": "Save",
 			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		},
@@ -3769,6 +3800,23 @@
 			"title": "Audit history",
 			"when": "When",
 			"actions": {
+				"workflow_created": "워크플로 생성됨",
+				"workflow_version_created": "워크플로 버전 생성됨",
+				"workflow_version_published": "워크플로 버전 게시됨",
+				"time_settings_updated": "시간 설정이 업데이트됨",
+				"plugin_changed": "플러그인 변경됨",
+				"canned_response_created": "상용구 응답 생성됨",
+				"canned_response_updated": "상용구 응답 업데이트됨",
+				"canned_response_deleted": "상용구 응답 삭제됨",
+				"automation_created": "자동화 규칙 생성됨",
+				"automation_updated": "자동화 규칙 업데이트됨",
+				"automation_enabled": "자동화 규칙 활성화됨",
+				"automation_disabled": "자동화 규칙 비활성화됨",
+				"team_created": "팀 생성됨",
+				"team_updated": "팀 설정 업데이트됨",
+				"team_member_added": "팀 멤버 추가됨",
+				"team_member_updated": "팀 멤버 업데이트됨",
+				"team_member_removed": "팀 멤버 제거됨",
 				"attachment_downloaded": "Attachment downloaded",
 				"audit_read": "Audit history viewed",
 				"bulk_performed": "Bulk change",
@@ -6247,75 +6295,75 @@
 		"fields": {
 			"approvalDefaultExpiryDays": {
 				"help": "The default for a new approval request. At most 90.",
-				"label": "Approval expiry (days)"
+				"label": "승인 만료(일)"
 			},
 			"attachmentAllowedExtensions": {
 				"help": "Extensions separated by commas, for example pdf, png, docx.",
-				"label": "Allowed file types"
+				"label": "허용되는 파일 형식"
 			},
 			"attachmentMaxBytes": {
 				"help": "The maximum size of one uploaded file.",
-				"label": "Largest file (bytes)"
+				"label": "최대 파일 크기(바이트)"
 			},
 			"attachmentMaxPerItem": {
 				"help": "The maximum number of files on one work item.",
-				"label": "Files per work item"
+				"label": "작업 항목당 파일 수"
 			},
 			"clarificationWindowDays": {
 				"help": "A request awaiting the customer's reply for longer than this is declined automatically.",
-				"label": "Clarification window (days)"
+				"label": "확인 요청 기간(일)"
 			},
 			"notificationRetentionDays": {
 				"help": "Read notifications older than this are deleted daily. Unread notifications are never deleted.",
-				"label": "Keep read notifications for (days)"
+				"label": "읽은 알림 보관 기간(일)"
 			},
 			"reopenWindowDays": {
 				"help": "How long after resolution a customer may reopen a request.",
-				"label": "Reopen window (days)"
+				"label": "다시 열기 가능 기간(일)"
 			},
 			"timezone": {
 				"help": "Used for digest windows and quiet hours when a person has not chosen their own.",
-				"label": "Time zone"
+				"label": "시간대"
 			},
 			"anonymousRateLimitMax": {
 				"help": "Maximum requests from one internet address during the limit window.",
-				"label": "Requests per window"
+				"label": "기간당 요청 수"
 			},
 			"anonymousRateLimitWindowMinutes": {
 				"help": "The period used to count anonymous requests, from 1 minute to 24 hours.",
-				"label": "Limit window (minutes)"
+				"label": "제한 기간(분)"
 			},
 			"mcpWriteCeilingPerMinute": {
 				"help": "Shared across API replicas. Bulk requests also obey the separate bulk ceiling.",
-				"label": "MCP write requests per minute"
+				"label": "분당 MCP 쓰기 요청 수"
 			},
 			"apiKeyBurstThreshold": {
 				"help": "Automatically disable an MCP key after more than this many write attempts in one minute, including rate-limited attempts.",
-				"label": "MCP burst disable threshold (attempts/minute)"
+				"label": "MCP 급증 비활성화 임계값(시도/분)"
 			},
 			"cspMode": {
 				"help": "Begin with report-only mode, inspect browser reports, then enforce after the rollout checks pass.",
-				"label": "Policy mode"
+				"label": "정책 모드"
 			},
 			"customerInvitationCreateWindowMinutes": {
 				"help": "Time window for the per-inviter and per-organisation creation limits.",
-				"label": "Customer invitation creation window (minutes)"
+				"label": "고객 초대 생성 기간(분)"
 			},
 			"customerInvitationPerInviterLimit": {
 				"help": "Maximum creation attempts by one inviter within the configured window.",
-				"label": "Maximum customer invitations per inviter"
+				"label": "초대자당 최대 고객 초대 수"
 			},
 			"customerInvitationPerOrganisationLimit": {
 				"help": "Maximum creation attempts for one organisation within the configured window.",
-				"label": "Maximum customer invitations per organisation"
+				"label": "조직당 최대 고객 초대 수"
 			},
 			"customerInvitationResendCooldownSeconds": {
 				"help": "Minimum interval before the same customer invitation can be resent.",
-				"label": "Customer invitation resend cooldown (seconds)"
+				"label": "고객 초대 재전송 대기 시간(초)"
 			},
 			"invitationLifetimeHours": {
 				"help": "Applies to new and renewed staff and customer invitations. Existing expiry dates stay unchanged.",
-				"label": "Invitation lifetime (hours)"
+				"label": "초대 유효 기간(시간)"
 			}
 		},
 		"general": {
@@ -6586,6 +6634,10 @@
 		}
 	},
 	"automations": {
+		"changes": {
+			"title": "변경 기록: {{name}}",
+			"description": "누가 언제 이 규칙을 변경했는지 표시합니다. 규칙 정의와 값은 표시되지 않습니다."
+		},
 		"actions": {
 			"daysFromNow": "days from now (empty clears the due date)",
 			"dueInDays": "Days",
@@ -6743,6 +6795,7 @@
 			"unknown": "Needs attention"
 		},
 		"list": {
+			"changeHistory": "변경 기록",
 			"disabled": "Disabled",
 			"dryRun": "Dry run",
 			"edit": "Edit",

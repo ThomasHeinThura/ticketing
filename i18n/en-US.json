@@ -556,6 +556,37 @@
 		}
 	},
 	"settings": {
+		"history": {
+			"providerConfiguration": "Configuration",
+			"providerCredential": "Credential",
+			"memberHistory": "History for {{name}} ({{number}})",
+			"roleChanged": "Role changed",
+			"preferenceFields": {
+				"density": "Density",
+				"layout": "Layout",
+				"listGroups": "Group",
+				"columns": "Visible columns",
+				"columnWidths": "Column widths"
+			},
+			"notificationDelivery": "Delivery",
+			"notificationDigest": "Delivery timing",
+			"notificationQuietHours": "Quiet hours",
+			"notificationWorkspaceRule": "Workspace delivery rules",
+			"securityPassword": "Password",
+			"securityMfa": "Two-factor authentication",
+			"personalKey": "Personal API key",
+			"profileYou": "You",
+			"profileLocale": "Locale",
+			"title": "History",
+			"lastChanged": "Last changed by {{actor}} on {{at}}",
+			"empty": "No recorded changes yet.",
+			"error": "Could not load history.",
+			"retry": "Retry",
+			"personUnavailable": "Person unavailable",
+			"apiKey": "API key",
+			"automation": "Automation",
+			"system": "System"
+		},
 		"account": "Account",
 		"developer": "Developer",
 		"information": "Information",
@@ -3785,6 +3816,23 @@
 			"emptyValue": "(empty)",
 			"noValue": "None",
 			"actions": {
+				"workflow_created": "Workflow created",
+				"workflow_version_created": "Workflow version created",
+				"workflow_version_published": "Workflow version published",
+				"time_settings_updated": "Time settings updated",
+				"plugin_changed": "Plugin changed",
+				"canned_response_created": "Canned response created",
+				"canned_response_updated": "Canned response updated",
+				"canned_response_deleted": "Canned response deleted",
+				"automation_created": "Automation rule created",
+				"automation_updated": "Automation rule updated",
+				"automation_enabled": "Automation rule enabled",
+				"automation_disabled": "Automation rule disabled",
+				"team_created": "Team created",
+				"team_updated": "Team settings updated",
+				"team_member_added": "Team member added",
+				"team_member_updated": "Team member updated",
+				"team_member_removed": "Team member removed",
 				"work_item_created": "Created",
 				"work_item_updated": "Updated",
 				"work_item_transitioned": "Changed state",
@@ -5311,6 +5359,10 @@
 		}
 	},
 	"automations": {
+		"changes": {
+			"title": "Change history: {{name}}",
+			"description": "Who changed this rule and when. Rule definitions and values are never shown."
+		},
 		"workspace": {
 			"title": "Automations",
 			"description": "Rules that run when something happens in any {{term_project_one}} of this workspace. Each rule runs as a role and cannot do more than that role."
@@ -5323,6 +5375,7 @@
 			"notFoundDescription": "This {{term_project_one}} does not exist or is out of your reach."
 		},
 		"list": {
+			"changeHistory": "Change history",
 			"new": "New rule",
 			"enabled": "Enabled",
 			"disabled": "Disabled",
