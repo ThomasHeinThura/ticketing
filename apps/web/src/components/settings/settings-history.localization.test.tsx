@@ -188,14 +188,7 @@ const when = "2026-01-01T00:00:00Z";
 const person = { kind: "person" as const, name: "Alice" };
 async function renderHistory(
   locale: string,
-  type:
-    | "instance"
-    | "team"
-    | "workspace"
-    | "project"
-    | "time_activity"
-    | "workflow"
-    | "canned_response",
+  type: SettingsHistoryTarget,
   id: string,
   payload: Json,
 ) {
@@ -239,7 +232,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
       expect(Object.keys(settings).sort()).toEqual(
         Object.keys(expected).sort(),
       );
-      expect(Object.keys(settings)).toHaveLength(37);
+      expect(Object.keys(settings)).toHaveLength(44);
       for (const key of Object.keys(expected)) {
         expect(at(source, `settings.history.actions.${key}`)).not.toBe("");
         // `bulk_performed` already had a work-item label ("Bulk change"); the settings panel owns its own.
@@ -664,7 +657,12 @@ type Inventory = Array<{
     | "workflow"
     | "canned_response"
     | "time_activity"
-    | "instance";
+    | "instance"
+    | "webhook"
+    | "instance_auth_methods"
+    | "staff_self_registration"
+    | "instance_job"
+    | "identity_connection";
   action: string;
   /** [API marker, settings.history.fields key]; written out here, independent of the renderer. */
   fields: Array<[string, string]>;
@@ -803,6 +801,41 @@ const INVENTORY: Inventory = [
     action: "instance.settings_changed",
     fields: INSTANCE_FIELDS,
   },
+  { type: "webhook", action: "webhook.created", fields: [] },
+  { type: "webhook", action: "webhook.updated", fields: [] },
+  { type: "webhook", action: "webhook.deleted", fields: [] },
+  { type: "webhook", action: "webhook.secret_rotated", fields: [] },
+  { type: "webhook", action: "webhook.auto_disabled", fields: [] },
+  {
+    type: "instance_auth_methods",
+    action: "plugin.changed",
+    fields: [
+      ["agent.password", "authAgentPassword"],
+      ["agent.magicLink", "authAgentMagicLink"],
+      ["agent.emailOtp", "authAgentEmailOtp"],
+      ["customer.password", "authCustomerPassword"],
+      ["customer.magicLink", "authCustomerMagicLink"],
+      ["customer.emailOtp", "authCustomerEmailOtp"],
+    ],
+  },
+  {
+    type: "staff_self_registration",
+    action: "plugin.changed",
+    fields: [["enabled", "staffSelfRegistration"]],
+  },
+  {
+    type: "instance_job",
+    action: "job.configuration_changed",
+    fields: [
+      ["pattern", "schedule"],
+      ["enabled", "enabled"],
+    ],
+  },
+  {
+    type: "identity_connection",
+    action: "identity_connection.changed",
+    fields: [],
+  },
 ];
 const actionKey = (action: string) =>
   `settings.history.actions.${action.replace(/\./g, "_")}`;
@@ -835,8 +868,8 @@ const labelSameAsEnglish = new Set<string>([
 
 describe("full History inventory has dedicated localized labels", () => {
   it("covers every action and field of the API projection", () => {
-    expect(INVENTORY_ACTIONS).toHaveLength(26);
-    expect(new Set(INVENTORY_ACTIONS.map(actionKey)).size).toBe(26);
+    expect(INVENTORY_ACTIONS).toHaveLength(34);
+    expect(new Set(INVENTORY_ACTIONS.map(actionKey)).size).toBe(34);
   });
 
   it.each(all)(

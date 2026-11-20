@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "अनुमत फ़ाइल प्रकार",
 				"body": "उत्तर का मुख्य भाग",
 				"visibilityDefault": "डिफ़ॉल्ट दृश्यता",
+				"authAgentPassword": "स्टाफ साइन-इन: पासवर्ड",
+				"authAgentMagicLink": "स्टाफ साइन-इन: मैजिक लिंक",
+				"authAgentEmailOtp": "स्टाफ साइन-इन: ईमेल कोड",
+				"authCustomerPassword": "ग्राहक साइन-इन: पासवर्ड",
+				"authCustomerMagicLink": "ग्राहक साइन-इन: मैजिक लिंक",
+				"authCustomerEmailOtp": "ग्राहक साइन-इन: ईमेल कोड",
+				"staffSelfRegistration": "स्टाफ स्व-पंजीकरण",
+				"enabled": "सक्षम",
+				"schedule": "शेड्यूल",
 				"unknown": "अन्य सेटिंग"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "बल्क कार्रवाई की गई",
 				"kb_settings_changed": "ज्ञान आधार की सेटिंग बदली गईं",
 				"instance_settings_changed": "इंस्टेंस सेटिंग अपडेट की गईं",
+				"webhook_created": "वेबहुक बनाया गया",
+				"webhook_updated": "वेबहुक अपडेट किया गया",
+				"webhook_deleted": "वेबहुक हटाया गया",
+				"webhook_secret_rotated": "वेबहुक सीक्रेट बदला गया",
+				"webhook_auto_disabled": "वेबहुक स्वतः अक्षम किया गया",
+				"job_configuration_changed": "जॉब कॉन्फ़िगरेशन बदला गया",
+				"identity_connection_changed": "पहचान कनेक्शन बदला गया",
 				"unknown": "सेटिंग बदली गईं"
 			}
 		},

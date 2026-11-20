@@ -51,6 +51,17 @@ vi.mock("@/fetchers/god-mode/identity-connections", async (importOriginal) => ({
   requestIdentityConnectionDeletion: (...args: unknown[]) =>
     mocks.requestDeletion(...args),
 }));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: ({
+    target,
+  }: {
+    target: { type: string; id: string; scope: { kind: string } };
+  }) => (
+    <div data-testid="history-target">
+      {`${target.type}:${target.id}:${target.scope.kind}`}
+    </div>
+  ),
+}));
 vi.mock("@/hooks/use-open-pending-action", () => ({
   useOpenPendingAction: () => mocks.openPending,
 }));
@@ -330,6 +341,15 @@ describe("IdentityConnectionEditor (edit)", () => {
     });
   });
 
+  it("mounts History for a stored connection only", async () => {
+    renderEditor();
+    expect(
+      await screen.findByText(
+        `identity_connection:${staffConnection.id}:instance`,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("does not offer immutable fields for editing", () => {
     renderEditor();
     expect(screen.getByLabelText("Entra tenant ID")).toBeDisabled();
@@ -381,6 +401,13 @@ describe("IdentityConnectionEditor (create)", () => {
     expect(
       screen.queryByRole("checkbox", { name: "Connection enabled" }),
     ).toBeNull();
+  });
+
+  it("has no History before the connection exists", () => {
+    renderWithFactor(
+      <IdentityConnectionEditor connection={null} onReload={vi.fn()} />,
+    );
+    expect(screen.queryByTestId("history-target")).toBeNull();
   });
 
   it("shows field errors and sends nothing for an invalid form", async () => {

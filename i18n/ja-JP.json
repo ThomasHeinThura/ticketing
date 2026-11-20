@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "許可するファイル形式",
 				"body": "返信本文",
 				"visibilityDefault": "既定の公開範囲",
+				"authAgentPassword": "スタッフのサインイン：パスワード",
+				"authAgentMagicLink": "スタッフのサインイン：マジックリンク",
+				"authAgentEmailOtp": "スタッフのサインイン：メールコード",
+				"authCustomerPassword": "顧客のサインイン：パスワード",
+				"authCustomerMagicLink": "顧客のサインイン：マジックリンク",
+				"authCustomerEmailOtp": "顧客のサインイン：メールコード",
+				"staffSelfRegistration": "スタッフの自己登録",
+				"enabled": "有効",
+				"schedule": "スケジュール",
 				"unknown": "その他の設定"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "一括操作を実行",
 				"kb_settings_changed": "ナレッジベース設定を変更",
 				"instance_settings_changed": "インスタンス設定を更新",
+				"webhook_created": "Webhook を作成しました",
+				"webhook_updated": "Webhook を更新しました",
+				"webhook_deleted": "Webhook を削除しました",
+				"webhook_secret_rotated": "Webhook のシークレットをローテーションしました",
+				"webhook_auto_disabled": "Webhook を自動的に無効にしました",
+				"job_configuration_changed": "ジョブ設定を変更しました",
+				"identity_connection_changed": "ID 接続を変更しました",
 				"unknown": "設定を変更"
 			}
 		},

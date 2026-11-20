@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "Loại tệp được phép",
 				"body": "Nội dung phản hồi",
 				"visibilityDefault": "Chế độ hiển thị mặc định",
+				"authAgentPassword": "Đăng nhập của nhân viên: Mật khẩu",
+				"authAgentMagicLink": "Đăng nhập của nhân viên: Liên kết ma thuật",
+				"authAgentEmailOtp": "Đăng nhập của nhân viên: Mã email",
+				"authCustomerPassword": "Đăng nhập của khách hàng: Mật khẩu",
+				"authCustomerMagicLink": "Đăng nhập của khách hàng: Liên kết ma thuật",
+				"authCustomerEmailOtp": "Đăng nhập của khách hàng: Mã email",
+				"staffSelfRegistration": "Nhân viên tự đăng ký",
+				"enabled": "Đã bật",
+				"schedule": "Lịch chạy",
 				"unknown": "Cài đặt khác"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "Đã thực hiện thao tác hàng loạt",
 				"kb_settings_changed": "Đã thay đổi cài đặt cơ sở tri thức",
 				"instance_settings_changed": "Đã cập nhật cài đặt hệ thống",
+				"webhook_created": "Đã tạo webhook",
+				"webhook_updated": "Đã cập nhật webhook",
+				"webhook_deleted": "Đã xóa webhook",
+				"webhook_secret_rotated": "Đã xoay vòng bí mật webhook",
+				"webhook_auto_disabled": "Webhook đã tự động bị tắt",
+				"job_configuration_changed": "Đã thay đổi cấu hình tác vụ",
+				"identity_connection_changed": "Đã thay đổi kết nối danh tính",
 				"unknown": "Đã thay đổi cài đặt"
 			}
 		},

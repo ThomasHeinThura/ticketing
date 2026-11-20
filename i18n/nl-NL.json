@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "Toegestane bestandstypen",
 				"body": "Antwoordtekst",
 				"visibilityDefault": "Standaardzichtbaarheid",
+				"authAgentPassword": "Aanmelden medewerkers: Wachtwoord",
+				"authAgentMagicLink": "Aanmelden medewerkers: Magische link",
+				"authAgentEmailOtp": "Aanmelden medewerkers: E-mailcode",
+				"authCustomerPassword": "Aanmelden klanten: Wachtwoord",
+				"authCustomerMagicLink": "Aanmelden klanten: Magische link",
+				"authCustomerEmailOtp": "Aanmelden klanten: E-mailcode",
+				"staffSelfRegistration": "Zelfregistratie van medewerkers",
+				"enabled": "Ingeschakeld",
+				"schedule": "Schema",
 				"unknown": "Overige instelling"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "Bulkactie uitgevoerd",
 				"kb_settings_changed": "Instellingen van de kennisbank gewijzigd",
 				"instance_settings_changed": "Instance-instellingen bijgewerkt",
+				"webhook_created": "Webhook aangemaakt",
+				"webhook_updated": "Webhook bijgewerkt",
+				"webhook_deleted": "Webhook verwijderd",
+				"webhook_secret_rotated": "Webhookgeheim geroteerd",
+				"webhook_auto_disabled": "Webhook automatisch uitgeschakeld",
+				"job_configuration_changed": "Jobconfiguratie gewijzigd",
+				"identity_connection_changed": "Identiteitsverbinding gewijzigd",
 				"unknown": "Instellingen gewijzigd"
 			}
 		},

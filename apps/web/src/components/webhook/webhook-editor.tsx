@@ -27,7 +27,7 @@ import {
   RefreshCw,
   Send,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import { ErrorReference } from "@/components/errors/error-reference";
@@ -56,6 +56,13 @@ import { localizedAdminErrorMessage } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import { auditEntity } from "@/query-client/audit-invalidation";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
 import { RotateSecretDialog } from "./rotate-secret-dialog";
 import {
   generateWebhookSecret,
@@ -332,6 +339,16 @@ export function WebhookEditor({ id }: { id: string }) {
               {testResult ? <TestResult delivery={testResult} /> : null}
             </CardContent>
           </Card>
+          <Suspense fallback={null}>
+            <SettingsHistory
+              target={{
+                kind: "entity",
+                type: "webhook",
+                id: webhook.id,
+                scope: { kind: "workspace", workspaceId },
+              }}
+            />
+          </Suspense>
           <DeleteCard webhook={webhook} />
           {rotating ? (
             <RotateDialog

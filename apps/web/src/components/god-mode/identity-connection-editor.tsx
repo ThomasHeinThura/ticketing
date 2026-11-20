@@ -10,7 +10,7 @@ import {
   SaveButton,
   Textarea,
 } from "@taskdesk/ui";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   type IdentityConnection,
@@ -30,6 +30,12 @@ import {
 } from "@/lib/identity-connection-form";
 import { toast } from "@/lib/toast";
 import { FailureAlert, StepUpFields } from "./step-up-fields";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 function Field({
   id,
@@ -521,6 +527,19 @@ export function IdentityConnectionEditor({
           </SaveButton>
         </div>
       </form>
+
+      {base ? (
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{
+              kind: "entity",
+              type: "identity_connection",
+              id: base.id,
+              scope: { kind: "instance" },
+            }}
+          />
+        </Suspense>
+      ) : null}
 
       {base ? (
         <Alert variant="warning">

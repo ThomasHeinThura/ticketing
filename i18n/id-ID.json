@@ -634,6 +634,15 @@
 				"attachmentAllowedExtensions": "Jenis file yang diizinkan",
 				"body": "Isi balasan",
 				"visibilityDefault": "Visibilitas default",
+				"authAgentPassword": "Masuk staf: Kata sandi",
+				"authAgentMagicLink": "Masuk staf: Tautan ajaib",
+				"authAgentEmailOtp": "Masuk staf: Kode email",
+				"authCustomerPassword": "Masuk pelanggan: Kata sandi",
+				"authCustomerMagicLink": "Masuk pelanggan: Tautan ajaib",
+				"authCustomerEmailOtp": "Masuk pelanggan: Kode email",
+				"staffSelfRegistration": "Pendaftaran mandiri staf",
+				"enabled": "Aktif",
+				"schedule": "Jadwal",
 				"unknown": "Pengaturan lainnya"
 			},
 			"actions": {
@@ -673,6 +682,13 @@
 				"bulk_performed": "Tindakan massal dilakukan",
 				"kb_settings_changed": "Pengaturan basis pengetahuan diubah",
 				"instance_settings_changed": "Pengaturan instans diperbarui",
+				"webhook_created": "Webhook dibuat",
+				"webhook_updated": "Webhook diperbarui",
+				"webhook_deleted": "Webhook dihapus",
+				"webhook_secret_rotated": "Rahasia webhook diputar",
+				"webhook_auto_disabled": "Webhook dinonaktifkan otomatis",
+				"job_configuration_changed": "Konfigurasi job diubah",
+				"identity_connection_changed": "Koneksi identitas diubah",
 				"unknown": "Pengaturan diubah"
 			}
 		},

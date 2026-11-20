@@ -2479,6 +2479,33 @@
 								"visibilityDefault": {
 									"type": "string"
 								},
+								"authAgentPassword": {
+									"type": "string"
+								},
+								"authAgentMagicLink": {
+									"type": "string"
+								},
+								"authAgentEmailOtp": {
+									"type": "string"
+								},
+								"authCustomerPassword": {
+									"type": "string"
+								},
+								"authCustomerMagicLink": {
+									"type": "string"
+								},
+								"authCustomerEmailOtp": {
+									"type": "string"
+								},
+								"staffSelfRegistration": {
+									"type": "string"
+								},
+								"enabled": {
+									"type": "string"
+								},
+								"schedule": {
+									"type": "string"
+								},
 								"unknown": {
 									"type": "string"
 								}
@@ -2531,6 +2558,15 @@
 								"attachmentAllowedExtensions",
 								"body",
 								"visibilityDefault",
+								"authAgentPassword",
+								"authAgentMagicLink",
+								"authAgentEmailOtp",
+								"authCustomerPassword",
+								"authCustomerMagicLink",
+								"authCustomerEmailOtp",
+								"staffSelfRegistration",
+								"enabled",
+								"schedule",
 								"unknown"
 							]
 						},
@@ -2646,6 +2682,27 @@
 								"instance_settings_changed": {
 									"type": "string"
 								},
+								"webhook_created": {
+									"type": "string"
+								},
+								"webhook_updated": {
+									"type": "string"
+								},
+								"webhook_deleted": {
+									"type": "string"
+								},
+								"webhook_secret_rotated": {
+									"type": "string"
+								},
+								"webhook_auto_disabled": {
+									"type": "string"
+								},
+								"job_configuration_changed": {
+									"type": "string"
+								},
+								"identity_connection_changed": {
+									"type": "string"
+								},
 								"unknown": {
 									"type": "string"
 								}
@@ -2687,6 +2744,13 @@
 								"bulk_performed",
 								"kb_settings_changed",
 								"instance_settings_changed",
+								"webhook_created",
+								"webhook_updated",
+								"webhook_deleted",
+								"webhook_secret_rotated",
+								"webhook_auto_disabled",
+								"job_configuration_changed",
+								"identity_connection_changed",
 								"unknown"
 							]
 						}
