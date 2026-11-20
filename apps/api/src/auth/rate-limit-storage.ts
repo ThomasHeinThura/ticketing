@@ -10,7 +10,7 @@ type BetterAuthRateLimitStorage = NonNullable<
   NonNullable<BetterAuthOptions["rateLimit"]>["customStorage"]
 >;
 
-export type AuthRateLimitScope = "agent" | "customer" | "invite";
+export type AuthRateLimitScope = "agent" | "customer" | "invite" | "copy-link";
 
 export type AuthRateLimitRule = {
   window: number;

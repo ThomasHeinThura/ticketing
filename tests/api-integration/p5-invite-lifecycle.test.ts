@@ -1402,11 +1402,6 @@ describe("accept transaction creates the customer identity (CP-24)", () => {
 
 describe("copy link (CP-23, D-N)", () => {
   it("returns the exact same link that was emailed, works when email is unconfigured, sets Cache-Control: no-store, never extends expiry, and audits without secret or email", async () => {
-    const { resetCopyInvitationLinkRateLimitBuckets } = await import(
-      "../../apps/api/src/utils/require-copy-link-rate-limit"
-    );
-    resetCopyInvitationLinkRateLimitBuckets();
-
     const sent = await w.invite("copy-same@example.test");
     const beforeRow = await w.rowOf(sent.id);
     const originalExpiresAt = beforeRow?.expiresAt.toISOString();
@@ -1475,11 +1470,6 @@ describe("copy link (CP-23, D-N)", () => {
   });
 
   it("rotates the copied link on resend and invalidates the previous link", async () => {
-    const { resetCopyInvitationLinkRateLimitBuckets } = await import(
-      "../../apps/api/src/utils/require-copy-link-rate-limit"
-    );
-    resetCopyInvitationLinkRateLimitBuckets();
-
     const sent = await w.invite("copy-rotate@example.test");
     const firstCopy = await w.json<{ link: string }>(
       await w.call(w.owner.user, `${w.base()}/${sent.id}/copy-link`, {
@@ -1522,13 +1512,9 @@ describe("copy link (CP-23, D-N)", () => {
   });
 
   it("refuses an inviter who lost member:invite, unrelated members, API keys, impersonation, portal sessions, and expired/revoked rows", async () => {
-    const { resetCopyInvitationLinkRateLimitBuckets } = await import(
-      "../../apps/api/src/utils/require-copy-link-rate-limit"
-    );
     const { mockAuthenticatedSession } = await import("./helpers/auth");
     const { addMember, makeApiKey } = await import("./helpers/reach-world");
     const { grantProjectRole } = await import("./helpers/fixtures");
-    resetCopyInvitationLinkRateLimitBuckets();
 
     const [orgProject] = await db
       .select({ id: schema.projectTable.id })
@@ -1719,10 +1705,6 @@ describe("copy link (CP-23, D-N)", () => {
   });
 
   it("serializes copy with resend and returns only a complete old or new credential", async () => {
-    const { resetCopyInvitationLinkRateLimitBuckets } = await import(
-      "../../apps/api/src/utils/require-copy-link-rate-limit"
-    );
-    resetCopyInvitationLinkRateLimitBuckets();
     const sent = await w.invite("copy-race@example.test");
     await db
       .update(schema.invitationTable)
@@ -1758,10 +1740,6 @@ describe("copy link (CP-23, D-N)", () => {
   });
 
   it("reports delivered=false on staff create/resend when email is unconfigured and writes invitation.link_copied on staff copy", async () => {
-    const { resetCopyInvitationLinkRateLimitBuckets } = await import(
-      "../../apps/api/src/utils/require-copy-link-rate-limit"
-    );
-    resetCopyInvitationLinkRateLimitBuckets();
     emailMock.configured = false;
 
     const staffCreated = await w.json<{

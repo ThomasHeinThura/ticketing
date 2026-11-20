@@ -14,10 +14,10 @@ describe("isReminderDue", () => {
     ).toBe(true);
   });
 
-  it("accepts scheduler runs within the ten minute delivery window", () => {
+  it("accepts scheduler runs within the 24 hour delivery window", () => {
     expect(
       isReminderDue({
-        dueDate: new Date("2026-07-13T09:55:00.000Z"),
+        dueDate: new Date("2026-07-12T10:01:00.000Z"),
         leadTimeMinutes: 24 * 60,
         now,
       }),
@@ -34,7 +34,7 @@ describe("isReminderDue", () => {
     ).toBe(false);
     expect(
       isReminderDue({
-        dueDate: new Date("2026-07-13T09:49:00.000Z"),
+        dueDate: new Date("2026-07-12T09:59:00.000Z"),
         leadTimeMinutes: 24 * 60,
         now,
       }),
