@@ -131,7 +131,7 @@
 				"keyLabel": "키:",
 				"keyHint": "티켓 ID에 사용됩니다 (예: {{example}}-123)",
 				"createButton": "{{term_project_other}} 만들기",
-				"successToast": "프로젝트가 생성되었습니다",
+				"successToast": "{{term_project_other}} 생성이 완료되었습니다",
 				"errorToast": "{{term_project_other}} 생성에 실패했습니다",
 				"organisationLabel": "고객 조직",
 				"organisationLoading": "고객 조직을 불러오는 중...",
