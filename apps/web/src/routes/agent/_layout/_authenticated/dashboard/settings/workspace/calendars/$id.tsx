@@ -5,7 +5,7 @@ import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { useServiceCalendarEditor } from "@/hooks/use-service-calendar-editor";
 import { routes } from "@/lib/routes";
 import { useServerToday } from "@/lib/server-clock";
-import { parseCalendarEditorSearch } from "@/lib/service-calendar-form";
+import { parseCalendarEditorSearch } from "@/lib/service-calendar-search";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/workspace/calendars/$id",

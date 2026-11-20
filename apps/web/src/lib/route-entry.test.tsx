@@ -44,6 +44,10 @@ vi.mock("@/fetchers/workspace/get-workspaces", () => ({
 }));
 vi.mock("@/fetchers/project/get-projects", () => ({ default: mocks.projects }));
 vi.mock("@/fetchers/project/get-project", () => ({ default: mocks.detail }));
+vi.mock("@/fetchers/project/overview-read", async (original) => ({
+  ...(await original<typeof import("@/fetchers/project/overview-read")>()),
+  getProjectOverview: mocks.overview,
+}));
 vi.mock("@/fetchers/project/overview", async (original) => ({
   ...(await original<typeof import("@/fetchers/project/overview")>()),
   getProjectOverview: mocks.overview,
