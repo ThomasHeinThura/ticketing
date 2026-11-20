@@ -1,0 +1,1 @@
+CREATE INDEX "audit_log_personal_key_history_idx" ON "audit_log" USING btree ("actor_id","seq" DESC NULLS FIRST) WHERE actor_type = 'person' AND entity_type = 'api_key' AND action IN ('api_key.created', 'api_key.revoked') AND "after" ->> 'kind' = 'personal' AND impersonator_id IS NULL AND workspace_id IS NULL AND project_id IS NULL;

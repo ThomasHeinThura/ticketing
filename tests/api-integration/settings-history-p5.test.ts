@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { appendAuditLog } from "../../apps/api/src/audit/audit-writer";
 import {
@@ -7,7 +7,7 @@ import {
   listSettingsHistoryRows,
 } from "../../apps/api/src/audit/repository";
 import { entityHistoryRow } from "../../apps/api/src/audit/settings-history";
-import db, { schema } from "../../apps/api/src/database";
+import db, { getDatabasePool, schema } from "../../apps/api/src/database";
 import { apiKeyExtensionTable } from "../../apps/api/src/database/schema";
 import { createApp } from "../../apps/api/src/index";
 import { resolveIdentity } from "../../apps/api/src/permissions/resolve-identity";
@@ -104,6 +104,40 @@ it("accepts only closed JSON and plain-text denial formats", async () => {
 
 describe("P5 personal and service-key history on a fresh test database", () => {
   beforeEach(async () => resetTestDatabase());
+
+  it("uses the personal-key index for an absent actor even with a generic plan", async () => {
+    await db.execute(sql`
+      INSERT INTO audit_log (id, actor_id, actor_type, action, entity_type, entity_id, "after", prev_hash, row_hash)
+      SELECT 'plan-' || n, 'other-' || n, 'person', 'api_key.created', 'api_key', 'key-' || n,
+        '{"kind":"personal"}'::jsonb, lpad(n::text, 64, '0'), lpad(n::text, 64, '0')
+      FROM generate_series(1, 5000) n
+    `);
+    await db.execute(sql`ANALYZE audit_log`);
+    const client = await getDatabasePool().connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SET LOCAL plan_cache_mode = force_generic_plan");
+      await client.query(`PREPARE history_plan(text) AS
+        SELECT created_at, action, "after" FROM audit_log
+        WHERE actor_id = $1 AND actor_type = 'person' AND entity_type = 'api_key'
+          AND action IN ('api_key.created', 'api_key.revoked') AND "after" ->> 'kind' = 'personal'
+          AND impersonator_id IS NULL AND workspace_id IS NULL AND project_id IS NULL
+        ORDER BY seq DESC LIMIT 200`);
+      const plan = await client.query<{ "QUERY PLAN": string }>(
+        "EXPLAIN (ANALYZE, FORMAT TEXT) EXECUTE history_plan('absent-user')",
+      );
+      const text = plan.rows.map((row) => row["QUERY PLAN"]).join("\n");
+      expect(text).toContain(
+        "Index Scan using audit_log_personal_key_history_idx",
+      );
+      expect(text).toMatch(/actual time=[^\n]* rows=0/);
+      expect(text).not.toContain("Sort");
+    } finally {
+      await client.query("ROLLBACK");
+      await client.query("DEALLOCATE history_plan");
+      client.release();
+    }
+  });
 
   it("rechecks live service key, session, workspace membership and capability for rows and actor names", async () => {
     const owner = await createWorkspaceMember({ role: "owner" });

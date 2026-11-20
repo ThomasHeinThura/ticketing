@@ -223,8 +223,12 @@ async function read(
     .where(
       and(
         eq(auditLogTable.actorId, userId),
-        eq(auditLogTable.actorType, "person"),
-        eq(auditLogTable.entityType, entityType),
+        section === "apiKeys"
+          ? sql`${auditLogTable.actorType} = 'person' AND ${auditLogTable.entityType} = 'api_key'`
+          : and(
+              eq(auditLogTable.actorType, "person"),
+              eq(auditLogTable.entityType, entityType),
+            ),
         section === "apiKeys"
           ? undefined
           : eq(
@@ -239,13 +243,10 @@ async function read(
                 : ["auth.password_changed"],
             )
           : section === "apiKeys"
-            ? inArray(auditLogTable.action, [
-                "api_key.created",
-                "api_key.revoked",
-              ])
+            ? sql`${auditLogTable.action} IN ('api_key.created', 'api_key.revoked')`
             : eq(auditLogTable.action, action as string),
         section === "apiKeys"
-          ? sql`${auditLogTable.after} ->> 'kind' = ${"personal"}`
+          ? sql`${auditLogTable.after} ->> 'kind' = 'personal'`
           : undefined,
         section === "security" || section === "apiKeys"
           ? isNull(auditLogTable.impersonatorId)

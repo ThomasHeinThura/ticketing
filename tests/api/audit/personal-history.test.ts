@@ -427,15 +427,14 @@ describe("closed personal settings history", () => {
     });
     const query = new PgDialect().sqlToQuery(predicate as never);
     expect(query.params).toEqual(
-      expect.arrayContaining([
-        "user-1",
-        "api_key",
-        "api_key.created",
-        "api_key.revoked",
-        "personal",
-        "session-1",
-      ]),
+      expect.arrayContaining(["user-1", "session-1"]),
     );
+    expect(query.sql).toContain(`"audit_log"."actor_type" = 'person'`);
+    expect(query.sql).toContain(`"audit_log"."entity_type" = 'api_key'`);
+    expect(query.sql).toContain(
+      `"audit_log"."action" IN ('api_key.created', 'api_key.revoked')`,
+    );
+    expect(query.sql).toContain(`"audit_log"."after" ->> 'kind' = 'personal'`);
     expect(query.sql).not.toContain('"audit_log"."entity_id" =');
     expect(query.sql).not.toContain('from "apikey"');
     expect(query.sql).toContain('"audit_log"."workspace_id" is null');

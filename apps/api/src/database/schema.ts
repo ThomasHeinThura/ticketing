@@ -6214,6 +6214,11 @@ export const auditLogTable = pgTable(
       table.workspaceId,
       table.createdAt.desc(),
     ),
+    index("audit_log_personal_key_history_idx")
+      .on(table.actorId, table.seq.desc().nullsFirst())
+      .where(
+        sql`actor_type = 'person' AND entity_type = 'api_key' AND action IN ('api_key.created', 'api_key.revoked') AND "after" ->> 'kind' = 'personal' AND impersonator_id IS NULL AND workspace_id IS NULL AND project_id IS NULL`,
+      ),
     check(
       "audit_log_prev_hash_shape",
       sql.raw("prev_hash ~ '^[0-9a-f]{64}$'::text"),
