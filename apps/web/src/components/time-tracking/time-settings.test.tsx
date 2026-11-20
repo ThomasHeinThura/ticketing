@@ -48,7 +48,10 @@ vi.mock("@/lib/auth-client", () => ({
 vi.mock("@/components/settings/refresh-settings-history", () => ({
   refreshSettingsHistory: mocks.refresh,
 }));
-vi.mock("@/components/settings/settings-history", () => ({
+vi.mock("@/components/settings/settings-history", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/components/settings/settings-history")
+  >()),
   SettingsHistory: ({
     type,
     id,
@@ -113,6 +116,7 @@ vi.mock("@/fetchers/time-tracking", () => ({
   stopTimer: vi.fn(),
 }));
 
+import { HttpError } from "@/lib/http-error";
 import {
   AvailableHoursSetting,
   BackdateLimitSetting,
@@ -415,6 +419,33 @@ it("waits for the exact audit admission and hides History after refusal", async 
   await waitFor(() =>
     expect(screen.queryByTestId("settings-history")).toBeNull(),
   );
+});
+
+it("hides project History when the settings refetch is denied after loading", async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <ProjectBillableSetting projectId="p1" />
+    </QueryClientProvider>,
+  );
+  await screen.findByTestId("settings-history");
+  mocks.getTimeSettings.mockRejectedValue(new HttpError(403, "denied"));
+  await client.invalidateQueries({ queryKey: ["time-tracking", "settings"] });
+  await waitFor(() =>
+    expect(screen.queryByTestId("settings-history")).toBeNull(),
+  );
+});
+
+it("offers Retry for a temporary admission failure and loads History", async () => {
+  mocks.audit.mockResolvedValueOnce(new Response("", { status: 500 }));
+  wrap(<ProjectBillableSetting projectId="p1" />);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "settings:history.retry" }),
+  );
+  expect(await screen.findByTestId("settings-history")).toBeTruthy();
+  expect(mocks.audit).toHaveBeenCalledTimes(2);
 });
 
 it("never uses workspace write permission as project History permission", async () => {

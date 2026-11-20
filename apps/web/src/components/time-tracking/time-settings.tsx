@@ -20,7 +20,10 @@ import { Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
-import { SettingsHistory } from "@/components/settings/settings-history";
+import {
+  HistoryPresentation,
+  SettingsHistory,
+} from "@/components/settings/settings-history";
 import {
   getSettingsHistory,
   settingsHistoryQueryKey,
@@ -120,7 +123,24 @@ function TimeSettingsHistory({
     staleTime: 0,
     refetchOnMount: "always",
   });
-  if (admission.isError || admission.isFetching || !admission.data) return null;
+  if (admission.isError) {
+    if (
+      admission.error instanceof HttpError &&
+      [401, 403, 404].includes(admission.error.status)
+    )
+      return null;
+    return (
+      <HistoryPresentation
+        loading={false}
+        error
+        retry={() => void admission.refetch()}
+        onOpen={() => {}}
+      >
+        {null}
+      </HistoryPresentation>
+    );
+  }
+  if (admission.isFetching || !admission.data) return null;
   return (
     <SettingsHistory
       type={projectId ? "project" : "workspace"}
@@ -303,7 +323,7 @@ export function BackdateLimitSetting() {
           {t("timeTracking:settings.backdateHelp")}
         </p>
       </form>
-      {workspace?.id && identity ? (
+      {workspace?.id && identity && !settings.isError ? (
         <TimeSettingsHistory
           key={JSON.stringify([host, userId, sessionId, workspace.id])}
           workspaceId={workspace.id}
@@ -430,7 +450,10 @@ export function ProjectBillableSetting({ projectId }: { projectId: string }) {
           </p>
         </div>
       </div>
-      {workspace?.id && identity && project.id === projectId ? (
+      {workspace?.id &&
+      identity &&
+      !settings.isError &&
+      project.id === projectId ? (
         <TimeSettingsHistory
           key={JSON.stringify([
             host,
