@@ -18,7 +18,7 @@
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
 			"save": "Save",
-			"saved": "Saved",
+			"saved": "Сохранено",
 			"saving": "Saving…",
 			"previous": "Previous",
 			"next": "Next",
@@ -556,6 +556,126 @@
 		}
 	},
 	"settings": {
+		"history": {
+			"providerConfiguration": "Конфигурация",
+			"providerCredential": "Учётные данные",
+			"memberHistory": "История {{name}} ({{number}})",
+			"roleChanged": "Роль изменена",
+			"preferenceFields": {
+				"density": "Плотность",
+				"layout": "Расположение",
+				"listGroups": "Группы списка",
+				"columns": "Видимые столбцы",
+				"columnWidths": "Ширина столбцов"
+			},
+			"notificationDelivery": "Доставка",
+			"notificationDigest": "Время доставки",
+			"notificationQuietHours": "Тихие часы",
+			"notificationWorkspaceRule": "Правила доставки для рабочих областей",
+			"securityPassword": "Пароль",
+			"securityMfa": "Двухфакторная аутентификация",
+			"personalKey": "Личный ключ API",
+			"profileYou": "Вы",
+			"profileLocale": "Locale",
+			"title": "История",
+			"lastChanged": "Последнее изменение: {{actor}}, {{at}}",
+			"empty": "Записанных изменений пока нет.",
+			"error": "Не удалось загрузить историю.",
+			"retry": "Повторить",
+			"personUnavailable": "Пользователь недоступен",
+			"apiKey": "Ключ API",
+			"automation": "Автоматизация",
+			"system": "Система",
+			"fields": {
+				"name": "Название",
+				"description": "Описание",
+				"icon": "Иконка",
+				"key": "Ключ",
+				"logo": "Логотип",
+				"workspaceSlug": "Идентификатор рабочей области",
+				"kind": "Тип",
+				"supportLevel": "Уровень поддержки",
+				"serviceCalendar": "Сервисный календарь",
+				"defaultSlaPolicy": "Политика SLA по умолчанию",
+				"defaultServiceCalendar": "Сервисный календарь по умолчанию",
+				"slaPolicy": "Политика SLA",
+				"defaultCommentVisibility": "Видимость комментариев по умолчанию",
+				"manager": "Руководитель",
+				"startDate": "Дата начала",
+				"endDate": "Дата окончания",
+				"defaultAssignee": "Исполнитель по умолчанию",
+				"health": "Состояние",
+				"stateSetMode": "Набор статусов",
+				"position": "Позиция",
+				"isDefault": "По умолчанию",
+				"activity": "Активность",
+				"archived": "В архиве",
+				"workflowDefinition": "Версии",
+				"workflowActiveVersion": "Активная версия",
+				"backdateLimit": "Лимит ввода задним числом (дни)",
+				"defaultBillable": "Новое время по умолчанию оплачиваемое",
+				"approvalDefaultExpiryDays": "Срок действия согласований (дни)",
+				"clarificationWindowDays": "Окно уточнения (дни)",
+				"reopenWindowDays": "Окно повторного открытия (дни)",
+				"notificationRetentionDays": "Хранить прочитанные уведомления (дни)",
+				"cspMode": "Режим политики",
+				"invitationLifetimeHours": "Срок действия приглашений (часы)",
+				"customerInvitationCreateWindowMinutes": "Окно создания приглашений для клиентов (минуты)",
+				"customerInvitationPerInviterLimit": "Максимум приглашений клиентов на одного пригласившего",
+				"customerInvitationPerOrganisationLimit": "Максимум приглашений клиентов на организацию",
+				"customerInvitationResendCooldownSeconds": "Пауза перед повторной отправкой приглашения клиенту (секунды)",
+				"anonymousRateLimitWindowMs": "Окно ограничения (минуты)",
+				"anonymousRateLimitMax": "Запросов за окно",
+				"mcpWriteCeilingPerMinute": "Запросов записи MCP в минуту",
+				"apiKeyBurstThreshold": "Порог отключения при всплеске MCP (попыток/минуту)",
+				"timezone": "Часовой пояс",
+				"attachmentMaxBytes": "Самый большой файл (байты)",
+				"attachmentMaxPerItem": "Файлов на рабочий элемент",
+				"attachmentAllowedExtensions": "Разрешённые типы файлов",
+				"body": "Текст ответа",
+				"visibilityDefault": "Видимость по умолчанию",
+				"unknown": "Другая настройка"
+			},
+			"actions": {
+				"workflow_created": "Рабочий процесс создан",
+				"workflow_version_created": "Версия рабочего процесса создана",
+				"workflow_version_published": "Версия рабочего процесса опубликована",
+				"time_settings_updated": "Настройки времени обновлены",
+				"plugin_changed": "Плагин изменён",
+				"canned_response_created": "Шаблон ответа создан",
+				"canned_response_updated": "Шаблон ответа обновлён",
+				"canned_response_deleted": "Шаблон ответа удалён",
+				"automation_created": "Правило автоматизации создано",
+				"automation_updated": "Правило автоматизации обновлено",
+				"automation_enabled": "Правило автоматизации включено",
+				"automation_disabled": "Правило автоматизации отключено",
+				"team_created": "Команда создана",
+				"team_updated": "Настройки команды обновлены",
+				"team_member_added": "Участник команды добавлен",
+				"team_member_updated": "Участник команды обновлён",
+				"team_member_removed": "Участник команды удалён",
+				"workspace_settings_updated": "Настройки рабочей области обновлены",
+				"workspace_project_settings_updated": "Значения по умолчанию для проектов рабочей области обновлены",
+				"project_settings_updated": "Настройки проекта обновлены",
+				"project_general_settings_updated": "Общие настройки проекта обновлены",
+				"project_states_updated": "Статусы проекта обновлены",
+				"time_activity_created": "Активность по времени создана",
+				"time_activity_updated": "Активность по времени обновлена",
+				"workspace_created": "Рабочая область создана",
+				"project_created": "Проект создан",
+				"project_archived": "Проект архивирован",
+				"project_restored": "Проект восстановлен",
+				"project_summary_updated": "Сводка проекта обновлена",
+				"project_customer_organisation_linked": "Проект связан с организацией клиента",
+				"project_reach_changed": "Область доступа проекта изменена",
+				"agile_settings_updated": "Настройки Agile обновлены",
+				"workflow_cab_template_applied": "Шаблон рабочего процесса CAB применён",
+				"bulk_performed": "Выполнено массовое действие",
+				"kb_settings_changed": "Настройки базы знаний изменены",
+				"instance_settings_changed": "Настройки экземпляра обновлены",
+				"unknown": "Настройки изменены"
+			}
+		},
 		"account": "Аккаунт",
 		"developer": "Разработчик",
 		"information": "Информация",
@@ -1644,7 +1764,7 @@
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number."
 		},
 		"cannedResponses": {
-			"body": "Response body",
+			"body": "Текст ответа",
 			"create": "New response",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
 			"deleteNamed": "Delete {{name}}",
@@ -1656,11 +1776,11 @@
 			"failed": "Unable to save this response.",
 			"forbidden": "You need workspace settings permission to manage canned responses.",
 			"loadFailed": "Unable to load canned responses.",
-			"name": "Name",
+			"name": "Название",
 			"notFound": "This response is no longer available in this workspace.",
 			"search": "Search responses",
 			"title": "Canned responses",
-			"visibility": "Default visibility",
+			"visibility": "Видимость по умолчанию",
 			"save": "Save",
 			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		},
@@ -6372,75 +6492,75 @@
 		"fields": {
 			"approvalDefaultExpiryDays": {
 				"help": "The default for a new approval request. At most 90.",
-				"label": "Approval expiry (days)"
+				"label": "Срок действия согласований (дни)"
 			},
 			"attachmentAllowedExtensions": {
 				"help": "Extensions separated by commas, for example pdf, png, docx.",
-				"label": "Allowed file types"
+				"label": "Разрешённые типы файлов"
 			},
 			"attachmentMaxBytes": {
 				"help": "The maximum size of one uploaded file.",
-				"label": "Largest file (bytes)"
+				"label": "Самый большой файл (байты)"
 			},
 			"attachmentMaxPerItem": {
 				"help": "The maximum number of files on one work item.",
-				"label": "Files per work item"
+				"label": "Файлов на рабочий элемент"
 			},
 			"clarificationWindowDays": {
 				"help": "A request awaiting the customer's reply for longer than this is declined automatically.",
-				"label": "Clarification window (days)"
+				"label": "Окно уточнения (дни)"
 			},
 			"notificationRetentionDays": {
 				"help": "Read notifications older than this are deleted daily. Unread notifications are never deleted.",
-				"label": "Keep read notifications for (days)"
+				"label": "Хранить прочитанные уведомления (дни)"
 			},
 			"reopenWindowDays": {
 				"help": "How long after resolution a customer may reopen a request.",
-				"label": "Reopen window (days)"
+				"label": "Окно повторного открытия (дни)"
 			},
 			"timezone": {
 				"help": "Used for digest windows and quiet hours when a person has not chosen their own.",
-				"label": "Time zone"
+				"label": "Часовой пояс"
 			},
 			"anonymousRateLimitMax": {
 				"help": "Maximum requests from one internet address during the limit window.",
-				"label": "Requests per window"
+				"label": "Запросов за окно"
 			},
 			"anonymousRateLimitWindowMinutes": {
 				"help": "The period used to count anonymous requests, from 1 minute to 24 hours.",
-				"label": "Limit window (minutes)"
+				"label": "Окно ограничения (минуты)"
 			},
 			"mcpWriteCeilingPerMinute": {
 				"help": "Shared across API replicas. Bulk requests also obey the separate bulk ceiling.",
-				"label": "MCP write requests per minute"
+				"label": "Запросов записи MCP в минуту"
 			},
 			"apiKeyBurstThreshold": {
 				"help": "Automatically disable an MCP key after more than this many write attempts in one minute, including rate-limited attempts.",
-				"label": "MCP burst disable threshold (attempts/minute)"
+				"label": "Порог отключения при всплеске MCP (попыток/минуту)"
 			},
 			"cspMode": {
 				"help": "Begin with report-only mode, inspect browser reports, then enforce after the rollout checks pass.",
-				"label": "Policy mode"
+				"label": "Режим политики"
 			},
 			"customerInvitationCreateWindowMinutes": {
 				"help": "Time window for the per-inviter and per-organisation creation limits.",
-				"label": "Customer invitation creation window (minutes)"
+				"label": "Окно создания приглашений для клиентов (минуты)"
 			},
 			"customerInvitationPerInviterLimit": {
 				"help": "Maximum creation attempts by one inviter within the configured window.",
-				"label": "Maximum customer invitations per inviter"
+				"label": "Максимум приглашений клиентов на одного пригласившего"
 			},
 			"customerInvitationPerOrganisationLimit": {
 				"help": "Maximum creation attempts for one organisation within the configured window.",
-				"label": "Maximum customer invitations per organisation"
+				"label": "Максимум приглашений клиентов на организацию"
 			},
 			"customerInvitationResendCooldownSeconds": {
 				"help": "Minimum interval before the same customer invitation can be resent.",
-				"label": "Customer invitation resend cooldown (seconds)"
+				"label": "Пауза перед повторной отправкой приглашения клиенту (секунды)"
 			},
 			"invitationLifetimeHours": {
 				"help": "Applies to new and renewed staff and customer invitations. Existing expiry dates stay unchanged.",
-				"label": "Invitation lifetime (hours)"
+				"label": "Срок действия приглашений (часы)"
 			}
 		},
 		"general": {
@@ -6720,6 +6840,10 @@
 		}
 	},
 	"automations": {
+		"changes": {
+			"title": "История изменений: {{name}}",
+			"description": "Кто и когда изменил это правило. Определения и значения правила никогда не показываются."
+		},
 		"actions": {
 			"daysFromNow": "days from now (empty clears the due date)",
 			"dueInDays": "Days",
@@ -6883,6 +7007,7 @@
 			"unknown": "Needs attention"
 		},
 		"list": {
+			"changeHistory": "История изменений",
 			"disabled": "Disabled",
 			"dryRun": "Dry run",
 			"edit": "Edit",

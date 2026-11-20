@@ -18,7 +18,7 @@
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
 			"save": "Save",
-			"saved": "Saved",
+			"saved": "Збережено",
 			"saving": "Saving…",
 			"previous": "Previous",
 			"next": "Next",
@@ -556,6 +556,126 @@
 		}
 	},
 	"settings": {
+		"history": {
+			"providerConfiguration": "Конфігурація",
+			"providerCredential": "Облікові дані",
+			"memberHistory": "Історія {{name}} ({{number}})",
+			"roleChanged": "Роль змінено",
+			"preferenceFields": {
+				"density": "Щільність",
+				"layout": "Розташування",
+				"listGroups": "Групи списку",
+				"columns": "Видимі стовпці",
+				"columnWidths": "Ширина стовпців"
+			},
+			"notificationDelivery": "Доставлення",
+			"notificationDigest": "Час доставлення",
+			"notificationQuietHours": "Тихі години",
+			"notificationWorkspaceRule": "Правила доставки по робочих просторах",
+			"securityPassword": "Пароль",
+			"securityMfa": "Двофакторна автентифікація",
+			"personalKey": "Особистий ключ API",
+			"profileYou": "Ви",
+			"profileLocale": "Locale",
+			"title": "Історія",
+			"lastChanged": "Остання зміна: {{actor}}, {{at}}",
+			"empty": "Записаних змін поки немає.",
+			"error": "Не вдалося завантажити історію.",
+			"retry": "Повторити",
+			"personUnavailable": "Особа недоступна",
+			"apiKey": "Ключ API",
+			"automation": "Автоматизація",
+			"system": "Система",
+			"fields": {
+				"name": "Назва",
+				"description": "Опис",
+				"icon": "Іконка",
+				"key": "Ключ",
+				"logo": "Логотип",
+				"workspaceSlug": "Ідентифікатор робочого простору",
+				"kind": "Тип",
+				"supportLevel": "Рівень підтримки",
+				"serviceCalendar": "Сервісний календар",
+				"defaultSlaPolicy": "Типова політика SLA",
+				"defaultServiceCalendar": "Типовий сервісний календар",
+				"slaPolicy": "Політика SLA",
+				"defaultCommentVisibility": "Видимість коментарів за замовчуванням",
+				"manager": "Керівник",
+				"startDate": "Дата початку",
+				"endDate": "Дата завершення",
+				"defaultAssignee": "Виконавець за замовчуванням",
+				"health": "Стан",
+				"stateSetMode": "Набір статусів",
+				"position": "Позиція",
+				"isDefault": "За замовчуванням",
+				"activity": "Активність",
+				"archived": "В архіві",
+				"workflowDefinition": "Версії",
+				"workflowActiveVersion": "Активна версія",
+				"backdateLimit": "Ліміт внесення заднім числом (дні)",
+				"defaultBillable": "Новий час за замовчуванням оплачуваний",
+				"approvalDefaultExpiryDays": "Термін дії погоджень (дні)",
+				"clarificationWindowDays": "Вікно уточнення (дні)",
+				"reopenWindowDays": "Вікно повторного відкриття (дні)",
+				"notificationRetentionDays": "Зберігати прочитані сповіщення (дні)",
+				"cspMode": "Режим політики",
+				"invitationLifetimeHours": "Термін дії запрошень (години)",
+				"customerInvitationCreateWindowMinutes": "Вікно створення запрошень для клієнтів (хвилини)",
+				"customerInvitationPerInviterLimit": "Максимум запрошень клієнтів на одного запрошувача",
+				"customerInvitationPerOrganisationLimit": "Максимум запрошень клієнтів на організацію",
+				"customerInvitationResendCooldownSeconds": "Пауза перед повторним надсиланням запрошення клієнту (секунди)",
+				"anonymousRateLimitWindowMs": "Вікно обмеження (хвилини)",
+				"anonymousRateLimitMax": "Запитів за вікно",
+				"mcpWriteCeilingPerMinute": "Запитів запису MCP за хвилину",
+				"apiKeyBurstThreshold": "Поріг вимкнення при сплеску MCP (спроби/хвилину)",
+				"timezone": "Часовий пояс",
+				"attachmentMaxBytes": "Найбільший файл (байти)",
+				"attachmentMaxPerItem": "Файлів на робочий елемент",
+				"attachmentAllowedExtensions": "Дозволені типи файлів",
+				"body": "Текст відповіді",
+				"visibilityDefault": "Видимість за замовчуванням",
+				"unknown": "Інше налаштування"
+			},
+			"actions": {
+				"workflow_created": "Робочий процес створено",
+				"workflow_version_created": "Версію робочого процесу створено",
+				"workflow_version_published": "Версію робочого процесу опубліковано",
+				"time_settings_updated": "Налаштування часу оновлено",
+				"plugin_changed": "Плагін змінено",
+				"canned_response_created": "Шаблон відповіді створено",
+				"canned_response_updated": "Шаблон відповіді оновлено",
+				"canned_response_deleted": "Шаблон відповіді видалено",
+				"automation_created": "Правило автоматизації створено",
+				"automation_updated": "Правило автоматизації оновлено",
+				"automation_enabled": "Правило автоматизації увімкнено",
+				"automation_disabled": "Правило автоматизації вимкнено",
+				"team_created": "Команду створено",
+				"team_updated": "Налаштування команди оновлено",
+				"team_member_added": "Учасника команди додано",
+				"team_member_updated": "Учасника команди оновлено",
+				"team_member_removed": "Учасника команди вилучено",
+				"workspace_settings_updated": "Налаштування робочого простору оновлено",
+				"workspace_project_settings_updated": "Типові налаштування проєктів робочого простору оновлено",
+				"project_settings_updated": "Налаштування проєкту оновлено",
+				"project_general_settings_updated": "Загальні налаштування проєкту оновлено",
+				"project_states_updated": "Статуси проєкту оновлено",
+				"time_activity_created": "Часову активність створено",
+				"time_activity_updated": "Часову активність оновлено",
+				"workspace_created": "Робочий простір створено",
+				"project_created": "Проєкт створено",
+				"project_archived": "Проєкт архівовано",
+				"project_restored": "Проєкт відновлено",
+				"project_summary_updated": "Зведення проєкту оновлено",
+				"project_customer_organisation_linked": "Проєкт пов’язано з організацією клієнта",
+				"project_reach_changed": "Область доступу проєкту змінено",
+				"agile_settings_updated": "Налаштування Agile оновлено",
+				"workflow_cab_template_applied": "Шаблон робочого процесу CAB застосовано",
+				"bulk_performed": "Виконано масову дію",
+				"kb_settings_changed": "Налаштування бази знань змінено",
+				"instance_settings_changed": "Налаштування екземпляра оновлено",
+				"unknown": "Налаштування змінено"
+			}
+		},
 		"account": "Обліковий запис",
 		"developer": "Розробник",
 		"information": "Інформація",
@@ -1636,7 +1756,7 @@
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number."
 		},
 		"cannedResponses": {
-			"body": "Response body",
+			"body": "Текст відповіді",
 			"create": "New response",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
 			"deleteNamed": "Delete {{name}}",
@@ -1648,11 +1768,11 @@
 			"failed": "Unable to save this response.",
 			"forbidden": "You need workspace settings permission to manage canned responses.",
 			"loadFailed": "Unable to load canned responses.",
-			"name": "Name",
+			"name": "Назва",
 			"notFound": "This response is no longer available in this workspace.",
 			"search": "Search responses",
 			"title": "Canned responses",
-			"visibility": "Default visibility",
+			"visibility": "Видимість за замовчуванням",
 			"save": "Save",
 			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		},
@@ -6316,75 +6436,75 @@
 		"fields": {
 			"approvalDefaultExpiryDays": {
 				"help": "The default for a new approval request. At most 90.",
-				"label": "Approval expiry (days)"
+				"label": "Термін дії погоджень (дні)"
 			},
 			"attachmentAllowedExtensions": {
 				"help": "Extensions separated by commas, for example pdf, png, docx.",
-				"label": "Allowed file types"
+				"label": "Дозволені типи файлів"
 			},
 			"attachmentMaxBytes": {
 				"help": "The maximum size of one uploaded file.",
-				"label": "Largest file (bytes)"
+				"label": "Найбільший файл (байти)"
 			},
 			"attachmentMaxPerItem": {
 				"help": "The maximum number of files on one work item.",
-				"label": "Files per work item"
+				"label": "Файлів на робочий елемент"
 			},
 			"clarificationWindowDays": {
 				"help": "A request awaiting the customer's reply for longer than this is declined automatically.",
-				"label": "Clarification window (days)"
+				"label": "Вікно уточнення (дні)"
 			},
 			"notificationRetentionDays": {
 				"help": "Read notifications older than this are deleted daily. Unread notifications are never deleted.",
-				"label": "Keep read notifications for (days)"
+				"label": "Зберігати прочитані сповіщення (дні)"
 			},
 			"reopenWindowDays": {
 				"help": "How long after resolution a customer may reopen a request.",
-				"label": "Reopen window (days)"
+				"label": "Вікно повторного відкриття (дні)"
 			},
 			"timezone": {
 				"help": "Used for digest windows and quiet hours when a person has not chosen their own.",
-				"label": "Time zone"
+				"label": "Часовий пояс"
 			},
 			"anonymousRateLimitMax": {
 				"help": "Maximum requests from one internet address during the limit window.",
-				"label": "Requests per window"
+				"label": "Запитів за вікно"
 			},
 			"anonymousRateLimitWindowMinutes": {
 				"help": "The period used to count anonymous requests, from 1 minute to 24 hours.",
-				"label": "Limit window (minutes)"
+				"label": "Вікно обмеження (хвилини)"
 			},
 			"mcpWriteCeilingPerMinute": {
 				"help": "Shared across API replicas. Bulk requests also obey the separate bulk ceiling.",
-				"label": "MCP write requests per minute"
+				"label": "Запитів запису MCP за хвилину"
 			},
 			"apiKeyBurstThreshold": {
 				"help": "Automatically disable an MCP key after more than this many write attempts in one minute, including rate-limited attempts.",
-				"label": "MCP burst disable threshold (attempts/minute)"
+				"label": "Поріг вимкнення при сплеску MCP (спроби/хвилину)"
 			},
 			"cspMode": {
 				"help": "Begin with report-only mode, inspect browser reports, then enforce after the rollout checks pass.",
-				"label": "Policy mode"
+				"label": "Режим політики"
 			},
 			"customerInvitationCreateWindowMinutes": {
 				"help": "Time window for the per-inviter and per-organisation creation limits.",
-				"label": "Customer invitation creation window (minutes)"
+				"label": "Вікно створення запрошень для клієнтів (хвилини)"
 			},
 			"customerInvitationPerInviterLimit": {
 				"help": "Maximum creation attempts by one inviter within the configured window.",
-				"label": "Maximum customer invitations per inviter"
+				"label": "Максимум запрошень клієнтів на одного запрошувача"
 			},
 			"customerInvitationPerOrganisationLimit": {
 				"help": "Maximum creation attempts for one organisation within the configured window.",
-				"label": "Maximum customer invitations per organisation"
+				"label": "Максимум запрошень клієнтів на організацію"
 			},
 			"customerInvitationResendCooldownSeconds": {
 				"help": "Minimum interval before the same customer invitation can be resent.",
-				"label": "Customer invitation resend cooldown (seconds)"
+				"label": "Пауза перед повторним надсиланням запрошення клієнту (секунди)"
 			},
 			"invitationLifetimeHours": {
 				"help": "Applies to new and renewed staff and customer invitations. Existing expiry dates stay unchanged.",
-				"label": "Invitation lifetime (hours)"
+				"label": "Термін дії запрошень (години)"
 			}
 		},
 		"general": {
@@ -6664,6 +6784,10 @@
 		}
 	},
 	"automations": {
+		"changes": {
+			"title": "Історія змін: {{name}}",
+			"description": "Хто і коли змінив це правило. Визначення та значення правила ніколи не показуються."
+		},
 		"actions": {
 			"daysFromNow": "days from now (empty clears the due date)",
 			"dueInDays": "Days",
@@ -6827,6 +6951,7 @@
 			"unknown": "Needs attention"
 		},
 		"list": {
+			"changeHistory": "Історія змін",
 			"disabled": "Disabled",
 			"dryRun": "Dry run",
 			"edit": "Edit",

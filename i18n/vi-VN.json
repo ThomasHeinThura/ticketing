@@ -22,7 +22,7 @@
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
 			"save": "Save",
-			"saved": "Saved",
+			"saved": "Đã lưu",
 			"saving": "Saving…",
 			"previous": "Previous",
 			"next": "Next",
@@ -556,6 +556,126 @@
 		}
 	},
 	"settings": {
+		"history": {
+			"providerConfiguration": "Cấu hình",
+			"providerCredential": "Thông tin xác thực",
+			"memberHistory": "Lịch sử của {{name}} ({{number}})",
+			"roleChanged": "Vai trò đã thay đổi",
+			"preferenceFields": {
+				"density": "Mật độ",
+				"layout": "Bố cục",
+				"listGroups": "Nhóm danh sách",
+				"columns": "Cột hiển thị",
+				"columnWidths": "Độ rộng cột"
+			},
+			"notificationDelivery": "Gửi thông báo",
+			"notificationDigest": "Thời điểm gửi",
+			"notificationQuietHours": "Giờ yên lặng",
+			"notificationWorkspaceRule": "Quy tắc gửi thông báo theo không gian làm việc",
+			"securityPassword": "Mật khẩu",
+			"securityMfa": "Xác thực hai yếu tố",
+			"personalKey": "Khóa API cá nhân",
+			"profileYou": "Bạn",
+			"profileLocale": "Locale",
+			"title": "Lịch sử",
+			"lastChanged": "Thay đổi lần cuối bởi {{actor}} vào {{at}}",
+			"empty": "Chưa có thay đổi nào được ghi lại.",
+			"error": "Không thể tải lịch sử.",
+			"retry": "Thử lại",
+			"personUnavailable": "Người dùng không khả dụng",
+			"apiKey": "Khóa API",
+			"automation": "Tự động hóa",
+			"system": "Hệ thống",
+			"fields": {
+				"name": "Tên",
+				"description": "Mô tả",
+				"icon": "Biểu tượng",
+				"key": "Mã",
+				"logo": "Logo",
+				"workspaceSlug": "Slug không gian làm việc",
+				"kind": "Loại",
+				"supportLevel": "Mức hỗ trợ",
+				"serviceCalendar": "Lịch dịch vụ",
+				"defaultSlaPolicy": "Chính sách SLA mặc định",
+				"defaultServiceCalendar": "Lịch dịch vụ mặc định",
+				"slaPolicy": "Chính sách SLA",
+				"defaultCommentVisibility": "Chế độ hiển thị bình luận mặc định",
+				"manager": "Quản lý",
+				"startDate": "Ngày bắt đầu",
+				"endDate": "Ngày kết thúc",
+				"defaultAssignee": "Người được giao mặc định",
+				"health": "Tình trạng",
+				"stateSetMode": "Bộ trạng thái",
+				"position": "Vị trí",
+				"isDefault": "Mặc định",
+				"activity": "Hoạt động",
+				"archived": "Đã lưu trữ",
+				"workflowDefinition": "Phiên bản",
+				"workflowActiveVersion": "Phiên bản đang dùng",
+				"backdateLimit": "Giới hạn ghi nhận lùi ngày (ngày)",
+				"defaultBillable": "Thời gian mới tính phí theo mặc định",
+				"approvalDefaultExpiryDays": "Thời hạn phê duyệt (ngày)",
+				"clarificationWindowDays": "Khoảng thời gian làm rõ (ngày)",
+				"reopenWindowDays": "Khoảng thời gian mở lại (ngày)",
+				"notificationRetentionDays": "Giữ thông báo đã đọc trong (ngày)",
+				"cspMode": "Chế độ chính sách",
+				"invitationLifetimeHours": "Thời hạn lời mời (giờ)",
+				"customerInvitationCreateWindowMinutes": "Khoảng thời gian tạo lời mời khách hàng (phút)",
+				"customerInvitationPerInviterLimit": "Số lời mời khách hàng tối đa cho mỗi người mời",
+				"customerInvitationPerOrganisationLimit": "Số lời mời khách hàng tối đa cho mỗi tổ chức",
+				"customerInvitationResendCooldownSeconds": "Thời gian chờ gửi lại lời mời khách hàng (giây)",
+				"anonymousRateLimitWindowMs": "Khoảng thời gian giới hạn (phút)",
+				"anonymousRateLimitMax": "Số yêu cầu mỗi khoảng thời gian",
+				"mcpWriteCeilingPerMinute": "Yêu cầu ghi MCP mỗi phút",
+				"apiKeyBurstThreshold": "Ngưỡng tắt khi MCP tăng đột biến (lần thử/phút)",
+				"timezone": "Múi giờ",
+				"attachmentMaxBytes": "Tệp lớn nhất (byte)",
+				"attachmentMaxPerItem": "Số tệp mỗi mục công việc",
+				"attachmentAllowedExtensions": "Loại tệp được phép",
+				"body": "Nội dung phản hồi",
+				"visibilityDefault": "Chế độ hiển thị mặc định",
+				"unknown": "Cài đặt khác"
+			},
+			"actions": {
+				"workflow_created": "Đã tạo quy trình làm việc",
+				"workflow_version_created": "Đã tạo phiên bản quy trình làm việc",
+				"workflow_version_published": "Đã xuất bản phiên bản quy trình làm việc",
+				"time_settings_updated": "Đã cập nhật cài đặt thời gian",
+				"plugin_changed": "Đã thay đổi tiện ích",
+				"canned_response_created": "Đã tạo phản hồi soạn sẵn",
+				"canned_response_updated": "Đã cập nhật phản hồi soạn sẵn",
+				"canned_response_deleted": "Đã xóa phản hồi soạn sẵn",
+				"automation_created": "Đã tạo quy tắc tự động hóa",
+				"automation_updated": "Đã cập nhật quy tắc tự động hóa",
+				"automation_enabled": "Đã bật quy tắc tự động hóa",
+				"automation_disabled": "Đã tắt quy tắc tự động hóa",
+				"team_created": "Đã tạo nhóm",
+				"team_updated": "Đã cập nhật cài đặt nhóm",
+				"team_member_added": "Đã thêm thành viên nhóm",
+				"team_member_updated": "Đã cập nhật thành viên nhóm",
+				"team_member_removed": "Đã gỡ thành viên khỏi nhóm",
+				"workspace_settings_updated": "Đã cập nhật cài đặt không gian làm việc",
+				"workspace_project_settings_updated": "Đã cập nhật mặc định {{term_project_other}} của không gian làm việc",
+				"project_settings_updated": "Đã cập nhật cài đặt {{term_project_other}}",
+				"project_general_settings_updated": "Đã cập nhật cài đặt chung của {{term_project_other}}",
+				"project_states_updated": "Đã cập nhật trạng thái của {{term_project_other}}",
+				"time_activity_created": "Đã tạo hoạt động thời gian",
+				"time_activity_updated": "Đã cập nhật hoạt động thời gian",
+				"workspace_created": "Đã tạo không gian làm việc",
+				"project_created": "Đã tạo {{term_project_other}}",
+				"project_archived": "Đã lưu trữ {{term_project_other}}",
+				"project_restored": "Đã khôi phục {{term_project_other}}",
+				"project_summary_updated": "Đã cập nhật tóm tắt của {{term_project_other}}",
+				"project_customer_organisation_linked": "Đã liên kết {{term_project_other}} với tổ chức khách hàng",
+				"project_reach_changed": "Đã thay đổi phạm vi truy cập của {{term_project_other}}",
+				"agile_settings_updated": "Đã cập nhật cài đặt Agile",
+				"workflow_cab_template_applied": "Đã áp dụng mẫu quy trình làm việc CAB",
+				"bulk_performed": "Đã thực hiện thao tác hàng loạt",
+				"kb_settings_changed": "Đã thay đổi cài đặt cơ sở tri thức",
+				"instance_settings_changed": "Đã cập nhật cài đặt hệ thống",
+				"unknown": "Đã thay đổi cài đặt"
+			}
+		},
 		"account": "Tài khoản",
 		"developer": "Nhà phát triển",
 		"information": "Thông tin",
@@ -1633,7 +1753,7 @@
 			"open": "Đang mở"
 		},
 		"cannedResponses": {
-			"body": "Response body",
+			"body": "Nội dung phản hồi",
 			"create": "New response",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
 			"deleteNamed": "Delete {{name}}",
@@ -1645,11 +1765,11 @@
 			"failed": "Unable to save this response.",
 			"forbidden": "You need workspace settings permission to manage canned responses.",
 			"loadFailed": "Unable to load canned responses.",
-			"name": "Name",
+			"name": "Tên",
 			"notFound": "This response is no longer available in this workspace.",
 			"search": "Search responses",
 			"title": "Canned responses",
-			"visibility": "Default visibility",
+			"visibility": "Chế độ hiển thị mặc định",
 			"save": "Save",
 			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		},
@@ -6247,75 +6367,75 @@
 		"fields": {
 			"approvalDefaultExpiryDays": {
 				"help": "The default for a new approval request. At most 90.",
-				"label": "Approval expiry (days)"
+				"label": "Thời hạn phê duyệt (ngày)"
 			},
 			"attachmentAllowedExtensions": {
 				"help": "Extensions separated by commas, for example pdf, png, docx.",
-				"label": "Allowed file types"
+				"label": "Loại tệp được phép"
 			},
 			"attachmentMaxBytes": {
 				"help": "The maximum size of one uploaded file.",
-				"label": "Largest file (bytes)"
+				"label": "Tệp lớn nhất (byte)"
 			},
 			"attachmentMaxPerItem": {
 				"help": "The maximum number of files on one work item.",
-				"label": "Files per work item"
+				"label": "Số tệp mỗi mục công việc"
 			},
 			"clarificationWindowDays": {
 				"help": "A request awaiting the customer's reply for longer than this is declined automatically.",
-				"label": "Clarification window (days)"
+				"label": "Khoảng thời gian làm rõ (ngày)"
 			},
 			"notificationRetentionDays": {
 				"help": "Read notifications older than this are deleted daily. Unread notifications are never deleted.",
-				"label": "Keep read notifications for (days)"
+				"label": "Giữ thông báo đã đọc trong (ngày)"
 			},
 			"reopenWindowDays": {
 				"help": "How long after resolution a customer may reopen a request.",
-				"label": "Reopen window (days)"
+				"label": "Khoảng thời gian mở lại (ngày)"
 			},
 			"timezone": {
 				"help": "Used for digest windows and quiet hours when a person has not chosen their own.",
-				"label": "Time zone"
+				"label": "Múi giờ"
 			},
 			"anonymousRateLimitMax": {
 				"help": "Maximum requests from one internet address during the limit window.",
-				"label": "Requests per window"
+				"label": "Số yêu cầu mỗi khoảng thời gian"
 			},
 			"anonymousRateLimitWindowMinutes": {
 				"help": "The period used to count anonymous requests, from 1 minute to 24 hours.",
-				"label": "Limit window (minutes)"
+				"label": "Khoảng thời gian giới hạn (phút)"
 			},
 			"mcpWriteCeilingPerMinute": {
 				"help": "Shared across API replicas. Bulk requests also obey the separate bulk ceiling.",
-				"label": "MCP write requests per minute"
+				"label": "Yêu cầu ghi MCP mỗi phút"
 			},
 			"apiKeyBurstThreshold": {
 				"help": "Automatically disable an MCP key after more than this many write attempts in one minute, including rate-limited attempts.",
-				"label": "MCP burst disable threshold (attempts/minute)"
+				"label": "Ngưỡng tắt khi MCP tăng đột biến (lần thử/phút)"
 			},
 			"cspMode": {
 				"help": "Begin with report-only mode, inspect browser reports, then enforce after the rollout checks pass.",
-				"label": "Policy mode"
+				"label": "Chế độ chính sách"
 			},
 			"customerInvitationCreateWindowMinutes": {
 				"help": "Time window for the per-inviter and per-organisation creation limits.",
-				"label": "Customer invitation creation window (minutes)"
+				"label": "Khoảng thời gian tạo lời mời khách hàng (phút)"
 			},
 			"customerInvitationPerInviterLimit": {
 				"help": "Maximum creation attempts by one inviter within the configured window.",
-				"label": "Maximum customer invitations per inviter"
+				"label": "Số lời mời khách hàng tối đa cho mỗi người mời"
 			},
 			"customerInvitationPerOrganisationLimit": {
 				"help": "Maximum creation attempts for one organisation within the configured window.",
-				"label": "Maximum customer invitations per organisation"
+				"label": "Số lời mời khách hàng tối đa cho mỗi tổ chức"
 			},
 			"customerInvitationResendCooldownSeconds": {
 				"help": "Minimum interval before the same customer invitation can be resent.",
-				"label": "Customer invitation resend cooldown (seconds)"
+				"label": "Thời gian chờ gửi lại lời mời khách hàng (giây)"
 			},
 			"invitationLifetimeHours": {
 				"help": "Applies to new and renewed staff and customer invitations. Existing expiry dates stay unchanged.",
-				"label": "Invitation lifetime (hours)"
+				"label": "Thời hạn lời mời (giờ)"
 			}
 		},
 		"general": {
@@ -6586,6 +6706,10 @@
 		}
 	},
 	"automations": {
+		"changes": {
+			"title": "Lịch sử thay đổi: {{name}}",
+			"description": "Ai đã thay đổi quy tắc này và khi nào. Định nghĩa và giá trị của quy tắc không bao giờ được hiển thị."
+		},
 		"actions": {
 			"daysFromNow": "days from now (empty clears the due date)",
 			"dueInDays": "Days",
@@ -6743,6 +6867,7 @@
 			"unknown": "Needs attention"
 		},
 		"list": {
+			"changeHistory": "Lịch sử thay đổi",
 			"disabled": "Disabled",
 			"dryRun": "Dry run",
 			"edit": "Edit",

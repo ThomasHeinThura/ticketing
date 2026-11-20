@@ -18,7 +18,7 @@
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
 			"save": "Save",
-			"saved": "Saved",
+			"saved": "Kaydedildi",
 			"saving": "Saving…",
 			"previous": "Previous",
 			"next": "Next",
@@ -556,6 +556,126 @@
 		}
 	},
 	"settings": {
+		"history": {
+			"providerConfiguration": "Yapılandırma",
+			"providerCredential": "Kimlik bilgisi",
+			"memberHistory": "{{name}} geçmişi ({{number}})",
+			"roleChanged": "Rol değiştirildi",
+			"preferenceFields": {
+				"density": "Yoğunluk",
+				"layout": "Yerleşim",
+				"listGroups": "Liste grupları",
+				"columns": "Görünür sütunlar",
+				"columnWidths": "Sütun genişlikleri"
+			},
+			"notificationDelivery": "İletim",
+			"notificationDigest": "İletim zamanı",
+			"notificationQuietHours": "Sessiz saatler",
+			"notificationWorkspaceRule": "Çalışma alanı teslim kuralları",
+			"securityPassword": "Parola",
+			"securityMfa": "İki faktörlü kimlik doğrulama",
+			"personalKey": "Kişisel API anahtarı",
+			"profileYou": "Siz",
+			"profileLocale": "Locale",
+			"title": "Geçmiş",
+			"lastChanged": "Son değişiklik: {{actor}}, {{at}}",
+			"empty": "Henüz kayıtlı değişiklik yok.",
+			"error": "Geçmiş yüklenemedi.",
+			"retry": "Yeniden dene",
+			"personUnavailable": "Kişi kullanılamıyor",
+			"apiKey": "API anahtarı",
+			"automation": "Otomasyon",
+			"system": "Sistem",
+			"fields": {
+				"name": "Ad",
+				"description": "Açıklama",
+				"icon": "Simge",
+				"key": "Anahtar",
+				"logo": "Logo",
+				"workspaceSlug": "Çalışma alanı kısa adı",
+				"kind": "Tür",
+				"supportLevel": "Destek seviyesi",
+				"serviceCalendar": "Hizmet takvimi",
+				"defaultSlaPolicy": "Varsayılan SLA politikası",
+				"defaultServiceCalendar": "Varsayılan hizmet takvimi",
+				"slaPolicy": "SLA politikası",
+				"defaultCommentVisibility": "Varsayılan yorum görünürlüğü",
+				"manager": "Yönetici",
+				"startDate": "Başlangıç tarihi",
+				"endDate": "Bitiş tarihi",
+				"defaultAssignee": "Varsayılan atanan kişi",
+				"health": "Sağlık durumu",
+				"stateSetMode": "Durum kümesi",
+				"position": "Konum",
+				"isDefault": "Varsayılan",
+				"activity": "Etkinlik",
+				"archived": "Arşivlendi",
+				"workflowDefinition": "Sürümler",
+				"workflowActiveVersion": "Etkin sürüm",
+				"backdateLimit": "Geriye dönük kayıt sınırı (gün)",
+				"defaultBillable": "Yeni süre varsayılan olarak faturalandırılabilir",
+				"approvalDefaultExpiryDays": "Onay sona erme süresi (gün)",
+				"clarificationWindowDays": "Açıklama penceresi (gün)",
+				"reopenWindowDays": "Yeniden açma penceresi (gün)",
+				"notificationRetentionDays": "Okunmuş bildirimleri saklama süresi (gün)",
+				"cspMode": "İlke modu",
+				"invitationLifetimeHours": "Davet geçerlilik süresi (saat)",
+				"customerInvitationCreateWindowMinutes": "Müşteri daveti oluşturma penceresi (dakika)",
+				"customerInvitationPerInviterLimit": "Davet eden başına en fazla müşteri daveti",
+				"customerInvitationPerOrganisationLimit": "Kuruluş başına en fazla müşteri daveti",
+				"customerInvitationResendCooldownSeconds": "Müşteri davetini yeniden gönderme bekleme süresi (saniye)",
+				"anonymousRateLimitWindowMs": "Sınır penceresi (dakika)",
+				"anonymousRateLimitMax": "Pencere başına istek",
+				"mcpWriteCeilingPerMinute": "Dakika başına MCP yazma isteği",
+				"apiKeyBurstThreshold": "MCP ani artış devre dışı bırakma eşiği (deneme/dakika)",
+				"timezone": "Saat dilimi",
+				"attachmentMaxBytes": "En büyük dosya (bayt)",
+				"attachmentMaxPerItem": "İş öğesi başına dosya",
+				"attachmentAllowedExtensions": "İzin verilen dosya türleri",
+				"body": "Yanıt gövdesi",
+				"visibilityDefault": "Varsayılan görünürlük",
+				"unknown": "Diğer ayar"
+			},
+			"actions": {
+				"workflow_created": "İş akışı oluşturuldu",
+				"workflow_version_created": "İş akışı sürümü oluşturuldu",
+				"workflow_version_published": "İş akışı sürümü yayımlandı",
+				"time_settings_updated": "Zaman ayarları güncellendi",
+				"plugin_changed": "Eklenti değiştirildi",
+				"canned_response_created": "Hazır yanıt oluşturuldu",
+				"canned_response_updated": "Hazır yanıt güncellendi",
+				"canned_response_deleted": "Hazır yanıt silindi",
+				"automation_created": "Otomasyon kuralı oluşturuldu",
+				"automation_updated": "Otomasyon kuralı güncellendi",
+				"automation_enabled": "Otomasyon kuralı etkinleştirildi",
+				"automation_disabled": "Otomasyon kuralı devre dışı bırakıldı",
+				"team_created": "Ekip oluşturuldu",
+				"team_updated": "Ekip ayarları güncellendi",
+				"team_member_added": "Ekip üyesi eklendi",
+				"team_member_updated": "Ekip üyesi güncellendi",
+				"team_member_removed": "Ekip üyesi kaldırıldı",
+				"workspace_settings_updated": "Çalışma alanı ayarları güncellendi",
+				"workspace_project_settings_updated": "Çalışma alanı {{term_project_one}} varsayılanları güncellendi",
+				"project_settings_updated": "{{term_project_one}} ayarları güncellendi",
+				"project_general_settings_updated": "{{term_project_one}} genel ayarları güncellendi",
+				"project_states_updated": "{{term_project_one}} durumları güncellendi",
+				"time_activity_created": "Zaman etkinliği oluşturuldu",
+				"time_activity_updated": "Zaman etkinliği güncellendi",
+				"workspace_created": "Çalışma alanı oluşturuldu",
+				"project_created": "{{term_project_one}} oluşturuldu",
+				"project_archived": "{{term_project_one}} arşivlendi",
+				"project_restored": "{{term_project_one}} geri yüklendi",
+				"project_summary_updated": "{{term_project_one}} özeti güncellendi",
+				"project_customer_organisation_linked": "{{term_project_one}} bir müşteri kuruluşuna bağlandı",
+				"project_reach_changed": "{{term_project_one}} erişim kapsamı değişti",
+				"agile_settings_updated": "Çevik ayarlar güncellendi",
+				"workflow_cab_template_applied": "CAB iş akışı şablonu uygulandı",
+				"bulk_performed": "Toplu işlem yapıldı",
+				"kb_settings_changed": "Bilgi bankası ayarları değiştirildi",
+				"instance_settings_changed": "Kurulum ayarları güncellendi",
+				"unknown": "Ayarlar değiştirildi"
+			}
+		},
 		"account": "Hesap",
 		"developer": "Geliştirici",
 		"information": "Bilgiler",
@@ -1634,7 +1754,7 @@
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number."
 		},
 		"cannedResponses": {
-			"body": "Response body",
+			"body": "Yanıt gövdesi",
 			"create": "New response",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
 			"deleteNamed": "Delete {{name}}",
@@ -1646,11 +1766,11 @@
 			"failed": "Unable to save this response.",
 			"forbidden": "You need workspace settings permission to manage canned responses.",
 			"loadFailed": "Unable to load canned responses.",
-			"name": "Name",
+			"name": "Ad",
 			"notFound": "This response is no longer available in this workspace.",
 			"search": "Search responses",
 			"title": "Canned responses",
-			"visibility": "Default visibility",
+			"visibility": "Varsayılan görünürlük",
 			"save": "Save",
 			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		},
@@ -6268,75 +6388,75 @@
 		"fields": {
 			"approvalDefaultExpiryDays": {
 				"help": "The default for a new approval request. At most 90.",
-				"label": "Approval expiry (days)"
+				"label": "Onay sona erme süresi (gün)"
 			},
 			"attachmentAllowedExtensions": {
 				"help": "Extensions separated by commas, for example pdf, png, docx.",
-				"label": "Allowed file types"
+				"label": "İzin verilen dosya türleri"
 			},
 			"attachmentMaxBytes": {
 				"help": "The maximum size of one uploaded file.",
-				"label": "Largest file (bytes)"
+				"label": "En büyük dosya (bayt)"
 			},
 			"attachmentMaxPerItem": {
 				"help": "The maximum number of files on one work item.",
-				"label": "Files per work item"
+				"label": "İş öğesi başına dosya"
 			},
 			"clarificationWindowDays": {
 				"help": "A request awaiting the customer's reply for longer than this is declined automatically.",
-				"label": "Clarification window (days)"
+				"label": "Açıklama penceresi (gün)"
 			},
 			"notificationRetentionDays": {
 				"help": "Read notifications older than this are deleted daily. Unread notifications are never deleted.",
-				"label": "Keep read notifications for (days)"
+				"label": "Okunmuş bildirimleri saklama süresi (gün)"
 			},
 			"reopenWindowDays": {
 				"help": "How long after resolution a customer may reopen a request.",
-				"label": "Reopen window (days)"
+				"label": "Yeniden açma penceresi (gün)"
 			},
 			"timezone": {
 				"help": "Used for digest windows and quiet hours when a person has not chosen their own.",
-				"label": "Time zone"
+				"label": "Saat dilimi"
 			},
 			"anonymousRateLimitMax": {
 				"help": "Maximum requests from one internet address during the limit window.",
-				"label": "Requests per window"
+				"label": "Pencere başına istek"
 			},
 			"anonymousRateLimitWindowMinutes": {
 				"help": "The period used to count anonymous requests, from 1 minute to 24 hours.",
-				"label": "Limit window (minutes)"
+				"label": "Sınır penceresi (dakika)"
 			},
 			"mcpWriteCeilingPerMinute": {
 				"help": "Shared across API replicas. Bulk requests also obey the separate bulk ceiling.",
-				"label": "MCP write requests per minute"
+				"label": "Dakika başına MCP yazma isteği"
 			},
 			"apiKeyBurstThreshold": {
 				"help": "Automatically disable an MCP key after more than this many write attempts in one minute, including rate-limited attempts.",
-				"label": "MCP burst disable threshold (attempts/minute)"
+				"label": "MCP ani artış devre dışı bırakma eşiği (deneme/dakika)"
 			},
 			"cspMode": {
 				"help": "Begin with report-only mode, inspect browser reports, then enforce after the rollout checks pass.",
-				"label": "Policy mode"
+				"label": "İlke modu"
 			},
 			"customerInvitationCreateWindowMinutes": {
 				"help": "Time window for the per-inviter and per-organisation creation limits.",
-				"label": "Customer invitation creation window (minutes)"
+				"label": "Müşteri daveti oluşturma penceresi (dakika)"
 			},
 			"customerInvitationPerInviterLimit": {
 				"help": "Maximum creation attempts by one inviter within the configured window.",
-				"label": "Maximum customer invitations per inviter"
+				"label": "Davet eden başına en fazla müşteri daveti"
 			},
 			"customerInvitationPerOrganisationLimit": {
 				"help": "Maximum creation attempts for one organisation within the configured window.",
-				"label": "Maximum customer invitations per organisation"
+				"label": "Kuruluş başına en fazla müşteri daveti"
 			},
 			"customerInvitationResendCooldownSeconds": {
 				"help": "Minimum interval before the same customer invitation can be resent.",
-				"label": "Customer invitation resend cooldown (seconds)"
+				"label": "Müşteri davetini yeniden gönderme bekleme süresi (saniye)"
 			},
 			"invitationLifetimeHours": {
 				"help": "Applies to new and renewed staff and customer invitations. Existing expiry dates stay unchanged.",
-				"label": "Invitation lifetime (hours)"
+				"label": "Davet geçerlilik süresi (saat)"
 			}
 		},
 		"general": {
@@ -6610,6 +6730,10 @@
 		}
 	},
 	"automations": {
+		"changes": {
+			"title": "Değişiklik geçmişi: {{name}}",
+			"description": "Bu kuralı kimin ve ne zaman değiştirdiği. Kural tanımları ve değerleri asla gösterilmez."
+		},
 		"actions": {
 			"daysFromNow": "days from now (empty clears the due date)",
 			"dueInDays": "Days",
@@ -6769,6 +6893,7 @@
 			"unknown": "Needs attention"
 		},
 		"list": {
+			"changeHistory": "Değişiklik geçmişi",
 			"disabled": "Disabled",
 			"dryRun": "Dry run",
 			"edit": "Edit",

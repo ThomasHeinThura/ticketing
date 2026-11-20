@@ -18,7 +18,7 @@
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
 			"save": "Save",
-			"saved": "Saved",
+			"saved": "Зачувано",
 			"saving": "Saving…",
 			"previous": "Previous",
 			"next": "Next",
@@ -556,6 +556,126 @@
 		}
 	},
 	"settings": {
+		"history": {
+			"providerConfiguration": "Конфигурација",
+			"providerCredential": "Акредитив",
+			"memberHistory": "Историја за {{name}} ({{number}})",
+			"roleChanged": "Улогата е променета",
+			"preferenceFields": {
+				"density": "Густина",
+				"layout": "Распоред",
+				"listGroups": "Групи во списокот",
+				"columns": "Видливи колони",
+				"columnWidths": "Ширина на колони"
+			},
+			"notificationDelivery": "Испорака",
+			"notificationDigest": "Време на испорака",
+			"notificationQuietHours": "Тивки часови",
+			"notificationWorkspaceRule": "Правила за достава по работен простор",
+			"securityPassword": "Лозинка",
+			"securityMfa": "Двофакторска автентикација",
+			"personalKey": "Личен API клуч",
+			"profileYou": "Ти",
+			"profileLocale": "Locale",
+			"title": "Историја",
+			"lastChanged": "Последна промена од {{actor}} на {{at}}",
+			"empty": "Сè уште нема забележани промени.",
+			"error": "Историјата не можеше да се вчита.",
+			"retry": "Обиди се повторно",
+			"personUnavailable": "Лицето не е достапно",
+			"apiKey": "API-клуч",
+			"automation": "Автоматизација",
+			"system": "Систем",
+			"fields": {
+				"name": "Име",
+				"description": "Опис",
+				"icon": "Икона",
+				"key": "Клуч",
+				"logo": "Лого",
+				"workspaceSlug": "Кратко име на работниот простор",
+				"kind": "Вид",
+				"supportLevel": "Ниво на поддршка",
+				"serviceCalendar": "Календар на услуги",
+				"defaultSlaPolicy": "Стандардна SLA политика",
+				"defaultServiceCalendar": "Стандарден календар на услуги",
+				"slaPolicy": "SLA политика",
+				"defaultCommentVisibility": "Стандардна видливост на коментарите",
+				"manager": "Менаџер",
+				"startDate": "Датум на почеток",
+				"endDate": "Датум на завршување",
+				"defaultAssignee": "Стандардно задолжено лице",
+				"health": "Здравје",
+				"stateSetMode": "Збир на состојби",
+				"position": "Позиција",
+				"isDefault": "Стандардно",
+				"activity": "Активност",
+				"archived": "Архивирано",
+				"workflowDefinition": "Верзии",
+				"workflowActiveVersion": "Активна верзија",
+				"backdateLimit": "Лимит за наназадно внесување (денови)",
+				"defaultBillable": "Новото време е наплатливо по стандард",
+				"approvalDefaultExpiryDays": "Истек на одобрувањето (денови)",
+				"clarificationWindowDays": "Прозорец за појаснување (денови)",
+				"reopenWindowDays": "Прозорец за повторно отворање (денови)",
+				"notificationRetentionDays": "Чувај ги прочитаните известувања (денови)",
+				"cspMode": "Режим на политика",
+				"invitationLifetimeHours": "Важност на поканата (часови)",
+				"customerInvitationCreateWindowMinutes": "Прозорец за создавање покани за клиенти (минути)",
+				"customerInvitationPerInviterLimit": "Максимален број покани за клиенти по поканувач",
+				"customerInvitationPerOrganisationLimit": "Максимален број покани за клиенти по организација",
+				"customerInvitationResendCooldownSeconds": "Пауза пред повторно испраќање покана за клиент (секунди)",
+				"anonymousRateLimitWindowMs": "Прозорец на ограничувањето (минути)",
+				"anonymousRateLimitMax": "Барања по прозорец",
+				"mcpWriteCeilingPerMinute": "MCP барања за запишување во минута",
+				"apiKeyBurstThreshold": "Праг за исклучување при MCP налет (обиди/минута)",
+				"timezone": "Временска зона",
+				"attachmentMaxBytes": "Најголема датотека (бајти)",
+				"attachmentMaxPerItem": "Датотеки по работна ставка",
+				"attachmentAllowedExtensions": "Дозволени типови датотеки",
+				"body": "Содржина на одговорот",
+				"visibilityDefault": "Стандардна видливост",
+				"unknown": "Друга поставка"
+			},
+			"actions": {
+				"workflow_created": "Работниот тек е создаден",
+				"workflow_version_created": "Верзијата на работниот тек е создадена",
+				"workflow_version_published": "Верзијата на работниот тек е објавена",
+				"time_settings_updated": "Поставките за време се ажурирани",
+				"plugin_changed": "Приклучокот е изменет",
+				"canned_response_created": "Готовиот одговор е создаден",
+				"canned_response_updated": "Готовиот одговор е ажуриран",
+				"canned_response_deleted": "Готовиот одговор е избришан",
+				"automation_created": "Правилото за автоматизација е создадено",
+				"automation_updated": "Правилото за автоматизација е ажурирано",
+				"automation_enabled": "Правилото за автоматизација е овозможено",
+				"automation_disabled": "Правилото за автоматизација е оневозможено",
+				"team_created": "Тимот е создаден",
+				"team_updated": "Поставките на тимот се ажурирани",
+				"team_member_added": "Членот на тимот е додаден",
+				"team_member_updated": "Членот на тимот е ажуриран",
+				"team_member_removed": "Членот на тимот е отстранет",
+				"workspace_settings_updated": "Поставките на работниот простор се ажурирани",
+				"workspace_project_settings_updated": "Стандардните вредности за {{term_project_other}} во работниот простор се ажурирани",
+				"project_settings_updated": "Поставките на {{term_project_one}} се ажурирани",
+				"project_general_settings_updated": "Општите поставки на {{term_project_one}} се ажурирани",
+				"project_states_updated": "Состојбите на {{term_project_one}} се ажурирани",
+				"time_activity_created": "Временската активност е создадена",
+				"time_activity_updated": "Временската активност е ажурирана",
+				"workspace_created": "Работниот простор е создаден",
+				"project_created": "Создавање на {{term_project_one}}",
+				"project_archived": "Архивирање на {{term_project_one}}",
+				"project_restored": "Враќање на {{term_project_one}}",
+				"project_summary_updated": "Резимето на {{term_project_one}} е ажурирано",
+				"project_customer_organisation_linked": "Поврзување на {{term_project_one}} со организација на клиент",
+				"project_reach_changed": "Опсегот на пристап на {{term_project_one}} е променет",
+				"agile_settings_updated": "Agile-поставките се ажурирани",
+				"workflow_cab_template_applied": "Применет е шаблонот за работен тек CAB",
+				"bulk_performed": "Извршена е масовна акција",
+				"kb_settings_changed": "Поставките на базата на знаење се променети",
+				"instance_settings_changed": "Поставките на инстанцата се ажурирани",
+				"unknown": "Поставките се променети"
+			}
+		},
 		"account": "Сметка",
 		"developer": "Програмер",
 		"information": "Информации",
@@ -1634,7 +1754,7 @@
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number."
 		},
 		"cannedResponses": {
-			"body": "Response body",
+			"body": "Содржина на одговорот",
 			"create": "New response",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
 			"deleteNamed": "Delete {{name}}",
@@ -1646,11 +1766,11 @@
 			"failed": "Unable to save this response.",
 			"forbidden": "You need workspace settings permission to manage canned responses.",
 			"loadFailed": "Unable to load canned responses.",
-			"name": "Name",
+			"name": "Име",
 			"notFound": "This response is no longer available in this workspace.",
 			"search": "Search responses",
 			"title": "Canned responses",
-			"visibility": "Default visibility",
+			"visibility": "Стандардна видливост",
 			"save": "Save",
 			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		},
@@ -6268,75 +6388,75 @@
 		"fields": {
 			"approvalDefaultExpiryDays": {
 				"help": "The default for a new approval request. At most 90.",
-				"label": "Approval expiry (days)"
+				"label": "Истек на одобрувањето (денови)"
 			},
 			"attachmentAllowedExtensions": {
 				"help": "Extensions separated by commas, for example pdf, png, docx.",
-				"label": "Allowed file types"
+				"label": "Дозволени типови датотеки"
 			},
 			"attachmentMaxBytes": {
 				"help": "The maximum size of one uploaded file.",
-				"label": "Largest file (bytes)"
+				"label": "Најголема датотека (бајти)"
 			},
 			"attachmentMaxPerItem": {
 				"help": "The maximum number of files on one work item.",
-				"label": "Files per work item"
+				"label": "Датотеки по работна ставка"
 			},
 			"clarificationWindowDays": {
 				"help": "A request awaiting the customer's reply for longer than this is declined automatically.",
-				"label": "Clarification window (days)"
+				"label": "Прозорец за појаснување (денови)"
 			},
 			"notificationRetentionDays": {
 				"help": "Read notifications older than this are deleted daily. Unread notifications are never deleted.",
-				"label": "Keep read notifications for (days)"
+				"label": "Чувај ги прочитаните известувања (денови)"
 			},
 			"reopenWindowDays": {
 				"help": "How long after resolution a customer may reopen a request.",
-				"label": "Reopen window (days)"
+				"label": "Прозорец за повторно отворање (денови)"
 			},
 			"timezone": {
 				"help": "Used for digest windows and quiet hours when a person has not chosen their own.",
-				"label": "Time zone"
+				"label": "Временска зона"
 			},
 			"anonymousRateLimitMax": {
 				"help": "Maximum requests from one internet address during the limit window.",
-				"label": "Requests per window"
+				"label": "Барања по прозорец"
 			},
 			"anonymousRateLimitWindowMinutes": {
 				"help": "The period used to count anonymous requests, from 1 minute to 24 hours.",
-				"label": "Limit window (minutes)"
+				"label": "Прозорец на ограничувањето (минути)"
 			},
 			"mcpWriteCeilingPerMinute": {
 				"help": "Shared across API replicas. Bulk requests also obey the separate bulk ceiling.",
-				"label": "MCP write requests per minute"
+				"label": "MCP барања за запишување во минута"
 			},
 			"apiKeyBurstThreshold": {
 				"help": "Automatically disable an MCP key after more than this many write attempts in one minute, including rate-limited attempts.",
-				"label": "MCP burst disable threshold (attempts/minute)"
+				"label": "Праг за исклучување при MCP налет (обиди/минута)"
 			},
 			"cspMode": {
 				"help": "Begin with report-only mode, inspect browser reports, then enforce after the rollout checks pass.",
-				"label": "Policy mode"
+				"label": "Режим на политика"
 			},
 			"customerInvitationCreateWindowMinutes": {
 				"help": "Time window for the per-inviter and per-organisation creation limits.",
-				"label": "Customer invitation creation window (minutes)"
+				"label": "Прозорец за создавање покани за клиенти (минути)"
 			},
 			"customerInvitationPerInviterLimit": {
 				"help": "Maximum creation attempts by one inviter within the configured window.",
-				"label": "Maximum customer invitations per inviter"
+				"label": "Максимален број покани за клиенти по поканувач"
 			},
 			"customerInvitationPerOrganisationLimit": {
 				"help": "Maximum creation attempts for one organisation within the configured window.",
-				"label": "Maximum customer invitations per organisation"
+				"label": "Максимален број покани за клиенти по организација"
 			},
 			"customerInvitationResendCooldownSeconds": {
 				"help": "Minimum interval before the same customer invitation can be resent.",
-				"label": "Customer invitation resend cooldown (seconds)"
+				"label": "Пауза пред повторно испраќање покана за клиент (секунди)"
 			},
 			"invitationLifetimeHours": {
 				"help": "Applies to new and renewed staff and customer invitations. Existing expiry dates stay unchanged.",
-				"label": "Invitation lifetime (hours)"
+				"label": "Важност на поканата (часови)"
 			}
 		},
 		"general": {
@@ -6610,6 +6730,10 @@
 		}
 	},
 	"automations": {
+		"changes": {
+			"title": "Историја на промени: {{name}}",
+			"description": "Кој и кога го променил ова правило. Дефинициите и вредностите на правилото никогаш не се прикажуваат."
+		},
 		"actions": {
 			"daysFromNow": "days from now (empty clears the due date)",
 			"dueInDays": "Days",
@@ -6769,6 +6893,7 @@
 			"unknown": "Needs attention"
 		},
 		"list": {
+			"changeHistory": "Историја на промени",
 			"disabled": "Disabled",
 			"dryRun": "Dry run",
 			"edit": "Edit",

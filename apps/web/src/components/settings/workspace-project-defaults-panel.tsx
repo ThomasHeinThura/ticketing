@@ -15,6 +15,7 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import {
   getWorkspaceProjectSettings,
   patchWorkspaceProjectSettings,
@@ -27,7 +28,9 @@ import {
 import { getSlaPolicies } from "@/fetchers/sla-policy";
 import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 
 const isForbidden = (error: unknown) =>
   error instanceof HttpError && error.status === 403;
@@ -58,6 +61,7 @@ export function WorkspaceProjectDefaultsPanel({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { data: session } = authClient.useSession();
   const { canManageWorkspaceSettings, isCheckingPermissions } =
     useWorkspacePermission(workspaceId);
   const canEdit = canManageWorkspaceSettings();
@@ -171,6 +175,8 @@ export function WorkspaceProjectDefaultsPanel({
   );
   const save = async () => {
     if (!current || !dirty || saving || !canEdit) return;
+    const userId = session?.user?.id;
+    const sessionId = session?.session?.id;
     setFailure(null);
     setSaving(true);
     setSaveSuccess(false);
@@ -180,6 +186,19 @@ export function WorkspaceProjectDefaultsPanel({
         defaultSlaPolicyId: slaId === NONE ? null : slaId,
         defaultServiceCalendarId: calendarId === NONE ? null : calendarId,
       });
+      if (userId && sessionId)
+        refreshSettingsHistory(
+          queryClient,
+          [
+            "settings-history",
+            "workspace",
+            workspaceId,
+            "agent",
+            userId,
+            sessionId,
+          ],
+          profileSessionGuard(userId, sessionId),
+        );
       queryClient.setQueryData(queryKey, updated);
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
       setDraftVersion(`${workspaceId}:${updated.version}`);

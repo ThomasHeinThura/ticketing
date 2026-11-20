@@ -24,7 +24,14 @@ import {
   SelectValue,
   Separator,
 } from "@taskdesk/ui";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
@@ -40,6 +47,7 @@ import {
   useCapabilityCheckFailed,
 } from "@/components/settings/settings-access";
 import { SettingsAccessPage } from "@/components/settings/settings-access-page";
+import { SettingsHistory } from "@/components/settings/settings-history";
 import { WorkspaceProjectDefaultsPanel } from "@/components/settings/workspace-project-defaults-panel";
 import useDeleteWorkspace from "@/hooks/mutations/workspace/use-delete-workspace";
 import useTransferWorkspaceOwnership from "@/hooks/mutations/workspace/use-transfer-workspace-ownership";
@@ -88,6 +96,20 @@ function getWorkspaceDescription(
 }
 
 function RouteComponent() {
+  const { data: workspace } = useActiveWorkspace();
+  return (
+    <WorkspaceGeneral
+      key={workspace?.id ?? "no-workspace"}
+      workspace={workspace}
+    />
+  );
+}
+
+function WorkspaceGeneral({
+  workspace,
+}: {
+  workspace: ReturnType<typeof useActiveWorkspace>["data"];
+}) {
   const { t } = useTranslation();
   const workspaceSchema = useMemo(
     () =>
@@ -101,6 +123,7 @@ function RouteComponent() {
     [t],
   );
 
+  const activeRef = useRef(true);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSavingRef = useRef(false);
   const queuedSaveRef = useRef<WorkspaceFormValues | null>(null);
@@ -109,7 +132,6 @@ function RouteComponent() {
   const [selectedNewOwnerId, setSelectedNewOwnerId] = useState<string>("");
 
   const { user: currentUser } = useAuth();
-  const { data: workspace } = useActiveWorkspace();
   const { data: fullWorkspace, error: workspaceError } = useGetFullWorkspace({
     workspaceId: workspace?.id,
   });
@@ -125,6 +147,7 @@ function RouteComponent() {
   const transferStepUp = useStepUpAction();
   const {
     canManageWorkspace,
+    canManageWorkspaceSettings,
     canDeleteWorkspace,
     isOwner,
     isCheckingPermissions,
@@ -165,6 +188,7 @@ function RouteComponent() {
     },
   });
 
+  const { getValues, reset } = workspaceForm;
   useEffect(() => {
     if (!workspace) return;
 
@@ -172,16 +196,26 @@ function RouteComponent() {
       name: workspace.name || "",
       description: workspaceDescription,
     };
-    lastSavedRef.current = normalizeWorkspaceValues(nextValues);
-
-    if (!workspaceForm.formState.isDirty) {
-      workspaceForm.reset(nextValues);
+    const current = normalizeWorkspaceValues(getValues());
+    const previous = lastSavedRef.current;
+    if (
+      !previous ||
+      (current.name === previous.name &&
+        current.description === previous.description)
+    ) {
+      reset(nextValues);
     }
-  }, [workspace, workspaceDescription, workspaceForm]);
+    lastSavedRef.current = normalizeWorkspaceValues(nextValues);
+  }, [workspace, workspaceDescription, getValues, reset]);
 
   const saveWorkspace = useCallback(
     async (data: WorkspaceFormValues) => {
-      if (!workspace?.id) return;
+      if (!activeRef.current || !workspace?.id) return;
+
+      if (isSavingRef.current) {
+        queuedSaveRef.current = data;
+        return;
+      }
 
       const normalizedData = normalizeWorkspaceValues(data);
       const nameChanged = lastSavedRef.current?.name !== normalizedData.name;
@@ -190,11 +224,6 @@ function RouteComponent() {
       const hasChanges = nameChanged || descriptionChanged;
 
       if (!hasChanges) return;
-
-      if (isSavingRef.current) {
-        queuedSaveRef.current = data;
-        return;
-      }
 
       isSavingRef.current = true;
 
@@ -222,25 +251,33 @@ function RouteComponent() {
         // previous name after a rename. See that hook for why (it used to
         // live here, invalidating the dead ["active-organization"] key).
         await updateWorkspace(updatePayload);
+        if (!activeRef.current) return;
 
-        workspaceForm.reset(normalizedData, { keepDirty: false });
+        const current = normalizeWorkspaceValues(workspaceForm.getValues());
+        if (
+          current.name === normalizedData.name &&
+          current.description === normalizedData.description
+        ) {
+          workspaceForm.reset(normalizedData, { keepDirty: false });
+        }
         lastSavedRef.current = normalizedData;
-        queuedSaveRef.current = null;
 
         toast.success(t("settings:workspaceGeneral.toastUpdated"));
       } catch (error) {
+        if (!activeRef.current) return;
         toast.error(
           error instanceof Error
             ? error.message
             : t("settings:workspaceGeneral.toastUpdateError"),
         );
       } finally {
-        isSavingRef.current = false;
-
-        if (queuedSaveRef.current) {
-          const queuedData = queuedSaveRef.current;
-          queuedSaveRef.current = null;
-          await saveWorkspace(queuedData);
+        if (activeRef.current) {
+          isSavingRef.current = false;
+          if (queuedSaveRef.current) {
+            const queuedData = queuedSaveRef.current;
+            queuedSaveRef.current = null;
+            await saveWorkspace(queuedData);
+          }
         }
       }
     },
@@ -332,28 +369,28 @@ function RouteComponent() {
       }
 
       debounceTimeoutRef.current = setTimeout(() => {
-        saveWorkspace(data);
+        void workspaceForm.trigger().then((valid) => {
+          if (valid && activeRef.current) void saveWorkspace(data);
+        });
       }, 1000);
     },
-    [saveWorkspace],
+    [saveWorkspace, workspaceForm],
   );
 
   useEffect(() => {
     if (!canEdit) return;
     const subscription = workspaceForm.watch(() => {
-      if (workspaceForm.formState.isDirty && workspaceForm.formState.isValid) {
-        debouncedSave(workspaceForm.getValues());
-      }
+      debouncedSave(workspaceForm.getValues());
     });
 
     return () => subscription.unsubscribe();
   }, [workspaceForm, debouncedSave, canEdit]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    activeRef.current = true;
     return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
+      activeRef.current = false;
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     };
   }, []);
 
@@ -392,6 +429,13 @@ function RouteComponent() {
             </p>
           </div>
 
+          {canManageWorkspaceSettings() && workspace?.id && currentUser?.id ? (
+            <SettingsHistory
+              type="workspace"
+              id={workspace.id}
+              userId={currentUser.id}
+            />
+          ) : null}
           <div className="space-y-4 border border-border rounded-md p-4 bg-sidebar">
             <Form {...workspaceForm}>
               <form className="space-y-4">

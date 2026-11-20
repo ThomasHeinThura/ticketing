@@ -18,7 +18,7 @@
 			"markRead": "Mark read",
 			"markUnread": "Mark unread",
 			"save": "Save",
-			"saved": "Saved",
+			"saved": "Gespeichert",
 			"saving": "Saving…",
 			"previous": "Previous",
 			"next": "Next",
@@ -556,6 +556,126 @@
 		}
 	},
 	"settings": {
+		"history": {
+			"providerConfiguration": "Konfiguration",
+			"providerCredential": "Anmeldedaten",
+			"memberHistory": "Verlauf für {{name}} ({{number}})",
+			"roleChanged": "Rolle geändert",
+			"preferenceFields": {
+				"density": "Dichte",
+				"layout": "Ansicht",
+				"listGroups": "Listengruppen",
+				"columns": "Sichtbare Spalten",
+				"columnWidths": "Spaltenbreiten"
+			},
+			"notificationDelivery": "Zustellung",
+			"notificationDigest": "Zustellzeitpunkt",
+			"notificationQuietHours": "Ruhezeiten",
+			"notificationWorkspaceRule": "Zustellregeln für Arbeitsbereiche",
+			"securityPassword": "Passwort",
+			"securityMfa": "Zwei-Faktor-Authentifizierung",
+			"personalKey": "Persönlicher API-Schlüssel",
+			"profileYou": "Du",
+			"profileLocale": "Locale",
+			"title": "Verlauf",
+			"lastChanged": "Zuletzt geändert von {{actor}} am {{at}}",
+			"empty": "Noch keine aufgezeichneten Änderungen.",
+			"error": "Der Verlauf konnte nicht geladen werden.",
+			"retry": "Erneut versuchen",
+			"personUnavailable": "Person nicht verfügbar",
+			"apiKey": "API-Schlüssel",
+			"automation": "Automatisierung",
+			"system": "System",
+			"fields": {
+				"name": "Name",
+				"description": "Beschreibung",
+				"icon": "Symbol",
+				"key": "Schlüssel",
+				"logo": "Logo",
+				"workspaceSlug": "Workspace-Kürzel",
+				"kind": "Art",
+				"supportLevel": "Support-Stufe",
+				"serviceCalendar": "Servicekalender",
+				"defaultSlaPolicy": "Standard-SLA-Richtlinie",
+				"defaultServiceCalendar": "Standard-Servicekalender",
+				"slaPolicy": "SLA-Richtlinie",
+				"defaultCommentVisibility": "Standard-Sichtbarkeit von Kommentaren",
+				"manager": "Projektleitung",
+				"startDate": "Startdatum",
+				"endDate": "Enddatum",
+				"defaultAssignee": "Standardbearbeiter",
+				"health": "Projektzustand",
+				"stateSetMode": "Statussatz",
+				"position": "Position",
+				"isDefault": "Standard",
+				"activity": "Aktivität",
+				"archived": "Archiviert",
+				"workflowDefinition": "Versionen",
+				"workflowActiveVersion": "Aktive Version",
+				"backdateLimit": "Rückdatierungslimit (Tage)",
+				"defaultBillable": "Neue Zeit ist standardmäßig abrechenbar",
+				"approvalDefaultExpiryDays": "Ablauf von Genehmigungen (Tage)",
+				"clarificationWindowDays": "Klärungsfenster (Tage)",
+				"reopenWindowDays": "Frist für Wiedereröffnung (Tage)",
+				"notificationRetentionDays": "Gelesene Benachrichtigungen aufbewahren für (Tage)",
+				"cspMode": "Richtlinienmodus",
+				"invitationLifetimeHours": "Gültigkeit von Einladungen (Stunden)",
+				"customerInvitationCreateWindowMinutes": "Zeitfenster zum Erstellen von Kundeneinladungen (Minuten)",
+				"customerInvitationPerInviterLimit": "Maximale Kundeneinladungen pro Einladendem",
+				"customerInvitationPerOrganisationLimit": "Maximale Kundeneinladungen pro Organisation",
+				"customerInvitationResendCooldownSeconds": "Wartezeit vor erneutem Senden von Kundeneinladungen (Sekunden)",
+				"anonymousRateLimitWindowMs": "Limitfenster (Minuten)",
+				"anonymousRateLimitMax": "Anfragen pro Zeitfenster",
+				"mcpWriteCeilingPerMinute": "MCP-Schreibanfragen pro Minute",
+				"apiKeyBurstThreshold": "Schwellenwert für MCP-Burst-Deaktivierung (Versuche/Minute)",
+				"timezone": "Zeitzone",
+				"attachmentMaxBytes": "Größte Datei (Bytes)",
+				"attachmentMaxPerItem": "Dateien pro Arbeitselement",
+				"attachmentAllowedExtensions": "Zulässige Dateitypen",
+				"body": "Antworttext",
+				"visibilityDefault": "Standardsichtbarkeit",
+				"unknown": "Weitere Einstellung"
+			},
+			"actions": {
+				"workflow_created": "Workflow erstellt",
+				"workflow_version_created": "Workflow-Version erstellt",
+				"workflow_version_published": "Workflow-Version veröffentlicht",
+				"time_settings_updated": "Zeiteinstellungen geändert",
+				"plugin_changed": "Plugin geändert",
+				"canned_response_created": "Textbaustein erstellt",
+				"canned_response_updated": "Textbaustein aktualisiert",
+				"canned_response_deleted": "Textbaustein gelöscht",
+				"automation_created": "Automatisierungsregel erstellt",
+				"automation_updated": "Automatisierungsregel aktualisiert",
+				"automation_enabled": "Automatisierungsregel aktiviert",
+				"automation_disabled": "Automatisierungsregel deaktiviert",
+				"team_created": "Team erstellt",
+				"team_updated": "Teameinstellungen aktualisiert",
+				"team_member_added": "Teammitglied hinzugefügt",
+				"team_member_updated": "Teammitglied aktualisiert",
+				"team_member_removed": "Teammitglied entfernt",
+				"workspace_settings_updated": "Workspace-Einstellungen aktualisiert",
+				"workspace_project_settings_updated": "Projekt-Standardwerte des Workspace aktualisiert",
+				"project_settings_updated": "Projekteinstellungen aktualisiert",
+				"project_general_settings_updated": "Allgemeine Projekteinstellungen aktualisiert",
+				"project_states_updated": "Projektstatus aktualisiert",
+				"time_activity_created": "Zeitaktivität erstellt",
+				"time_activity_updated": "Zeitaktivität aktualisiert",
+				"workspace_created": "Workspace erstellt",
+				"project_created": "Projekt erstellt",
+				"project_archived": "Projekt archiviert",
+				"project_restored": "Projekt wiederhergestellt",
+				"project_summary_updated": "Projektzusammenfassung aktualisiert",
+				"project_customer_organisation_linked": "Projekt mit einer Kundenorganisation verknüpft",
+				"project_reach_changed": "Zugriffsbereich des Projekts geändert",
+				"agile_settings_updated": "Agile Einstellungen aktualisiert",
+				"workflow_cab_template_applied": "CAB-Workflow-Vorlage angewendet",
+				"bulk_performed": "Massenaktion ausgeführt",
+				"kb_settings_changed": "Einstellungen der Wissensdatenbank geändert",
+				"instance_settings_changed": "Instanzeinstellungen aktualisiert",
+				"unknown": "Einstellungen geändert"
+			}
+		},
 		"account": "Konto",
 		"developer": "Entwicklung",
 		"information": "Informationen",
@@ -1634,7 +1754,7 @@
 			"stableKeyInvalid": "Use 1–64 lowercase letters, numbers, underscores, or hyphens, starting with a letter or number."
 		},
 		"cannedResponses": {
-			"body": "Response body",
+			"body": "Antworttext",
 			"create": "New response",
 			"deleteDescription": "This removes the reusable response from the workspace. Comments already sent are preserved.",
 			"deleteNamed": "Delete {{name}}",
@@ -1650,7 +1770,7 @@
 			"notFound": "This response is no longer available in this workspace.",
 			"search": "Search responses",
 			"title": "Canned responses",
-			"visibility": "Default visibility",
+			"visibility": "Standardsichtbarkeit",
 			"save": "Save",
 			"templateHelp": "Use {{tokens}} in the response text. Missing names or due dates become empty text. Agents can edit the resolved response before sending."
 		},
@@ -6268,75 +6388,75 @@
 		"fields": {
 			"approvalDefaultExpiryDays": {
 				"help": "The default for a new approval request. At most 90.",
-				"label": "Approval expiry (days)"
+				"label": "Ablauf von Genehmigungen (Tage)"
 			},
 			"attachmentAllowedExtensions": {
 				"help": "Extensions separated by commas, for example pdf, png, docx.",
-				"label": "Allowed file types"
+				"label": "Zulässige Dateitypen"
 			},
 			"attachmentMaxBytes": {
 				"help": "The maximum size of one uploaded file.",
-				"label": "Largest file (bytes)"
+				"label": "Größte Datei (Bytes)"
 			},
 			"attachmentMaxPerItem": {
 				"help": "The maximum number of files on one work item.",
-				"label": "Files per work item"
+				"label": "Dateien pro Arbeitselement"
 			},
 			"clarificationWindowDays": {
 				"help": "A request awaiting the customer's reply for longer than this is declined automatically.",
-				"label": "Clarification window (days)"
+				"label": "Klärungsfenster (Tage)"
 			},
 			"notificationRetentionDays": {
 				"help": "Read notifications older than this are deleted daily. Unread notifications are never deleted.",
-				"label": "Keep read notifications for (days)"
+				"label": "Gelesene Benachrichtigungen aufbewahren für (Tage)"
 			},
 			"reopenWindowDays": {
 				"help": "How long after resolution a customer may reopen a request.",
-				"label": "Reopen window (days)"
+				"label": "Frist für Wiedereröffnung (Tage)"
 			},
 			"timezone": {
 				"help": "Used for digest windows and quiet hours when a person has not chosen their own.",
-				"label": "Time zone"
+				"label": "Zeitzone"
 			},
 			"anonymousRateLimitMax": {
 				"help": "Maximum requests from one internet address during the limit window.",
-				"label": "Requests per window"
+				"label": "Anfragen pro Zeitfenster"
 			},
 			"anonymousRateLimitWindowMinutes": {
 				"help": "The period used to count anonymous requests, from 1 minute to 24 hours.",
-				"label": "Limit window (minutes)"
+				"label": "Limitfenster (Minuten)"
 			},
 			"mcpWriteCeilingPerMinute": {
 				"help": "Shared across API replicas. Bulk requests also obey the separate bulk ceiling.",
-				"label": "MCP write requests per minute"
+				"label": "MCP-Schreibanfragen pro Minute"
 			},
 			"apiKeyBurstThreshold": {
 				"help": "Automatically disable an MCP key after more than this many write attempts in one minute, including rate-limited attempts.",
-				"label": "MCP burst disable threshold (attempts/minute)"
+				"label": "Schwellenwert für MCP-Burst-Deaktivierung (Versuche/Minute)"
 			},
 			"cspMode": {
 				"help": "Begin with report-only mode, inspect browser reports, then enforce after the rollout checks pass.",
-				"label": "Policy mode"
+				"label": "Richtlinienmodus"
 			},
 			"customerInvitationCreateWindowMinutes": {
 				"help": "Time window for the per-inviter and per-organisation creation limits.",
-				"label": "Customer invitation creation window (minutes)"
+				"label": "Zeitfenster zum Erstellen von Kundeneinladungen (Minuten)"
 			},
 			"customerInvitationPerInviterLimit": {
 				"help": "Maximum creation attempts by one inviter within the configured window.",
-				"label": "Maximum customer invitations per inviter"
+				"label": "Maximale Kundeneinladungen pro Einladendem"
 			},
 			"customerInvitationPerOrganisationLimit": {
 				"help": "Maximum creation attempts for one organisation within the configured window.",
-				"label": "Maximum customer invitations per organisation"
+				"label": "Maximale Kundeneinladungen pro Organisation"
 			},
 			"customerInvitationResendCooldownSeconds": {
 				"help": "Minimum interval before the same customer invitation can be resent.",
-				"label": "Customer invitation resend cooldown (seconds)"
+				"label": "Wartezeit vor erneutem Senden von Kundeneinladungen (Sekunden)"
 			},
 			"invitationLifetimeHours": {
 				"help": "Applies to new and renewed staff and customer invitations. Existing expiry dates stay unchanged.",
-				"label": "Invitation lifetime (hours)"
+				"label": "Gültigkeit von Einladungen (Stunden)"
 			}
 		},
 		"general": {
@@ -6610,6 +6730,10 @@
 		}
 	},
 	"automations": {
+		"changes": {
+			"title": "Änderungsverlauf: {{name}}",
+			"description": "Wer diese Regel wann geändert hat. Regeldefinitionen und Werte werden nie angezeigt."
+		},
 		"actions": {
 			"daysFromNow": "days from now (empty clears the due date)",
 			"dueInDays": "Days",
@@ -6769,6 +6893,7 @@
 			"unknown": "Needs attention"
 		},
 		"list": {
+			"changeHistory": "Änderungsverlauf",
 			"disabled": "Disabled",
 			"dryRun": "Dry run",
 			"edit": "Edit",

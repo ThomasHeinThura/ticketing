@@ -12,6 +12,7 @@ import { exerciseCallerRace } from "./project-write-race.test-helper";
 
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
+    useSession: () => ({ data: null }),
     getSession: async () => ({
       data: { session: { id: "session-1" } },
       error: null,

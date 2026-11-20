@@ -21,6 +21,9 @@ const mocks = vi.hoisted(() => ({
   })),
 }));
 
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { useSession: () => ({ data: null }) },
+}));
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
