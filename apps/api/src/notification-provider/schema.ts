@@ -324,6 +324,7 @@ export const testResultSchema = z.discriminatedUnion("ok", [
 ]);
 export type TestResult = z.infer<typeof testResultSchema>;
 export const providerResponseSchema = z.object({
+  id: z.string().nullable(),
   version: z.number().int().min(0).safe(),
   source: z.enum(["runtime", "bootstrap", "unconfigured"]),
   enabled: z.boolean(),

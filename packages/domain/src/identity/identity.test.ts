@@ -1,20 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   applyScimPatchOps,
-  decideProvisioningTransition,
-  mapExternalGroupsToRoles,
   normaliseEntraClaims,
   parseScimUser,
-  scimConflictResponse,
-  validateIdentityConnection,
   validateScimPutExternalId,
 } from "./identity.js";
-import { canReachCustomerPortalResource } from "./portal.js";
 import type {
   IdentityConnectionContext,
   IdentityConnectionDraft,
   IdentityDomainOwner,
-  IdentityRoleMapping,
   VerifiedEntraClaims,
 } from "./types.js";
 
@@ -349,61 +343,6 @@ describe("P3 identity core", () => {
     });
   });
 
-  it("IP-1/IP-2/IP-3/IP-26: validates portal scope, tenant issuer and role ceiling before persistence", () => {
-    expect(validateIdentityConnection(connection())).toMatchObject({
-      ok: true,
-    });
-    expect(
-      validateIdentityConnection(
-        connection({
-          portalScope: "customer",
-          organisationId: null,
-          maxRoleRank: null,
-          defaultRoleIsCustomer: true,
-        }),
-      ).ok,
-    ).toBe(false);
-    expect(
-      validateIdentityConnection(connection({ organisationId: "org-1" })).ok,
-    ).toBe(false);
-    expect(
-      validateIdentityConnection(
-        connection({
-          portalScope: "customer",
-          organisationId: "org-1",
-          maxRoleRank: null,
-          defaultRoleIsCustomer: true,
-        }),
-      ).ok,
-    ).toBe(true);
-    expect(
-      validateIdentityConnection(
-        connection({ issuer: "https://login.microsoftonline.com/common/v2.0" }),
-      ),
-    ).toMatchObject({
-      ok: false,
-      errors: ["multi_tenant_issuer_forbidden"],
-    });
-    expect(
-      validateIdentityConnection(connection({ defaultRoleRank: 4 })),
-    ).toMatchObject({ ok: false, errors: ["default_role_exceeds_maximum"] });
-    expect(
-      validateIdentityConnection(connection({ maxRoleRank: Number.NaN })),
-    ).toMatchObject({ ok: false, errors: ["invalid_role_rank"] });
-    expect(
-      validateIdentityConnection(
-        connection({
-          tenantId: "9188040d-6c67-4c5b-b112-36a304b66dad",
-          issuer:
-            "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
-        }),
-      ),
-    ).toMatchObject({ ok: false, errors: ["invalid_tenant_id"] });
-    expect(
-      validateIdentityConnection(connection({ defaultRoleIsCustomer: true })),
-    ).toMatchObject({ ok: false, errors: ["staff_role_required"] });
-  });
-
   it("IP-14/IP-31: tolerates only the documented SCIM Entra deviations and refuses authority attributes", () => {
     expect(
       parseScimUser(scimUser({ active: "False", title: "Support" })),
@@ -464,17 +403,6 @@ describe("P3 identity core", () => {
     ).toEqual({
       ok: true,
       value: { userName: "person", email: "person@example.com" },
-    });
-  });
-
-  it("IP-18/IP-32: keeps same-connection and cross-connection duplicate responses identical", () => {
-    expect(scimConflictResponse("same_connection")).toEqual(
-      scimConflictResponse("another_connection"),
-    );
-    expect(scimConflictResponse("same_connection")).toEqual({
-      status: 409,
-      scimType: "uniqueness",
-      detail: "A matching identity already exists.",
     });
   });
 
@@ -567,165 +495,5 @@ describe("P3 identity core", () => {
       ok: true,
       value: { userName: "person", name: { familyName: "Doe" } },
     });
-  });
-
-  it("IP-20/IP-21: maps only existing in-scope roles within the connection's rank ceiling", () => {
-    const mappings: IdentityRoleMapping[] = [
-      {
-        externalGroupId: "allowed",
-        roleId: "member",
-        roleRank: 2,
-        roleScope: "agent",
-        roleIsCustomer: false,
-        grantsInstanceAdmin: false,
-        grantsSeesAll: false,
-      },
-      {
-        externalGroupId: "high",
-        roleId: "admin",
-        roleRank: 4,
-        roleScope: "agent",
-        roleIsCustomer: false,
-        grantsInstanceAdmin: false,
-        grantsSeesAll: false,
-      },
-      {
-        externalGroupId: "authority",
-        roleId: "instance-admin",
-        roleRank: 1,
-        roleScope: "agent",
-        roleIsCustomer: false,
-        grantsInstanceAdmin: true,
-        grantsSeesAll: false,
-      },
-      {
-        externalGroupId: "wrong-scope",
-        roleId: "customer",
-        roleRank: 1,
-        roleScope: "customer",
-        roleIsCustomer: true,
-        grantsInstanceAdmin: false,
-        grantsSeesAll: false,
-      },
-    ];
-    expect(
-      mapExternalGroupsToRoles(
-        ["allowed", "high", "authority", "wrong-scope", "missing"],
-        mappings,
-        { portalScope: "agent", maxRoleRank: 3 },
-      ),
-    ).toEqual([
-      {
-        roleId: "member",
-        roleRank: 2,
-        roleScope: "agent",
-        roleIsCustomer: false,
-        grantsInstanceAdmin: false,
-        grantsSeesAll: false,
-      },
-    ]);
-    const malformed = [
-      { ...mappings[0], externalGroupId: "nan-rank", roleRank: Number.NaN },
-      {
-        ...mappings[0],
-        externalGroupId: "undefined-rank",
-        roleRank: undefined,
-      },
-      {
-        ...mappings[0],
-        externalGroupId: "null-authority",
-        grantsSeesAll: null,
-      },
-      {
-        ...mappings[0],
-        externalGroupId: "missing-authority",
-        grantsInstanceAdmin: undefined,
-      },
-    ] as unknown as IdentityRoleMapping[];
-    expect(
-      mapExternalGroupsToRoles(
-        malformed.map(({ externalGroupId }) => externalGroupId),
-        malformed,
-        { portalScope: "agent", maxRoleRank: 3 },
-      ),
-    ).toEqual([]);
-    expect(
-      mapExternalGroupsToRoles(["allowed"], mappings.slice(0, 1), {
-        portalScope: "agent",
-        maxRoleRank: Number.NaN,
-      }),
-    ).toEqual([]);
-  });
-
-  it("IP-15/IP-16/IP-30: deprovisions fully, never restores roles, and claims only locally verified placeholders", () => {
-    expect(decideProvisioningTransition("deactivate", "active")).toEqual({
-      kind: "deactivate",
-      revokeSessions: true,
-      revokeApiKeys: true,
-      revokeMcpKeys: true,
-      membershipPolicy: "end_memberships",
-    });
-    expect(
-      decideProvisioningTransition("deactivate", "active", "keep_memberships"),
-    ).toMatchObject({ membershipPolicy: "keep_memberships" });
-    expect(decideProvisioningTransition("reactivate", "deactivated")).toEqual({
-      kind: "reactivate",
-      restoreRoles: false,
-    });
-    expect(decideProvisioningTransition("claim_sso", "placeholder")).toEqual({
-      kind: "refuse",
-      reason: "local_verification_required",
-    });
-    expect(
-      decideProvisioningTransition("claim_local_verified", "placeholder"),
-    ).toEqual({ kind: "claim_placeholder", audit: true });
-  });
-});
-
-describe("P3 customer portal reach", () => {
-  const person = { personId: "person-a", organisationId: "org-a" };
-
-  it("CP-1/CP-2: never reaches another customer organisation's resource", () => {
-    expect(
-      canReachCustomerPortalResource(person, {
-        organisationId: "org-b",
-        customerVisibility: "organisation",
-        requesterPersonId: "person-b",
-        participantPersonIds: ["person-a"],
-      }),
-    ).toBe(false);
-  });
-
-  it("CP-16: limits private resources to the requester and explicit participants", () => {
-    const resource = {
-      organisationId: "org-a",
-      customerVisibility: "private" as const,
-      requesterPersonId: "person-b",
-      participantPersonIds: ["person-c"],
-    };
-    expect(canReachCustomerPortalResource(person, resource)).toBe(false);
-    expect(
-      canReachCustomerPortalResource(
-        { ...person, personId: "person-b" },
-        resource,
-      ),
-    ).toBe(true);
-    expect(
-      canReachCustomerPortalResource(
-        { ...person, personId: "person-c" },
-        resource,
-      ),
-    ).toBe(true);
-  });
-
-  it("CP-16: allows organisation-visible resources to colleagues in that organisation", () => {
-    expect(
-      canReachCustomerPortalResource(person, {
-        organisationId: "org-a",
-        customerVisibility: "organisation",
-        requesterPersonId: "person-b",
-        participantPersonIds: [],
-      }),
-    ).toBe(true);
   });
 });

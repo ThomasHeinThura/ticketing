@@ -53,7 +53,10 @@ import {
 import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import db, { schema } from "../database";
-import { policyRegistry } from "../policy-registry";
+import {
+  policyRegistry,
+  selectSettingsHistoryPolicy,
+} from "../policy-registry";
 import {
   type AuthenticatedApiKey,
   resolveRequestIdentity,
@@ -307,7 +310,20 @@ async function runShadowEvaluation(
   routeKey: string,
 ): Promise<void> {
   const traceId = ensurePolicyRequestId(c);
-  const entry = policyRegistry.get(routeKey);
+  const entry =
+    routeKey === "GET /api/audit"
+      ? selectSettingsHistoryPolicy(
+          c.req.query("entity_type") ?? "",
+          c.req.query("entity_id"),
+          c.get("settingsHistoryScope"),
+          {
+            workspaceId: c.get("workspaceId"),
+            workspaceIdSource: c.get("workspaceIdSource"),
+            projectId: c.get("projectId"),
+            resource: c.get("policyScopeResource"),
+          },
+        )
+      : policyRegistry.get(routeKey);
   const policy = policyFactsFor(entry);
   const routerGroup = routerGroupFor(entry?.source);
   const workspaceId = (c.get("workspaceId") as string | undefined) ?? null;

@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import {
   createRootRoute,
   Outlet,
@@ -6,7 +7,8 @@ import {
   useLocation,
   useRouter,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useLayoutEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { PageLoading } from "@/components/page-loading";
 import { portalLazyContent } from "@/components/portal/portal-lazy-content";
 import { PortalNotFoundPage as PortalNotFoundState } from "@/components/portal/portal-not-found";
@@ -28,6 +30,7 @@ import queryClient, { portalSessionQueryKey } from "@/query-client";
 const PortalLayout = portalLazyContent<{
   children: ReactNode;
   user: PortalShellUser;
+  portalUserId: string;
 }>(
   () =>
     import("@/components/portal/portal-layout").then((module) => {
@@ -145,13 +148,42 @@ function shellUser(user: Record<string, unknown>): PortalShellUser {
 function PortalRoot() {
   "use no memo";
   const location = useLocation();
+  const { t } = useTranslation("portal");
   const { portalUserId, portalUser, portalState } = Route.useRouteContext();
+  const session = useQuery<{ session: unknown; user?: { id: string } } | null>({
+    queryKey: portalSessionQueryKey,
+    enabled: false,
+  });
+  const router = useRouter();
+  const sessionUserId = session.data?.session
+    ? session.data.user?.id
+    : undefined;
+  // The guard follows the verified session DATA, not the latest fetch status: a failed refetch
+  // keeps the last verified answer (B) but reports status "error", and A's shell must not return
+  // then. A signed-out or malformed answer (null / no user id) still counts as a mismatch; with no
+  // verified data at all the existing error and Retry path applies.
+  const identityChanged =
+    !portalState &&
+    !isSignIn(location.pathname) &&
+    session.data !== undefined &&
+    sessionUserId !== portalUserId;
+  useLayoutEffect(() => {
+    if (identityChanged) document.title = t("navigation.title");
+  }, [identityChanged, t]);
+  useEffect(() => {
+    if (identityChanged) void router.invalidate();
+  }, [identityChanged, router]);
   // P3-R2-03: the host marked the portal as switched off (or unreadable) for this visitor.
   if (portalState) return <PortalFeatureOff state={portalState} />;
+  if (identityChanged) return <PageLoading portal />;
   return isSignIn(location.pathname) ? (
     <Outlet />
   ) : (
-    <PortalLayout key={portalUserId} user={portalUser ?? anonymousUser}>
+    <PortalLayout
+      key={portalUserId}
+      portalUserId={portalUserId}
+      user={portalUser ?? anonymousUser}
+    >
       <Outlet />
     </PortalLayout>
   );
@@ -169,7 +201,7 @@ export const Route = createRootRoute({
         () => import("@/hooks/queries/portal/prefetch-portal-home"),
       ).catch(() => undefined);
     const session = await readCachedPortalSession();
-    if (!session) {
+    if (!session?.session || typeof session.user?.id !== "string") {
       // Never keep "signed out" cached: the next navigation after sign-in must read it again.
       queryClient.removeQueries({ queryKey: portalSessionQueryKey });
       const returnTo = signInReturnPath(location);

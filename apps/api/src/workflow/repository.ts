@@ -149,12 +149,18 @@ function materializeWorkflowTransition(
   };
 }
 
-export async function insertWorkflow(values: {
-  workspaceId: string;
-  key: string;
-  name: string;
-}) {
-  const [inserted] = await db.insert(workflowTable).values(values).returning();
+export async function insertWorkflow(
+  values: {
+    workspaceId: string;
+    key: string;
+    name: string;
+  },
+  executor?: Executor,
+) {
+  const [inserted] = await executorOrDefault(executor)
+    .insert(workflowTable)
+    .values(values)
+    .returning();
   return inserted;
 }
 

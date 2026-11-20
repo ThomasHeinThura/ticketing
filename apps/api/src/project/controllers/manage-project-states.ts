@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import type { AppendAuditLogInput } from "../../audit/audit-writer";
 import db from "../../database";
 import {
   projectTable,
@@ -10,12 +11,24 @@ import {
   workItemTypeTable,
   workspaceTable,
 } from "../../database/schema";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import {
   moveStateToPosition,
   templateHasOutboundTransition,
 } from "../state-guard";
 
 type Executor = Pick<typeof db, "select" | "insert" | "update" | "execute">;
+type AuditActor = Pick<
+  AppendAuditLogInput,
+  | "actorId"
+  | "actorType"
+  | "apiKeyId"
+  | "impersonatorId"
+  | "actorIp"
+  | "userAgent"
+  | "traceId"
+>;
 
 /** `from_state_template_id` of every transition in the ACTIVE version of every workflow a
  * work-item type of this workspace uses (WF-1/WF-2). */
@@ -142,9 +155,10 @@ export async function createProjectState(
   projectId: string,
   workspaceId: string,
   stateTemplateId: string,
+  actor: AuditActor,
 ) {
-  return db.transaction(async (tx) => {
-    await lockLiveProject(tx, projectId, workspaceId);
+  const result = await db.transaction(async (tx) => {
+    const project = await lockLiveProject(tx, projectId, workspaceId);
 
     const [template] = await tx
       .select({ id: stateTemplateTable.id })
@@ -196,6 +210,7 @@ export async function createProjectState(
         isDefault: active.length === 0,
       })
       .returning({ id: stateTable.id });
+    if (!created) throw new Error("Failed to create project state");
     await tx
       .update(projectTable)
       .set({
@@ -203,8 +218,27 @@ export async function createProjectState(
         projectSettingsVersion: sql`${projectTable.projectSettingsVersion} + 1`,
       })
       .where(eq(projectTable.id, projectId));
-    return created;
+    const auditFailed = await appendAuditSavepoint(tx, {
+      ...actor,
+      workspaceId,
+      projectId,
+      action: "project.states_updated",
+      entityType: "project",
+      entityId: projectId,
+      after: {
+        stateId: created.id,
+        changedFields: [
+          ...(project.stateSetMode === "override" ? [] : ["stateSetMode"]),
+          "position",
+          ...(active.length ? [] : ["isDefault"]),
+        ],
+      },
+    });
+    return { created, auditFailed };
   });
+  if (result.auditFailed)
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  return result.created;
 }
 
 /** Re-order and/or re-nominate the default among a project's active states (PR-17). */
@@ -213,12 +247,17 @@ export async function updateProjectState(
   workspaceId: string,
   stateId: string,
   change: { position?: number; isDefault?: true },
+  actor: AuditActor,
 ) {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     await lockLiveProject(tx, projectId, workspaceId);
 
     const active = await tx
-      .select({ id: stateTable.id, isDefault: stateTable.isDefault })
+      .select({
+        id: stateTable.id,
+        position: stateTable.position,
+        isDefault: stateTable.isDefault,
+      })
       .from(stateTable)
       .where(
         and(eq(stateTable.projectId, projectId), isNull(stateTable.archivedAt)),
@@ -227,13 +266,20 @@ export async function updateProjectState(
     const target = active.find((row) => row.id === stateId);
     if (!target) throw new HTTPException(404, { message: "State not found" });
 
+    const changedFields: string[] = [];
     if (change.position !== undefined) {
       const order = moveStateToPosition(
         active.map((row) => row.id),
         stateId,
         change.position,
       );
-      if (order) {
+      if (
+        order?.some(
+          (id, index) =>
+            active[index]?.id !== id || active[index]?.position !== index,
+        )
+      ) {
+        changedFields.push("position");
         for (const [index, id] of order.entries()) {
           await tx
             .update(stateTable)
@@ -246,6 +292,7 @@ export async function updateProjectState(
     }
 
     if (change.isDefault === true && !target.isDefault) {
+      changedFields.push("isDefault");
       // The partial unique index `state_project_default_unique` allows one default: clear
       // the old one first, in the same transaction.
       await tx
@@ -264,6 +311,20 @@ export async function updateProjectState(
           and(eq(stateTable.id, stateId), eq(stateTable.projectId, projectId)),
         );
     }
-    return { id: stateId };
+    const auditFailed = changedFields.length
+      ? await appendAuditSavepoint(tx, {
+          ...actor,
+          workspaceId,
+          projectId,
+          action: "project.states_updated",
+          entityType: "project",
+          entityId: projectId,
+          after: { stateId, changedFields },
+        })
+      : false;
+    return { auditFailed };
   });
+  if (result.auditFailed)
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  return { id: stateId };
 }

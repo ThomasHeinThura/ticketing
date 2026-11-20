@@ -32,6 +32,7 @@ import {
 } from "../../apps/api/src/database/schema";
 import { enqueueOutboxEvent } from "../../apps/api/src/events/outbox";
 import { parseParentEnvelope } from "../../apps/api/src/events/outbox-consumer";
+import * as featureRepository from "../../apps/api/src/feature-flag/repository";
 import { createApp } from "../../apps/api/src/index";
 import * as scheduler from "../../apps/api/src/scheduler";
 import transitionWorkItem, {
@@ -281,6 +282,48 @@ async function serviceWorld() {
 
 describe("G-1 service desk automations", () => {
   beforeEach(async () => resetTestDatabase());
+
+  it("batches project overrides and reuses them across rules in a sweep", async () => {
+    const w = await world(["work_item:read", "comment:create_internal"]);
+    const other = await createProjectFixture({ workspaceId: w.workspace.id });
+    const otherRows = await workItemWorld(w.workspace.id, other.project.id);
+    await otherRows.makeItem("Disabled project item");
+    await db.insert(schema.projectFeatureFlagTable).values({
+      projectId: other.project.id,
+      featureKey: "feature.automations",
+      enabled: false,
+    });
+    const options = {
+      trigger: "schedule",
+      scheduleCron: "*/5 * * * *",
+      actions: [
+        { type: "post_comment", visibility: "internal", body: "scheduled" },
+      ],
+    };
+    const rules = await Promise.all([
+      w.rule({ ...options, name: "Scheduled one" }),
+      w.rule({ ...options, name: "Scheduled two" }),
+    ]);
+    for (const rule of rules)
+      await db
+        .update(automationTable)
+        .set({ projectId: null })
+        .where(eq(automationTable.id, rule.id));
+    const feature = vi.spyOn(featureRepository, "projectsWithFeature");
+    try {
+      await runAutomationSchedule();
+      const runs = await db.select().from(automationRunTable);
+      expect(
+        runs.filter((run) => run.workItemId).map((run) => run.workItemId),
+      ).toEqual([w.item.id, w.item.id]);
+      expect(feature).toHaveBeenCalledTimes(1);
+      expect(new Set(feature.mock.calls[0]?.[2])).toEqual(
+        new Set([w.project.id, other.project.id]),
+      );
+    } finally {
+      feature.mockRestore();
+    }
+  });
   it("creates and enables both target definitions through the authenticated API", async () => {
     const catalog = vi
       .spyOn(scheduler, "liveRegisteredJobCatalog")

@@ -1,22 +1,52 @@
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import type { AppendAuditLogInput } from "../../audit/audit-writer";
 import db from "../../database";
 import {
   projectSlugClaimTable,
   projectTable,
   workspaceTable,
 } from "../../database/schema";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { resolveProjectServiceCalendarId } from "../effective-settings";
 import { PROJECT_KEY_MESSAGE, PROJECT_KEY_PATTERN } from "../schema";
 import { ProjectSlugTakenError } from "./create-project";
 
+const GENERAL_FIELDS = [
+  "name",
+  "icon",
+  "slug",
+  "description",
+  "kind",
+  "supportLevel",
+  "serviceCalendarId",
+  "defaultCommentVisibility",
+  "managerId",
+  "startDate",
+  "endDate",
+  "defaultAssigneeId",
+] as const;
+
+export function changedProjectGeneralFields(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+) {
+  return GENERAL_FIELDS.filter(
+    (field) =>
+      before[field] !== after[field] ||
+      (field === "serviceCalendarId" &&
+        before.serviceCalendarMode !== after.serviceCalendarMode),
+  );
+}
+
 async function updateProject(
   id: string,
-  name: string,
-  icon: string,
-  slug: string,
-  description: string,
+  name: string | undefined,
+  icon: string | undefined,
+  slug: string | undefined,
+  description: string | undefined,
   workspaceId: string,
   configuration: {
     kind?: "project" | "managed_service";
@@ -29,6 +59,16 @@ async function updateProject(
     endDate?: string | null;
     defaultAssigneeId?: string | null;
   },
+  actor: Pick<
+    AppendAuditLogInput,
+    | "actorId"
+    | "actorType"
+    | "apiKeyId"
+    | "impersonatorId"
+    | "actorIp"
+    | "userAgent"
+    | "traceId"
+  >,
 ) {
   // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
   // 2026-09-22): the claim check and the claim write for the NEW slug now have to commit
@@ -36,7 +76,7 @@ async function updateProject(
   // permanently claimed by a project that never actually got it (or, worse, leave it
   // unclaimed after a rename that did succeed). Wrapped in a transaction for exactly that
   // reason -- `create-project.ts`'s own create path is the same shape.
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [workspace] = await tx
       .select({
         id: workspaceTable.id,
@@ -96,51 +136,50 @@ async function updateProject(
       });
 
     // PR-13: only a CHANGED key must match 2-15 uppercase letters (see `PROJECT_KEY_PATTERN`):
-    // a project created before the rule keeps its legacy key and stays editable.
-    if (
-      existingProject &&
-      slug !== existingProject.slug &&
-      !PROJECT_KEY_PATTERN.test(slug)
-    ) {
-      throw new HTTPException(400, { message: PROJECT_KEY_MESSAGE });
-    }
+    // a project created before the rule keeps its legacy key and stays editable. A request that
+    // sends no slug never touches the key, its claim or the clash checks.
+    if (slug !== undefined) {
+      if (slug !== existingProject.slug && !PROJECT_KEY_PATTERN.test(slug)) {
+        throw new HTTPException(400, { message: PROJECT_KEY_MESSAGE });
+      }
 
-    // #23's mandatory Opus security review of PR #261, finding F1: answer a slug collision
-    // before attempting the write where we can, so the common case is a clean 409 rather
-    // than a caught driver error. Mirrors `update-workspace.ts`'s own pre-check exactly.
-    // The catch below still covers the race between this read and the update.
-    const [clash] = await tx
-      .select({ id: projectTable.id })
-      .from(projectTable)
-      .where(and(eq(projectTable.slug, slug), ne(projectTable.id, id)))
-      .limit(1);
-    if (clash) {
-      throw new ProjectSlugTakenError(slug);
-    }
+      // #23's mandatory Opus security review of PR #261, finding F1: answer a slug collision
+      // before attempting the write where we can, so the common case is a clean 409 rather
+      // than a caught driver error. Mirrors `update-workspace.ts`'s own pre-check exactly.
+      // The catch below still covers the race between this read and the update.
+      const [clash] = await tx
+        .select({ id: projectTable.id })
+        .from(projectTable)
+        .where(and(eq(projectTable.slug, slug), ne(projectTable.id, id)))
+        .limit(1);
+      if (clash) {
+        throw new ProjectSlugTakenError(slug);
+      }
 
-    // D1: the new slug can be free among LIVE projects (so the check above passes) while
-    // still PERMANENTLY claimed by some other project -- including one that once held this
-    // exact slug and renamed away, or whose workspace was hard-deleted. A claim already
-    // held by THIS SAME project (i.e. renaming back to a slug it once claimed itself) is
-    // not a collision -- the claim table's own guarantee is per-slug, not per-holder, and
-    // this project is already its holder of record.
-    const [existingClaim] = await tx
-      .select({ projectId: projectSlugClaimTable.projectId })
-      .from(projectSlugClaimTable)
-      .where(eq(projectSlugClaimTable.slug, slug))
-      .limit(1);
-    if (existingClaim && existingClaim.projectId !== id) {
-      throw new ProjectSlugTakenError(slug);
+      // D1: the new slug can be free among LIVE projects (so the check above passes) while
+      // still PERMANENTLY claimed by some other project -- including one that once held this
+      // exact slug and renamed away, or whose workspace was hard-deleted. A claim already
+      // held by THIS SAME project (i.e. renaming back to a slug it once claimed itself) is
+      // not a collision -- the claim table's own guarantee is per-slug, not per-holder, and
+      // this project is already its holder of record.
+      const [existingClaim] = await tx
+        .select({ projectId: projectSlugClaimTable.projectId })
+        .from(projectSlugClaimTable)
+        .where(eq(projectSlugClaimTable.slug, slug))
+        .limit(1);
+      if (existingClaim && existingClaim.projectId !== id) {
+        throw new ProjectSlugTakenError(slug);
+      }
     }
 
     try {
       const [updatedProject] = await tx
         .update(projectTable)
         .set({
-          name,
-          icon,
-          slug,
-          description,
+          ...(name !== undefined ? { name } : {}),
+          ...(icon !== undefined ? { icon } : {}),
+          ...(slug !== undefined ? { slug } : {}),
+          ...(description !== undefined ? { description } : {}),
           ...(configuration.kind !== undefined
             ? { kind: configuration.kind }
             : {}),
@@ -191,7 +230,7 @@ async function updateProject(
       //
       // The OLD slug is deliberately left claimed -- see `projectSlugClaimTable`'s
       // schema.ts comment: a claim, once made, is never released, by design.
-      if (updatedProject) {
+      if (updatedProject && slug !== undefined) {
         const [claimed] = await tx
           .insert(projectSlugClaimTable)
           .values({ slug, projectId: id })
@@ -211,19 +250,41 @@ async function updateProject(
         }
       }
 
-      return updatedProject;
+      const changedFields = updatedProject
+        ? changedProjectGeneralFields(existingProject, updatedProject)
+        : [];
+      const auditFailed =
+        updatedProject && changedFields.length
+          ? await appendAuditSavepoint(tx, {
+              ...actor,
+              workspaceId,
+              projectId: id,
+              organisationId: existingProject.organisationId,
+              action: "project.general_settings_updated",
+              entityType: "project",
+              entityId: id,
+              after: { changedFields },
+            })
+          : false;
+      return { updatedProject, auditFailed };
     } catch (error) {
       // Exact constraint name, not a substring match on `"slug"` (issue #269): the
       // rename above can only raise `project`'s own `project_slug_unique` --
       // `project_slug_claim`'s insert just above is `onConflictDoNothing`, so its
       // PRIMARY KEY (`project_slug_claim_pkey`) never surfaces as an unhandled
       // unique_violation here the way it can in `create-project.ts`.
-      if (isUniqueViolation(error, "project_slug_unique")) {
+      if (
+        slug !== undefined &&
+        isUniqueViolation(error, "project_slug_unique")
+      ) {
         throw new ProjectSlugTakenError(slug);
       }
       throw error;
     }
   });
+  if (result.auditFailed)
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  return result.updatedProject;
 }
 
 export default updateProject;

@@ -1,3 +1,7 @@
+import type { AppendAuditLogInput } from "../../audit/audit-writer";
+import db from "../../database";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { insertWorkflow } from "../repository";
 
@@ -9,9 +13,38 @@ export class WorkflowKeyTakenError extends Error {
   }
 }
 
-async function createWorkflow(workspaceId: string, key: string, name: string) {
+async function createWorkflow(
+  workspaceId: string,
+  key: string,
+  name: string,
+  actor: Pick<
+    AppendAuditLogInput,
+    | "actorId"
+    | "actorType"
+    | "apiKeyId"
+    | "impersonatorId"
+    | "actorIp"
+    | "userAgent"
+    | "traceId"
+  >,
+) {
   try {
-    return await insertWorkflow({ workspaceId, key, name });
+    const result = await db.transaction(async (tx) => {
+      const created = await insertWorkflow({ workspaceId, key, name }, tx);
+      if (!created) throw new Error("Failed to create workflow");
+      const auditFailed = await appendAuditSavepoint(tx, {
+        ...actor,
+        workspaceId,
+        action: "workflow.created",
+        entityType: "workflow",
+        entityId: created.id,
+        after: { changedFields: ["definition"] },
+      });
+      return { created, auditFailed };
+    });
+    if (result.auditFailed)
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    return result.created;
   } catch (error) {
     if (isUniqueViolation(error, "workflow_workspace_key_unique")) {
       throw new WorkflowKeyTakenError(key);

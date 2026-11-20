@@ -1,4 +1,4 @@
-import { isCalendarDate } from "./time-minutes";
+import { isCalendarDate } from "./calendar-date";
 
 /**
  * Reports (`RP-7`, `RP-8`): the whole filter state of a report is in the URL, so a link to what

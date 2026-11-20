@@ -2,7 +2,6 @@ import { client } from "@taskdesk/libs";
 import type { InferRequestType } from "hono/client";
 import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
-import getProject from "./get-project";
 
 type ProjectBody = InferRequestType<
   (typeof client)["project"][":id"]["$put"]
@@ -24,16 +23,12 @@ export function updateProjectForSession(
       if (error || !data?.session?.id || data.session.id !== sessionId)
         throw new Error("Project save cancelled: session changed");
     };
+    // The save carries only the fields the caller changed and the API applies only those, so
+    // nothing is read first or filled in from a stale copy: another tab's confirmed change to
+    // a field this save does not send can no longer be reverted by it. The session is checked
+    // immediately before the write.
     await currentSession();
-    const project = await getProject({ id: request.id, workspaceId: "" });
-    await currentSession();
-    return updateProject({
-      ...request,
-      name: request.name ?? project.name,
-      icon: request.icon ?? project.icon ?? "Layout",
-      slug: request.slug ?? project.slug,
-      description: request.description ?? project.description ?? "",
-    });
+    return updateProject(request);
   });
   const tail = result.then(
     () => {},
@@ -60,17 +55,18 @@ async function updateProject({
   startDate,
   endDate,
   defaultAssigneeId,
-}: { id: string } & ProjectBody) {
+}: UpdateProjectRequest) {
   const response = await client.project[":id"].$put({
     param: { id },
     // The field is sent only when the caller sets it: the server asks for the strict
     // project:manage_settings capability whenever it is present, so omitting it keeps a
     // plain rename working for callers who lack that capability.
     json: {
-      name,
-      icon,
-      slug,
-      description,
+      // The four base fields follow the same rule as every other one: sent only when set.
+      ...(name !== undefined ? { name } : {}),
+      ...(icon !== undefined ? { icon } : {}),
+      ...(slug !== undefined ? { slug } : {}),
+      ...(description !== undefined ? { description } : {}),
       // Engagement fields (PR-9) follow the same rule: the server reads an omitted
       // field as "unchanged" and an explicit null as "clear".
       ...(kind !== undefined ? { kind } : {}),

@@ -33,6 +33,8 @@ export type RosterPerson = {
 /** One project-scope `membership` row, joined with its person and role. */
 export type RosterRow = RosterPerson &
   RosterRoleRef & {
+    membershipId: string;
+    hasCurrentDirectGrant: boolean;
     /** An active DIRECT `membership_grant` backs this row (as opposed to IdP-managed only). */
     hasDirectGrant: boolean;
   };
@@ -45,6 +47,7 @@ export type RosterAncestor = {
 
 export type RosterEntry = RosterPerson &
   RosterRoleRef & {
+    membershipId: string | null;
     source: "direct" | "inherited";
     /** Nearest ancestor project that holds this person (inherited, or the overridden one). */
     inheritedFrom: { projectId: string; projectName: string } | null;
@@ -77,6 +80,7 @@ export function buildRoster(input: {
     out.push({
       ...toEntryBase(row),
       source: "direct",
+      membershipId: row.hasCurrentDirectGrant ? row.membershipId : null,
       inheritedFrom: inherited
         ? {
             projectId: inherited.ancestor.projectId,
@@ -99,6 +103,7 @@ export function buildRoster(input: {
       out.push({
         ...toEntryBase(row),
         source: "inherited",
+        membershipId: null,
         inheritedFrom: {
           projectId: ancestor.projectId,
           projectName: ancestor.projectName,

@@ -1,8 +1,12 @@
+import { isDeepStrictEqual } from "node:util";
 import { type ResolvedIdentity, reaches } from "@taskdesk/permissions";
 import { and, inArray, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import type { AuditRequestContext } from "../audit/request-context";
 import db from "../database";
 import { customFieldTable } from "../database/migration-schema";
+import { appendAuditSavepoint } from "../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import {
   loadAncestorIdsByProject,
   loadOwnerTeamIdsByProject,
@@ -194,6 +198,7 @@ export async function getOwnSettings(identity: Identity) {
 export async function patchOwnSettings(
   identity: Identity,
   body: Record<string, unknown>,
+  audit: AuditRequestContext,
 ) {
   const entries = Object.entries(body);
   if (entries.length === 0) {
@@ -267,14 +272,16 @@ export async function patchOwnSettings(
     return { target, value: filtered };
   });
 
-  await db.transaction(async (tx) => {
+  const auditFailed = await db.transaction(async (tx) => {
     // One person's settings writes are serialised so the row cap below is exact, not a soft
     // bound (ST-16). The lock is per person, released at commit/rollback.
     await lockOwnSettingsWrites(tx, identity.personId);
 
     // Clears first, so a request that clears and sets is judged against the cap afterwards.
+    const changedClears: SettingTarget[] = [];
     for (const target of clears) {
-      await deleteOwnSettingRow(tx, identity.personId, target);
+      if (await deleteOwnSettingRow(tx, identity.personId, target))
+        changedClears.push(target);
     }
 
     // Row cap (ST-16). Replacing an existing row is always allowed.
@@ -285,6 +292,38 @@ export async function patchOwnSettings(
       key: string;
     }) => `${r.scope}:${r.scopeId ?? ""}:${r.key}`;
     const have = new Set(existing.map(address));
+    const stored = new Map(existing.map((row) => [address(row), row.value]));
+    const changedSets = validatedSets.filter(
+      ({ target, value }) =>
+        !isDeepStrictEqual(
+          stored.get(
+            address({
+              scope: target.scope,
+              scopeId: target.scopeId,
+              key: target.rowKey,
+            }),
+          ),
+          value,
+        ),
+    );
+    const unchangedProjectIds = [
+      ...new Set(
+        validatedSets.flatMap((entry) =>
+          !changedSets.includes(entry) && entry.target.scope === "project"
+            ? [entry.target.scopeId]
+            : [],
+        ),
+      ),
+    ];
+    if (unchangedProjectIds.length) {
+      const stillReached = await listLiveProjectReachFacts(
+        identity,
+        unchangedProjectIds,
+        tx,
+      );
+      if (stillReached.length !== unchangedProjectIds.length)
+        throw new HTTPException(404, { message: "Project not found" });
+    }
     const newRows = validatedSets.filter(
       (s) =>
         !have.has(
@@ -302,7 +341,7 @@ export async function patchOwnSettings(
     }
 
     const now = new Date();
-    for (const { target, value } of validatedSets) {
+    for (const { target, value } of changedSets) {
       const row = await upsertOwnSettingRow(tx, identity, {
         personId: identity.personId,
         target: {
@@ -315,7 +354,36 @@ export async function patchOwnSettings(
       });
       if (!row) throw new HTTPException(404, { message: "Project not found" });
     }
+    if (!changedSets.length && !changedClears.length) return false;
+    return appendAuditSavepoint(tx, {
+      actorId: identity.userId,
+      actorType: "person",
+      ...audit,
+      workspaceId: null,
+      action: "user_preference.updated",
+      entityType: "user_preference",
+      entityId: identity.personId,
+      after: {
+        changedFields: [
+          ...new Set([
+            ...changedSets.map(({ target }) => target.kind),
+            ...changedClears.map((target) => target.kind),
+          ]),
+        ].sort(),
+        projectIds: [
+          ...new Set(
+            [
+              ...changedSets.map(({ target }) => target),
+              ...changedClears,
+            ].flatMap((target) =>
+              target.scope === "project" ? [target.scopeId] : [],
+            ),
+          ),
+        ].sort(),
+      },
+    });
   });
+  if (auditFailed) await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
 
   return readSettings(identity);
 }

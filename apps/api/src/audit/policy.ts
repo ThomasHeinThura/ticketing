@@ -1,4 +1,5 @@
 import type { PolicyMap } from "@taskdesk/permissions";
+import type { SettingsHistoryEntityType } from "./schema";
 
 /**
  * Audit-read route policies (`docs/03-features/audit-trail.md` § Permissions + § API).
@@ -33,6 +34,33 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * future reconciliation pass — not silently normalised either way.
  */
 export const auditPolicies = {
+  "GET /api/me/settings/history": {
+    authenticated: true,
+    self: true,
+    sessionOnly: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "reads only the authenticated staff person's closed settings metadata",
+    },
+  },
+  "GET /api/portal/account/settings-history": {
+    authenticated: true,
+    self: true,
+    sessionOnly: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "reads only the authenticated customer's closed settings metadata",
+    },
+  },
+  // This route is selected from the closed settingsHistoryPolicies before strict/shadow evaluation.
+  "GET /api/audit": {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
   "GET /api/instance/audit": {
     capability: "instance:read_audit",
     scope: "instance",
@@ -82,3 +110,264 @@ export const auditPolicies = {
     reach: "required",
   },
 } as const satisfies PolicyMap;
+
+/** One ordinary policy per persisted settings screen; never accept a client-supplied capability. */
+export const settingsHistoryPolicies = {
+  instance: {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "the instance settings row is the single instance resource",
+    },
+    elevated: false,
+    elevationExemptionReason: "reading settings history grants no authority",
+  },
+  workspace: auditPolicies["GET /api/audit"],
+  project: {
+    capability: "project:manage_settings",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  role: {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+  workflow: {
+    capability: "workflow:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  team: {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  service_calendar: {
+    capability: "sla_policy:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  sla_policy: {
+    capability: "sla_policy:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  request_type: {
+    capability: "request_type:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  custom_field: {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  custom_field_section: {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  state_template: {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+  webhook: {
+    capability: "webhook:manage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    elevated: false,
+    elevationExemptionReason:
+      "read-only history cannot change webhook authority",
+  },
+  canned_response: auditPolicies["GET /api/audit"],
+  workspace_label: {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  project_label: {
+    capability: "workspace:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  automation: auditPolicies["GET /api/audit"],
+  state: {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  time_activity: {
+    capability: "time_entry:create",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  cost_type: {
+    capability: "time_entry:manage_rates",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  hourly_rate: {
+    capability: "time_entry:manage_rates",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  budget: {
+    capability: "budget:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  workspace_member: {
+    capability: "workspace:read",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+  project_membership: {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  instance_notification_provider: {
+    capability: "instance:manage_plugins",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance provider settings",
+    },
+    sessionOnly: true,
+    elevated: false,
+    elevationExemptionReason: "metadata-only history read",
+  },
+  instance_storage_draft: {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: { exempt: "no_single_resource", reason: "instance storage draft" },
+    sessionOnly: true,
+    elevated: false,
+    elevationExemptionReason: "metadata-only history read",
+  },
+  instance_auth_methods: {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "logical instance auth methods",
+    },
+    sessionOnly: true,
+    elevated: false,
+    elevationExemptionReason: "metadata-only history read",
+  },
+  staff_self_registration: {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance registration setting",
+    },
+    sessionOnly: true,
+    elevated: false,
+    elevationExemptionReason: "metadata-only history read",
+  },
+  instance_job: {
+    capability: "instance:manage_jobs",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: { exempt: "no_single_resource", reason: "registered instance job" },
+    sessionOnly: true,
+    elevated: false,
+    elevationExemptionReason: "metadata-only history read",
+  },
+  identity_connection: {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance identity connection",
+    },
+    sessionOnly: true,
+    elevated: false,
+    elevationExemptionReason: "metadata-only history read",
+  },
+  import_source_connection: {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance import source with workspace reach",
+    },
+    sessionOnly: true,
+    elevated: false,
+    elevationExemptionReason: "metadata-only history read",
+  },
+  terminology_override: {
+    capability: "workspace:manage_settings",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
+  project_estimates: {
+    capability: "project:read",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
+  service_api_key: {
+    capability: "api_key:manage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+} as const satisfies Record<SettingsHistoryEntityType, PolicyMap[string]>;
+
+/** Project automation uses the same ordinary read policy as its source screen. */
+export const projectAutomationHistoryPolicy = {
+  capability: "project:read",
+  scope: "project",
+  scopeSource: "row",
+  reach: "required",
+} as const satisfies PolicyMap[string];
+
+export const instanceTerminologyHistoryPolicy = {
+  capability: "instance:manage_terminology",
+  scope: "instance",
+  scopeSource: "instance",
+  reach: {
+    exempt: "no_single_resource",
+    reason: "validated instance terminology catalogue cell",
+  },
+  elevated: false,
+  elevationExemptionReason: "metadata-only history read",
+} as const satisfies PolicyMap[string];

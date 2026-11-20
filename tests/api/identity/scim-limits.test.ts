@@ -1,31 +1,29 @@
 /** IP-14: per-connection rate limit and oversized-body rejection (DB-free). */
 import { Hono } from "hono";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   SCIM_MAX_BODY_BYTES,
   scimBodyLimit,
   scimConnectionRateLimit,
-  WindowCounter,
 } from "../../../apps/api/src/identity/scim-limits.js";
 
-describe("WindowCounter", () => {
-  it("allows up to the limit, refuses beyond it, and resets after the window", () => {
-    let now = 1_000;
-    const counter = new WindowCounter(2, 1_000, () => now);
-    expect(counter.hit("a").allowed).toBe(true);
-    expect(counter.hit("a").allowed).toBe(true);
-    const refused = counter.hit("a");
-    expect(refused.allowed).toBe(false);
-    expect(refused.retryAfterSeconds).toBeGreaterThanOrEqual(1);
-    expect(counter.isExhausted("a")).toBe(true);
-    expect(counter.hit("b").allowed).toBe(true);
-    now += 1_000;
-    expect(counter.isExhausted("a")).toBe(false);
-    expect(counter.hit("a").allowed).toBe(true);
-  });
+vi.mock("../../../apps/api/src/identity/scim-rate-limit-store", () => ({
+  consumeScimRateLimit: vi.fn(),
+  reportScimRateLimitUnavailable: vi.fn(),
+}));
+vi.mock("../../../apps/api/src/identity/scim-auth-events", () => ({
+  recordScimRequestDenied: vi.fn(),
+}));
+
+import { consumeScimRateLimit } from "../../../apps/api/src/identity/scim-rate-limit-store";
+
+beforeEach(() => {
+  vi.mocked(consumeScimRateLimit)
+    .mockReset()
+    .mockResolvedValue({ allowed: true, retryAfterSeconds: 0 });
 });
 
-function app(counter: WindowCounter) {
+function app() {
   const hono = new Hono<{ Variables: { connectionId: string } }>();
   hono.use("*", async (c, next) => {
     c.set("connectionId", c.req.header("x-test-connection") ?? "");
@@ -33,7 +31,7 @@ function app(counter: WindowCounter) {
   });
   hono.use(
     "*",
-    scimConnectionRateLimit((c) => c.get("connectionId") || undefined, counter),
+    scimConnectionRateLimit((c) => c.get("connectionId") || undefined),
   );
   hono.use("*", scimBodyLimit(64));
   hono.post("/Users", async (c) => c.json(await c.req.json(), 200));
@@ -41,8 +39,8 @@ function app(counter: WindowCounter) {
 }
 
 describe("SCIM connection rate limit", () => {
-  it("returns a SCIM 429 with Retry-After per connection, isolating other connections", async () => {
-    const hono = app(new WindowCounter(2, 60_000));
+  it("returns a SCIM 429 with Retry-After and forwards each connection key", async () => {
+    const hono = app();
     const call = (connection: string) =>
       hono.request("/Users", {
         method: "POST",
@@ -54,9 +52,13 @@ describe("SCIM connection rate limit", () => {
       });
     expect((await call("c1")).status).toBe(200);
     expect((await call("c1")).status).toBe(200);
+    vi.mocked(consumeScimRateLimit).mockResolvedValueOnce({
+      allowed: false,
+      retryAfterSeconds: 42,
+    });
     const limited = await call("c1");
     expect(limited.status).toBe(429);
-    expect(limited.headers.get("retry-after")).toBeTruthy();
+    expect(limited.headers.get("retry-after")).toBe("42");
     expect(limited.headers.get("content-type")).toContain(
       "application/scim+json",
     );
@@ -69,12 +71,15 @@ describe("SCIM connection rate limit", () => {
     ]);
     expect(body.status).toBe("429");
     expect((await call("c2")).status).toBe(200);
+    expect(
+      vi.mocked(consumeScimRateLimit).mock.calls.map(([input]) => input.key),
+    ).toEqual(["c1", "c1", "c1", "c2"]);
   });
 });
 
 describe("SCIM body limit", () => {
   it("rejects a declared-oversized body with a SCIM 413 tooLarge", async () => {
-    const hono = app(new WindowCounter(100, 60_000));
+    const hono = app();
     const payload = JSON.stringify({ blob: "x".repeat(200) });
     const response = await hono.request("/Users", {
       method: "POST",
@@ -95,7 +100,7 @@ describe("SCIM body limit", () => {
   });
 
   it("accepts a body within the limit, and the production cap is 2 MiB", async () => {
-    const hono = app(new WindowCounter(100, 60_000));
+    const hono = app();
     const response = await hono.request("/Users", {
       method: "POST",
       headers: {

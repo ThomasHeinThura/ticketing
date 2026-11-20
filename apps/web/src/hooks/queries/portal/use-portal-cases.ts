@@ -80,7 +80,7 @@ export function invalidatePortalCaseViews(
       refetchType: "all",
     }),
     queryClient.invalidateQueries({
-      queryKey: portalProjectKeys.all,
+      queryKey: portalProjectKeys.all(portalUserId),
       refetchType: "all",
     }),
   ]);

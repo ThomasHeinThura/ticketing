@@ -57,6 +57,7 @@ vi.mock("../../../apps/api/src/instance/observability/runtime", () => ({
 }));
 
 import { decryptIdentityClientSecret } from "../../../apps/api/src/identity/client-secret";
+import { providerResponseSchema } from "../../../apps/api/src/notification-provider/schema";
 import {
   getEmailProvider,
   testEmailProvider,
@@ -126,6 +127,34 @@ afterEach(() => {
 });
 
 describe("Mailpit provider persistence guards", () => {
+  it("uses the persisted provider row ID and returns null before a row exists", async () => {
+    expect((await getEmailProvider()).id).toBe("email-provider");
+    mocks.currentRow = null;
+    expect((await getEmailProvider()).id).toBeNull();
+    expect(
+      providerResponseSchema.safeParse({
+        ...(await getEmailProvider()),
+        id: undefined,
+      }).success,
+    ).toBe(false);
+
+    const created = await updateEmailProvider(
+      { version: 0, enabled: true, config: captureConfig },
+      actor,
+      mocks.spend,
+    );
+    expect(mocks.currentRow).toMatchObject({ id: created.id });
+    expect(created.id).not.toBeNull();
+    expect(providerResponseSchema.safeParse(created).success).toBe(true);
+    const updated = await updateEmailProvider(
+      { version: 1, enabled: true, config: captureConfig },
+      actor,
+      mocks.spend,
+    );
+    expect(updated.id).toBe(created.id);
+    expect(JSON.stringify(updated)).not.toContain("ciphertext");
+  });
+
   it("requires clearing an existing encrypted SMTP password before capture can be saved", async () => {
     mocks.currentRow = row(Buffer.from("encrypted-placeholder"));
     await expect(

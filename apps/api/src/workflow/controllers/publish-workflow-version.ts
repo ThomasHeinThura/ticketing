@@ -1,9 +1,13 @@
 import { HTTPException } from "hono/http-exception";
+import type { AppendAuditLogInput } from "../../audit/audit-writer";
 import db from "../../database";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import type { ResolveIdentityInput } from "../../permissions/resolve-identity";
 import { resolveIdentity } from "../../permissions/resolve-identity";
 import {
   findWorkflowVersion,
+  findWorkflowWorkspaceId,
   hasCompleteWorkflowProjectReach,
   listVersionTransitions,
   setActiveWorkflowVersion,
@@ -20,10 +24,20 @@ async function publishWorkflowVersion(
   identityInput: ResolveIdentityInput,
   workflowId: string,
   number: number,
+  actor: Pick<
+    AppendAuditLogInput,
+    | "actorId"
+    | "actorType"
+    | "apiKeyId"
+    | "impersonatorId"
+    | "actorIp"
+    | "userAgent"
+    | "traceId"
+  >,
 ) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await db.transaction(
+      const result = await db.transaction(
         async (tx) => {
           const identity = await resolveIdentity(identityInput, tx);
           if (!identity) throw new HTTPException(403, { message: "Forbidden" });
@@ -60,15 +74,39 @@ async function publishWorkflowVersion(
           if (version.publishedAt === null) {
             await setActiveWorkflowVersion(tx, workflowId, version.id);
           }
+          const workflow = await findWorkflowWorkspaceId(
+            identity,
+            workflowId,
+            tx,
+          );
+          if (!workflow)
+            throw new HTTPException(404, { message: "Workflow not found" });
+          const auditFailed =
+            version.publishedAt === null
+              ? await appendAuditSavepoint(tx, {
+                  ...actor,
+                  workspaceId: workflow.workspaceId,
+                  action: "workflow.version_published",
+                  entityType: "workflow",
+                  entityId: workflowId,
+                  after: {
+                    versionId: version.id,
+                    changedFields: ["activeVersion"],
+                  },
+                })
+              : false;
           const transitions = await listVersionTransitions(
             identity,
             version.id,
             tx,
           );
-          return { ...published, transitions };
+          return { published: { ...published, transitions }, auditFailed };
         },
         { isolationLevel: "serializable" },
       );
+      if (result.auditFailed)
+        await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+      return result.published;
     } catch (error) {
       let current: unknown = error;
       let serializationFailure = false;

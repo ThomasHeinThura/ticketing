@@ -13,6 +13,7 @@ async function getWorkspaceMembers(
   const members = await db
     .select({
       id: userTable.id,
+      workspaceMemberId: workspaceUserTable.id,
       personId: personTable.id,
       name: userTable.name,
       email: userTable.email,

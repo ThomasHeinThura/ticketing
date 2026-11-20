@@ -3,6 +3,7 @@ import { resolveCannedResponseBody } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import db, { schema } from "../database";
+import { type Executor, executorOrDefault } from "../database/executor";
 import {
   currentProjectReachPredicate,
   currentWorkspaceReachPredicate,
@@ -161,8 +162,10 @@ export async function listCannedResponsesForManagement(
 export async function insertCannedResponse(
   identity: ResolvedIdentity,
   values: NewCannedResponse,
+  executor?: Executor,
 ): Promise<CannedResponse | undefined> {
-  const reachableWorkspace = db
+  const tx = executorOrDefault(executor);
+  const reachableWorkspace = tx
     .select({
       id: sql<string>`${createId()}`.as("id"),
       workspaceId: schema.workspaceTable.id,
@@ -179,10 +182,10 @@ export async function insertCannedResponse(
     .where(
       and(
         eq(schema.workspaceTable.id, values.workspaceId),
-        currentWorkspaceReachPredicate(identity, schema.workspaceTable.id),
+        currentWorkspaceReachPredicate(identity, schema.workspaceTable.id, tx),
       ),
     );
-  const [created] = await db
+  const [created] = await tx
     .insert(cannedResponseTable)
     .select(reachableWorkspace)
     .returning();
@@ -194,8 +197,10 @@ export async function updateCannedResponseInWorkspace(
   id: string,
   workspaceId: string,
   changes: CannedResponseChanges,
+  executor?: Executor,
 ): Promise<CannedResponse | undefined> {
-  const [updated] = await db
+  const tx = executorOrDefault(executor);
+  const [updated] = await tx
     .update(cannedResponseTable)
     .set(changes)
     .where(
@@ -205,6 +210,7 @@ export async function updateCannedResponseInWorkspace(
         currentWorkspaceReachPredicate(
           identity,
           cannedResponseTable.workspaceId,
+          tx,
         ),
       ),
     )

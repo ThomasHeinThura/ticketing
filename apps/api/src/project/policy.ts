@@ -259,7 +259,8 @@ export const projectPolicies = {
     reach: "required",
   },
 
-  // Replace a project's own fields (name, icon, slug, description).
+  // Update a project's own fields (field intent: only the supplied fields apply; name, icon,
+  // slug and description are optional like the rest).
   // `workspaceAccess.fromProject()` reads the project row for its workspaceId, and
   // the reach middleware and legacy workspace `project:update` gate both apply.
   // CA-2: the body may also carry `defaultCommentVisibility`. That field alone has an extra

@@ -118,6 +118,36 @@ describe("quiet hours write route", () => {
       quietHours: { start: "22:00", end: "07:00", timezone: "UTC" },
     });
     expect([401, 403]).toContain(response.status);
+    for (const request of [
+      {
+        method: "PUT",
+        path: "/api/notification-preferences",
+        body: { emailEnabled: false },
+      },
+      {
+        method: "PUT",
+        path: "/api/notification-preferences/workspaces/test",
+        body: {
+          isActive: true,
+          emailEnabled: true,
+          ntfyEnabled: false,
+          gotifyEnabled: false,
+          webhookEnabled: false,
+          projectMode: "all",
+        },
+      },
+      {
+        method: "DELETE",
+        path: "/api/notification-preferences/workspaces/test",
+      },
+    ]) {
+      const denied = await app.request(request.path, {
+        method: request.method,
+        headers: { "content-type": "application/json" },
+        body: request.body ? JSON.stringify(request.body) : undefined,
+      });
+      expect([401, 403]).toContain(denied.status);
+    }
     const [person] = await db
       .select()
       .from(schema.personTable)

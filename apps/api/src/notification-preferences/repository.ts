@@ -89,8 +89,11 @@ export async function getReachableWorkspaceRules(userId: string) {
     .orderBy(asc(userNotificationWorkspaceRuleTable.createdAt));
 }
 
-export async function getSelectedWorkspaceProjects(workspaceRuleIds: string[]) {
-  return await db
+export async function getSelectedWorkspaceProjects(
+  workspaceRuleIds: string[],
+  executor?: Executor,
+) {
+  return await executorOrDefault(executor)
     .select({
       workspaceRuleId: userNotificationWorkspaceProjectTable.workspaceRuleId,
       projectId: userNotificationWorkspaceProjectTable.projectId,

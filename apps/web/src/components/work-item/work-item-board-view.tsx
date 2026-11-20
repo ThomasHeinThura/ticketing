@@ -178,11 +178,7 @@ export default function WorkItemBoardView({
     sourceProjectIds.forEach((sourceProjectId, index) => {
       const query = capabilityQueries[index];
       const capabilities = query?.data;
-      const ready =
-        Boolean(capabilities) &&
-        !query?.isPending &&
-        !query?.isFetching &&
-        !query?.isError;
+      const ready = Boolean(capabilities) && !query?.isError;
       result.set(sourceProjectId, {
         canRank: ready && capabilities?.rankTasks === true,
         canTransition: ready && capabilities?.transitionTasks === true,

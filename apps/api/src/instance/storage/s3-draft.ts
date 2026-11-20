@@ -30,6 +30,7 @@ import { storageProbeResponseSchema } from "./probe-schema";
 const PATH = "/api/instance/storage/s3-draft";
 const errorSchema = z.object({ message: z.string() });
 const responseSchema = z.object({
+  id: z.string().nullable(),
   version: z.number().int().nonnegative(),
   config: s3DraftConfigSchema.nullable(),
   credentialConfigured: z.boolean(),

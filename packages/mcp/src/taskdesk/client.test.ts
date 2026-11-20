@@ -14,7 +14,6 @@ describe("TaskDeskClient", () => {
     const auth = {
       usingApiKey: true,
       getAccessToken: vi.fn().mockResolvedValue("token-123"),
-      clearToken: vi.fn().mockResolvedValue(undefined),
     };
     const fetchMock = vi
       .fn()
@@ -42,38 +41,9 @@ describe("TaskDeskClient", () => {
     expect(headers.get("Content-Type")).toBe("application/json");
   });
 
-  it("clears the cached token and retries once after a 401", async () => {
-    const auth = {
-      getAccessToken: vi
-        .fn()
-        .mockResolvedValueOnce("expired-token")
-        .mockResolvedValueOnce("fresh-token"),
-      clearToken: vi.fn().mockResolvedValue(undefined),
-    };
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response("unauthorized", { status: 401 }))
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ id: "task-1" }), { status: 200 }),
-      );
-    globalThis.fetch = fetchMock as typeof fetch;
-
-    const client = new TaskDeskClient({
-      baseUrl: "https://api.example.com",
-      auth: auth as never,
-    });
-
-    await expect(client.json("/api/task/task-1")).resolves.toEqual({
-      id: "task-1",
-    });
-    expect(auth.clearToken).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
   it("surfaces api error messages when a request fails", async () => {
     const auth = {
       getAccessToken: vi.fn().mockResolvedValue("token-123"),
-      clearToken: vi.fn().mockResolvedValue(undefined),
     };
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ message: "Task not found" }), {
@@ -98,7 +68,6 @@ describe("TaskDeskClient", () => {
     const auth = {
       usingApiKey: true,
       getAccessToken: vi.fn().mockResolvedValue("token-123"),
-      clearToken: vi.fn().mockResolvedValue(undefined),
     };
     const fetchMock = vi
       .fn()
@@ -137,7 +106,6 @@ describe("TaskDeskClient", () => {
     const auth = {
       usingApiKey: true,
       getAccessToken: vi.fn(() => new Promise<string>(() => undefined)),
-      clearToken: vi.fn().mockResolvedValue(undefined),
     };
     const fetchMock = vi.fn();
     globalThis.fetch = fetchMock as typeof fetch;
@@ -167,7 +135,6 @@ describe("TaskDeskClient", () => {
     const auth = {
       usingApiKey: true,
       getAccessToken: vi.fn().mockResolvedValue("token-123"),
-      clearToken: vi.fn().mockResolvedValue(undefined),
     };
     globalThis.fetch = vi
       .fn()
@@ -190,7 +157,6 @@ describe("TaskDeskClient", () => {
     const auth = {
       usingApiKey: false,
       getAccessToken: vi.fn().mockResolvedValue("oauth-token"),
-      clearToken: vi.fn().mockResolvedValue(undefined),
     };
     const fetchMock = vi.fn();
     globalThis.fetch = fetchMock as typeof fetch;

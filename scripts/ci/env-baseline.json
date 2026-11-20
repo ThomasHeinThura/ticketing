@@ -134,8 +134,7 @@
 			"apps/web/src/routes/auth/sign-in.tsx:145",
 			"apps/web/src/routes/auth/sign-in.tsx:165",
 			"apps/web/src/routes/auth/sign-up.tsx:52"
-		],
-		"XDG_CONFIG_HOME": ["packages/mcp/src/auth/token-store.ts:27"]
+		]
 	},
 	"unattributableReads": {
 		"apps/api/src/storage/s3.ts": {

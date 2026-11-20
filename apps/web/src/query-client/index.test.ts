@@ -83,3 +83,64 @@ describe("query cache error log", () => {
     queryClient.clear();
   });
 });
+
+it("keeps the agent 401 redirect when a query is refused", async () => {
+  const { default: client } = await import("./index");
+  const { HttpError } = await import("@/lib/http-error");
+  const actualWindow = window;
+  const replace = vi.fn();
+  vi.stubEnv("MODE", "agent");
+  vi.stubGlobal(
+    "window",
+    new Proxy(actualWindow, {
+      get(target, key) {
+        return key === "location"
+          ? {
+              pathname: "/agent/projects/ABC",
+              search: "?view=board",
+              hash: "#item",
+              replace,
+            }
+          : Reflect.get(target, key, target);
+      },
+    }),
+  );
+  try {
+    await expect(
+      client.fetchQuery({
+        queryKey: ["agent-401-test"],
+        queryFn: async () => {
+          throw new HttpError(401, "refused");
+        },
+        retry: false,
+      }),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(replace).toHaveBeenCalledWith(
+      "/auth/sign-in?redirect=%2Fagent%2Fprojects%2FABC%3Fview%3Dboard%23item",
+    );
+  } finally {
+    client.clear();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  }
+});
+
+it("removes portal data when a session read returns a user without a session", async () => {
+  const { default: client, portalSessionQueryKey } = await import("./index");
+  try {
+    await client.fetchQuery({
+      queryKey: portalSessionQueryKey,
+      queryFn: async () => ({ session: { id: "s-a" }, user: { id: "a" } }),
+      staleTime: 0,
+    });
+    client.setQueryData(["portal", "notifications"], { private: "a" });
+    await client.fetchQuery({
+      queryKey: portalSessionQueryKey,
+      queryFn: async () => ({ user: { id: "b" } }),
+      staleTime: 0,
+    });
+    expect(client.getQueryData(["portal", "notifications"])).toBeUndefined();
+  } finally {
+    client.clear();
+  }
+});

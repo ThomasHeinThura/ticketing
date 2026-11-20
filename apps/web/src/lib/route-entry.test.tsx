@@ -16,6 +16,7 @@ import {
 import { projectOverviewOptions } from "@/hooks/queries/project/project-overview-options";
 import { projectOptions } from "@/hooks/queries/project/use-get-project";
 import useGetBoardWorkItems from "@/hooks/queries/work-item/use-get-board-work-items";
+import { resolveRouteProject } from "@/lib/route-project-prefetch";
 import portalClient from "@/query-client";
 import { Route as inbox } from "@/routes/agent/_layout/_authenticated/agent/inbox";
 import { Route as overview } from "@/routes/agent/_layout/_authenticated/agent/projects/$projectKey";
@@ -43,6 +44,10 @@ vi.mock("@/fetchers/workspace/get-workspaces", () => ({
 }));
 vi.mock("@/fetchers/project/get-projects", () => ({ default: mocks.projects }));
 vi.mock("@/fetchers/project/get-project", () => ({ default: mocks.detail }));
+vi.mock("@/fetchers/project/overview-read", async (original) => ({
+  ...(await original<typeof import("@/fetchers/project/overview-read")>()),
+  getProjectOverview: mocks.overview,
+}));
 vi.mock("@/fetchers/project/overview", async (original) => ({
   ...(await original<typeof import("@/fetchers/project/overview")>()),
   getProjectOverview: mocks.overview,
@@ -124,6 +129,18 @@ describe("route entry reads", () => {
     expect(mocks.detail).toHaveBeenCalledTimes(1);
     expect(mocks.overview).toHaveBeenCalledTimes(1);
   });
+  it("does not start overview reads for a project child route", async () => {
+    loader(overview, {
+      context: context(client),
+      params: { projectKey: "OPS" },
+      cause: "enter",
+      location: { pathname: "/agent/projects/OPS/work" },
+    });
+    await Promise.resolve();
+    expect(mocks.workspaces).not.toHaveBeenCalled();
+    expect(mocks.overview).not.toHaveBeenCalled();
+    expect(mocks.detail).not.toHaveBeenCalled();
+  });
   it("starts the backlog read without blocking and reuses it on mount", async () => {
     expect(
       loader(backlog, {
@@ -174,7 +191,7 @@ describe("route entry reads", () => {
         usePortalCases("u1", outstandingCasesQuery(deps, "OPS"), {
           prefetched: true,
         });
-        useQuery(portalProjectsOptions());
+        useQuery(portalProjectsOptions("u1"));
       },
       { wrapper: wrapper(portalClient) },
     );
@@ -245,7 +262,7 @@ describe("route entry reads", () => {
   });
 });
 
-it("refreshes the overview when returning from a child route", async () => {
+it("starts overview reads immediately when returning from Work", async () => {
   const {
     createMemoryHistory,
     createRootRouteWithContext,
@@ -268,22 +285,27 @@ it("refreshes the overview when returning from a child route", async () => {
   });
   const child = createRoute({
     getParentRoute: () => projectRoute,
-    path: "backlog",
+    path: "work",
   });
   const router = createRouter({
     routeTree: root.addChildren([projectRoute.addChildren([child])]),
     history: createMemoryHistory({
-      initialEntries: ["/agent/projects/OPS/backlog"],
+      initialEntries: ["/agent/projects/OPS/work"],
     }),
     context: context(client),
   });
   await router.load();
   expect(mocks.overview).not.toHaveBeenCalled();
+  await resolveRouteProject(client, session, "OPS");
   await router.navigate({
     to: "/agent/projects/$projectKey",
     params: { projectKey: "OPS" },
   });
   await waitFor(() => expect(mocks.overview).toHaveBeenCalledTimes(1));
+  expect(mocks.detail).toHaveBeenCalledTimes(1);
+  expect(mocks.overview.mock.invocationCallOrder[0]).toBeLessThan(
+    mocks.detail.mock.invocationCallOrder[0],
+  );
 });
 
 describe("project discovery access", () => {
@@ -367,7 +389,7 @@ it("preloads portal links without reads and refreshes cached dashboard data on e
     ...portalRoutePendingOptions,
   });
   portalClient.setQueryData(["portal", "u1", "home", null], {});
-  portalClient.setQueryData(portalProjectsOptions().queryKey, { data: [] });
+  portalClient.setQueryData(portalProjectsOptions("u1").queryKey, { data: [] });
   portalClient.setQueryData(
     ["portal", "u1", "cases", outstandingCasesQuery({})],
     {},

@@ -18,7 +18,7 @@ import PortalNotificationBell from "./portal-notification-bell";
 import PortalUserMenu, { type PortalShellUser } from "./portal-user-menu";
 
 // Loads only once `GET /api/portal/projects` exists (S4c turns the capability on).
-const PortalProjectSelector = portalLazyContent(
+const PortalProjectSelector = portalLazyContent<{ portalUserId: string }>(
   () => import("./portal-project-selector"),
   null,
 );
@@ -38,7 +38,13 @@ const PHONE_BREAKPOINT = 640;
  * (New Request) stays the strongest control (CP-9); on a phone the theme switch moves into the
  * avatar menu (P6).
  */
-export default function PortalTopbar({ user }: { user: PortalShellUser }) {
+export default function PortalTopbar({
+  user,
+  portalUserId,
+}: {
+  user: PortalShellUser;
+  portalUserId: string;
+}) {
   const { t } = usePortalTranslation("portal");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -62,7 +68,9 @@ export default function PortalTopbar({ user }: { user: PortalShellUser }) {
 
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-nowrap">
-      {portalCapabilities.projects ? <PortalProjectSelector /> : null}
+      {portalCapabilities.projects ? (
+        <PortalProjectSelector portalUserId={portalUserId} />
+      ) : null}
       <search
         aria-label={t("shell.search.label")}
         className="hidden min-w-0 max-w-md flex-1 sm:block"

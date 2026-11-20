@@ -1,6 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { schema } from "../database";
+import { appendAuditSavepoint } from "../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
 import {
   type RegisteredDeletionReadScope,
   type RegisteredDeletionTarget,
@@ -56,7 +58,7 @@ export const cannedResponseDeletionTarget: RegisteredDeletionTarget = {
         }
       : undefined;
   },
-  execute: async (tx, { loaded }) => {
+  execute: async (tx, { loaded, input }) => {
     const [deleted] = await tx
       .delete(schema.cannedResponseTable)
       .where(
@@ -70,6 +72,21 @@ export const cannedResponseDeletionTarget: RegisteredDeletionTarget = {
       throw new HTTPException(409, {
         message: "pending_action_target_changed",
       });
-    return {};
+    const auditFailed = await appendAuditSavepoint(tx, {
+      actorId: input.userId,
+      actorType: "person",
+      traceId: input.traceId,
+      workspaceId: loaded.workspaceId,
+      action: "canned_response.deleted",
+      entityType: "canned_response",
+      entityId: loaded.id,
+      after: { changedFields: ["name", "body", "visibilityDefault"] },
+    });
+    return auditFailed
+      ? {
+          afterCommit: () =>
+            notifyCurrentInstanceAdminsOfAuditFailure("mutation"),
+        }
+      : {};
   },
 };

@@ -8,12 +8,15 @@ import { randomUUID } from "node:crypto";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { Client } from "pg";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as auditWriter from "../../apps/api/src/audit/audit-writer";
 import db, { schema } from "../../apps/api/src/database";
 import { projectMembershipKeys } from "../../apps/api/src/identity/membership-projection";
 import { createApp } from "../../apps/api/src/index";
+import * as observability from "../../apps/api/src/instance/observability/runtime";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
+import { makeApiKey } from "./helpers/reach-world";
 import {
   inviteAndAcceptAsNewMemberNative,
   inviteWorkspaceMemberNative,
@@ -1758,5 +1761,148 @@ describe("built-in admin editing and assignment rank (review fixes)", () => {
       { role: "admin" },
     );
     expect(lateral.status, await lateral.clone().text()).toBe(200);
+  });
+});
+
+describe("RL-10 role history is itself an audit read (AU-13)", () => {
+  const auditReadRows = (workspaceId: string) =>
+    db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "audit.read"),
+          eq(schema.auditLogTable.workspaceId, workspaceId),
+        ),
+      );
+
+  it("writes exactly one audit.read for a non-empty history, naming the workspace and the requesting person", async () => {
+    const { app, owner, workspaceId } = await setup();
+    const role = await createCustom(app, owner.cookie, workspaceId, {
+      role: "Read audited",
+      rank: 20,
+      capabilities: ["work_item:read"],
+    });
+    expect(await auditReadRows(workspaceId)).toHaveLength(0);
+
+    const response = await getWorkspaceRoleHistoryNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      role.id,
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(((await response.json()) as unknown[]).length).toBeGreaterThan(0);
+
+    const rows = await auditReadRows(workspaceId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      actorId: owner.user.id,
+      actorType: "person",
+      workspaceId,
+      entityType: "audit_log",
+      entityId: workspaceId,
+    });
+  });
+
+  it("writes exactly one audit.read for a successful empty history", async () => {
+    const { app, owner, workspaceId } = await setup();
+    // A role row with no audit rows of its own (inserted directly, so nothing audits its creation).
+    const [role] = await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "workspace",
+        workspaceId,
+        key: `quiet-${randomUUID()}`,
+        name: "Quiet",
+        rank: 20,
+        capabilities: ["work_item:read"],
+        isSystem: false,
+        isEditable: true,
+      })
+      .returning();
+    if (!role) throw new Error("quiet role was not created");
+
+    const response = await getWorkspaceRoleHistoryNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      role.id,
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect(await response.json()).toEqual([]);
+    expect(await auditReadRows(workspaceId)).toHaveLength(1);
+  });
+
+  it("writes no audit.read when the read is denied or the role is not found", async () => {
+    const { app, owner, workspaceId } = await setup();
+    const role = await createCustom(app, owner.cookie, workspaceId, {
+      role: "Guarded",
+      rank: 20,
+      capabilities: ["work_item:read"],
+    });
+    const url = `/api/workspace/${workspaceId}/roles/${role.id}/history`;
+    const stranger = await signUpUser(app);
+    const key = await makeApiKey(owner.user.id, { workspace: ["read"] });
+    const other = await createWorkspaceNative(app, owner.cookie, {
+      name: "Elsewhere",
+    });
+    const otherWorkspaceId = ((await other.json()) as { id: string }).id;
+    const foreign = await createCustom(app, owner.cookie, otherWorkspaceId, {
+      role: "Foreign",
+      capabilities: ["work_item:read"],
+    });
+
+    const anonymous = await app.request(url);
+    expect(anonymous.status).toBe(401);
+    const keyed = await app.request(url, { headers: { "x-api-key": key } });
+    expect([401, 403]).toContain(keyed.status);
+    const outsider = await app.request(url, {
+      headers: { cookie: stranger.cookie },
+    });
+    expect(outsider.status).toBe(403);
+    const crossWorkspace = await getWorkspaceRoleHistoryNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      foreign.id,
+    );
+    expect(crossWorkspace.status).toBe(404);
+    const missing = await getWorkspaceRoleHistoryNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      `missing-${randomUUID()}`,
+    );
+    expect(missing.status).toBe(404);
+
+    expect(await auditReadRows(workspaceId)).toHaveLength(0);
+    expect(await auditReadRows(otherWorkspaceId)).toHaveLength(0);
+  });
+
+  it("keeps the 200 and raises the shared audit_read failure signal when the audit.read append fails (AU-14)", async () => {
+    const { app, owner, workspaceId } = await setup();
+    const role = await createCustom(app, owner.cookie, workspaceId, {
+      role: "Fails open",
+      rank: 20,
+      capabilities: ["work_item:read"],
+    });
+    const failure = vi.spyOn(observability, "recordAuditWriteFailure");
+    vi.spyOn(auditWriter, "appendAuditLog").mockRejectedValueOnce(
+      new Error("audit sink down"),
+    );
+    try {
+      const response = await getWorkspaceRoleHistoryNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        role.id,
+      );
+      expect(response.status, await response.clone().text()).toBe(200);
+      expect(failure).toHaveBeenCalledWith("audit_read");
+      expect(await auditReadRows(workspaceId)).toHaveLength(0);
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });

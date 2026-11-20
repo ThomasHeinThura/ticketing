@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ComponentType, ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -22,6 +23,7 @@ vi.mock("@tanstack/react-router", async (original) => ({
     }),
   }),
   useLocation: () => ({ pathname: state.pathname }),
+  useRouter: () => ({ invalidate: vi.fn() }),
   Outlet: () => <p>Portal page</p>,
 }));
 vi.mock("@/components/portal/portal-layout", () => {
@@ -48,17 +50,23 @@ afterEach(cleanup);
 it("defers the signed-in layout on sign-in and preserves it after it loads", async () => {
   expect(state.imported).toBe(false);
   const Root = Route.options.component as ComponentType;
-  const view = render(<Root />);
+  const client = new QueryClient();
+  const wrap = () => (
+    <QueryClientProvider client={client}>
+      <Root />
+    </QueryClientProvider>
+  );
+  const view = render(wrap());
   expect(screen.getByText("Portal page")).toBeVisible();
   expect(state.imported).toBe(false);
   state.pathname = "/requests";
-  view.rerender(<Root />);
+  view.rerender(wrap());
   expect(screen.getByTestId("page-loading")).toBeVisible();
   const layout = await screen.findByTestId("signed-in-layout");
   expect(layout).toHaveAttribute("aria-label", "Ada Customer");
   expect(layout).toContainElement(screen.getByText("Portal page"));
   expect(state.preload).toHaveBeenCalledOnce();
   state.pathname = "/approvals";
-  view.rerender(<Root />);
+  view.rerender(wrap());
   expect(screen.getByTestId("signed-in-layout")).toBe(layout);
 });

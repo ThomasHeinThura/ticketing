@@ -34,6 +34,8 @@ function row(
   hasDirectGrant = true,
 ): RosterRow {
   return {
+    membershipId: `membership-${personId}`,
+    hasCurrentDirectGrant: hasDirectGrant,
     personId,
     displayName: personId.toUpperCase(),
     active: true,
@@ -59,6 +61,7 @@ describe("buildRoster (PR-2, PR-3, PR-4)", () => {
     const bob = roster.find((e) => e.personId === "bob");
     expect(bob).toMatchObject({
       source: "inherited",
+      membershipId: null,
       removable: false,
       inheritedFrom: { projectId: "parent", projectName: "Parent" },
     });
@@ -67,6 +70,7 @@ describe("buildRoster (PR-2, PR-3, PR-4)", () => {
     ).toBe("root");
     expect(roster.find((e) => e.personId === "ann")).toMatchObject({
       source: "direct",
+      membershipId: "membership-ann",
       removable: true,
       inheritedFrom: null,
     });
@@ -112,7 +116,18 @@ describe("buildRoster (PR-2, PR-3, PR-4)", () => {
       direct: [row("dee", MEMBER, false)],
       ancestors: [],
     });
-    expect(entry).toMatchObject({ managedExternally: true, removable: false });
+    expect(entry).toMatchObject({
+      managedExternally: true,
+      removable: false,
+      membershipId: null,
+    });
+  });
+
+  it("exposes only the winning current direct-grant row ID", () => {
+    const staleDirect = { ...row("ann", LEAD), hasCurrentDirectGrant: false };
+    const [entry] = buildRoster({ direct: [staleDirect], ancestors: [] });
+    expect(entry?.membershipId).toBeNull();
+    expect(entry?.source).toBe("direct");
   });
 });
 

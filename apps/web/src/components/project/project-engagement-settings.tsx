@@ -101,9 +101,10 @@ function ProjectEngagementSettings({
   const { mutateAsync: updateProject, isPending: isSaving } =
     useUpdateProject();
 
-  const [draft, setDraft] = useState<ReturnType<
-    typeof toEngagementValues
-  > | null>(null);
+  const [draft, setDraft] = useState<{
+    baseline: ReturnType<typeof toEngagementValues>;
+    values: ReturnType<typeof toEngagementValues>;
+  } | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [engagementSaved, setEngagementSaved] = useState(false);
   const [saveFailure, setSaveFailure] = useState<EngagementSaveFailure | null>(
@@ -171,9 +172,10 @@ function ProjectEngagementSettings({
   }
 
   const saved = toEngagementValues(project);
-  const values = draft ?? saved;
+  const baseline = draft?.baseline ?? saved;
+  const values = draft?.values ?? saved;
   const errors = showErrors ? validateEngagement(values) : {};
-  const dirty = isEngagementDirty(saved, values);
+  const dirty = isEngagementDirty(baseline, values);
   const health: ProjectHealth | typeof NONE =
     pendingHealth ?? (isProjectHealth(project.health) ? project.health : NONE);
 
@@ -220,7 +222,7 @@ function ProjectEngagementSettings({
     try {
       await updateProject({
         id: project.id,
-        ...buildEngagementPayload(values),
+        ...buildEngagementPayload(baseline, values),
       });
       await invalidateProject();
       setDraft(null);
@@ -259,7 +261,10 @@ function ProjectEngagementSettings({
 
   const setKind = (value: unknown) => {
     if (!isEngagementKind(value)) return;
-    setDraft({ ...values, kind: value as EngagementKind });
+    setDraft({
+      baseline,
+      values: { ...values, kind: value as EngagementKind },
+    });
   };
 
   const failureMessage = (failure: EngagementSaveFailure) =>
@@ -373,8 +378,11 @@ function ProjectEngagementSettings({
             disabled={!canEditEngagement || isSaving}
             onValueChange={(value) =>
               setDraft({
-                ...values,
-                supportLevel: isSupportLevel(value) ? value : null,
+                baseline,
+                values: {
+                  ...values,
+                  supportLevel: isSupportLevel(value) ? value : null,
+                },
               })
             }
           >

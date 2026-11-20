@@ -86,6 +86,7 @@ export async function getEmailProvider() {
           bootstrap.options.auth.pass,
       );
   return {
+    id: row?.id ?? null,
     version: row?.configVersion ?? 0,
     source: row
       ? ("runtime" as const)

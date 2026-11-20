@@ -2,6 +2,7 @@ import type { ResolvedIdentity } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
+import { auditRequestContext } from "../audit/request-context";
 import type { BaseVariables } from "../openapi";
 import {
   apiRouter,
@@ -86,7 +87,11 @@ const userPreference = apiRouter()
   })
   .openapi(patchSettingsRoute, async (c) =>
     c.json(
-      await patchOwnSettings(await requestIdentity(c), c.req.valid("json")),
+      await patchOwnSettings(
+        await requestIdentity(c),
+        c.req.valid("json"),
+        auditRequestContext(c),
+      ),
       200,
     ),
   );

@@ -18,6 +18,7 @@ import activity from "./activity";
 import agile from "./agile";
 import { announcementRouter, portalAnnouncementRouter } from "./announcement";
 import apiKey from "./api-key";
+import { clientIpForContext } from "./api-key/enforce";
 import approval from "./approval";
 import attachment from "./attachment";
 import audit from "./audit";
@@ -174,6 +175,7 @@ import {
   withAccountDeletionTransaction,
   withExplicitCredentialMutation,
   withFirstUserAdmissionTransaction,
+  withSelfProfileMutation,
   withTotpSessionEnrollment,
 } from "./pending-action/credential-invalidation";
 // Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
@@ -187,6 +189,7 @@ import {
 } from "./permissions/shadow-context";
 import {
   declareCatchAllMiddleware,
+  normaliseTraceId,
   runNextWithPolicyShadow,
 } from "./permissions/shadow-middleware";
 import { installStrictPolicyRegistration } from "./permissions/strict-route-registration";
@@ -472,6 +475,7 @@ const PORTAL_HOME_REALM_ENDPOINTS = new Set([
   "GET /api/portal/sign-in/home-realm/start",
 ]);
 const PORTAL_CANONICAL_PREFERENCE_ENDPOINTS = new Set([
+  "GET /api/portal/account/settings-history",
   "GET /api/portal/notification-preferences",
   "PUT /api/portal/notification-preferences",
   "GET /api/portal/notification-preferences/canonical/quiet-hours",
@@ -666,7 +670,21 @@ async function handleAuthRequest(
   }
   let result: Response;
   if (!mutation) {
-    result = await selected.handler(authRequest);
+    result =
+      c.req.method === "POST" &&
+      c.req.path === "/api/auth/update-user" &&
+      session?.session
+        ? await withSelfProfileMutation(
+            {
+              userId: session.user.id,
+              portal,
+              actorIp: clientIpForContext(c),
+              userAgent: c.req.header("user-agent") ?? null,
+              traceId: normaliseTraceId(c.req.header("x-request-id")),
+            },
+            () => selected.handler(authRequest),
+          )
+        : await selected.handler(authRequest);
   } else {
     const outcome = await withExplicitCredentialMutation(mutation, () =>
       selected.handler(authRequest),

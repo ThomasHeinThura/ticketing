@@ -40,6 +40,7 @@ export type S3DraftActor = {
 };
 type DraftRow = NonNullable<Awaited<ReturnType<typeof readS3Draft>>>;
 export type S3DraftResponse = {
+  id: string | null;
   version: number;
   config: S3DraftConfig | null;
   credentialConfigured: boolean;
@@ -70,6 +71,7 @@ function validateStoredRow(row: DraftRow): S3DraftConfig {
 function responseFor(row: DraftRow): S3DraftResponse {
   const credentials = readCredentials(row);
   return {
+    id: row.id,
     version: row.configVersion,
     config: validateStoredRow(row),
     credentialConfigured:
@@ -144,6 +146,7 @@ export async function getS3Draft(): Promise<S3DraftResponse> {
   return row
     ? responseFor(row)
     : {
+        id: null,
         version: 0,
         config: null,
         credentialConfigured: false,
