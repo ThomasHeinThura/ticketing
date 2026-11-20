@@ -1,5 +1,10 @@
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import {
+  appendPersonalNotificationAudit,
+  notifyPersonalNotificationAuditFailure,
+  type PersonalNotificationAudit,
+} from "../audit/notification-settings";
 import db from "../database";
 import { personTable } from "../database/schema";
 import { parseClockMinutes } from "../notification/quiet-hours";
@@ -92,18 +97,39 @@ export async function getQuietHours(
 export async function saveQuietHours(
   userId: string,
   value: QuietHours | null,
+  audit?: PersonalNotificationAudit,
 ): Promise<void> {
   const personId = await staffPerson(userId);
   if (value !== null) {
     const problem = quietHoursProblem(value);
     if (problem) throw new HTTPException(400, { message: problem });
   }
-  await db
-    .update(personTable)
-    .set({
-      quietHoursStart: value?.start ?? null,
-      quietHoursEnd: value?.end ?? null,
-      quietHoursTimezone: value?.timezone ?? null,
-    })
-    .where(eq(personTable.id, personId));
+  const failed = await db.transaction(async (tx) => {
+    const [before] = await tx
+      .select({
+        start: personTable.quietHoursStart,
+        end: personTable.quietHoursEnd,
+        timezone: personTable.quietHoursTimezone,
+      })
+      .from(personTable)
+      .where(eq(personTable.id, personId))
+      .for("update")
+      .limit(1);
+    if (!before) throw new HTTPException(404, { message: "Person not found" });
+    const changed =
+      before.start !== (value?.start ?? null) ||
+      before.end !== (value?.end ?? null) ||
+      before.timezone !== (value?.timezone ?? null);
+    if (!changed) return false;
+    await tx
+      .update(personTable)
+      .set({
+        quietHoursStart: value?.start ?? null,
+        quietHoursEnd: value?.end ?? null,
+        quietHoursTimezone: value?.timezone ?? null,
+      })
+      .where(eq(personTable.id, personId));
+    return appendPersonalNotificationAudit(tx, audit, ["quietHours"]);
+  });
+  await notifyPersonalNotificationAuditFailure(failed);
 }

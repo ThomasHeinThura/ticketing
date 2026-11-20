@@ -1,5 +1,11 @@
 import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { requestAuditActor } from "../audit/controllers/audit-read-common";
+import {
+  appendPersonalNotificationAudit,
+  type NotificationCategory,
+  notifyPersonalNotificationAuditFailure,
+} from "../audit/notification-settings";
 import { portalForHost } from "../auth";
 import db from "../database";
 import { personTable } from "../database/schema";
@@ -228,11 +234,43 @@ function portalEmailPreferenceRoutes(prefix: "Portal" | "PortalCanonical") {
           c.get("session"),
         );
         const value = preferenceSchema.parse(c.req.valid("json"));
-        await db.execute(sql`INSERT INTO notification_preference
-      (person_id, scope, scope_id, channel, event_kind, enabled, digest)
-      VALUES (${personId}, 'global', NULL, 'notify.email', ${value.eventKind}, ${value.enabled}, ${value.digest})
-      ON CONFLICT (person_id, scope, scope_id, channel, event_kind)
-      DO UPDATE SET enabled = EXCLUDED.enabled, digest = EXCLUDED.digest`);
+        const failed = await db.transaction(async (tx) => {
+          const [person] = await tx
+            .select({ id: personTable.id })
+            .from(personTable)
+            .where(eq(personTable.id, personId))
+            .for("update")
+            .limit(1);
+          if (!person)
+            throw new HTTPException(404, { message: "Person not found" });
+          const prior =
+            await tx.execute(sql`SELECT enabled, digest FROM notification_preference
+            WHERE person_id = ${personId} AND event_kind = ${value.eventKind}
+            AND channel = 'notify.email' AND scope = 'global' AND scope_id IS NULL`);
+          const previous = prior.rows[0] as
+            | { enabled: boolean; digest: string }
+            | undefined;
+          const categories: NotificationCategory[] = [];
+          if (
+            (previous?.enabled ??
+              defaultExternalPreference(value.eventKind, "notify.email")
+                .enabled) !== value.enabled
+          )
+            categories.push("delivery");
+          if ((previous?.digest ?? "off") !== value.digest)
+            categories.push("digest");
+          await tx.execute(sql`INSERT INTO notification_preference
+            (person_id, scope, scope_id, channel, event_kind, enabled, digest)
+            VALUES (${personId}, 'global', NULL, 'notify.email', ${value.eventKind}, ${value.enabled}, ${value.digest})
+            ON CONFLICT (person_id, scope, scope_id, channel, event_kind)
+            DO UPDATE SET enabled = EXCLUDED.enabled, digest = EXCLUDED.digest`);
+          return appendPersonalNotificationAudit(
+            tx,
+            { personId, actor: requestAuditActor(c) },
+            categories,
+          );
+        });
+        await notifyPersonalNotificationAuditFailure(failed);
         c.header("Cache-Control", "no-store");
         return c.json(await getPreferences(personId), 200);
       },
@@ -261,14 +299,39 @@ export const portalCanonicalPreferences = apiRouter()
     const { quietHours } = c.req.valid("json");
     const problem = quietHours && quietHoursProblem(quietHours);
     if (problem) throw new HTTPException(400, { message: problem });
-    await db
-      .update(personTable)
-      .set({
-        quietHoursStart: quietHours?.start ?? null,
-        quietHoursEnd: quietHours?.end ?? null,
-        quietHoursTimezone: quietHours?.timezone ?? null,
-      })
-      .where(eq(personTable.id, personId));
+    const failed = await db.transaction(async (tx) => {
+      const [before] = await tx
+        .select({
+          start: personTable.quietHoursStart,
+          end: personTable.quietHoursEnd,
+          timezone: personTable.quietHoursTimezone,
+        })
+        .from(personTable)
+        .where(eq(personTable.id, personId))
+        .for("update")
+        .limit(1);
+      if (!before)
+        throw new HTTPException(404, { message: "Person not found" });
+      const changed =
+        before.start !== (quietHours?.start ?? null) ||
+        before.end !== (quietHours?.end ?? null) ||
+        before.timezone !== (quietHours?.timezone ?? null);
+      if (!changed) return false;
+      await tx
+        .update(personTable)
+        .set({
+          quietHoursStart: quietHours?.start ?? null,
+          quietHoursEnd: quietHours?.end ?? null,
+          quietHoursTimezone: quietHours?.timezone ?? null,
+        })
+        .where(eq(personTable.id, personId));
+      return appendPersonalNotificationAudit(
+        tx,
+        { personId, actor: requestAuditActor(c) },
+        ["quietHours"],
+      );
+    });
+    await notifyPersonalNotificationAuditFailure(failed);
     c.header("Cache-Control", "no-store");
     return c.json(await readQuietHours(personId), 200);
   })

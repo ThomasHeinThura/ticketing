@@ -1,5 +1,9 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import type { AppendAuditLogInput } from "../../audit/audit-writer";
+import db from "../../database";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { insertCannedResponse } from "../repository";
 
@@ -20,23 +24,47 @@ export type CreateCannedResponseInput = {
 export async function createCannedResponse(
   identity: ResolvedIdentity,
   input: CreateCannedResponseInput,
+  actor: Pick<
+    AppendAuditLogInput,
+    | "actorId"
+    | "actorType"
+    | "apiKeyId"
+    | "impersonatorId"
+    | "actorIp"
+    | "userAgent"
+    | "traceId"
+  >,
 ) {
   try {
-    const created = await insertCannedResponse(identity, {
-      workspaceId: input.workspaceId,
-      name: input.name,
-      body: input.body,
-      visibilityDefault: input.visibilityDefault ?? "internal",
-      createdBy: input.createdBy,
-    });
-
-    if (!created) {
-      throw new HTTPException(500, {
-        message: "Failed to create canned response",
+    const result = await db.transaction(async (tx) => {
+      const created = await insertCannedResponse(
+        identity,
+        {
+          workspaceId: input.workspaceId,
+          name: input.name,
+          body: input.body,
+          visibilityDefault: input.visibilityDefault ?? "internal",
+          createdBy: input.createdBy,
+        },
+        tx,
+      );
+      if (!created)
+        throw new HTTPException(500, {
+          message: "Failed to create canned response",
+        });
+      const auditFailed = await appendAuditSavepoint(tx, {
+        ...actor,
+        workspaceId: input.workspaceId,
+        action: "canned_response.created",
+        entityType: "canned_response",
+        entityId: created.id,
+        after: { changedFields: ["name", "body", "visibilityDefault"] },
       });
-    }
-
-    return created;
+      return { created, auditFailed };
+    });
+    if (result.auditFailed)
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    return result.created;
   } catch (error) {
     if (isUniqueViolation(error, "canned_response_workspace_id_name_unique")) {
       throw new HTTPException(409, {

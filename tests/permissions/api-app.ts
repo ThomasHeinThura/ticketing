@@ -45,6 +45,11 @@ export async function loadPolicyRegistry(): Promise<PolicyRegistry> {
   return module.policyRegistry;
 }
 
+export async function loadSettingsHistoryPolicyVariants() {
+  const module = await import("../../apps/api/src/policy-registry");
+  return module.settingsHistoryPolicyVariants;
+}
+
 export async function loadRouterRoutes(): Promise<CollectedRoute[]> {
   return collectRoutes(await loadApiApp());
 }

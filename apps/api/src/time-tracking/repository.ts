@@ -1441,7 +1441,10 @@ export async function updateTimeSettings(input: {
   actor: TimeActor;
 }) {
   await db.transaction(async (tx) => {
-    const changed: Record<string, unknown> = {};
+    let backdateLimitDays: { from: number | null; to: number } | undefined;
+    let projectDefaultBillable:
+      | { projectId: string; from: boolean; to: boolean }
+      | undefined;
     if (input.backdateLimitDays !== undefined) {
       const [before] = await tx
         .select({ days: workspaceTable.timeEntryBackdateLimitDays })
@@ -1452,7 +1455,7 @@ export async function updateTimeSettings(input: {
         .update(workspaceTable)
         .set({ timeEntryBackdateLimitDays: input.backdateLimitDays })
         .where(eq(workspaceTable.id, input.workspaceId));
-      changed.backdateLimitDays = {
+      backdateLimitDays = {
         from: before?.days ?? null,
         to: input.backdateLimitDays,
       };
@@ -1478,21 +1481,38 @@ export async function updateTimeSettings(input: {
         .update(projectTable)
         .set({ defaultBillable: input.project.defaultBillable })
         .where(eq(projectTable.id, row.id));
-      changed.projectDefaultBillable = {
+      projectDefaultBillable = {
         projectId: row.id,
         from: row.defaultBillable,
         to: input.project.defaultBillable,
       };
     }
-    await auditTime(tx, {
-      action: "time_settings.updated",
-      workspaceId: input.workspaceId,
-      projectId: input.project?.id ?? null,
-      entityType: "workspace",
-      entityId: input.workspaceId,
-      actor: input.actor,
-      after: changed,
-    });
+    if (backdateLimitDays)
+      await auditTime(tx, {
+        action: "time_settings.updated",
+        workspaceId: input.workspaceId,
+        projectId: null,
+        entityType: "workspace",
+        entityId: input.workspaceId,
+        actor: input.actor,
+        after: {
+          operation: "workspace_time_settings_split_v1",
+          backdateLimitDays,
+        },
+      });
+    if (projectDefaultBillable)
+      await auditTime(tx, {
+        action: "time_settings.updated",
+        workspaceId: input.workspaceId,
+        projectId: projectDefaultBillable.projectId,
+        entityType: "project",
+        entityId: projectDefaultBillable.projectId,
+        actor: input.actor,
+        after: {
+          operation: "project_time_settings_split_v1",
+          projectDefaultBillable,
+        },
+      });
   });
 }
 

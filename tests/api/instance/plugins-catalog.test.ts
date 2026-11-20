@@ -5,6 +5,7 @@ type Provider = Parameters<typeof projectSupportedPlugins>[0];
 
 function provider(overrides: Partial<Provider> = {}): Provider {
   return {
+    id: null,
     version: 0,
     source: "unconfigured",
     enabled: false,

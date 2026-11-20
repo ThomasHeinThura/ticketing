@@ -82,6 +82,7 @@ describe("inactive S3 draft configuration", () => {
   it("permits an uncredentialed draft but will not select it for a probe", async () => {
     const a = await actor();
     expect(await saveS3Draft({ version: 0, config }, a)).toEqual({
+      id: expect.any(String),
       version: 1,
       config,
       credentialConfigured: false,
@@ -144,6 +145,7 @@ describe("inactive S3 draft configuration", () => {
   it("stores row-bound encrypted credentials, preserves omitted values, replaces and clears", async () => {
     const a = await actor();
     expect(await getS3Draft()).toEqual({
+      id: null,
       version: 0,
       config: null,
       credentialConfigured: false,
@@ -152,6 +154,7 @@ describe("inactive S3 draft configuration", () => {
     });
     const created = await saveS3Draft({ version: 0, config, credentials }, a);
     expect(created).toEqual({
+      id: expect.any(String),
       version: 1,
       config,
       credentialConfigured: true,
@@ -159,6 +162,8 @@ describe("inactive S3 draft configuration", () => {
       secretAccessKeyConfigured: true,
     });
     const row = await draftRow();
+    expect(created.id).toBe(row.id);
+    expect((await getS3Draft()).id).toBe(row.id);
     expect(row.enabled).toBe(false);
     expect(row.instanceKey).toBe("draft");
     expect(row.secrets).not.toBeNull();
@@ -189,6 +194,7 @@ describe("inactive S3 draft configuration", () => {
     expect(
       await saveS3Draft({ version: 3, config, credentials: null }, a),
     ).toEqual({
+      id: row.id,
       version: 4,
       config,
       credentialConfigured: false,

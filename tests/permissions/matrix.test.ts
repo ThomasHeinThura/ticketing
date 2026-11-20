@@ -9,7 +9,10 @@ import {
   workspaceScopeFromRequest,
 } from "@taskdesk/permissions";
 import { beforeAll, describe, expect, it } from "vitest";
-import { loadPolicyRegistry } from "./api-app";
+import {
+  loadPolicyRegistry,
+  loadSettingsHistoryPolicyVariants,
+} from "./api-app";
 import {
   type CapabilityGrid,
   capabilityGrid,
@@ -62,7 +65,10 @@ describe("permission matrix — route", () => {
   let grid: RouteGrid;
 
   beforeAll(async () => {
-    grid = routeGrid(await loadPolicyRegistry());
+    grid = routeGrid(
+      await loadPolicyRegistry(),
+      await loadSettingsHistoryPolicyVariants(),
+    );
   }, 120_000);
 
   it("covers every route in the registry, with no fixture row left behind", () => {
@@ -73,6 +79,14 @@ describe("permission matrix — route", () => {
 
   it("matches the fixture for every role on every route, in reach and out of it", () => {
     expect(grid).toEqual(fixture.routes);
+  });
+
+  it("preserves separate workspace and project automation history policies", () => {
+    const workspace = grid["GET /api/audit?entity_type=automation:workspace"];
+    const project = grid["GET /api/audit?entity_type=automation:project"];
+    expect(workspace).toBeDefined();
+    expect(project).toBeDefined();
+    expect(workspace).not.toEqual(project);
   });
 
   it("evaluates reach separately from capability", () => {

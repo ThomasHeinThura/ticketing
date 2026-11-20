@@ -56,6 +56,7 @@ const projectRef = z.object({ projectId: z.string(), projectName: z.string() });
 export const projectMemberSchema = z.object({
   ...personFields,
   ...rosterRoleFields,
+  membershipId: z.string().nullable(),
   source: z.string().openapi({ enum: ["direct", "inherited"] }),
   inheritedFrom: projectRef.nullable().openapi({
     description:

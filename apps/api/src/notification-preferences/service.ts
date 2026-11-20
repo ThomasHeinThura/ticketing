@@ -1,4 +1,9 @@
 import { HTTPException } from "hono/http-exception";
+import {
+  appendPersonalNotificationAudit,
+  notifyPersonalNotificationAuditFailure,
+  type PersonalNotificationAudit,
+} from "../audit/notification-settings";
 import db from "../database";
 import type { Executor, Transaction } from "../database/executor";
 import * as publicDestination from "../utils/assert-public-destination";
@@ -400,6 +405,7 @@ export async function updateNotificationPreferences(
   userId: string,
   emailAddress: string | null,
   input: UpdateNotificationPreferenceInput,
+  audit?: PersonalNotificationAudit,
 ): Promise<NotificationPreferenceResponse> {
   const preExisting = await findNotificationPreference(userId);
   const urlValidationCache = await prevalidateCandidateUrls(
@@ -408,17 +414,23 @@ export async function updateNotificationPreferences(
     input,
   );
 
-  await db.transaction(async (tx) => {
+  const auditFailed = await db.transaction(async (tx) => {
     // The lock also covers a person's first write, when no row exists to lock.
     await lockNotificationPreferenceWrite(tx, userId);
-    await saveNotificationPreferencesWithinTransaction(
+    const changed = await saveNotificationPreferencesWithinTransaction(
       tx,
       userId,
       emailAddress,
       input,
       urlValidationCache,
     );
+    return appendPersonalNotificationAudit(
+      tx,
+      audit,
+      changed ? ["delivery"] : [],
+    );
   });
+  await notifyPersonalNotificationAuditFailure(auditFailed);
   return getNotificationPreferences(userId, emailAddress);
 }
 
@@ -428,7 +440,7 @@ async function saveNotificationPreferencesWithinTransaction(
   emailAddress: string | null,
   input: UpdateNotificationPreferenceInput,
   urlValidationCache: Map<string, Error | null>,
-): Promise<void> {
+): Promise<boolean> {
   const existing = await findNotificationPreference(userId, tx);
   const {
     decryptedExisting,
@@ -541,6 +553,39 @@ async function saveNotificationPreferencesWithinTransaction(
       1440,
   };
 
+  const oldState: Record<string, unknown> = {
+    emailEnabled: decryptedExisting?.emailEnabled ?? false,
+    ntfyEnabled: decryptedExisting?.ntfyEnabled ?? false,
+    ntfyServerUrl: decryptedExisting?.ntfyServerUrl ?? null,
+    ntfyTopic: decryptedExisting?.ntfyTopic ?? null,
+    ntfyToken: decryptedExisting?.ntfyToken ?? null,
+    gotifyEnabled: decryptedExisting?.gotifyEnabled ?? false,
+    gotifyServerUrl: decryptedExisting?.gotifyServerUrl ?? null,
+    gotifyToken: decryptedExisting?.gotifyToken ?? null,
+    webhookEnabled: decryptedExisting?.webhookEnabled ?? false,
+    webhookUrl: decryptedExisting?.webhookUrl ?? null,
+    webhookSecret: decryptedExisting?.webhookSecret ?? null,
+    taskAssignmentEnabled: existing?.taskAssignmentEnabled ?? true,
+    taskCommentEnabled: existing?.taskCommentEnabled ?? true,
+    taskStatusChangeEnabled: existing?.taskStatusChangeEnabled ?? true,
+    dueDateReminderEnabled: existing?.dueDateReminderEnabled ?? true,
+    dueDateReminderLeadTimeMinutes:
+      existing?.dueDateReminderLeadTimeMinutes ?? 1440,
+  };
+  const nextState: Record<string, unknown> = {
+    ...data,
+    ntfyServerUrl: ntfyServerUrl ?? null,
+    ntfyTopic: ntfyTopic ?? null,
+    ntfyToken: ntfyToken ?? null,
+    gotifyServerUrl: gotifyServerUrl ?? null,
+    gotifyToken: gotifyToken ?? null,
+    webhookUrl: webhookUrl ?? null,
+    webhookSecret: webhookSecret ?? null,
+  };
+  const changed = Object.keys(oldState).some(
+    (key) => oldState[key] !== nextState[key],
+  );
+
   if (existing) {
     await updateNotificationPreference(userId, data, new Date(), tx);
   } else {
@@ -611,6 +656,7 @@ async function saveNotificationPreferencesWithinTransaction(
       tx,
     );
   }
+  return changed;
 }
 
 export async function upsertWorkspaceRule(
@@ -618,6 +664,7 @@ export async function upsertWorkspaceRule(
   workspaceId: string,
   emailAddress: string | null,
   input: UpsertWorkspaceRuleInput,
+  audit?: PersonalNotificationAudit,
 ): Promise<NotificationPreferenceResponse> {
   // Fast-fail before acquiring the lock; the in-transaction tx checks below are authoritative.
   await assertWorkspaceMembership(userId, workspaceId);
@@ -626,16 +673,22 @@ export async function upsertWorkspaceRule(
     await validateProjectSelection(workspaceId, input.selectedProjectIds ?? []);
   }
 
-  await db.transaction(async (tx) => {
+  const auditFailed = await db.transaction(async (tx) => {
     await lockNotificationPreferenceWrite(tx, userId);
-    await saveWorkspaceRuleWithinTransaction(
+    const changed = await saveWorkspaceRuleWithinTransaction(
       tx,
       userId,
       workspaceId,
       emailAddress,
       input,
     );
+    return appendPersonalNotificationAudit(
+      tx,
+      audit,
+      changed ? ["workspaceRule"] : [],
+    );
   });
+  await notifyPersonalNotificationAuditFailure(auditFailed);
   return getNotificationPreferences(userId, emailAddress);
 }
 
@@ -645,7 +698,7 @@ async function saveWorkspaceRuleWithinTransaction(
   workspaceId: string,
   emailAddress: string | null,
   input: UpsertWorkspaceRuleInput,
-): Promise<void> {
+): Promise<boolean> {
   await assertWorkspaceMembership(userId, workspaceId, tx);
 
   if (input.projectMode === "selected") {
@@ -696,6 +749,29 @@ async function saveWorkspaceRuleWithinTransaction(
   }
 
   const existing = await findWorkspaceRule(userId, workspaceId, tx);
+  const selected =
+    existing?.projectMode === "selected"
+      ? await getSelectedWorkspaceProjects([existing.id], tx)
+      : [];
+  const oldProjects =
+    existing?.projectMode === "selected"
+      ? selected.map((row) => row.projectId).sort()
+      : [];
+  const newProjects = (
+    input.projectMode === "selected" ? (input.selectedProjectIds ?? []) : []
+  )
+    .slice()
+    .sort();
+  const changed =
+    !existing ||
+    (existing.isActive ?? true) !== input.isActive ||
+    (existing.emailEnabled ?? false) !== input.emailEnabled ||
+    (existing.ntfyEnabled ?? false) !== input.ntfyEnabled ||
+    (existing.gotifyEnabled ?? false) !== input.gotifyEnabled ||
+    (existing.webhookEnabled ?? false) !== input.webhookEnabled ||
+    (existing.projectMode ?? "all") !== input.projectMode ||
+    oldProjects.length !== newProjects.length ||
+    oldProjects.some((id, index) => id !== newProjects[index]);
 
   let ruleId = existing?.id;
 
@@ -723,17 +799,19 @@ async function saveWorkspaceRuleWithinTransaction(
       tx,
     );
   }
+  return changed;
 }
 
 export async function deleteWorkspaceRule(
   userId: string,
   workspaceId: string,
   emailAddress: string | null,
+  audit?: PersonalNotificationAudit,
 ): Promise<NotificationPreferenceResponse> {
   // Fast-fail before acquiring the lock; the in-transaction tx checks below are authoritative.
   await assertWorkspaceMembership(userId, workspaceId);
 
-  await db.transaction(async (tx) => {
+  const auditFailed = await db.transaction(async (tx) => {
     await lockNotificationPreferenceWrite(tx, userId);
     await assertWorkspaceMembership(userId, workspaceId, tx);
 
@@ -746,7 +824,9 @@ export async function deleteWorkspaceRule(
     }
 
     await deleteWorkspaceRuleById(existing.id, tx);
+    return appendPersonalNotificationAudit(tx, audit, ["workspaceRule"]);
   });
+  await notifyPersonalNotificationAuditFailure(auditFailed);
 
   return getNotificationPreferences(userId, emailAddress);
 }

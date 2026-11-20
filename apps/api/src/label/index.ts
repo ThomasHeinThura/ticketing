@@ -1,6 +1,7 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { requestAuditActor } from "../audit/controllers/audit-read-common";
 import type { BaseVariables } from "../openapi";
 import {
   apiRouter,
@@ -287,6 +288,7 @@ const label = apiRouter()
         taskId,
         workspaceId,
         userId,
+        requestAuditActor(c),
         key,
         c.get("apiKey")?.id,
       ),
@@ -329,7 +331,13 @@ const label = apiRouter()
     const { id } = c.req.valid("param");
     const { name, color } = c.req.valid("json");
     return c.json(
-      await updateLabel(await requestIdentity(c), id, name, color),
+      await updateLabel(
+        await requestIdentity(c),
+        id,
+        name,
+        color,
+        requestAuditActor(c),
+      ),
       200,
     );
   })

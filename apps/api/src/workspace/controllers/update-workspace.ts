@@ -1,5 +1,8 @@
 import { and, eq, ne } from "drizzle-orm";
+import type { AuditRequestContext } from "../../audit/request-context";
 import db, { schema } from "../../database";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { WorkspaceSlugTakenError } from "./create-workspace";
 
@@ -9,6 +12,17 @@ export type UpdateWorkspaceInput = {
   logo?: string | null;
   description?: string | null;
 };
+
+const WORKSPACE_FIELDS = ["name", "slug", "logo", "description"] as const;
+
+export function changedWorkspaceFields(
+  before: UpdateWorkspaceInput,
+  after: UpdateWorkspaceInput,
+): string[] {
+  return WORKSPACE_FIELDS.filter(
+    (field) => after[field] !== undefined && after[field] !== before[field],
+  );
+}
 
 /**
  * Update a workspace's own fields.
@@ -21,12 +35,13 @@ export type UpdateWorkspaceInput = {
  * URLs, and the inherited route only ever changed it when the caller asked
  * for it explicitly.
  *
- * `workspace` has no `updated_at` column (R8) and adding one is a migration
- * the retrofit plan defers out of P0, so this records no update timestamp.
+ * `workspace` has no `updated_at` column (R8); the audit row supplies the
+ * change time without a schema migration.
  */
 async function updateWorkspace(
   workspaceId: string,
   input: UpdateWorkspaceInput,
+  actor: { userId: string | null; audit: AuditRequestContext },
 ) {
   const values: Partial<typeof schema.workspaceTable.$inferInsert> = {};
   if (input.name !== undefined) values.name = input.name;
@@ -34,40 +49,53 @@ async function updateWorkspace(
   if (input.logo !== undefined) values.logo = input.logo;
   if (input.description !== undefined) values.description = input.description;
 
-  if (Object.keys(values).length === 0) {
-    const [unchanged] = await db
-      .select()
-      .from(schema.workspaceTable)
-      .where(eq(schema.workspaceTable.id, workspaceId));
-    return unchanged ?? null;
-  }
-
-  // Answer a collision before attempting the write where we can, so the
-  // common case is a clean 409 rather than a caught driver error. The catch
-  // below still covers the race between this read and the update.
-  if (typeof input.slug === "string") {
-    const [clash] = await db
-      .select({ id: schema.workspaceTable.id })
-      .from(schema.workspaceTable)
-      .where(
-        and(
-          eq(schema.workspaceTable.slug, input.slug),
-          ne(schema.workspaceTable.id, workspaceId),
-        ),
-      )
-      .limit(1);
-    if (clash) {
-      throw new WorkspaceSlugTakenError(input.slug);
-    }
-  }
-
   try {
-    const [updated] = await db
-      .update(schema.workspaceTable)
-      .set(values)
-      .where(eq(schema.workspaceTable.id, workspaceId))
-      .returning();
-    return updated ?? null;
+    const result = await db.transaction(async (tx) => {
+      const [before] = await tx
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, workspaceId))
+        .for("update")
+        .limit(1);
+      if (!before) return { updated: null, auditFailed: false };
+      const changedFields = changedWorkspaceFields(before, input);
+      if (!changedFields.length) return { updated: before, auditFailed: false };
+      if (typeof input.slug === "string") {
+        const [clash] = await tx
+          .select({ id: schema.workspaceTable.id })
+          .from(schema.workspaceTable)
+          .where(
+            and(
+              eq(schema.workspaceTable.slug, input.slug),
+              ne(schema.workspaceTable.id, workspaceId),
+            ),
+          )
+          .limit(1);
+        if (clash) throw new WorkspaceSlugTakenError(input.slug);
+      }
+      const [updated] = await tx
+        .update(schema.workspaceTable)
+        .set(values)
+        .where(eq(schema.workspaceTable.id, workspaceId))
+        .returning();
+      const auditFailed = updated
+        ? await appendAuditSavepoint(tx, {
+            actorId: actor.userId,
+            actorType: actor.audit.apiKeyId ? "api_key" : "person",
+            ...actor.audit,
+            workspaceId,
+            organisationId: before.organisationId,
+            action: "workspace.settings_updated",
+            entityType: "workspace",
+            entityId: workspaceId,
+            after: { changedFields },
+          })
+        : false;
+      return { updated: updated ?? null, auditFailed };
+    });
+    if (result.auditFailed)
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+    return result.updated;
   } catch (error) {
     // Exact constraint name, not a substring match on `"slug"` (issue #269) -- see
     // `create-workspace.ts`'s own comment for why `workspace_slug_unique` is the only

@@ -56,6 +56,7 @@ export async function loadRosterRows(
   if (projectIds.length === 0) return out;
   const rows = await executor
     .select({
+      membershipId: membershipTable.id,
       projectId: membershipTable.scopeId,
       personId: personTable.id,
       displayName: sql<
@@ -72,6 +73,16 @@ export async function loadRosterRows(
         where g.person_id = ${membershipTable.personId}
           and g.scope = 'project'
           and g.scope_id = ${membershipTable.scopeId}
+          and g.source_kind = 'direct'
+          and g.revoked_at is null
+      )`,
+      hasCurrentDirectGrant: sql<boolean>`exists (
+        select 1 from ${membershipGrantTable} g
+        where g.membership_id = ${membershipTable.id}
+          and g.person_id = ${membershipTable.personId}
+          and g.scope = 'project'
+          and g.scope_id = ${membershipTable.scopeId}
+          and g.role_id = ${membershipTable.roleId}
           and g.source_kind = 'direct'
           and g.revoked_at is null
       )`,

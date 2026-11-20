@@ -120,10 +120,11 @@ export async function insertProjectLabel(
       where: sql`${labelTable.projectId} IS NOT NULL`,
     })
     .returning();
-  if (inserted) return inserted;
-  return (await listProjectLabels(identity, projectId, executor)).find(
-    (label) => label.name === name,
+  if (inserted) return { label: inserted, inserted: true };
+  const label = (await listProjectLabels(identity, projectId, executor)).find(
+    (row) => row.name === name,
   );
+  return label ? { label, inserted: false } : undefined;
 }
 
 function reachableProject(

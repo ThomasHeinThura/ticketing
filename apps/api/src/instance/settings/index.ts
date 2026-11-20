@@ -1,13 +1,11 @@
 import { sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { AUDIT_ONLY_ACTIONS } from "../../audit/actions";
-import { appendAuditLog } from "../../audit/audit-writer";
+import { requestAuditActor } from "../../audit/controllers/audit-read-common";
 import db, { schema } from "../../database";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
 import { apiRouter, createRoute, jsonResponse, z } from "../../openapi";
 import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
-import { normaliseTraceId } from "../../permissions/shadow-middleware";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../observability/audit-failure-notifier";
-import { recordAuditWriteFailure } from "../observability/runtime";
 import { requireCurrentInstanceAdmin } from "../require-instance-admin";
 import {
   patchSettingsBody,
@@ -113,38 +111,34 @@ const routes = apiRouter()
     c.header("Cache-Control", "no-store");
     const { expectedUpdatedAt, changes } = c.req.valid("json");
     const changedKeys = Object.keys(changes) as Array<keyof SettingsChanges>;
-    const updated = await db
-      .update(T)
-      .set(changes)
-      .where(
-        sql`${T.id} = 'singleton' AND date_trunc('milliseconds', ${T.updatedAt}) = (${expectedUpdatedAt}::timestamptz AT TIME ZONE 'UTC')`,
-      )
-      .returning({ id: T.id });
-    if (updated.length === 0) {
+    const result = await db.transaction(async (tx) => {
+      const updated = await tx
+        .update(T)
+        .set(changes)
+        .where(
+          sql`${T.id} = 'singleton' AND date_trunc('milliseconds', ${T.updatedAt}) = (${expectedUpdatedAt}::timestamptz AT TIME ZONE 'UTC')`,
+        )
+        .returning({ id: T.id });
+      if (!updated.length) return { updated: false, auditFailed: false };
+      const auditFailed = await appendAuditSavepoint(tx, {
+        ...requestAuditActor(c),
+        action: SETTINGS_AUDIT_ACTION,
+        workspaceId: null,
+        entityType: "instance",
+        entityId: "singleton",
+        after: { changedKeys },
+      });
+      return { updated: true, auditFailed };
+    });
+    if (!result.updated) {
       const current = await readSettings();
       return c.json(
         { message: "version_conflict" as const, updatedAt: current.updatedAt },
         409,
       );
     }
-    if (AUDIT_ONLY_ACTIONS.has(SETTINGS_AUDIT_ACTION)) {
-      try {
-        await appendAuditLog(db, {
-          action: SETTINGS_AUDIT_ACTION,
-          actorId: c.get("userId"),
-          actorType: "person",
-          traceId: normaliseTraceId(c.req.header("x-request-id")),
-          workspaceId: null,
-          entityType: "instance",
-          entityId: "singleton",
-          before: null,
-          after: { changedKeys },
-        });
-      } catch {
-        recordAuditWriteFailure("mutation");
-        await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
-      }
-    }
+    if (result.auditFailed)
+      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(await readSettings(), 200);
   });

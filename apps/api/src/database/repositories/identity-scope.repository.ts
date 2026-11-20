@@ -1,4 +1,10 @@
-import { BUILT_IN_ROLES, type ResolvedIdentity } from "@taskdesk/permissions";
+import {
+  BUILT_IN_ROLES,
+  CAPABILITY_NAMES,
+  expandCapabilities,
+  type ResolvedIdentity,
+  roleScopeTier,
+} from "@taskdesk/permissions";
 import {
   and,
   eq,
@@ -25,6 +31,8 @@ import {
   personTable,
   projectTable,
   roleTable,
+  teamMemberTable,
+  teamTable,
   userTable,
   workspaceRoleTable,
   workspaceUserTable,
@@ -336,21 +344,91 @@ export function currentProjectReachPredicate(
       ),
   );
 
-  // TM-4 / reach step 5: the caller is an active member of the team that owns the project.
-  // `identity.teamIds` is already limited to teams of workspaces the person currently belongs
-  // to; the same-workspace check below keeps a stale team id from reaching across tenants.
+  // TM-4/S5: team reach needs a current team row and raw or trusted scoped workspace membership.
   const ownerProject = alias(projectTable, "reach_owner_project");
+  const ownerTeam = alias(teamTable, "reach_owner_team");
+  const ownerTeamMember = alias(teamMemberTable, "reach_owner_team_member");
+  const ownerUser = alias(userTable, "reach_owner_user");
+  const ownerPerson = alias(personTable, "reach_owner_person");
+  const ownerWorkspaceMember = alias(
+    workspaceUserTable,
+    "reach_owner_workspace_member",
+  );
+  const ownerScopedMembership = alias(
+    membershipTable,
+    "reach_owner_scoped_membership",
+  );
+  const ownerScopedRole = alias(roleTable, "reach_owner_scoped_role");
   const ownerTeamReach =
     Array.isArray(identity.teamIds) && identity.teamIds.length > 0
       ? exists(
           executor
             .select({ one: sql`1` })
             .from(ownerProject)
+            .innerJoin(ownerTeam, eq(ownerTeam.id, ownerProject.ownerTeamId))
+            .innerJoin(
+              ownerTeamMember,
+              eq(ownerTeamMember.teamId, ownerTeam.id),
+            )
+            .innerJoin(ownerUser, eq(ownerUser.id, ownerTeamMember.userId))
+            .innerJoin(ownerPerson, eq(ownerPerson.userId, ownerUser.id))
             .where(
               and(
                 eq(ownerProject.id, projectId),
                 eq(ownerProject.workspaceId, projectWorkspaceId),
-                inArray(ownerProject.ownerTeamId, [...identity.teamIds]),
+                eq(ownerTeam.workspaceId, projectWorkspaceId),
+                inArray(ownerTeam.id, [...identity.teamIds]),
+                eq(ownerUser.id, identity.userId),
+                sql`coalesce(${ownerUser.banned}, false) = false`,
+                eq(ownerPerson.id, identity.personId),
+                eq(ownerPerson.side, "staff"),
+                eq(ownerPerson.active, true),
+                or(
+                  exists(
+                    executor
+                      .select({ one: sql`1` })
+                      .from(ownerWorkspaceMember)
+                      .where(
+                        and(
+                          eq(
+                            ownerWorkspaceMember.workspaceId,
+                            ownerTeam.workspaceId,
+                          ),
+                          eq(ownerWorkspaceMember.userId, identity.userId),
+                        ),
+                      ),
+                  ),
+                  exists(
+                    executor
+                      .select({ one: sql`1` })
+                      .from(ownerScopedMembership)
+                      .innerJoin(
+                        ownerScopedRole,
+                        eq(ownerScopedRole.id, ownerScopedMembership.roleId),
+                      )
+                      .where(
+                        and(
+                          eq(ownerScopedMembership.personId, identity.personId),
+                          eq(ownerScopedMembership.scope, "workspace"),
+                          eq(
+                            ownerScopedMembership.scopeId,
+                            ownerTeam.workspaceId,
+                          ),
+                          eq(ownerScopedRole.scope, "workspace"),
+                          eq(
+                            ownerScopedRole.workspaceId,
+                            ownerTeam.workspaceId,
+                          ),
+                          sql`length(${ownerScopedRole.id}) > 0`,
+                          sql`length(${ownerScopedRole.key}) > 0`,
+                          wellFormedRoleRow(
+                            ownerScopedRole.rank,
+                            ownerScopedRole.capabilities,
+                          ),
+                        ),
+                      ),
+                  ),
+                ),
               ),
             ),
         )
@@ -492,5 +570,492 @@ export function currentWorkspaceReachPredicate(
     currentInstanceAdminPredicate(identity, executor),
     scopedRoleMembership,
     canonicalLegacyRole,
+  );
+}
+
+const WORK_ITEM_READ_SOURCES = CAPABILITY_NAMES.filter((capability) =>
+  expandCapabilities([capability], { tier: roleScopeTier("workspace") }).has(
+    "work_item:read",
+  ),
+);
+const WORKSPACE_BUILTIN_KEYS = Object.values(BUILT_IN_ROLES)
+  .filter((role) => role.scope === "workspace")
+  .map((role) => role.key);
+const NON_WORKSPACE_BUILTIN_KEYS = Object.values(BUILT_IN_ROLES)
+  .filter((role) => role.scope !== "workspace")
+  .map((role) => role.key);
+const LEGACY_WORK_ITEM_READ_KEYS = Object.values(BUILT_IN_ROLES)
+  .filter(
+    (role) =>
+      role.scope === "workspace" &&
+      role.key !== "owner" &&
+      expandCapabilities(role.capabilities, {
+        tier: roleScopeTier("workspace"),
+      }).has("work_item:read"),
+  )
+  .map((role) => role.key);
+
+/** Current workspace work-item read authority, matching the resolver's canonical/legacy role precedence. */
+export function currentWorkspaceWorkItemReadPredicate(
+  identity: ResolvedIdentity,
+  workspaceId: SQLWrapper,
+  executor: Executor = db,
+) {
+  if (identity.side !== "staff" || isServicePrincipalId(identity.userId))
+    return sql`false`;
+  const roleHasRead = sql`${roleTable.capabilities} ?| ARRAY[${sql.join(
+    WORK_ITEM_READ_SOURCES.map((capability) => sql`${capability}`),
+    sql`, `,
+  )}]::text[]`;
+  const currentStaff = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(userTable)
+      .innerJoin(personTable, eq(personTable.userId, userTable.id))
+      .where(
+        and(
+          eq(userTable.id, identity.userId),
+          eq(personTable.id, identity.personId),
+          eq(personTable.side, "staff"),
+          eq(personTable.active, true),
+          sql`coalesce(${userTable.banned}, false) = false`,
+        ),
+      ),
+  );
+  const scopedRead = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(membershipTable)
+      .innerJoin(roleTable, eq(roleTable.id, membershipTable.roleId))
+      .where(
+        and(
+          eq(membershipTable.personId, identity.personId),
+          eq(membershipTable.scope, "workspace"),
+          eq(membershipTable.scopeId, workspaceId),
+          canonicalScopedRoleMembership(
+            membershipTable.scope,
+            roleTable.id,
+            roleTable.scope,
+            roleTable.workspaceId,
+            roleTable.key,
+            roleTable.rank,
+            roleTable.capabilities,
+            roleTable.isSystem,
+            workspaceId,
+          ),
+          roleHasRead,
+        ),
+      ),
+  );
+  const canonicalLegacyRole = and(
+    eq(roleTable.scope, "workspace"),
+    eq(roleTable.workspaceId, workspaceId),
+    eq(roleTable.key, workspaceUserTable.role),
+  );
+  const duplicateReadMember = alias(
+    workspaceUserTable,
+    "duplicate_read_member",
+  );
+  const legacyRead = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(workspaceUserTable)
+      .where(
+        and(
+          eq(workspaceUserTable.workspaceId, workspaceId),
+          eq(workspaceUserTable.userId, identity.userId),
+          not(
+            exists(
+              executor
+                .select({ one: sql`1` })
+                .from(duplicateReadMember)
+                .where(
+                  and(
+                    eq(duplicateReadMember.workspaceId, workspaceId),
+                    eq(duplicateReadMember.userId, identity.userId),
+                    ne(duplicateReadMember.id, workspaceUserTable.id),
+                  ),
+                ),
+            ),
+          ),
+          or(
+            eq(workspaceUserTable.role, "owner"),
+            exists(
+              executor
+                .select({ one: sql`1` })
+                .from(roleTable)
+                .where(
+                  and(
+                    canonicalLegacyRole,
+                    ne(workspaceUserTable.role, "owner"),
+                    not(inArray(roleTable.key, NON_WORKSPACE_BUILTIN_KEYS)),
+                    wellFormedRoleRow(roleTable.rank, roleTable.capabilities),
+                    or(
+                      not(inArray(roleTable.key, WORKSPACE_BUILTIN_KEYS)),
+                      eq(roleTable.isSystem, true),
+                    ),
+                    roleHasRead,
+                  ),
+                ),
+            ),
+            and(
+              inArray(workspaceUserTable.role, LEGACY_WORK_ITEM_READ_KEYS),
+              not(
+                exists(
+                  executor
+                    .select({ one: sql`1` })
+                    .from(roleTable)
+                    .where(canonicalLegacyRole),
+                ),
+              ),
+              exists(
+                executor
+                  .select({ one: sql`1` })
+                  .from(workspaceRoleTable)
+                  .where(
+                    and(
+                      eq(workspaceRoleTable.workspaceId, workspaceId),
+                      eq(workspaceRoleTable.role, workspaceUserTable.role),
+                      eq(workspaceRoleTable.isSystem, true),
+                    ),
+                  ),
+              ),
+            ),
+          ),
+        ),
+      ),
+  );
+  return and(currentStaff, or(scopedRead, legacyRead));
+}
+
+/** Current workspace capability; reach is checked separately. */
+function currentWorkspaceSettingsCapability(
+  identity: ResolvedIdentity,
+  workspaceId: SQLWrapper,
+  capability: "workspace:manage_settings" | "project:read" | "api_key:manage",
+  executor: Executor,
+  allowedKeys?: readonly string[],
+  memberRowOnly = false,
+) {
+  if (identity.side !== "staff") return sql`false`;
+  const sources = CAPABILITY_NAMES.filter((source) =>
+    expandCapabilities([source], { tier: roleScopeTier("workspace") }).has(
+      capability,
+    ),
+  );
+  const hasCapability = sql`${roleTable.capabilities} ?| ARRAY[${sql.join(
+    sources.map((source) => sql`${source}`),
+    sql`, `,
+  )}]::text[]`;
+  if (isServicePrincipalId(identity.userId)) {
+    if (allowedKeys || memberRowOnly) return sql`false`;
+    return and(
+      currentWorkspaceReachPredicate(identity, workspaceId, executor),
+      exists(
+        executor
+          .select({ one: sql`1` })
+          .from(apiKeyExtensionTable)
+          .where(
+            and(
+              eq(
+                apiKeyExtensionTable.apikeyId,
+                identity.userId.slice("service-key:".length),
+              ),
+              eq(apiKeyExtensionTable.workspaceId, workspaceId),
+              sql`${apiKeyExtensionTable.capabilities} ?| ARRAY[${sql.join(
+                sources.map((source) => sql`${source}`),
+                sql`, `,
+              )}]::text[]`,
+            ),
+          ),
+      ),
+    );
+  }
+  const currentStaff = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(userTable)
+      .innerJoin(personTable, eq(personTable.userId, userTable.id))
+      .where(
+        and(
+          eq(userTable.id, identity.userId),
+          eq(personTable.id, identity.personId),
+          eq(personTable.side, "staff"),
+          eq(personTable.active, true),
+          sql`coalesce(${userTable.banned}, false) = false`,
+        ),
+      ),
+  );
+  const scoped = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(membershipTable)
+      .innerJoin(roleTable, eq(roleTable.id, membershipTable.roleId))
+      .where(
+        and(
+          eq(membershipTable.personId, identity.personId),
+          eq(membershipTable.scope, "workspace"),
+          eq(membershipTable.scopeId, workspaceId),
+          canonicalScopedRoleMembership(
+            membershipTable.scope,
+            roleTable.id,
+            roleTable.scope,
+            roleTable.workspaceId,
+            roleTable.key,
+            roleTable.rank,
+            roleTable.capabilities,
+            roleTable.isSystem,
+            workspaceId,
+          ),
+          allowedKeys ? inArray(roleTable.key, [...allowedKeys]) : undefined,
+          hasCapability,
+        ),
+      ),
+  );
+  const duplicate = alias(workspaceUserTable, "p4_duplicate_workspace_member");
+  const currentMember = and(
+    eq(workspaceUserTable.workspaceId, workspaceId),
+    eq(workspaceUserTable.userId, identity.userId),
+    allowedKeys
+      ? inArray(workspaceUserTable.role, [...allowedKeys])
+      : undefined,
+    not(
+      exists(
+        executor
+          .select({ one: sql`1` })
+          .from(duplicate)
+          .where(
+            and(
+              eq(duplicate.workspaceId, workspaceId),
+              eq(duplicate.userId, identity.userId),
+              ne(duplicate.id, workspaceUserTable.id),
+            ),
+          ),
+      ),
+    ),
+  );
+  const canonical = and(
+    eq(roleTable.scope, "workspace"),
+    eq(roleTable.workspaceId, workspaceId),
+    eq(roleTable.key, workspaceUserTable.role),
+  );
+  const builtInKeys = Object.values(BUILT_IN_ROLES)
+    .filter(
+      (role) =>
+        role.scope === "workspace" &&
+        role.key !== "owner" &&
+        expandCapabilities(role.capabilities, {
+          tier: roleScopeTier("workspace"),
+        }).has(capability),
+    )
+    .map((role) => role.key);
+  const legacy = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(workspaceUserTable)
+      .where(
+        and(
+          currentMember,
+          or(
+            expandCapabilities(BUILT_IN_ROLES.owner.capabilities, {
+              tier: roleScopeTier("workspace"),
+            }).has(capability)
+              ? eq(workspaceUserTable.role, "owner")
+              : sql`false`,
+            exists(
+              executor
+                .select({ one: sql`1` })
+                .from(roleTable)
+                .where(
+                  and(
+                    canonical,
+                    ne(workspaceUserTable.role, "owner"),
+                    not(inArray(roleTable.key, NON_WORKSPACE_BUILTIN_KEYS)),
+                    wellFormedRoleRow(roleTable.rank, roleTable.capabilities),
+                    or(
+                      not(inArray(roleTable.key, WORKSPACE_BUILTIN_KEYS)),
+                      eq(roleTable.isSystem, true),
+                    ),
+                    hasCapability,
+                  ),
+                ),
+            ),
+            and(
+              inArray(workspaceUserTable.role, builtInKeys),
+              not(
+                exists(
+                  executor
+                    .select({ one: sql`1` })
+                    .from(roleTable)
+                    .where(canonical),
+                ),
+              ),
+              exists(
+                executor
+                  .select({ one: sql`1` })
+                  .from(workspaceRoleTable)
+                  .where(
+                    and(
+                      eq(workspaceRoleTable.workspaceId, workspaceId),
+                      eq(workspaceRoleTable.role, workspaceUserTable.role),
+                      eq(workspaceRoleTable.isSystem, true),
+                    ),
+                  ),
+              ),
+            ),
+          ),
+        ),
+      ),
+  );
+  return and(currentStaff, memberRowOnly ? legacy : or(scoped, legacy));
+}
+
+/** The service-key list reads the caller's one current workspace-member role. */
+export function currentWorkspaceApiKeyManagePredicate(
+  identity: ResolvedIdentity,
+  workspaceId: SQLWrapper,
+  executor: Executor = db,
+) {
+  return currentWorkspaceSettingsCapability(
+    identity,
+    workspaceId,
+    "api_key:manage",
+    executor,
+    undefined,
+    true,
+  );
+}
+
+export function currentWorkspaceManageSettingsPredicate(
+  identity: ResolvedIdentity,
+  workspaceId: SQLWrapper,
+  executor: Executor = db,
+) {
+  return currentWorkspaceSettingsCapability(
+    identity,
+    workspaceId,
+    "workspace:manage_settings",
+    executor,
+  );
+}
+
+export function currentProjectReadPredicate(
+  identity: ResolvedIdentity,
+  projectId: SQLWrapper,
+  workspaceId: SQLWrapper,
+  executor: Executor = db,
+) {
+  if (identity.side !== "staff" || isServicePrincipalId(identity.userId))
+    return sql`false`;
+  const sources = CAPABILITY_NAMES.filter((source) =>
+    expandCapabilities([source], { tier: roleScopeTier("project") }).has(
+      "project:read",
+    ),
+  );
+  const roleHasRead = sql`${roleTable.capabilities} ?| ARRAY[${sql.join(
+    sources.map((source) => sql`${source}`),
+    sql`, `,
+  )}]::text[]`;
+  const scopedProjectRole = (scopeId: SQLWrapper, needsRead: boolean) =>
+    exists(
+      executor
+        .select({ one: sql`1` })
+        .from(membershipTable)
+        .innerJoin(roleTable, eq(roleTable.id, membershipTable.roleId))
+        .where(
+          and(
+            eq(membershipTable.personId, identity.personId),
+            eq(membershipTable.scope, "project"),
+            eq(membershipTable.scopeId, scopeId),
+            canonicalScopedRoleMembership(
+              membershipTable.scope,
+              roleTable.id,
+              roleTable.scope,
+              roleTable.workspaceId,
+              roleTable.key,
+              roleTable.rank,
+              roleTable.capabilities,
+              roleTable.isSystem,
+              workspaceId,
+            ),
+            needsRead ? roleHasRead : undefined,
+          ),
+        ),
+    );
+  const nearestMember = alias(membershipTable, "p4_nearest_member");
+  const nearestRole = alias(roleTable, "p4_nearest_role");
+  const nearestAncestor = sql`(
+    WITH RECURSIVE p4_chain(id, parent_id, depth) AS (
+      SELECT p.id, p.parent_id, 1 FROM ${projectTable} AS p
+      WHERE p.id = ${projectId} AND p.workspace_id = ${workspaceId}
+      UNION ALL
+      SELECT p.id, p.parent_id, p4_chain.depth + 1 FROM ${projectTable} AS p
+      INNER JOIN p4_chain ON p.id = p4_chain.parent_id
+      WHERE p.workspace_id = ${workspaceId} AND p.deleted_at IS NULL AND p4_chain.depth < 4
+    )
+    SELECT p4_chain.id FROM p4_chain WHERE p4_chain.depth > 1
+      AND ${exists(
+        executor
+          .select({ one: sql`1` })
+          .from(nearestMember)
+          .innerJoin(nearestRole, eq(nearestRole.id, nearestMember.roleId))
+          .where(
+            and(
+              eq(nearestMember.personId, identity.personId),
+              eq(nearestMember.scope, "project"),
+              eq(nearestMember.scopeId, sql.raw("p4_chain.id")),
+              canonicalScopedRoleMembership(
+                nearestMember.scope,
+                nearestRole.id,
+                nearestRole.scope,
+                nearestRole.workspaceId,
+                nearestRole.key,
+                nearestRole.rank,
+                nearestRole.capabilities,
+                nearestRole.isSystem,
+                workspaceId,
+              ),
+            ),
+          ),
+      )}
+    ORDER BY p4_chain.depth LIMIT 1
+  )`;
+  const direct = scopedProjectRole(projectId, false);
+  const workspaceRead = currentWorkspaceSettingsCapability(
+    identity,
+    workspaceId,
+    "project:read",
+    executor,
+  );
+  const additiveRead = currentWorkspaceSettingsCapability(
+    identity,
+    workspaceId,
+    "project:read",
+    executor,
+    [...WORKSPACE_PROJECT_SEE_ALL_ROLES],
+  );
+  const currentStaff = exists(
+    executor
+      .select({ one: sql`1` })
+      .from(userTable)
+      .innerJoin(personTable, eq(personTable.userId, userTable.id))
+      .where(
+        and(
+          eq(userTable.id, identity.userId),
+          eq(personTable.id, identity.personId),
+          eq(personTable.side, "staff"),
+          eq(personTable.active, true),
+          sql`coalesce(${userTable.banned}, false) = false`,
+        ),
+      ),
+  );
+  return and(
+    currentStaff,
+    or(
+      additiveRead,
+      and(direct, scopedProjectRole(projectId, true)),
+      and(not(direct), scopedProjectRole(nearestAncestor, true)),
+      and(not(direct), sql`${nearestAncestor} IS NULL`, workspaceRead),
+    ),
   );
 }

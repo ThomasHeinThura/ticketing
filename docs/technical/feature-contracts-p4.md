@@ -1411,6 +1411,8 @@ DELETE    /api/workspaces/{id}                         workspace:delete  E      
 GET/PATCH /api/projects/{projectId}/settings           project:manage_settings        project
 GET/PATCH /api/projects/{projectId}/features           project:manage_settings        project
 GET/PATCH /api/me/settings                             self (kind 2 — the caller's own `user_preference` rows); PATCH is session-only — [Profile settings routes](feature-contracts-p4.md#settings-hierarchy-profile-settings-routes)
+GET       /api/me/settings/history?section=             self, session-only; staff sections: profile, preferences, notifications
+GET       /api/portal/account/settings-history?section= self, session-only; customer sections: profile, notifications; portal host only
 GET       /api/features/resolved?project=…             project:read, scope: project, reach: required (kind 1) — resolved for the caller's reach
 GET       /api/audit?entity_type=&entity_id=           the entity's read capability (kind 1, chosen by `entity_type` from the registry)
 ```
@@ -1420,6 +1422,17 @@ never re-implements the resolution order.
 
 <a id="settings-hierarchy-profile-settings-routes"></a>
 #### Profile settings routes
+
+<a id="settings-hierarchy-personal-history"></a>
+**Personal settings history (Thomas approved 16 November 2026).** The two exact history
+routes above read only the authenticated person's own self-authored settings changes,
+using the closed section sets shown. They return only timestamps, `you` and closed
+field/category labels: profile `name`/`locale`/`image`; persisted preferences use ST-14's
+closed setting names without project IDs; notifications use
+`delivery`/`digest`/`quietHours`/`workspaceRule`. No raw audit rows, IDs, values or other
+people's records. Refuse keys, impersonation and wrong-host access; use session-only
+kind 2 self policies and preserve AU-13 read auditing. Browser-only appearance remains
+exempt. This is the closed AU-12 projection, not portal access to generic `/api/audit`.
 
 `GET /api/me/settings` and `PATCH /api/me/settings` are the Profile level's routes over
 `user_preference`. This section owns the contract; [views.md](feature-contracts-p1.md#views-per-user-preferences) points

@@ -1,8 +1,11 @@
 import type { ResolvedIdentity } from "@taskdesk/permissions";
 import { HTTPException } from "hono/http-exception";
+import type { AppendAuditLogInput } from "../../audit/audit-writer";
 import db from "../../database";
 import { publishEvent } from "../../events";
+import { appendAuditSavepoint } from "../../events/audit-savepoint";
 import { recordLegacyTaskCompatibilityEvent } from "../../events/legacy-task-compatibility";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
@@ -24,6 +27,16 @@ async function createLabel(
   taskId: string | undefined,
   workspaceId: string,
   userId: string,
+  actor: Pick<
+    AppendAuditLogInput,
+    | "actorId"
+    | "actorType"
+    | "apiKeyId"
+    | "impersonatorId"
+    | "actorIp"
+    | "userAgent"
+    | "traceId"
+  >,
   key?: string,
   apiKeyId?: string | null,
 ) {
@@ -100,6 +113,7 @@ async function createLabel(
       message: "A valid catalogue key is required",
     });
   let label: Awaited<ReturnType<typeof findWorkspaceLabelByName>>;
+  let auditFailed = false;
   try {
     label = await db.transaction(async (tx) => {
       await lockWorkspaceLabelNames(tx, workspaceId, [name]);
@@ -108,6 +122,16 @@ async function createLabel(
         identity,
         { name, color, workspaceId, key: catalogueKey },
       );
+
+      if (inserted)
+        auditFailed = await appendAuditSavepoint(tx, {
+          ...actor,
+          workspaceId,
+          action: "label.catalogue_created",
+          entityType: "label",
+          entityId: inserted.id,
+          after: { changedFields: ["name", "color"] },
+        });
 
       return (
         inserted ?? findWorkspaceLabelByName(tx, identity, workspaceId, name)
@@ -118,6 +142,8 @@ async function createLabel(
       throw new HTTPException(409, { message: "catalogue_key_conflict" });
     throw error;
   }
+
+  if (auditFailed) await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
 
   if (!label) {
     throw new Error("Failed to create or resolve label");

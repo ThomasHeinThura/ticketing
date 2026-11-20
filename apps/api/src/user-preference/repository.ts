@@ -91,8 +91,8 @@ export async function deleteOwnSettingRow(
   executor: Executor,
   personId: string,
   target: SettingRowTarget,
-): Promise<void> {
-  await executor
+): Promise<boolean> {
+  const deleted = await executor
     .delete(userPreferenceTable)
     .where(
       and(
@@ -103,7 +103,9 @@ export async function deleteOwnSettingRow(
           ? isNull(userPreferenceTable.scopeId)
           : eq(userPreferenceTable.scopeId, target.scopeId),
       ),
-    );
+    )
+    .returning({ id: userPreferenceTable.id });
+  return deleted.length > 0;
 }
 
 export async function listOwnSettingAddresses(
@@ -115,6 +117,7 @@ export async function listOwnSettingAddresses(
       scope: userPreferenceTable.scope,
       scopeId: userPreferenceTable.scopeId,
       key: userPreferenceTable.key,
+      value: userPreferenceTable.value,
     })
     .from(userPreferenceTable)
     .where(ownRowsFilter(personId));

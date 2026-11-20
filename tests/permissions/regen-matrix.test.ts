@@ -1,7 +1,10 @@
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { loadPolicyRegistry } from "./api-app";
+import {
+  loadPolicyRegistry,
+  loadSettingsHistoryPolicyVariants,
+} from "./api-app";
 import { capabilityGrid, routeGrid } from "./matrix-fixture";
 
 /**
@@ -19,7 +22,10 @@ describe("matrix fixture regeneration", () => {
       expect(true).toBe(true);
       return;
     }
-    const routes = routeGrid(await loadPolicyRegistry());
+    const routes = routeGrid(
+      await loadPolicyRegistry(),
+      await loadSettingsHistoryPolicyVariants(),
+    );
     const out = { capabilities: capabilityGrid(), routes };
     writeFileSync(
       fileURLToPath(new URL("./matrix.fixture.json", import.meta.url)),
