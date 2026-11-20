@@ -21,6 +21,9 @@ async function isolatedTranslator(noun = "Case", plural = "Cases") {
     resources: {
       "en-US": {
         portal: {
+          request: {
+            replyAfterReview: english.portal.request.replyAfterReview,
+          },
           navigation: { requests: "My {{term_request_other}}" },
           intake: {
             submissionTitle: "{{term_request_one}} {{ref}}",
@@ -48,6 +51,19 @@ describe("portal terminology translation", () => {
         english.portal.request.replyAfterReview,
       );
     }
+  });
+
+  it("uses the customer noun in the reply explanation in every locale", async () => {
+    for (const locale of supportedLocales) {
+      const translations = (await loadLocale(locale)) as typeof english;
+      expect(translations.portal.request.replyAfterReview, locale).toContain(
+        "{{term_request_one}}",
+      );
+    }
+    const { t } = await isolatedTranslator();
+    expect(t("portal:request.replyAfterReview")).toBe(
+      "You can reply once your Case has been reviewed or the team asks for more information.",
+    );
   });
 
   it("injects the active isolated customer noun into one and other forms", async () => {

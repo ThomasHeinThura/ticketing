@@ -4309,7 +4309,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
-			"replyAfterReview": "Vous pourrez répondre une fois votre demande examinée ou lorsque l’équipe demandera des informations supplémentaires.",
+			"replyAfterReview": "Vous pourrez répondre une fois votre {{term_request_one}} examinée ou lorsque l’équipe demandera des informations supplémentaires.",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",

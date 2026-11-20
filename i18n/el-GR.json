@@ -4295,7 +4295,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
-			"replyAfterReview": "Μπορείτε να απαντήσετε μόλις εξεταστεί το αίτημά σας ή η ομάδα ζητήσει περισσότερες πληροφορίες.",
+			"replyAfterReview": "Μπορείτε να απαντήσετε μόλις εξεταστεί το {{term_request_one}} σας ή η ομάδα ζητήσει περισσότερες πληροφορίες.",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",

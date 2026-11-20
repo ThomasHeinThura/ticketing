@@ -4295,7 +4295,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
-			"replyAfterReview": "आप अपने अनुरोध की समीक्षा होने के बाद या टीम द्वारा अधिक जानकारी माँगे जाने पर जवाब दे सकते हैं।",
+			"replyAfterReview": "आप अपने {{term_request_one}} की समीक्षा होने के बाद या टीम द्वारा अधिक जानकारी माँगे जाने पर जवाब दे सकते हैं।",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",

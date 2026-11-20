@@ -4281,7 +4281,7 @@
 			},
 			"readOnly": "You can view this {{term_request_one}} but only the person who raised it can change it.",
 			"attachmentsEmpty": "No attachments",
-			"replyAfterReview": "リクエストが確認されるか、チームから追加情報を求められると返信できます。",
+			"replyAfterReview": "{{term_request_one}}が確認されるか、チームから追加情報を求められると返信できます。",
 			"conversationEmpty": "No messages yet",
 			"status": {
 				"closed": "Closed",
