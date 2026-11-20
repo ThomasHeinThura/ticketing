@@ -27,7 +27,14 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw, Save, Send } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
@@ -99,6 +106,12 @@ function makeGoals(typeIds: string[], values: TargetInput): SlaPolicyGoal[] {
   }
   return goals;
 }
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 function sourceVersion(policy: SlaPolicy | undefined) {
   return policy?.draftVersion ?? policy?.activeVersion ?? null;
@@ -709,6 +722,18 @@ export function SlaPolicyEditor({ id }: { id: string }) {
             ) : null}
           </div>
         </form>
+        {!isNew && policy ? (
+          <Suspense fallback={null}>
+            <SettingsHistory
+              target={{
+                kind: "entity",
+                type: "sla_policy",
+                id: policy.id,
+                scope: { kind: "workspace", workspaceId: policy.workspaceId },
+              }}
+            />
+          </Suspense>
+        ) : null}
       </div>
     </>
   );

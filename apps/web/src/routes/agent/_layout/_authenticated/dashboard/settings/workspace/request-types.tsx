@@ -21,7 +21,7 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
@@ -79,6 +79,12 @@ const priorityLabels: Record<PriorityValue, string> = {
   high: "tasks:priority.high",
   urgent: "tasks:priority.urgent",
 };
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
+
 function priorityValueFor(field: Field, option: string): PriorityValue | null {
   const mapped = field.mapsTo?.map?.[option];
   if (mapped && Object.hasOwn(priorityLabels, mapped)) {
@@ -1432,6 +1438,21 @@ function RequestTypesEditor() {
                   ))}
                 </ol>
               </section>
+            ) : null}
+            {selected && workspace.data?.id ? (
+              <Suspense fallback={null}>
+                <SettingsHistory
+                  target={{
+                    kind: "entity",
+                    type: "request_type",
+                    id: selected,
+                    scope: {
+                      kind: "workspace",
+                      workspaceId: workspace.data.id,
+                    },
+                  }}
+                />
+              </Suspense>
             ) : null}
           </section>
         </div>

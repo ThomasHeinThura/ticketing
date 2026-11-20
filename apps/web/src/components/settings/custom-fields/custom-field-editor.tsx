@@ -31,7 +31,7 @@ import {
   useDelayedPending,
 } from "@taskdesk/ui";
 import { ArrowLeft, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import { CustomFieldValueInput } from "@/components/custom-field/custom-field-value-input";
@@ -85,6 +85,12 @@ type Draft = {
   condition: { fieldKey: string; op: VisibilityOp; value: unknown } | null;
   access: Record<string, Access>;
 };
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 function draftFrom(field: CustomField | undefined, sectionId: string): Draft {
   return {
@@ -743,6 +749,18 @@ function EditorForm({
             count: field?.usageCount ?? 0,
           })}
         </p>
+      ) : null}
+      {!isNew && field ? (
+        <Suspense fallback={null}>
+          <SettingsHistory
+            target={{
+              kind: "entity",
+              type: "custom_field",
+              id: field.id,
+              scope: { kind: "workspace", workspaceId },
+            }}
+          />
+        </Suspense>
       ) : null}
     </form>
   );

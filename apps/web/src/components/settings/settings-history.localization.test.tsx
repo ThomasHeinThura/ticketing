@@ -195,7 +195,13 @@ async function renderHistory(
     | "project"
     | "time_activity"
     | "workflow"
-    | "canned_response",
+    | "canned_response"
+    | "service_calendar"
+    | "sla_policy"
+    | "request_type"
+    | "custom_field"
+    | "custom_field_section"
+    | "state_template",
   id: string,
   payload: Json,
 ) {
@@ -239,7 +245,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
       expect(Object.keys(settings).sort()).toEqual(
         Object.keys(expected).sort(),
       );
-      expect(Object.keys(settings)).toHaveLength(37);
+      expect(Object.keys(settings)).toHaveLength(59);
       for (const key of Object.keys(expected)) {
         expect(at(source, `settings.history.actions.${key}`)).not.toBe("");
         // `bulk_performed` already had a work-item label ("Bulk change"); the settings panel owns its own.
@@ -663,6 +669,13 @@ type Inventory = Array<{
     | "project"
     | "workflow"
     | "canned_response"
+    | "service_calendar"
+    | "sla_policy"
+    | "request_type"
+    | "custom_field"
+    | "custom_field_section"
+    | "state_template"
+    | "team"
     | "time_activity"
     | "instance";
   action: string;
@@ -798,6 +811,55 @@ const INVENTORY: Inventory = [
       ["archived", "archived"],
     ],
   },
+  { type: "team", action: "team.deleted", fields: [] },
+  { type: "service_calendar", action: "service_calendar.created", fields: [] },
+  { type: "service_calendar", action: "service_calendar.updated", fields: [] },
+  { type: "service_calendar", action: "service_calendar.deleted", fields: [] },
+  { type: "sla_policy", action: "sla_policy.created", fields: [] },
+  { type: "sla_policy", action: "sla_policy.updated", fields: [] },
+  { type: "sla_policy", action: "sla_policy.published", fields: [] },
+  { type: "request_type", action: "request_type.created", fields: [] },
+  { type: "request_type", action: "request_type.updated", fields: [] },
+  { type: "request_type", action: "request_type.published", fields: [] },
+  { type: "request_type", action: "request_type.unpublished", fields: [] },
+  { type: "request_type", action: "request_type.deleted", fields: [] },
+  { type: "custom_field", action: "custom_field.created", fields: [] },
+  { type: "custom_field", action: "custom_field.updated", fields: [] },
+  { type: "custom_field", action: "custom_field.deleted", fields: [] },
+  { type: "custom_field", action: "custom_field.restored", fields: [] },
+  { type: "custom_field", action: "custom_field.purged", fields: [] },
+  {
+    type: "custom_field_section",
+    action: "custom_field_section.created",
+    fields: [],
+  },
+  {
+    type: "custom_field_section",
+    action: "custom_field_section.updated",
+    fields: [],
+  },
+  {
+    type: "custom_field_section",
+    action: "custom_field_section.deleted",
+    fields: [],
+  },
+  {
+    type: "state_template",
+    action: "state_template.created",
+    fields: [
+      ["created", "created"],
+      ["enabled", "enabled"],
+    ],
+  },
+  {
+    type: "state_template",
+    action: "state_template.updated",
+    fields: [
+      ["name", "name"],
+      ["group", "group"],
+      ["enabled", "enabled"],
+    ],
+  },
   {
     type: "instance",
     action: "instance.settings_changed",
@@ -835,8 +897,8 @@ const labelSameAsEnglish = new Set<string>([
 
 describe("full History inventory has dedicated localized labels", () => {
   it("covers every action and field of the API projection", () => {
-    expect(INVENTORY_ACTIONS).toHaveLength(26);
-    expect(new Set(INVENTORY_ACTIONS.map(actionKey)).size).toBe(26);
+    expect(INVENTORY_ACTIONS).toHaveLength(48);
+    expect(new Set(INVENTORY_ACTIONS.map(actionKey)).size).toBe(48);
   });
 
   it.each(all)(
