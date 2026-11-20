@@ -316,6 +316,25 @@ describe("ProjectEngagementSettings", () => {
     expect(save()).toBeDisabled();
   });
 
+  it("keeps the original edit baseline when the project refetches", async () => {
+    mocks.project = { ...mocks.project, supportLevel: "L1" };
+    const view = render_();
+    fireEvent.change(kind(), { target: { value: "managed_service" } });
+
+    mocks.project = { ...mocks.project, supportLevel: "L2" };
+    view.rerender(
+      <ProjectEngagementSettings projectId="project-1" workspaceId="ws-1" />,
+    );
+    fireEvent.click(save());
+
+    await waitFor(() =>
+      expect(mocks.updateProject).toHaveBeenCalledWith({
+        id: "project-1",
+        kind: "managed_service",
+      }),
+    );
+  });
+
   it("requires a support level; calendar is configured in the inheritance control", () => {
     render_();
     fireEvent.change(kind(), { target: { value: "managed_service" } });
