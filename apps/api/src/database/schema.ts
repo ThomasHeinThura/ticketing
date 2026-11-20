@@ -2709,14 +2709,44 @@ export const checklistItemTable = pgTable(
  * queued in the same transaction so `attachment-gc` can still remove the stored objects
  * (no foreign key on purpose: the queue must outlive the workspace).
  */
-export const attachmentObjectGcTable = pgTable("attachment_object_gc", {
-  objectKey: text("object_key").primaryKey(),
-  sourceWorkspaceId: text("source_workspace_id"),
-  queuedAt: timestamp("queued_at", { mode: "date", withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  attempts: integer("attempts").default(0).notNull(),
-});
+export const attachmentObjectGcTable = pgTable(
+  "attachment_object_gc",
+  {
+    objectKey: text("object_key").primaryKey(),
+    sourceWorkspaceId: text("source_workspace_id"),
+    queuedAt: timestamp("queued_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    // PTM-06 durable completion intent. All three are NULL on a legacy row; on an intent or
+    // tombstone row they are all set. `attachment_id` has no foreign key on purpose: the
+    // locator must outlive the attachment row (F1). `storage_driver` holds the backend
+    // fingerprint (`<driver>:<16 hex>`), a change detector and not a volume identity.
+    attachmentId: text("attachment_id"),
+    storageDriver: text("storage_driver"),
+    // Due time of an intent row, whose `queued_at` is the 'infinity' fence against an old
+    // collector. Never select `queued_at` through Drizzle: infinity does not decode.
+    retryAt: timestamp("retry_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    check(
+      "attachment_object_gc_intent_shape",
+      sql.raw(`(
+  "attachment_id" IS NULL AND "storage_driver" IS NULL AND "retry_at" IS NULL
+) OR (
+  "attachment_id" IS NOT NULL
+  AND "storage_driver" IS NOT NULL
+  AND "retry_at" IS NOT NULL
+  AND "source_workspace_id" IS NOT NULL
+  AND "storage_driver" ~ '^(filesystem|s3):[0-9a-f]{16}$'
+  AND "queued_at" = 'infinity'::timestamptz
+)`),
+    ),
+    index("attachment_object_gc_attachment_id_idx")
+      .on(table.attachmentId)
+      .where(sql.raw('"attachment_id" IS NOT NULL')),
+  ],
+);
 
 export const auditChainAnchorTable = pgTable("audit_chain_anchor", {
   id: text("id").primaryKey(),

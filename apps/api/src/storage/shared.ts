@@ -15,6 +15,18 @@
 
 import { createId } from "@paralleldrive/cuid2";
 
+/**
+ * PTM-06: a storage move whose outcome cannot be proven (S3 `CopyObject` that failed after the
+ * request may have been applied). The final key may or may not exist, so the caller keeps its
+ * durable cleanup intent instead of treating the call as settled. Only the S3 adapter throws it.
+ */
+export class FinalizeOutcomeUnknownError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "FinalizeOutcomeUnknownError";
+  }
+}
+
 export const DEFAULT_MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const DEFAULT_UPLOAD_URL_TTL_SECONDS = 300;
 // `attachments.md` AT-5: "presigned with a five-minute lifetime". Same value as the

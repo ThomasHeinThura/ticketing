@@ -7,11 +7,18 @@ import { workItemTable } from "../../database/schema";
 import {
   attachmentUploadUrlTtlSeconds,
   deleteStorageObject,
+  FinalizeOutcomeUnknownError,
   finalizeStorageObject,
   getObjectSizeAndHeader,
+  getStorageBackendFingerprint,
   toFinalAttachmentObjectKey,
 } from "../../storage";
-import { queueVacatedUploadKey } from "../../utils/attachment-object-queue";
+import {
+  consumeCompletionIntent,
+  dropSettledCompletionIntent,
+  queueVacatedUploadKey,
+  reserveCompletionIntent,
+} from "../../utils/attachment-object-queue";
 import { recordWorkItemActivity } from "../../work-item/activity";
 import {
   assertProjectStillLive,
@@ -32,6 +39,15 @@ const SNIFF_BYTES = 512;
 // Same fallback as `presign-attachment.ts`'s own `FALLBACK_MAX_BYTES` -- only used when
 // the singleton `instance_setting` row is somehow missing (never true after a real boot).
 const FALLBACK_MAX_BYTES = 25 * 1024 * 1024;
+
+const UPLOAD_UNCONFIRMED_MESSAGE =
+  "This upload could not be confirmed; upload the file again.";
+const INTENT_UNAVAILABLE_MESSAGE =
+  "Could not prepare the upload for completion; try again.";
+const STORAGE_UNCONFIRMED_MESSAGE =
+  "Storage did not confirm the upload; try again.";
+const INTENT_CONSUMED_MESSAGE =
+  "Upload cleanup state changed; upload the file again.";
 
 // FOR SHARE, not UPDATE: it still fences archive/delete but stays compatible with the work_item
 // KEY SHARE an activity insert takes, so no cycle with an accepted-submission completion.
@@ -157,15 +173,53 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   // never the final one -- which is the accepted, non-blocking N4 finding (an orphan
   // object, not a served one).
   const finalObjectKey = toFinalAttachmentObjectKey(attachment.objectKey);
+
+  // PTM-06: record a durable intent for the final key BEFORE any storage call, so a crash or an
+  // unknown outcome after the copy still leaves a locator for `attachment-gc`. The reservation
+  // is its own short transaction (released before storage I/O); a failure here touches no
+  // storage and the pending upload stays intact for a retry.
+  let backend: string;
+  try {
+    backend = getStorageBackendFingerprint();
+    const reserved = await reserveCompletionIntent({
+      objectKey: finalObjectKey,
+      attachmentId,
+      workspaceId,
+      backend,
+    });
+    if (reserved === "cap") {
+      throw new HTTPException(409, { message: UPLOAD_UNCONFIRMED_MESSAGE });
+    }
+  } catch (error) {
+    if (error instanceof HTTPException) throw error;
+    throw new HTTPException(503, { message: INTENT_UNAVAILABLE_MESSAGE });
+  }
+  // The intent may be dropped only after a settled outcome, a successful in-process delete and
+  // an unchanged backend fingerprint; anything else leaves it for the collector.
+  let settled = true;
+  const backendUnchanged = () => {
+    try {
+      return getStorageBackendFingerprint() === backend;
+    } catch {
+      return false;
+    }
+  };
+  let stable = true;
   // One catch deletes only this call's own random final key, whichever step failed.
-  // shortcut: best-effort in-process delete; a failed delete or process death orphans the
-  // object, upgrade with the durable cleanup (PTM-06).
   try {
     await finalizeStorageObject(attachment.objectKey, finalObjectKey).catch(
-      () => {
+      (error: unknown) => {
+        stable = backendUnchanged();
+        if (error instanceof FinalizeOutcomeUnknownError) {
+          settled = false;
+          throw new HTTPException(503, {
+            message: STORAGE_UNCONFIRMED_MESSAGE,
+          });
+        }
         throw new HTTPException(400, { message: NOT_FOUND_MESSAGE });
       },
     );
+    stable = stable && backendUnchanged();
     // P1R2-6: the vacated pending key is removed once its upload credential has expired.
     await queueVacatedUploadKey(db, {
       objectKey: attachment.objectKey,
@@ -233,6 +287,19 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
         excludeAttachmentId: attachmentId,
       });
 
+      // PTM-06: the intent is consumed atomically with `ready`. Order: work_item SHARE ->
+      // project -> attachment -> quota advisory -> gc row -> activity. A missing intent rolls
+      // the ready update back (the bytes may already be gone).
+      if (
+        !(await consumeCompletionIntent(tx, {
+          objectKey: finalObjectKey,
+          attachmentId,
+          workspaceId,
+        }))
+      ) {
+        throw new HTTPException(409, { message: INTENT_CONSUMED_MESSAGE });
+      }
+
       await recordWorkItemActivity(tx, [
         {
           workspaceId,
@@ -278,7 +345,17 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
         // The pending-row cleanup job owns its expiry if the item froze first.
       });
     }
-    await deleteStorageObject(finalObjectKey).catch(() => {});
+    const deleted = await deleteStorageObject(finalObjectKey).then(
+      () => true,
+      () => false,
+    );
+    if (settled && deleted && stable && backendUnchanged()) {
+      await dropSettledCompletionIntent(db, {
+        objectKey: finalObjectKey,
+        attachmentId,
+        backend,
+      }).catch(() => {});
+    }
     throw error;
   }
 }
