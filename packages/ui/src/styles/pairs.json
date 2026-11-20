@@ -13377,8 +13377,8 @@
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]/div[0]/Button[0]::hover:text-destructive#1",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]/div[0]/Button[0]::text-destructive#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]/div[0]/Button[0]::text-destructive#1",
-			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::hover:text-destructive#0",
-			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::text-destructive#0",
+			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::hover:text-destructive#0",
+			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::text-destructive#0",
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]/div[0]/Button[0]::hover:text-destructive#1",
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]/div[0]/Button[0]::text-destructive#0",
@@ -13687,10 +13687,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
-					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
-				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::hover:text-destructive#0",
+				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::hover:text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/label-catalogue.tsx"
 			},
@@ -13699,10 +13699,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
-					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]",
 					"CardFrame->packages/ui/src/components/card.tsx:CardFrame>bg-card"
 				],
-				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::hover:text-destructive#0",
+				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::hover:text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/label-catalogue.tsx"
 			},
@@ -13711,10 +13711,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
-					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
-				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::text-destructive#0",
+				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/label-catalogue.tsx"
 			},
@@ -13723,10 +13723,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
-					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]",
 					"CardFrame->packages/ui/src/components/card.tsx:CardFrame>bg-card"
 				],
-				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::text-destructive#0",
+				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/label-catalogue.tsx"
 			},
@@ -14074,8 +14074,8 @@
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]/div[0]/Button[0]::hover:text-destructive#1",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]/div[0]/Button[0]::text-destructive#0",
 			"apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[6]/div[0]/Button[0]::text-destructive#1",
-			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::hover:text-destructive#0",
-			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::text-destructive#0",
+			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::hover:text-destructive#0",
+			"apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::text-destructive#0",
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]/div[0]/Button[0]::hover:text-destructive#1",
 			"apps/web/src/components/settings/service-keys-card.tsx::ServiceKeysCard::CardFrame[0]/Card[1]/CardPanel[0]/Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[5]/div[0]/Button[0]::text-destructive#0",
@@ -14384,10 +14384,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
-					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
-				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::hover:text-destructive#0",
+				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::hover:text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/label-catalogue.tsx"
 			},
@@ -14396,10 +14396,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
-					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]",
 					"CardFrame->packages/ui/src/components/card.tsx:CardFrame>bg-card"
 				],
-				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::hover:text-destructive#0",
+				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::hover:text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/label-catalogue.tsx"
 			},
@@ -14408,10 +14408,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
-					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]",
 					"Card->packages/ui/src/components/card.tsx:Card>bg-card"
 				],
-				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::text-destructive#0",
+				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/label-catalogue.tsx"
 			},
@@ -14420,10 +14420,10 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
-					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]",
+					"jsx:div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]",
 					"CardFrame->packages/ui/src/components/card.tsx:CardFrame>bg-card"
 				],
-				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[0]/Button[0]::text-destructive#0",
+				"id": "apps/web/src/components/settings/label-catalogue.tsx::LabelCatalogue::div[0]/CardFrame[0]/Card[1]/CardPanel[0]/div[0]/div[0]/div[1]/Button[0]::text-destructive#0",
 				"surfaceContext": "imported-opaque-wrapper",
 				"usage": "apps/web/src/components/settings/label-catalogue.tsx"
 			},
@@ -98790,6 +98790,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/entity-history-button.tsx:EntityHistoryButton",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/service-key-history-dialog.tsx:ServiceKeyHistoryDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -98857,6 +98868,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/custom-fields/custom-fields-list.tsx:SectionDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::SettingsHistory::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/entity-history-button.tsx:EntityHistoryButton",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/components/settings/settings-history.tsx::SettingsHistory::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -101690,6 +101712,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx:InviteDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/dialog.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/entity-history-button.tsx:EntityHistoryButton",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
@@ -104622,6 +104655,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/entity-history-button.tsx:EntityHistoryButton",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::HistoryPresentation::div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/service-key-history-dialog.tsx:ServiceKeyHistoryDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -104689,6 +104733,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/custom-fields/custom-fields-list.tsx:SectionDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/settings/settings-history.tsx::SettingsHistory::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/settings-history.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/entity-history-button.tsx:EntityHistoryButton",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/components/settings/settings-history.tsx::SettingsHistory::HistoryPresentation[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -107546,6 +107601,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx:InviteDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/dialog.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/entity-history-button.tsx:EntityHistoryButton",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",

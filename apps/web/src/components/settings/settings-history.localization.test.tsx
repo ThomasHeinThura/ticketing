@@ -906,6 +906,29 @@ const INVENTORY: Inventory = [
     action: "identity_connection.changed",
     fields: [],
   },
+  ...labelRows("workspace_label"),
+  ...labelRows("project_label"),
+  {
+    type: "state",
+    action: "state.wip_limit_changed",
+    fields: same(["wipLimit"]),
+  },
+  {
+    type: "cost_type",
+    action: "cost_type.created",
+    fields: same(["name", "unit", "currency", "billable", "hasDefaultRate"]),
+  },
+  {
+    type: "cost_type",
+    action: "cost_type.updated",
+    fields: same(["name", "unit", "currency", "billable", "archived"]),
+  },
+  {
+    type: "hourly_rate",
+    action: "hourly_rate.created",
+    fields: same(["rateSet"]),
+  },
+  { type: "budget", action: "budget.created", fields: [] },
 ];
 const actionKey = (action: string) =>
   `settings.history.actions.${action.replace(/\./g, "_")}`;
@@ -939,8 +962,8 @@ const labelSameAsEnglish = new Set<string>([
 
 describe("full History inventory has dedicated localized labels", () => {
   it("covers every action and field of the API projection", () => {
-    expect(INVENTORY_ACTIONS).toHaveLength(56);
-    expect(new Set(INVENTORY_ACTIONS.map(actionKey)).size).toBe(56);
+    expect(INVENTORY_ACTIONS).toHaveLength(64);
+    expect(new Set(INVENTORY_ACTIONS.map(actionKey)).size).toBe(64);
   });
 
   it.each(all)(
