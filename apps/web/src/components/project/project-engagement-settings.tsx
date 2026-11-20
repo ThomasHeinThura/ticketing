@@ -15,6 +15,7 @@ import {
 } from "@taskdesk/ui";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import updateProjectHealth from "@/fetchers/project/update-health";
 import {
   getProjectSettingsInheritance,
@@ -27,7 +28,9 @@ import useUpdateProject from "@/hooks/mutations/project/use-update-project";
 import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { authClient } from "@/lib/auth-client";
 import { HttpError } from "@/lib/http-error";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 import { toast } from "@/lib/toast";
 import {
   buildEngagementPayload,
@@ -468,6 +471,7 @@ function ProjectInheritanceSettings({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { data: session } = authClient.useSession();
   // P4R2-M1: SLA policy and service calendar are `feature.sla` workspace settings; while the
   // flag is off for the workspace this section is not offered (the lists would answer 404).
   const workspaceFeatures = useWorkspaceFeatures(workspaceId);
@@ -646,6 +650,8 @@ function ProjectInheritanceSettings({
           current.serviceCalendar.overrideId);
   const save = async () => {
     if (!isDirty || saving || !canEdit) return;
+    const userId = session?.user?.id;
+    const sessionId = session?.session?.id;
     setSaving(true);
     setInheritanceSaved(false);
     setFailure(null);
@@ -685,6 +691,19 @@ function ProjectInheritanceSettings({
             }
           : {}),
       });
+      if (userId && sessionId)
+        refreshSettingsHistory(
+          queryClient,
+          [
+            "settings-history",
+            "project",
+            projectId,
+            "agent",
+            userId,
+            sessionId,
+          ],
+          profileSessionGuard(userId, sessionId),
+        );
       queryClient.setQueryData(queryKey, result);
       await queryClient.invalidateQueries({
         queryKey: ["projects", workspaceId, projectId],

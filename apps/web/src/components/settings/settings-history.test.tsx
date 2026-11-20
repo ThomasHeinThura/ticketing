@@ -1346,3 +1346,33 @@ describe.each([
     });
   },
 );
+
+it("does not disclose cached metadata when a mutation refresh cancels the disclosure read", async () => {
+  currentUser.id = "u1";
+  currentUser.sessionId = "s1";
+  const cached = {
+    entityType: "workspace",
+    entityId: "w1",
+    lastChanged: { actor: row.actor, at: row.at },
+    rows: [row],
+  };
+  get
+    .mockReset()
+    .mockResolvedValueOnce(cached)
+    .mockImplementation(() => new Promise(() => {}));
+  const { client } = setup();
+  await screen.findByText(/Last changed by Alice/);
+  fireEvent.click(screen.getByRole("button", { name: /History/ }));
+  await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+  const { refreshSettingsHistory } = await import("./refresh-settings-history");
+  await act(async () => {
+    refreshSettingsHistory(
+      client,
+      settingsHistoryQueryKey("workspace", "w1", "u1", "s1"),
+      () => new Promise(() => {}),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(screen.queryByText(/Alice/)).toBeNull();
+  expect(screen.getByRole("alert")).toBeInTheDocument();
+});

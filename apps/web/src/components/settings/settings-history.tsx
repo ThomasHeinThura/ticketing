@@ -162,10 +162,14 @@ function SettingsHistoryForSession({
   const history = useQuery({
     queryKey,
     queryFn: async ({ signal }) => {
+      const read = disclosureRead.current;
       try {
-        return await (selector
+        const result = await (selector
           ? getSettingsHistory(type, id, signal, selector)
           : getSettingsHistory(type, id, signal));
+        if (!signal.aborted && read === disclosureRead.current)
+          setDisclosureReady(true);
+        return result;
       } catch (error) {
         if (
           !signal.aborted &&
@@ -227,11 +231,9 @@ function SettingsHistoryForSession({
       loading={history.isLoading || history.isFetching}
       error={history.isError || stranded}
       retry={() => {
-        const read = ++disclosureRead.current;
-        void history.refetch().then((result) => {
-          if (read === disclosureRead.current && result.isSuccess)
-            setDisclosureReady(true);
-        });
+        ++disclosureRead.current;
+        setDisclosureReady(false);
+        void history.refetch();
       }}
       onOpen={() => {
         if (!enabled) return;
@@ -239,10 +241,7 @@ function SettingsHistoryForSession({
         setDisclosureReady(false);
         void queryClient.cancelQueries({ queryKey, exact: true }).then(() => {
           if (read !== disclosureRead.current) return;
-          void history.refetch().then((result) => {
-            if (read === disclosureRead.current && result.isSuccess)
-              setDisclosureReady(true);
-          });
+          void history.refetch();
         });
       }}
       summary={
