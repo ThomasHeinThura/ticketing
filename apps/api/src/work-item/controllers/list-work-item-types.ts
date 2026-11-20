@@ -1,6 +1,7 @@
-import { asc, eq } from "drizzle-orm";
-import db from "../../database";
+import { and, asc, eq, isNotNull } from "drizzle-orm";
+import db, { schema } from "../../database";
 import { workItemTypeTable } from "../../database/schema";
+import { canLeaveDefaultState } from "../creation-workflow";
 
 /**
  * `GET /api/workspace/{workspaceId}/work-item-types` (`workspace:read`).
@@ -34,6 +35,77 @@ export async function listWorkItemTypes(workspaceId: string) {
     .from(workItemTypeTable)
     .where(eq(workItemTypeTable.workspaceId, workspaceId))
     .orderBy(asc(workItemTypeTable.category), asc(workItemTypeTable.name));
+}
+
+export async function listCreatableWorkItemTypes(
+  workspaceId: string,
+  projectId: string,
+) {
+  const [types, bindings, states, templates, edges] = await Promise.all([
+    listWorkItemTypes(workspaceId),
+    db
+      .select({
+        id: workItemTypeTable.id,
+        workflowId: workItemTypeTable.workflowId,
+      })
+      .from(workItemTypeTable)
+      .where(eq(workItemTypeTable.workspaceId, workspaceId)),
+    db
+      .select()
+      .from(schema.stateTable)
+      .where(eq(schema.stateTable.projectId, projectId)),
+    db
+      .select()
+      .from(schema.stateTemplateTable)
+      .where(eq(schema.stateTemplateTable.workspaceId, workspaceId)),
+    db
+      .select({
+        workflowId: schema.workflowTable.id,
+        fromStateTemplateId: schema.workflowTransitionTable.fromStateTemplateId,
+        toStateTemplateId: schema.workflowTransitionTable.toStateTemplateId,
+      })
+      .from(schema.workflowTable)
+      .innerJoin(
+        schema.workflowVersionTable,
+        and(
+          eq(
+            schema.workflowVersionTable.id,
+            schema.workflowTable.activeVersionId,
+          ),
+          eq(schema.workflowVersionTable.workflowId, schema.workflowTable.id),
+          isNotNull(schema.workflowVersionTable.publishedAt),
+        ),
+      )
+      .innerJoin(
+        schema.workflowTransitionTable,
+        eq(
+          schema.workflowTransitionTable.versionId,
+          schema.workflowVersionTable.id,
+        ),
+      )
+      .where(eq(schema.workflowTable.workspaceId, workspaceId)),
+  ]);
+  const initial = states.find((state) => state.isDefault);
+  if (!initial) return [];
+  const projectTemplates = new Set(
+    states.map((state) => state.stateTemplateId),
+  );
+  const liveTemplates = new Set(
+    templates
+      .filter((template) => !template.archivedAt)
+      .map((template) => template.id),
+  );
+  return types.filter((type) => {
+    const workflowId = bindings.find(
+      (binding) => binding.id === type.id,
+    )?.workflowId;
+    return canLeaveDefaultState(
+      initial.stateTemplateId,
+      projectTemplates,
+      liveTemplates,
+      edges.filter((edge) => edge.workflowId === workflowId),
+    );
+  });
 }
 
 export default listWorkItemTypes;

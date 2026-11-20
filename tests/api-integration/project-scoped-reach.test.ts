@@ -629,6 +629,11 @@ const READS: Case[] = [
       json(a, "GET", `/api/features/resolved?project=${i.projectId}`),
   },
   {
+    matrixKey: "GET /api/projects/{projectId}/creatable-work-item-types",
+    call: (a, _w, i) =>
+      json(a, "GET", `/api/projects/${i.projectId}/creatable-work-item-types`),
+  },
+  {
     matrixKey: "GET /api/projects/{projectId}/work-items",
     call: (a, _w, i) =>
       json(a, "GET", `/api/projects/${i.projectId}/work-items`),

@@ -216,6 +216,39 @@ describe("API integration: work item create/read/list (#23)", () => {
     restoreDatabaseTimezone = undefined;
   });
 
+  it("lists only types whose published workflow can leave this project's default state", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    const unusable = await makeWorkItemType(creator.workspace.id);
+    const { project: otherProject } = await createProjectFixture({
+      workspaceId: creator.workspace.id,
+    });
+    await makeDefaultState(creator.workspace.id, otherProject.id);
+    await ensureCreationWorkflow({
+      workspaceId: creator.workspace.id,
+      projectId: otherProject.id,
+      typeId: unusable.id,
+    });
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const response = await app.request(
+      `/api/projects/${project.id}/creatable-work-item-types`,
+    );
+    expect(response.status).toBe(200);
+    const types = (await response.json()) as Array<{ id: string }>;
+    expect(types.map((row) => row.id)).toContain(type.id);
+    expect(types.map((row) => row.id)).not.toContain(unusable.id);
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Usable type",
+    });
+    expect(created.status).toBe(200);
+    const rejected = await createWorkItemRequest(app, project.id, {
+      typeId: unusable.id,
+      title: "Unusable type",
+    });
+    expect(rejected.status).toBe(422);
+  });
+
   it("creates matching UTC creation/update/SLA instants on a non-UTC PostgreSQL session", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);

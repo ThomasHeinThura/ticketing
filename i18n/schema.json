@@ -14706,6 +14706,9 @@
 						"errorInvalid": {
 							"type": "string"
 						},
+						"errorWorkflow": {
+							"type": "string"
+						},
 						"errorGeneric": {
 							"type": "string"
 						},
@@ -14819,6 +14822,7 @@
 						"errorTitle",
 						"errorForbidden",
 						"errorInvalid",
+						"errorWorkflow",
 						"errorGeneric",
 						"loadFailed",
 						"reload",

@@ -34,7 +34,7 @@ async function createWorkItem({ projectId, ...body }: CreateWorkItemInput) {
   if (!response.ok) {
     throw new HttpError(
       response.status,
-      response.status === 400
+      response.status === 400 || response.status === 422
         ? await readErrorDetail(response, "Failed to create work item")
         : "Failed to create work item",
     );
