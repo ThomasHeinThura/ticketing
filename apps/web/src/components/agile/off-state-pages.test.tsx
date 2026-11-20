@@ -145,7 +145,9 @@ describe("project feature-off screens: heading outline (UX-1a)", () => {
   });
 
   it("estimate settings alone renders its off state as an h2, to sit under a page title", async () => {
-    renderWithClient(<EstimateSettings projectKey="HELP" canManage={false} />);
+    renderWithClient(
+      <EstimateSettings projectId="p1" projectKey="HELP" canManage={false} />,
+    );
     expect(await screen.findByTestId("feature-off-estimates")).toBeTruthy();
     expect(headingLevels()).toEqual([2]);
   });

@@ -12,6 +12,11 @@ import {
   CardFrame,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -21,12 +26,21 @@ import {
   Switch,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { FlaskConical, History, Pencil, Plus, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import {
+  ClipboardList,
+  FlaskConical,
+  History,
+  Pencil,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
+import { refreshSettingsHistory } from "@/components/settings/refresh-settings-history";
 import { isForbiddenError } from "@/components/settings/settings-access";
+import { SettingsHistory } from "@/components/settings/settings-history";
 import {
   type Automation,
   type AutomationScope,
@@ -35,7 +49,9 @@ import {
   setAutomationEnabled,
   updateAutomation,
 } from "@/fetchers/automation/automations";
+import { authClient } from "@/lib/auth-client";
 import { formatRelativeTime } from "@/lib/format";
+import { profileSessionGuard } from "@/lib/profile-session-guard";
 import { toast } from "@/lib/toast";
 import { AutomationDryRunDialog } from "./automation-dry-run-dialog";
 import { AutomationEditorDialog } from "./automation-editor-dialog";
@@ -46,10 +62,11 @@ function errorText(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-type Dialog =
+type ActiveDialog =
   | { kind: "edit"; rule: Automation | null }
   | { kind: "dry-run"; rule: Automation }
   | { kind: "runs"; rule: Automation }
+  | { kind: "changes"; rule: Automation }
   | null;
 
 function RuleCard({
@@ -63,7 +80,7 @@ function RuleCard({
   canManage: boolean;
   busy: boolean;
   onToggle: (rule: Automation, enabled: boolean) => void;
-  onOpen: (dialog: NonNullable<Dialog>) => void;
+  onOpen: (dialog: NonNullable<ActiveDialog>) => void;
 }) {
   const { t } = useTranslation("automations");
   const switchId = `automation-enabled-${rule.id}`;
@@ -125,6 +142,15 @@ function RuleCard({
             <History aria-hidden="true" />
             {t("list.history")}
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={t("changes.title", { name: rule.name })}
+            onClick={() => onOpen({ kind: "changes", rule })}
+          >
+            <ClipboardList aria-hidden="true" />
+            {t("list.changeHistory")}
+          </Button>
           {canManage ? (
             <>
               <Button
@@ -176,9 +202,24 @@ export function AutomationRulesPanel({
 }) {
   const { t } = useTranslation("automations");
   const cache = useQueryClient();
-  const [dialog, setDialog] = useState<Dialog>(null);
+  const { data: session } = authClient.useSession();
+  const [dialog, setDialog] = useState<ActiveDialog>(null);
+  const [historyIdentity, setHistoryIdentity] = useState<string | null>(null);
   const scopeKey =
     scope.kind === "workspace" ? scope.workspaceId : scope.projectKey;
+  const currentHistoryIdentity = JSON.stringify([
+    workspaceId,
+    scope.kind,
+    scopeKey,
+    session?.user?.id,
+    session?.session?.id,
+  ]);
+  useEffect(() => {
+    if (historyIdentity && historyIdentity !== currentHistoryIdentity) {
+      setDialog(null);
+      setHistoryIdentity(null);
+    }
+  }, [currentHistoryIdentity, historyIdentity]);
   const queryKey = ["automations", scope.kind, scopeKey];
   const query = useQuery({
     queryKey,
@@ -191,6 +232,28 @@ export function AutomationRulesPanel({
   const refresh = () =>
     cache.invalidateQueries({ queryKey: ["automations"], refetchType: "all" });
 
+  // Captures the exact session/user before the write and refreshes that one History key after
+  // the server returned the persisted id. Nonblocking: a refresh failure never fails the save.
+  const withHistoryRefresh = async (write: () => Promise<Automation>) => {
+    const userId = session?.user?.id;
+    const sessionId = session?.session?.id;
+    const saved = await write();
+    if (userId && sessionId && typeof saved.id === "string")
+      refreshSettingsHistory(
+        cache,
+        [
+          "settings-history",
+          "automation",
+          saved.id,
+          "agent",
+          userId,
+          sessionId,
+        ],
+        profileSessionGuard(userId, sessionId),
+      );
+    return saved;
+  };
+
   const save = useMutation({
     mutationFn: async ({
       rule,
@@ -199,9 +262,11 @@ export function AutomationRulesPanel({
       rule: Automation | null;
       input: ReturnType<typeof draftToInput>;
     }) =>
-      rule
-        ? updateAutomation(rule.id, { ...input, version: rule.version })
-        : createAutomation(scope, input),
+      withHistoryRefresh(() =>
+        rule
+          ? updateAutomation(rule.id, { ...input, version: rule.version })
+          : createAutomation(scope, input),
+      ),
     onSuccess: async (saved, variables) => {
       await refresh();
       setDialog(null);
@@ -216,7 +281,9 @@ export function AutomationRulesPanel({
   });
   const toggle = useMutation({
     mutationFn: ({ rule, enabled }: { rule: Automation; enabled: boolean }) =>
-      setAutomationEnabled(rule.id, enabled, rule.version),
+      withHistoryRefresh(() =>
+        setAutomationEnabled(rule.id, enabled, rule.version),
+      ),
     onSuccess: async (rule) => {
       await refresh();
       toast.success(rule.enabled ? t("toast.enabled") : t("toast.disabled"));
@@ -316,6 +383,9 @@ export function AutomationRulesPanel({
                 }
                 onOpen={(next) => {
                   save.reset();
+                  setHistoryIdentity(
+                    next.kind === "changes" ? currentHistoryIdentity : null,
+                  );
                   setDialog(next);
                 }}
               />
@@ -341,6 +411,33 @@ export function AutomationRulesPanel({
           rule={dialog.rule}
           onClose={() => setDialog(null)}
         />
+      ) : null}
+      {dialog?.kind === "changes" &&
+      session?.user?.id &&
+      session.session?.id &&
+      historyIdentity === currentHistoryIdentity &&
+      !query.isError &&
+      rules.some((rule) => rule.id === dialog.rule.id) ? (
+        <Dialog open onOpenChange={(open) => !open && setDialog(null)}>
+          <DialogContent
+            className="max-w-xl"
+            closeLabel={t("common:actions.close")}
+          >
+            <DialogHeader>
+              <DialogTitle>
+                {t("changes.title", { name: dialog.rule.name })}
+              </DialogTitle>
+              <DialogDescription>{t("changes.description")}</DialogDescription>
+            </DialogHeader>
+            <div className="px-6 pb-6">
+              <SettingsHistory
+                type="automation"
+                id={dialog.rule.id}
+                userId={session.user.id}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
       ) : null}
       {dialog?.kind === "runs" ? (
         <AutomationRunsDialog

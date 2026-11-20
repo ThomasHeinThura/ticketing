@@ -137,6 +137,7 @@ export function isDisposableDatabaseUrl(
   host: string,
   mappedPort: number,
   databaseName: string,
+  allowedUsername: "postgres" | "taskdesk_e2e_app" = "postgres",
 ): boolean {
   try {
     const url = new URL(value);
@@ -152,7 +153,7 @@ export function isDisposableDatabaseUrl(
       url.pathname === `/${databaseName}` &&
       url.search === "" &&
       url.hash === "" &&
-      url.username === "postgres" &&
+      url.username === allowedUsername &&
       url.password.length > 0
     );
   } catch {
@@ -262,6 +263,13 @@ export type MfaCsrfAppFixture = {
   password: string;
   /** Private disposable DB URL, for isolated data setup by real-runtime journeys only. */
   databaseUrl: string;
+  /** Independently inspected disposable container binding for guarded journeys. */
+  readonly databaseBinding?: Readonly<{
+    containerId: string;
+    host: string;
+    port: number;
+    databaseName: string;
+  }>;
   /** Private runtime directory; removed after teardown when child output is discarded. */
   fixtureDir: string;
   /** Starts a child that the fixture supervisor will terminate on worker death. */
@@ -274,8 +282,32 @@ export type MfaCsrfAppFixture = {
 
 export type MfaCsrfAppFixtureSetup = Pick<
   MfaCsrfAppFixture,
-  "databaseUrl" | "fixtureDir" | "origin" | "spawnChild"
+  "databaseBinding" | "databaseUrl" | "fixtureDir" | "origin" | "spawnChild"
 >;
+
+export function invokeMfaCsrfAppFixtureCallback<T>(
+  run: (fixture: MfaCsrfAppFixture) => Promise<T>,
+  setup: MfaCsrfAppFixtureSetup & {
+    databaseBinding: NonNullable<MfaCsrfAppFixture["databaseBinding"]>;
+  },
+  credentials: {
+    email: string;
+    password: string;
+    setupUrl: URL;
+    setupToken: string;
+  },
+): Promise<T> {
+  return run({
+    ...setup,
+    email: credentials.email,
+    password: credentials.password,
+    get setupUrl() {
+      if (!credentials.setupToken)
+        throw new Error("First-run signup is unavailable in a seeded fixture");
+      return credentials.setupUrl.toString();
+    },
+  });
+}
 
 const DEFAULT_METRICS_LOCK_PATH = resolve(
   tmpdir(),
@@ -878,6 +910,23 @@ async function runMfaCsrfApp<T>(
       appUrl.username = "taskdesk_e2e_app";
       appUrl.password = randomPassword();
       const applicationUrl = appUrl.toString();
+      const databaseBinding = Object.freeze({
+        containerId: container.getId(),
+        host: container.getHost(),
+        port: container.getMappedPort(5432),
+        databaseName,
+      });
+      if (
+        !/^[a-f0-9]{64}$/.test(databaseBinding.containerId) ||
+        !isDisposableDatabaseUrl(
+          applicationUrl,
+          databaseBinding.host,
+          databaseBinding.port,
+          databaseBinding.databaseName,
+          "taskdesk_e2e_app",
+        )
+      )
+        throw new Error("Disposable application database binding invalid");
       const port = await reserveLoopbackPort();
       // `localhost` is a trustworthy development host, so Chromium accepts the
       // app's real Secure `__Host-` session cookie while the service remains
@@ -934,12 +983,14 @@ async function runMfaCsrfApp<T>(
           logPrefix,
           dirname(storageRoot),
         );
-      await options.beforeStart?.({
+      const fixtureSetup = {
+        databaseBinding,
         databaseUrl: applicationUrl,
         fixtureDir: evidenceDir,
         origin,
         spawnChild: spawnFixtureChild,
-      });
+      };
+      await options.beforeStart?.(fixtureSetup);
       const apiEntrypointUrl = pathToFileURL(apiEntrypoint).href;
       const setupTokenPath = resolve(evidenceDir, "setup-token");
       apiProcess = await spawnWithPrivateLogs(
@@ -985,20 +1036,11 @@ async function runMfaCsrfApp<T>(
       const setupToken = await readFile(setupTokenPath, "utf8");
       setupUrl.searchParams.set("setupToken", setupToken);
       await rm(setupTokenPath);
-      return await run({
-        get setupUrl() {
-          if (!setupToken)
-            throw new Error(
-              "First-run signup is unavailable in a seeded fixture",
-            );
-          return setupUrl.toString();
-        },
-        origin,
+      return await invokeMfaCsrfAppFixtureCallback(run, fixtureSetup, {
         email,
         password,
-        databaseUrl: applicationUrl,
-        fixtureDir: evidenceDir,
-        spawnChild: spawnFixtureChild,
+        setupUrl,
+        setupToken,
       });
     })(),
   ]);

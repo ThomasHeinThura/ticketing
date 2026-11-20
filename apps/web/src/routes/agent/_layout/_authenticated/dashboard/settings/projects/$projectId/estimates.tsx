@@ -88,6 +88,7 @@ function RouteComponent() {
       <PageTitle title={t("estimates.pageTitle")} />
       <h1 className="sr-only">{t("estimates.pageTitle")}</h1>
       <EstimateSettings
+        projectId={project.id}
         projectKey={project.slug}
         canManage={canManageProjectSettings()}
       />
