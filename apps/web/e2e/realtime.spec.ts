@@ -38,28 +38,37 @@ async function csrfMutation(
       body: requestBody,
       headers: requestHeaders,
     }) => {
-      const issuer = await fetch("/api/me/csrf-token", {
-        credentials: "same-origin",
-      });
-      if (!issuer.ok) return { status: issuer.status, body: undefined };
-      const issued = (await issuer.json()) as { token: string };
-      const response = await fetch(requestPath, {
-        method: requestMethod,
-        credentials: "same-origin",
-        headers: {
-          "content-type": "application/json",
-          "x-taskdesk-csrf": issued.token,
-          ...requestHeaders,
-        },
-        body: JSON.stringify(requestBody),
-      });
-      let responseBody: unknown;
-      try {
-        responseBody = await response.json();
-      } catch {
-        responseBody = undefined;
+      // The page primes its own CSRF token on load and can replace the cookie between our read
+      // and our write; retry once on a mismatch, as the app client does (packages/libs hono.ts).
+      for (let attempt = 0; ; attempt += 1) {
+        const issuer = await fetch("/api/me/csrf-token", {
+          credentials: "same-origin",
+        });
+        if (!issuer.ok) return { status: issuer.status, body: undefined };
+        const issued = (await issuer.json()) as { token: string };
+        const response = await fetch(requestPath, {
+          method: requestMethod,
+          credentials: "same-origin",
+          headers: {
+            "content-type": "application/json",
+            "x-taskdesk-csrf": issued.token,
+            ...requestHeaders,
+          },
+          body: JSON.stringify(requestBody),
+        });
+        let responseBody: unknown;
+        try {
+          responseBody = await response.json();
+        } catch {
+          responseBody = undefined;
+        }
+        const mismatch =
+          response.status === 403 &&
+          (responseBody as { message?: string } | undefined)?.message ===
+            "csrf_token_mismatch";
+        if (!mismatch || attempt > 0)
+          return { status: response.status, body: responseBody };
       }
-      return { status: response.status, body: responseBody };
     },
     { path, method, body, headers },
   );
