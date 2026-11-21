@@ -63,10 +63,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { repoRoot } from "./repo.mjs";
 import { recordedTscProjects } from "./tsc-invocations.mjs";
+import { uncoveredReaches } from "./tsconfig-reach.mjs";
 
 /**
  * Trees under `tests/` that are knowingly OUTSIDE every TypeScript program.
@@ -294,98 +296,155 @@ function parseJsonc(source, origin) {
 
 describe("every out-of-package tsconfig reach is declared to turbo", () => {
   /**
-   * The class fix, not the two instances.
-   *
-   * `typecheck` compiles whatever a package's tsconfigs `include`. When an `include`
-   * points OUTSIDE the package — `../../tests`, `../../i18n` — turbo's default
-   * per-package hashing cannot see it, and a cached run can report a pass over a tree it
-   * never compiled. Two separate instances of this existed simultaneously on the branch
-   * that fixed the first one:
-   *
-   *   apps/api/tsconfig.tests.json       -> ../../tests/api, ../../tests/api-integration
-   *   apps/api/tsconfig.permissions.json -> ../../tests/permissions
-   *   apps/web/tsconfig.app.json         -> ../../i18n          <- found by audit, after
-   *
-   * So this does not hardcode either list. It DERIVES the reaches from the tsconfigs and
-   * requires turbo to declare each one, which is what makes the NEXT package fail closed
-   * instead of silently reacquiring the bug.
+   * The class fix, not the instances: the reaches are DERIVED from the compiler's own
+   * resolved file list (`tsc --showConfig`, see `lib/tsconfig-reach.mjs`), so `files`
+   * entries, `extends`-inherited includes and `../` single-parent reaches count exactly
+   * like `../../` includes. Each compiled file outside its package must be covered by
+   * the package's turbo `typecheck` inputs or a `^build` dependency on its owner.
    */
-  it("each `../../` include has a matching turbo `typecheck` input glob", async () => {
+  it("every out-of-package compiled file is covered by turbo typecheck inputs", async () => {
     const turbo = parseJsonc(
       await fs.readFile(path.join(repoRoot, "turbo.json"), "utf8"),
       "turbo.json",
     );
     const tasks = turbo.tasks ?? turbo.pipeline ?? {};
 
-    const packages = [];
-    for (const group of ["apps", "packages"]) {
-      const dir = path.join(repoRoot, group);
-      for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
-        if (entry.isDirectory()) packages.push(`${group}/${entry.name}`);
-      }
-    }
-
     const problems = [];
     let reaches = 0;
 
-    for (const pkg of packages) {
-      const pkgDir = path.join(repoRoot, pkg);
-      let manifest;
-      try {
-        manifest = parseJsonc(
-          await fs.readFile(path.join(pkgDir, "package.json"), "utf8"),
-          `${pkg}/package.json`,
-        );
-      } catch {
-        continue; // not a package
-      }
-      if (!manifest.scripts?.typecheck) continue;
-
-      const files = (await fs.readdir(pkgDir)).filter(
-        (f) => f.startsWith("tsconfig") && f.endsWith(".json"),
-      );
-
-      // The package-specific entry REPLACES the generic one wholesale, so resolve in
-      // that order rather than merging them.
-      const resolved =
-        tasks[`${manifest.name}#typecheck`] ?? tasks.typecheck ?? {};
-      const inputs = resolved.inputs ?? [];
-
-      for (const file of files) {
-        const config = parseJsonc(
-          await fs.readFile(path.join(pkgDir, file), "utf8"),
-          `${pkg}/${file}`,
-        );
-        for (const include of config.include ?? []) {
-          if (!String(include).startsWith("../../")) continue;
-          reaches += 1;
-          // The first path segment after ../../ is the out-of-package root.
-          const root = String(include).slice("../../".length).split("/")[0];
-          const covered = inputs.some((glob) =>
-            String(glob).includes(`../../${root}`),
+    for (const group of ["apps", "packages"]) {
+      const dir = path.join(repoRoot, group);
+      for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const pkgDir = path.join(dir, entry.name);
+        let manifest;
+        try {
+          manifest = parseJsonc(
+            await fs.readFile(path.join(pkgDir, "package.json"), "utf8"),
+            `${group}/${entry.name}/package.json`,
           );
-          if (!covered) {
-            problems.push(
-              `${pkg}/${file} includes "${include}", which is outside ${pkg}, but ` +
-                `turbo's typecheck inputs for ${manifest.name} do not mention ` +
-                `../../${root}. Default hashing cannot see it, so a cached typecheck ` +
-                "can pass over a tree it never compiled. Inputs are: " +
-                `${JSON.stringify(inputs)}`,
-            );
-          }
+        } catch {
+          continue; // not a package
         }
+        if (!manifest.scripts?.typecheck) continue;
+
+        // The package-specific entry REPLACES the generic one wholesale.
+        const task =
+          tasks[`${manifest.name}#typecheck`] ?? tasks.typecheck ?? {};
+        const invoked = recordedTscProjects(manifest.scripts.typecheck, pkgDir);
+        const onDisk = (await fs.readdir(pkgDir)).filter(
+          (f) => f.startsWith("tsconfig") && f.endsWith(".json"),
+        );
+        const result = uncoveredReaches({
+          tsc,
+          root: repoRoot,
+          pkgDir,
+          configs: [...new Set([...invoked, ...onDisk])],
+          inputs: task.inputs ?? [],
+          dependsOn: task.dependsOn,
+          manifest,
+        });
+        reaches += result.reaches;
+        problems.push(...result.problems);
       }
     }
 
     assert.ok(
       reaches > 0,
-      "no `../../` includes found at all — the derivation broke, and a check that " +
-        "finds nothing to check is not passing, it is blind",
+      "no out-of-package compiled files found at all — the derivation broke, and a " +
+        "check that finds nothing to check is not passing, it is blind",
     );
     assert.deepEqual(problems, [], `\n${problems.join("\n\n")}\n`);
     console.log(
-      `note — ${reaches} out-of-package tsconfig include(s), every one declared to turbo.`,
+      `note — ${reaches} out-of-package compiled file(s), every one covered by turbo.`,
     );
+  });
+
+  describe("fixtures", () => {
+    /** A throwaway workspace: root/pkg (the package), root/shared (outside it). */
+    async function fixture({
+      tsconfig,
+      extra = {},
+      inputs,
+      dependsOn,
+      manifest = {},
+    }) {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "reach-"));
+      const files = {
+        "pkg/package.json": JSON.stringify({ name: "@f/pkg", ...manifest }),
+        "pkg/tsconfig.json": JSON.stringify(tsconfig),
+        "pkg/src/a.ts": "export const a = 1;\n",
+        "shared/b.ts": "export const b = 1;\n",
+        "shared/package.json": JSON.stringify({ name: "@f/shared" }),
+        ...extra,
+      };
+      for (const [name, body] of Object.entries(files)) {
+        await fs.mkdir(path.dirname(path.join(root, name)), {
+          recursive: true,
+        });
+        await fs.writeFile(path.join(root, name), body);
+      }
+      const realRoot = await fs.realpath(root);
+      try {
+        return uncoveredReaches({
+          tsc,
+          root: realRoot,
+          pkgDir: path.join(realRoot, "pkg"),
+          configs: ["tsconfig.json"],
+          inputs,
+          dependsOn,
+          manifest: { name: "@f/pkg", ...manifest },
+        });
+      } finally {
+        await fs.rm(root, { recursive: true, force: true });
+      }
+    }
+    const bare = ["$TURBO_DEFAULT$"];
+
+    it("RED: a `files` entry reaching outside the package is flagged", async () => {
+      const { problems } = await fixture({
+        tsconfig: { files: ["../shared/b.ts"], include: ["src"] },
+        inputs: bare,
+      });
+      assert.equal(problems.length, 1);
+      assert.match(problems[0], /compiles \.\.\/shared\/b\.ts/);
+    });
+
+    it("RED: an include inherited through `extends` is flagged", async () => {
+      // base.json's include is relative to base.json, so it lands in root/shared.
+      const { problems } = await fixture({
+        tsconfig: { extends: "../cfg/base.json" },
+        extra: { "cfg/base.json": JSON.stringify({ include: ["../shared"] }) },
+        inputs: bare,
+      });
+      assert.equal(problems.length, 1);
+      assert.match(problems[0], /shared\/b\.ts/);
+    });
+
+    it("RED: a single-parent `../` include the inputs do not cover is flagged", async () => {
+      const { problems } = await fixture({
+        tsconfig: { include: ["src", "../shared"] },
+        inputs: [...bare, "../../tests/**/*.ts"],
+      });
+      assert.equal(problems.length, 1);
+    });
+
+    it("GREEN: the same reaches pass once an input glob or a ^build dependency covers them", async () => {
+      const tsconfig = { files: ["../shared/b.ts"], include: ["src"] };
+      const byGlob = await fixture({
+        tsconfig,
+        inputs: [...bare, "../shared/**/*.ts"],
+      });
+      assert.equal(byGlob.reaches, 1);
+      assert.deepEqual(byGlob.problems, []);
+      const byDependency = await fixture({
+        tsconfig,
+        inputs: bare,
+        dependsOn: ["^build"],
+        manifest: { dependencies: { "@f/shared": "workspace:*" } },
+      });
+      assert.deepEqual(byDependency.problems, []);
+    });
   });
 });
 
