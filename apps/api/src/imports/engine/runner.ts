@@ -158,6 +158,8 @@ export type RunnerOptions = {
    * can change an administrator while a chunk is genuinely in flight (and prove it is not blocked).
    */
   duringChunk?: (tx: Transaction) => Promise<void>;
+  /** Test seam: awaited at the start of each finalize attempt, just before the attachment recovery read. */
+  beforeFinalizeRead?: () => Promise<void>;
   /** Test seam: awaited inside the finalize transaction before it completes the run. */
   duringFinalize?: (tx: Transaction) => Promise<void>;
   /** Test seam: awaited right after a chunk transaction returned, so a test can fail an "uncertain" commit. */
@@ -534,7 +536,6 @@ async function finalizeRun(
   runId: string,
   options: RunnerOptions = {},
 ): Promise<RunnerOutcome | "done"> {
-  await resumePendingImportAttachments(runId);
   let paused: ImportPausedReason | null = null;
   let outcome: FinalizeOutcome | null = null;
   // Every step is idempotent and the transaction re-reads the run: a retry after an uncertain commit
@@ -542,6 +543,8 @@ async function finalizeRun(
   for (let attempt = 0; ; attempt += 1) {
     paused = null;
     try {
+      await options.beforeFinalizeRead?.();
+      await resumePendingImportAttachments(runId);
       await recheckAuthorityUnderSharedLock(runId);
       outcome = await withCreationTransaction(async (tx) => {
         const [locked] = await tx
@@ -681,9 +684,7 @@ export async function runImportRun(
   let retries = 0;
   const unpublished: {
     current: {
-      commit: NonNullable<
-        Extract<ChunkOutcome, { kind: "advanced" }>["commit"]
-      >;
+      commit: Extract<ChunkOutcome, { kind: "advanced" }>["commit"];
       nextCursor: string | null;
     } | null;
   } = { current: null };
@@ -714,7 +715,8 @@ export async function runImportRun(
         stored?.cursor === unpublished.current.nextCursor &&
         stored.exhausted === (unpublished.current.nextCursor === null)
       ) {
-        await publishCommittedImport(unpublished.current.commit);
+        if (unpublished.current.commit)
+          await publishCommittedImport(unpublished.current.commit);
         chunks += 1;
         retries = 0; // reconciliation confirmed progress: fresh budget for the next chunk
       }
@@ -792,7 +794,7 @@ export async function runImportRun(
           needsApproval,
           duringChunk: options.duringChunk,
         });
-        if (done.kind === "advanced" && done.commit)
+        if (done.kind === "advanced")
           unpublished.current = {
             commit: done.commit,
             nextCursor: page.nextCursor,

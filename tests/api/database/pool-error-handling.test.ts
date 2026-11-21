@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { EventEmitter } from "node:events";
+import { describe, expect, it, vi } from "vitest";
 import { getDatabasePool } from "../../../apps/api/src/database";
 
 describe("database pool error handling", () => {
@@ -14,5 +15,16 @@ describe("database pool error handling", () => {
     expect(() => {
       pool.emit("error", new Error("simulated idle client failure"));
     }).not.toThrow();
+  });
+
+  it("a checked-out client's error is logged, not thrown", () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const client = new EventEmitter();
+    // pg's own pool emits "connect" for every new client; the pool's idle listener never covers a
+    // checked-out one, so without this handler its socket failure would crash the process.
+    getDatabasePool().emit("connect", client);
+    expect(() => client.emit("error", new Error("socket reset"))).not.toThrow();
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
   });
 });

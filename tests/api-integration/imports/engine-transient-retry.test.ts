@@ -3,12 +3,14 @@
  * number of times inside the runner, reconciling against the persisted run before each retry, so a
  * blip does not force a manual resume. Persistent failures still pause as `chunk_failed`.
  */
-import type { EventEmitter } from "node:events";
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { subscribeToEvent } from "../../../apps/api/src/events";
-import { unregisterImportAdapter } from "../../../apps/api/src/imports/engine/adapter";
+import {
+  unreadableRecord,
+  unregisterImportAdapter,
+} from "../../../apps/api/src/imports/engine/adapter";
 import {
   isTransientImportError,
   runImportRun,
@@ -186,10 +188,6 @@ describe("transient chunk failures (#895)", () => {
       duringChunk: async (tx) => {
         calls += 1;
         if (calls !== 1) return;
-        // pg emits 'error' on a checked-out client that nothing listens to; absorb it for this client.
-        (
-          tx as unknown as { session: { client: EventEmitter } }
-        ).session.client.on("error", () => {});
         await tx.execute(sql`select pg_terminate_backend(pg_backend_pid())`);
       },
     });
@@ -324,5 +322,68 @@ describe("transient chunk failures (#895)", () => {
       pausedReason: "chunk_failed",
     });
     expect(row.sourceCursor).toMatchObject({ exhausted: true });
+  });
+
+  it("finalization: a failure of the initial attachment read is retried, then bounded", async () => {
+    const { run } = await executed("attach-read", 10);
+    let reads = 0;
+    const ok = await runImportRun(run.id, {
+      beforeFinalizeRead: async () => {
+        reads += 1;
+        if (reads === 1) throw pgError("57P01");
+      },
+    });
+    expect(ok).toMatchObject({ status: "completed" });
+    expect(reads).toBe(2);
+
+    await resetTestDatabase();
+    clearFakeFixtures();
+    const second = await executed("attach-read-bad", 10);
+    reads = 0;
+    const bad = await runImportRun(second.run.id, {
+      beforeFinalizeRead: async () => {
+        reads += 1;
+        throw pgError("57P01");
+      },
+    });
+    expect(bad).toMatchObject({
+      status: "paused",
+      pausedReason: "chunk_failed",
+    });
+    expect(reads).toBe(4);
+    expect(await runRow(second.run.id)).toMatchObject({ state: "paused" });
+  });
+
+  it("pages of only rejected records reset the budget too (lost commit on each of 4 pages)", async () => {
+    const f = await engineFixture();
+    setFakeFixture("rejects", {
+      records: Array.from({ length: 50 }, (_, i) =>
+        unreadableRecord({
+          sourceType: "issue",
+          sourceId: `BAD-${i}`,
+          code: "unreadable_item",
+        }),
+      ),
+    });
+    const { app } = createApp();
+    const { run, mapping } = await startRun(app, f, "rejects");
+    await confirmAll(app, f.key, run.id, mapping.mappingVersion);
+    const dry = await dryRunAndExecuteBody(app, f.key, run.id);
+    await call(
+      app,
+      f.key,
+      `/api/imports/${run.id}/execute`,
+      post(dry.body),
+      202,
+    );
+    let calls = 0;
+    const outcome = await runImportRun(run.id, {
+      afterCommit: async () => {
+        calls += 1;
+        if (calls <= 4) throw pgError("08006");
+      },
+    });
+    expect(outcome).toMatchObject({ status: "completed", chunks: 5 });
+    expect(await itemCount()).toBe(0);
   });
 });
