@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
+import {
+  installPerformanceApiFixture,
+  PROJECT,
+} from "./helpers/g11-performance-fixture";
 
 test("service catalogue opens from a project board", async ({ page }) => {
   await installPerformanceApiFixture(page);
@@ -12,6 +15,77 @@ test("service catalogue opens from a project board", async ({ page }) => {
   await page.goto("/agent/projects/WLP/work?layout=board");
   await page.getByRole("button", { name: "Service catalogue" }).click();
   await expect(page).toHaveURL(/\/agent\/service-management\/services(?:\?|$)/);
+});
+
+test("a delayed layout preference does not override service catalogue navigation", async ({
+  page,
+}) => {
+  await installPerformanceApiFixture(page);
+  await page.route("**/api/project?*", (route) =>
+    route.fulfill({ json: [{ ...PROJECT, slug: "SUP" }] }),
+  );
+  await page.route("**/api/service-catalogue/status**", (route) =>
+    route.fulfill({ json: { enabled: true } }),
+  );
+  let releaseSettings!: () => void;
+  let settingsRequested!: () => void;
+  const settingsHeld = new Promise<void>((resolve) => {
+    settingsRequested = resolve;
+  });
+  const settingsReleased = new Promise<void>((resolve) => {
+    releaseSettings = resolve;
+  });
+  let releaseDestination!: () => void;
+  let destinationRequested!: () => void;
+  const destinationHeld = new Promise<void>((resolve) => {
+    destinationRequested = resolve;
+  });
+  const destinationReleased = new Promise<void>((resolve) => {
+    releaseDestination = resolve;
+  });
+  await page.route(/\/assets\/services-[^/]+\.js$/, async (route) => {
+    destinationRequested();
+    await destinationReleased;
+    await route.continue();
+  });
+  await page.route("**/api/me/settings", async (route) => {
+    settingsRequested();
+    await settingsReleased;
+    await route.fulfill({
+      json: { settings: { "layout.project-g11": "table" } },
+    });
+  });
+  const urls: string[] = [];
+  page.on("framenavigated", (frame) => {
+    if (frame === page.mainFrame()) urls.push(frame.url());
+  });
+  try {
+    await page.goto("/agent/projects/SUP/work?layout=board");
+    await settingsHeld;
+    await expect(
+      page.getByRole("heading", { name: /Performance fixture/ }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Service catalogue" }).click();
+    await destinationHeld;
+    await expect(page).toHaveURL(
+      /\/agent\/service-management\/services(?:\?|$)/,
+    );
+    const settingsResponse = page.waitForResponse("**/api/me/settings");
+    releaseSettings();
+    await settingsResponse;
+    await page.waitForTimeout(300);
+    releaseDestination();
+    await expect(
+      page.getByRole("heading", { name: /Performance fixture/ }),
+    ).toBeHidden();
+    await expect(page).toHaveURL(
+      /\/agent\/service-management\/services(?:\?|$)/,
+    );
+    expect(urls.every((url) => !url.includes("undefined"))).toBe(true);
+  } finally {
+    releaseSettings();
+    releaseDestination();
+  }
 });
 
 test("project navigation downloads after primary content without waiting for the sidebar chunk", async ({
