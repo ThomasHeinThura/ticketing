@@ -23,6 +23,8 @@ Owner: Thomas. Coordinator: Claude (this plan, merges, docs). Rules: [AGENTS.md]
 
 ### Stream Q — ponytail review and audit (20 Nov)
 
+Phase 2 and 3 done 21 Nov (status). Phase 4 backlog adds the 21 Nov journey lows: create-type omission message, invitation history, Members row alignment, cycle board clipping at 1440, chart ticks, rates vs budget, timesheet at 390, budget nav, add-child action, prerequisite badge, mobile project tabs, notification settings 404s, time form reset, palette focus return, Roles.Undefined flash, viewer CTAs, submit severity shown as Not set, portal attachment control, KB status names, terminology tokens capitalised mid-sentence, logout redirect self-reference.
+
 Phase 2 backlog (sweep lows, 20 Nov): KB excerpt markdown, settings content offset, compact-density card headers, automation badge at 390 px, project estimates/budget page descriptions, request types read-only view for viewers, portal page widths, mobile toolbars and project context, members table on mobile, request type editor layout, notification preferences layout, restore-drill mount documented (#1219).
 
 **H** = high risk, Sol high review. Effort as in section 4.
