@@ -81,6 +81,59 @@ class EngineStop extends Error {
   }
 }
 
+/** Retries after the first failure of a chunk or finalize; the next failure pauses as `chunk_failed`. */
+const TRANSIENT_RETRIES = 3;
+const TRANSIENT_BACKOFF_MS = 100;
+const TRANSIENT_NODE_CODES = new Set([
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "EPIPE",
+  "ETIMEDOUT",
+]);
+// 57P01-03 admin/crash shutdown, 53300 too many connections, 53400 config limit, 08xxx connection class.
+const TRANSIENT_PG_CODES = new Set([
+  "57P01",
+  "57P02",
+  "57P03",
+  "53300",
+  "53400",
+]);
+
+/**
+ * A database or connection failure that a fresh attempt can clear. Validation, authority and mapping
+ * errors (`EngineStop`, `HTTPException`) carry no such code, so they are never retried.
+ */
+export function isTransientImportError(error: unknown): boolean {
+  let nested: unknown = error;
+  for (
+    let depth = 0;
+    depth < 5 && nested && typeof nested === "object";
+    depth++
+  ) {
+    const failure = nested as {
+      code?: unknown;
+      message?: unknown;
+      cause?: unknown;
+    };
+    const code = typeof failure.code === "string" ? failure.code : "";
+    if (
+      TRANSIENT_PG_CODES.has(code) ||
+      code.startsWith("08") ||
+      TRANSIENT_NODE_CODES.has(code) ||
+      (typeof failure.message === "string" &&
+        /connection terminated|connection ended/i.test(failure.message))
+    )
+      return true;
+    nested = failure.cause;
+  }
+  return false;
+}
+
+const backoff = (attempt: number) =>
+  new Promise((resolve) =>
+    setTimeout(resolve, TRANSIENT_BACKOFF_MS * 2 ** attempt),
+  );
+
 let autoStart = true;
 /** Tests drive `runImportRun` directly; production leaves the post-execute kick on. */
 export function setImportEngineAutoStart(enabled: boolean) {
@@ -99,6 +152,10 @@ export type RunnerOptions = {
    * can change an administrator while a chunk is genuinely in flight (and prove it is not blocked).
    */
   duringChunk?: () => Promise<void>;
+  /** Test seam: awaited right after a chunk transaction returned, so a test can fail an "uncertain" commit. */
+  afterCommit?: () => Promise<void>;
+  /** Test seam: awaited after a transient failure's backoff, before the run is reloaded for the retry. */
+  beforeRetry?: () => Promise<void>;
 };
 
 export type RunnerOutcome = {
@@ -463,93 +520,106 @@ type FinalizeOutcome =
  * what never arrived as a loss, (3) mark records missing from this full enumeration stale, and (4)
  * complete the run.
  */
-async function finalizeRun(runId: string): Promise<RunnerOutcome | "done"> {
+async function finalizeRun(
+  runId: string,
+  options: RunnerOptions = {},
+): Promise<RunnerOutcome | "done"> {
   await resumePendingImportAttachments(runId);
   let paused: ImportPausedReason | null = null;
   let outcome: FinalizeOutcome | null = null;
-  try {
-    await recheckAuthorityUnderSharedLock(runId);
-    outcome = await withCreationTransaction(async (tx) => {
-      const [locked] = await tx
-        .select()
-        .from(RUN)
-        .where(eq(RUN.id, runId))
-        .for("update")
-        .limit(1);
-      const run = asEngineRun(locked);
-      if (
-        run.state !== "running" ||
-        run.enginePhase !== "executing" ||
-        !run.sourceCursor?.exhausted
-      )
-        return { kind: "stopped" as const };
-      const mapping = await loadMapping(tx, run, "share");
-      const bound = bindingFailure(run, mapping.version);
-      if (bound) throw new EngineStop(bound);
-      const actor = await assertAuthority(tx, run);
-      const writer = await createImportWriterContext(tx, run);
-      for (let pass = 0; pass < 500; pass += 1) {
-        const step = await resolveDeferredImportLinks(writer, {
-          finalize: true,
+  // Every step is idempotent and the transaction re-reads the run: a retry after an uncertain commit
+  // finds the run completed and returns `stopped`.
+  for (let attempt = 0; ; attempt += 1) {
+    paused = null;
+    try {
+      await recheckAuthorityUnderSharedLock(runId);
+      outcome = await withCreationTransaction(async (tx) => {
+        const [locked] = await tx
+          .select()
+          .from(RUN)
+          .where(eq(RUN.id, runId))
+          .for("update")
+          .limit(1);
+        const run = asEngineRun(locked);
+        if (
+          run.state !== "running" ||
+          run.enginePhase !== "executing" ||
+          !run.sourceCursor?.exhausted
+        )
+          return { kind: "stopped" as const };
+        const mapping = await loadMapping(tx, run, "share");
+        const bound = bindingFailure(run, mapping.version);
+        if (bound) throw new EngineStop(bound);
+        const actor = await assertAuthority(tx, run);
+        const writer = await createImportWriterContext(tx, run);
+        for (let pass = 0; pass < 500; pass += 1) {
+          const step = await resolveDeferredImportLinks(writer, {
+            finalize: true,
+          });
+          if (step.processed === 0) break;
+        }
+        if (writer.losses.length)
+          await insertImportLossRows(
+            tx,
+            {
+              workspaceId: run.workspaceId,
+              importRunId: run.id,
+              importChunkId: null,
+            },
+            writer.losses,
+          );
+        // Reached only after the cursor is exhausted: the source was enumerated in full.
+        await markMissingImportSourcesStale(tx, {
+          workspaceId: run.workspaceId,
+          pluginId: run.pluginId,
+          sourceRef: run.sourceRef,
+          currentRunId: run.id,
         });
-        if (step.processed === 0) break;
-      }
-      if (writer.losses.length)
-        await insertImportLossRows(
-          tx,
-          {
-            workspaceId: run.workspaceId,
-            importRunId: run.id,
-            importChunkId: null,
+        const stats = run.stats;
+        await tx
+          .update(RUN)
+          .set({
+            state: "completed",
+            enginePhase: "completed",
+            version: run.version + 1,
+            updatedAt: new Date(),
+          })
+          .where(eq(RUN.id, run.id));
+        const auditFailure = await appendImportAudit(tx, {
+          actorId: actor.userId,
+          actorType: actor.actorType,
+          apiKeyId: actor.apiKeyId,
+          workspaceId: run.workspaceId,
+          projectId: run.projectId,
+          action: "import.run",
+          entityType: "import_run",
+          entityId: run.id,
+          before: null,
+          after: {
+            operation: "completed",
+            runId: run.id,
+            counts: {
+              created: stats.created ?? 0,
+              updated: stats.updated ?? 0,
+              skipped: stats.skipped ?? 0,
+              rejected: stats.rejected ?? 0,
+              processed: stats.processed ?? 0,
+            },
           },
-          writer.losses,
-        );
-      // Reached only after the cursor is exhausted: the source was enumerated in full.
-      await markMissingImportSourcesStale(tx, {
-        workspaceId: run.workspaceId,
-        pluginId: run.pluginId,
-        sourceRef: run.sourceRef,
-        currentRunId: run.id,
+        });
+        return { kind: "completed" as const, auditFailure };
       });
-      const stats = run.stats;
-      await tx
-        .update(RUN)
-        .set({
-          state: "completed",
-          enginePhase: "completed",
-          version: run.version + 1,
-          updatedAt: new Date(),
-        })
-        .where(eq(RUN.id, run.id));
-      const auditFailure = await appendImportAudit(tx, {
-        actorId: actor.userId,
-        actorType: actor.actorType,
-        apiKeyId: actor.apiKeyId,
-        workspaceId: run.workspaceId,
-        projectId: run.projectId,
-        action: "import.run",
-        entityType: "import_run",
-        entityId: run.id,
-        before: null,
-        after: {
-          operation: "completed",
-          runId: run.id,
-          counts: {
-            created: stats.created ?? 0,
-            updated: stats.updated ?? 0,
-            skipped: stats.skipped ?? 0,
-            rejected: stats.rejected ?? 0,
-            processed: stats.processed ?? 0,
-          },
-        },
-      });
-      return { kind: "completed" as const, auditFailure };
-    });
-  } catch (error) {
-    if (error instanceof EngineStop) paused = error.reason;
-    else if (error instanceof HTTPException && error.status === 409)
-      paused = "conflict";
-    else paused = "chunk_failed";
+    } catch (error) {
+      if (error instanceof EngineStop) paused = error.reason;
+      else if (error instanceof HTTPException && error.status === 409)
+        paused = "conflict";
+      else if (isTransientImportError(error) && attempt < TRANSIENT_RETRIES) {
+        await backoff(attempt);
+        await options.beforeRetry?.();
+        continue;
+      } else paused = "chunk_failed";
+    }
+    break;
   }
   if (paused) {
     const [row] = await db.select().from(RUN).where(eq(RUN.id, runId)).limit(1);
@@ -571,6 +641,7 @@ export async function runImportRun(
 ): Promise<RunnerOutcome> {
   const capabilities = options.capabilities ?? WRITER_V2_CAPABILITIES;
   let chunks = 0;
+  let retries = 0;
   for (;;) {
     await assertJobExecutionOwned();
     const snapshot = await db.transaction(async (tx) => {
@@ -626,7 +697,7 @@ export async function runImportRun(
     const bound = bindingFailure(run, mapping.version);
     if (bound) return pause(bound);
     if (cursor.exhausted) {
-      const finalized = await finalizeRun(run.id);
+      const finalized = await finalizeRun(run.id, options);
       if (finalized !== "done") return { ...finalized, chunks };
       return { status: "completed", chunks };
     }
@@ -670,12 +741,23 @@ export async function runImportRun(
           duringChunk: options.duringChunk,
         }),
       );
+      await options.afterCommit?.();
     } catch (error) {
       if (error instanceof EngineStop) return pause(error.reason);
       if (error instanceof HTTPException && error.status === 409)
         return pause("conflict");
+      if (isTransientImportError(error) && retries < TRANSIENT_RETRIES) {
+        // Reloading the run at the top of the loop is the reconciliation: a paused or cancelled run,
+        // lost authority or reach, or a cursor that already advanced (the commit did succeed) is
+        // seen there, and the chunk's compare-and-set on the cursor refuses a double write.
+        await backoff(retries);
+        retries += 1;
+        await options.beforeRetry?.();
+        continue;
+      }
       return pause("chunk_failed");
     }
+    retries = 0;
     if (outcome.kind === "stopped") return { status: "idle", chunks };
     if (outcome.commit) await publishCommittedImport(outcome.commit);
     await reportImportAuditWriteFailure(outcome.auditFailure);
