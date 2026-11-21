@@ -682,6 +682,8 @@ export async function runImportRun(
   const capabilities = options.capabilities ?? WRITER_V2_CAPABILITIES;
   let chunks = 0;
   let retries = 0;
+  // Set when the budget is spent but the last attempt may have committed: reload once, then decide.
+  let reconcileOnly = false;
   const unpublished: {
     current: {
       commit: Extract<ChunkOutcome, { kind: "advanced" }>["commit"];
@@ -721,6 +723,12 @@ export async function runImportRun(
         retries = 0; // reconciliation confirmed progress: fresh budget for the next chunk
       }
       unpublished.current = null;
+      if (reconcileOnly && retries >= TRANSIENT_RETRIES && !snapshot.inactive) {
+        // The cursor did not advance: the last attempt rolled back, so the bound applies.
+        await pauseRun(runId, "chunk_failed", snapshot.actor);
+        return { status: "paused", chunks, pausedReason: "chunk_failed" };
+      }
+      reconcileOnly = false;
     }
     if (!snapshot) return { status: "idle", chunks };
     if (snapshot.inactive && snapshot.run.state === "completed")
@@ -813,6 +821,12 @@ export async function runImportRun(
         await backoff(retries);
         retries += 1;
         await options.beforeRetry?.();
+        continue;
+      }
+      if (isTransientImportError(error) && unpublished.current) {
+        // Budget spent, yet this attempt's commit may have landed with its response lost: reconcile
+        // against the persisted cursor before pausing, or its events would never be published.
+        reconcileOnly = true;
         continue;
       }
       return pause("chunk_failed");

@@ -386,4 +386,28 @@ describe("transient chunk failures (#895)", () => {
     expect(outcome).toMatchObject({ status: "completed", chunks: 5 });
     expect(await itemCount()).toBe(0);
   });
+
+  it("a fourth attempt that commits but loses its response is reconciled and published, not paused", async () => {
+    const { run } = await executed("budget-edge", 10);
+    const created: unknown[] = [];
+    await subscribeToEvent("work_item.created", async (d) => {
+      created.push(d);
+    });
+    let chunkCalls = 0;
+    let commits = 0;
+    const outcome = await runImportRun(run.id, {
+      duringChunk: async () => {
+        chunkCalls += 1;
+        if (chunkCalls <= 3) throw pgError("57P01"); // three rolled-back attempts spend the budget
+      },
+      afterCommit: async () => {
+        commits += 1;
+        if (commits === 1) throw pgError("08006"); // attempt 4 committed; the response is lost
+      },
+    });
+    expect(chunkCalls).toBe(4);
+    expect(outcome).toMatchObject({ status: "completed" });
+    expect(await itemCount()).toBe(10);
+    expect(created).toHaveLength(10);
+  });
 });
