@@ -31,7 +31,7 @@ import { downloadReportExport, ReportsDisabledError } from "@/fetchers/report";
 import { useReportExport } from "@/hooks/queries/report";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
-import { saveBlob } from "./report-export";
+import { saveResponse } from "./report-export";
 import { ReportsFeatureGate } from "./reports-feature-gate";
 
 type PageState =
@@ -87,8 +87,10 @@ function ReportExportPageScreen({ exportId }: { exportId: string }) {
   const exported = useReportExport(exportId);
   const placeholderVisible = useDelayedPending(exported.isLoading);
   const download = useMutation({
-    mutationFn: () => downloadReportExport(exportId),
-    onSuccess: ({ filename, blob }) => saveBlob(filename, blob),
+    mutationFn: async () => {
+      const { filename, response } = await downloadReportExport(exportId);
+      await saveResponse(filename, response);
+    },
     onSettled: (_data, error) => {
       // A refused download may mean the file changed state (expired, failed): show the new one.
       if (error) void exported.refetch();

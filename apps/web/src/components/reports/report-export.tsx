@@ -16,6 +16,34 @@ import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
 
 /** Hands a finished CSV to the browser as a download. */
+type SavePicker = (options: { suggestedName: string }) => Promise<{
+  createWritable: () => Promise<WritableStream<Uint8Array>>;
+}>;
+
+/** Streams a download response to disk so a large export is never held in memory. */
+export async function saveResponse(filename: string, response: Response) {
+  const picker = (window as { showSaveFilePicker?: SavePicker })
+    .showSaveFilePicker;
+  if (picker && response.body) {
+    let file: Awaited<ReturnType<SavePicker>> | undefined;
+    try {
+      file = await picker({ suggestedName: filename });
+    } catch (error) {
+      // Cancelled by the person: stop the transfer. Any other refusal falls back below.
+      if (error instanceof DOMException && error.name === "AbortError") {
+        await response.body.cancel();
+        return;
+      }
+    }
+    if (file) {
+      await response.body.pipeTo(await file.createWritable());
+      return;
+    }
+  }
+  // shortcut: browsers without showSaveFilePicker (Firefox, Safari) buffer the whole file as a Blob, upgrade when they ship it or the API offers a signed download URL.
+  saveBlob(filename, await response.blob());
+}
+
 export function saveBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -74,8 +102,10 @@ export function ReportExportStatus({
   const { t } = useTranslation();
   const exported = useReportExport(id);
   const download = useMutation({
-    mutationFn: () => downloadReportExport(id),
-    onSuccess: ({ filename, blob }) => saveBlob(filename, blob),
+    mutationFn: async () => {
+      const { filename, response } = await downloadReportExport(id);
+      await saveResponse(filename, response);
+    },
     onError: (error) => toast.error(error.message),
   });
   const info = exported.data?.data;

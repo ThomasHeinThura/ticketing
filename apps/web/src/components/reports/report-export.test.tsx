@@ -77,7 +77,7 @@ describe("a queued export (RP-10)", () => {
   it("offers the authenticated download once ready, and says when rows were cut", async () => {
     download.mockResolvedValue({
       filename: "x.csv",
-      blob: new Blob(["a"]),
+      response: new Response("a"),
     });
     URL.createObjectURL = vi.fn(() => "blob:x");
     URL.revokeObjectURL = vi.fn();

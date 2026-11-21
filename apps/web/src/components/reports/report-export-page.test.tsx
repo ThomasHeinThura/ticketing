@@ -51,7 +51,7 @@ vi.mock("@/fetchers/report", async () => {
   return { downloadReportExport: download, ReportsDisabledError };
 });
 const saved = vi.hoisted(() => vi.fn());
-vi.mock("./report-export", () => ({ saveBlob: saved }));
+vi.mock("./report-export", () => ({ saveResponse: saved }));
 
 import { ReportExportPage } from "./report-export-page";
 
@@ -109,7 +109,10 @@ describe("routes.reportExport (P5-R3-01)", () => {
 
 describe("ReportExportPage (P5-R3-01)", () => {
   it("offers the download of a ready export and fetches the file only when asked", async () => {
-    download.mockResolvedValue({ filename: "e.csv", blob: new Blob(["a"]) });
+    download.mockResolvedValue({
+      filename: "e.csv",
+      response: new Response("a"),
+    });
     show({ data: { data: info({}) } });
     expect(pageState()).toBe("ready");
     expect(screen.getByText("Customer performance")).toBeTruthy();
