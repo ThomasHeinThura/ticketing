@@ -7631,6 +7631,12 @@
 						},
 						"templateHelp": {
 							"type": "string"
+						},
+						"emptyLibrary": {
+							"type": "string"
+						},
+						"emptyLibraryDescription": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -7652,7 +7658,9 @@
 						"deleteNamed",
 						"deleteDescription",
 						"save",
-						"templateHelp"
+						"templateHelp",
+						"emptyLibrary",
+						"emptyLibraryDescription"
 					]
 				},
 				"projectLabels": {
@@ -14706,6 +14714,9 @@
 						"errorInvalid": {
 							"type": "string"
 						},
+						"errorWorkflow": {
+							"type": "string"
+						},
 						"errorGeneric": {
 							"type": "string"
 						},
@@ -14819,6 +14830,7 @@
 						"errorTitle",
 						"errorForbidden",
 						"errorInvalid",
+						"errorWorkflow",
 						"errorGeneric",
 						"loadFailed",
 						"reload",
@@ -17108,6 +17120,12 @@
 								}
 							},
 							"required": ["title", "description", "done", "pending"]
+						},
+						"typeNotFoundTitle": {
+							"type": "string"
+						},
+						"typeNotFoundDescription": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -17144,7 +17162,9 @@
 						"systemReasons",
 						"filesNotAttached",
 						"openSentRequest",
-						"withdrawConfirm"
+						"withdrawConfirm",
+						"typeNotFoundTitle",
+						"typeNotFoundDescription"
 					]
 				},
 				"orientation": {
@@ -17535,6 +17555,9 @@
 								"withdrawn"
 							]
 						},
+						"replyAfterReview": {
+							"type": "string"
+						},
 						"conversationEmpty": {
 							"type": "string"
 						},
@@ -17553,6 +17576,7 @@
 						"errors",
 						"readOnly",
 						"status",
+						"replyAfterReview",
 						"conversationEmpty",
 						"attachmentsEmpty"
 					]

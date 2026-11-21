@@ -1016,6 +1016,8 @@ function PortalSubmissionContent() {
               send={sendReply}
               onSent={refreshAfterReply}
             />
+          ) : requester && state === "new" ? (
+            <p>{t("portal:request.replyAfterReview")}</p>
           ) : null}
         </>
       )}

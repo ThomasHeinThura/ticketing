@@ -67,7 +67,7 @@ export type CreateWorkItemDialogProps = {
   /** Kaneo's per-column "+": the column (project state id) the new item should land in. */
   initialState?: { id: string; name: string };
 };
-type SubmitError = "forbidden" | "invalid" | "generic";
+type SubmitError = "forbidden" | "invalid" | "workflow" | "generic";
 
 /** Kaneo's create composition over the canonical persisted create contract. No shadow task. */
 export default function CreateWorkItemDialogForm({
@@ -127,7 +127,7 @@ export default function CreateWorkItemDialogForm({
     isLoading: isLoadingTypes,
     isError: isTypesError,
     refetch: refetchTypes,
-  } = useGetWorkItemTypes({ workspaceId });
+  } = useGetWorkItemTypes({ workspaceId, projectId });
   const selectedType = types?.find((type) => type.id === typeId);
   const canUpdate = permission.canUpdateTasks();
   const canAssign = permission.canAssignTasks();
@@ -355,9 +355,14 @@ export default function CreateWorkItemDialogForm({
         error instanceof HttpError && error.status === 403
           ? "forbidden"
           : error instanceof HttpError &&
-              (error.status === 400 || error.status === 422)
-            ? "invalid"
-            : "generic",
+              error.status === 422 &&
+              error.message ===
+                "The type's published workflow cannot leave this project's default state"
+            ? "workflow"
+            : error instanceof HttpError &&
+                (error.status === 400 || error.status === 422)
+              ? "invalid"
+              : "generic",
       );
     } finally {
       if (lifecycle.isCurrent(intent)) setUploadBusy(false);
@@ -460,6 +465,7 @@ export default function CreateWorkItemDialogForm({
             <>
               <CreateWorkItemTemplatePicker
                 workspaceId={workspaceId}
+                typeIds={(types ?? []).map((type) => type.id)}
                 selectedId={templateId}
                 disabled={locked}
                 onSelect={(template) => {
@@ -623,7 +629,7 @@ export default function CreateWorkItemDialogForm({
             <AlertDescription>
               <p>
                 {t(
-                  `workItems:create.error${submitError === "forbidden" ? "Forbidden" : submitError === "invalid" ? "Invalid" : "Generic"}`,
+                  `workItems:create.error${submitError === "forbidden" ? "Forbidden" : submitError === "invalid" ? "Invalid" : submitError === "workflow" ? "Workflow" : "Generic"}`,
                 )}
               </p>
               {invalidFieldKeys.length > 0 ? (

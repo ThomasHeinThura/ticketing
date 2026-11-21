@@ -218,6 +218,29 @@ describe("executed work-item deletion", () => {
     expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ["work-items"] });
   });
 
+  it("removes deleted team details before invalidating the cache", async () => {
+    mocks.pathname.current = "/dashboard/settings/workspace/teams/team-1";
+    mocks.action.current = workItemAction({
+      targetType: "team",
+      targetIds: ["team-1"],
+      confirmation: "typed_name",
+      summary: { name: "Support" },
+    });
+    render(<PendingActionApproval id="pa-1" layout="page" />);
+    fireEvent.change(
+      await screen.findByLabelText("pendingActions:registered.confirmName"),
+      { target: { value: "Support" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "common:actions.delete" }),
+    );
+    await waitFor(() => expect(mocks.invalidate).toHaveBeenCalled());
+    expect(mocks.remove).toHaveBeenCalledWith({ queryKey: ["team", "team-1"] });
+    expect(mocks.remove.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.invalidate.mock.invocationCallOrder.at(-1) ?? 0,
+    );
+  });
+
   it("stays put when the deleted item is not the open task page", async () => {
     mocks.cachedTask.current = { number: 2 };
     await approve();

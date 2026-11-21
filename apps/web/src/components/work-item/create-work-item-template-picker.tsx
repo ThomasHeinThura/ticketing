@@ -24,11 +24,13 @@ export type CreateWorkItemTemplate = {
  */
 export default function CreateWorkItemTemplatePicker({
   workspaceId,
+  typeIds,
   selectedId,
   disabled,
   onSelect,
 }: {
   workspaceId: string | undefined;
+  typeIds: string[];
   selectedId: string | null;
   disabled: boolean;
   onSelect: (template: CreateWorkItemTemplate | null) => void;
@@ -36,7 +38,9 @@ export default function CreateWorkItemTemplatePicker({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const templates = useWorkItemTemplateOptions(workspaceId);
-  const rows = templates.data ?? [];
+  const rows = (templates.data ?? []).filter((template) =>
+    typeIds.includes(template.typeId),
+  );
   if (!rows.length) return null;
   const selected = rows.find((row) => row.id === selectedId);
   return (

@@ -9,6 +9,9 @@ function useDecideApproval() {
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["approvals"] });
       void queryClient.invalidateQueries({
+        queryKey: ["work-items", "audit-history"],
+      });
+      void queryClient.invalidateQueries({
         queryKey: ["work-items", "transitions"],
       });
     },

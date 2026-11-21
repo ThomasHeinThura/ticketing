@@ -62,6 +62,12 @@ export const workItemPolicies = {
     scopeSource: "request",
     reach: "required",
   },
+  "GET /api/projects/{projectId}/creatable-work-item-types": {
+    capability: "work_item:create",
+    scope: "project",
+    scopeSource: "request",
+    reach: "required",
+  },
 
   // List a project's work items. The addressed resource is the PROJECT (a container),
   // not any one `work_item` row -- `workspaceAccess.fromProject()` loads it (a real DB

@@ -603,6 +603,8 @@ export async function installPerformanceApiFixture(
       });
     if (path === `/api/workspace/${WORKSPACE_ID}/work-item-types`)
       return json([{ id: TYPE_ID, key: "task", name: "Task" }]);
+    if (/^\/api\/projects\/[^/]+\/creatable-work-item-types$/.test(path))
+      return json([{ id: TYPE_ID, key: "task", name: "Task" }]);
     if (
       path === `/api/workspace/${WORKSPACE_ID}/members` &&
       request.method() === "GET"

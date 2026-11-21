@@ -38542,6 +38542,63 @@
         }
       }
     },
+    "/projects/{projectId}/creatable-work-item-types": {
+      "get": {
+        "operationId": "listCreatableWorkItemTypes",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "List work item types usable in a project",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Types with a leaveable default state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkItemType"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:create permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/workspace/{workspaceId}/work-item-types": {
       "get": {
         "operationId": "listWorkItemTypes",

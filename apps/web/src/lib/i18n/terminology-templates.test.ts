@@ -1,6 +1,7 @@
 import { createInstance } from "i18next";
 import { describe, expect, it } from "vitest";
 import english from "../../../../../i18n/en-US.json";
+import { loadLocale, supportedLocales } from "../../../../../i18n/resources";
 
 async function customerTranslations(noun = "Request", plural = "Requests") {
   const instance = createInstance();
@@ -56,6 +57,33 @@ describe("customer terminology source templates", () => {
     expect(instance.t("intake.catalogueTitle")).toBe("Request catalogue");
     expect(instance.t("intake.submissionTitle", { ref: "SUB-7" })).toBe(
       "Request SUB-7",
+    );
+  });
+});
+
+describe("work item creation terminology", () => {
+  it("uses the configured project noun in both messages in every locale", async () => {
+    await Promise.all(
+      supportedLocales.map(async (locale) => {
+        const catalog = (await loadLocale(locale)) as typeof english;
+        const instance = createInstance();
+        await instance.init({
+          lng: locale,
+          resources: { [locale]: { workItems: catalog.workItems } },
+          interpolation: {
+            escapeValue: false,
+            defaultVariables: {
+              term_project_one: "Engagement",
+              term_work_item_one: "Ticket",
+            },
+          },
+        });
+        for (const key of ["create.noTypes", "create.errorWorkflow"]) {
+          expect(instance.t(`workItems:${key}`), `${locale}: ${key}`).toContain(
+            "Engagement",
+          );
+        }
+      }),
     );
   });
 });

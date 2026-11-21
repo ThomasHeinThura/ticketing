@@ -260,7 +260,34 @@ const audit = apiRouter<
     const rows = await listEntityAuditRows(workspaceId, type, workItemId);
     await writeAuditRead(c, { workspaceId });
     return c.json(
-      { entityType: type, entityId: id, rows: rows.map(toRowResponse) },
+      {
+        entityType: type,
+        entityId: id,
+        rows: rows.map((row) => {
+          const result = toRowResponse(row);
+          if (row.entityType !== "approval") return result;
+          const state = (value: unknown) => {
+            if (!value || typeof value !== "object" || !("state" in value))
+              return null;
+            const allowed = [
+              "pending",
+              "approved",
+              "rejected",
+              "expired",
+              "withdrawn",
+            ];
+            return typeof value.state === "string" &&
+              allowed.includes(value.state)
+              ? { state: value.state }
+              : null;
+          };
+          return {
+            ...result,
+            before: state(row.before),
+            after: state(row.after),
+          };
+        }),
+      },
       200,
     );
   })

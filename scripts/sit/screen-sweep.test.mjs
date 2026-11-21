@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   buildSummary,
   classifyDenial,
+  isApiDenial,
   parseCli,
   parseRoutes,
   redactText,
@@ -196,4 +197,11 @@ test("summary counts issues and builds the denial matrix", () => {
   assert.match(md, /\| denied \| 1 \|/);
   assert.match(md, /\| \/a \| ok \| D \|/);
   assert.match(md, /Axe: skipped/);
+});
+
+test("a refused History read is not a page denial", () => {
+  const h = "https://h/api/audit?entity_type=workspace&entity_id=w1";
+  assert.equal(isApiDenial(h, 403), false);
+  assert.equal(isApiDenial("https://h/api/workspace/w1", 403), true);
+  assert.equal(isApiDenial("https://h/api/audit/instance", 403), true);
 });

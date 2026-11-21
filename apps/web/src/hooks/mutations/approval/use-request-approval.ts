@@ -6,6 +6,9 @@ export default function useRequestApproval() {
     mutationFn: requestApproval,
     onSettled: () => {
       void cache.invalidateQueries({ queryKey: ["approvals"] });
+      void cache.invalidateQueries({
+        queryKey: ["work-items", "audit-history"],
+      });
       void cache.invalidateQueries({ queryKey: ["work-items", "transitions"] });
     },
   });
