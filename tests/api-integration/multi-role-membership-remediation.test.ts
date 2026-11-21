@@ -24,9 +24,6 @@
  * §3 guarded against has no native analog, comma or not.
  */
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { capabilitiesResponseSchema } from "../../apps/api/src/capabilities/response";
@@ -36,6 +33,7 @@ import { resolveMembershipRole } from "../../apps/api/src/utils/workspace-member
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import {
+  migration0050Statements,
   plantLegacyMembershipRole,
   signUpUser,
 } from "./helpers/organization-http";
@@ -118,27 +116,9 @@ async function restoreRoleConstraint(): Promise<void> {
   await db.execute(
     sql`ALTER TABLE "workspace_member" DROP CONSTRAINT IF EXISTS "workspace_member_role_single_value"`,
   );
-  // Mirrors the CHECK migration 0050 actually ships -- two-argument `btrim` over
-  // space/tab/newline/CR/FF/VT, matching JS `trim()`'s ASCII shapes (see Finding 3 fix).
-  // Built with `chr()` rather than a `\t`-style literal so this JS template string cannot
-  // have its own escaping silently reinterpret what reaches Postgres.
-  await db.execute(
-    sql`ALTER TABLE "workspace_member" ADD CONSTRAINT "workspace_member_role_single_value" CHECK (position(',' in "role") = 0 AND "role" = btrim("role", chr(32) || chr(9) || chr(10) || chr(13) || chr(12) || chr(11) || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) AND btrim("role", chr(32) || chr(9) || chr(10) || chr(13) || chr(12) || chr(11) || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)) <> '') NOT VALID`,
-  );
-}
-
-/** The statements of migration 0050, from the file that actually ships. */
-async function migrationStatements(): Promise<string[]> {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const path = resolve(
-    here,
-    "../../apps/api/drizzle/0050_enforce_single_role_membership.sql",
-  );
-  const source = await readFile(path, "utf8");
-  return source
-    .split("--> statement-breakpoint")
-    .map((statement) => statement.trim())
-    .filter((statement) => statement.length > 0);
+  const constraint = (await migration0050Statements())[2];
+  if (!constraint) throw new Error("migration 0050 is missing its constraint");
+  await db.execute(sql.raw(`${constraint.replace(/;\s*$/, "")} NOT VALID`));
 }
 
 beforeEach(async () => {
@@ -326,7 +306,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
       { raw: "admin,,admin", repaired: "admin" },
     ];
 
-    const [repair] = await migrationStatements();
+    const [repair] = await migration0050Statements();
     if (!repair) throw new Error("migration 0050 has no statements");
 
     for (const shape of shapes) {
@@ -375,7 +355,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
       "admin\ufeff",
     ];
 
-    const [repair, refuse] = await migrationStatements();
+    const [repair, refuse] = await migration0050Statements();
     if (!repair || !refuse)
       throw new Error("migration 0050 is missing statements");
 
@@ -451,7 +431,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
     }
     expect(historicalPreReviewRepairRule(" owner")).toBe("owner");
 
-    const [repair, refuse] = await migrationStatements();
+    const [repair, refuse] = await migration0050Statements();
     if (!repair || !refuse)
       throw new Error("migration 0050 is missing statements");
 
@@ -499,7 +479,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
       sql`UPDATE "workspace_member" SET "role" = 'owner,admin' WHERE "workspace_id" = ${workspace.id} AND "user_id" = ${member.user.id}`,
     );
 
-    const [repair, refuse] = await migrationStatements();
+    const [repair, refuse] = await migration0050Statements();
     if (!repair || !refuse)
       throw new Error("migration 0050 is missing statements");
 
@@ -542,7 +522,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
         sql`UPDATE "workspace_member" SET "role" = ${raw} WHERE "workspace_id" = ${workspace.id} AND "user_id" = ${member.user.id}`,
       );
 
-      const [repair, refuse] = await migrationStatements();
+      const [repair, refuse] = await migration0050Statements();
       if (!repair || !refuse)
         throw new Error("migration 0050 is missing statements");
 
@@ -576,11 +556,52 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
     },
   );
 
+  it("executes the shipped CHECK and rejects malformed roles", async () => {
+    const { app } = createApp();
+    const { workspace, member } = await workspaceWithMember(app, "viewer");
+    const [repair, refuse, constraint] = await migration0050Statements();
+    if (!repair || !refuse || !constraint)
+      throw new Error("migration 0050 is missing statements");
+    await withoutRoleConstraint();
+    await db.execute(sql.raw(repair));
+    await db.execute(sql.raw(refuse));
+    await db.execute(sql.raw(constraint));
+    for (const role of [
+      "\t",
+      "\n",
+      "\tadmin",
+      "admin\n",
+      "\u00a0",
+      "\ufeff",
+      "a,b",
+      "",
+    ]) {
+      try {
+        await db.execute(
+          sql`UPDATE workspace_member SET role = ${role} WHERE workspace_id = ${workspace.id} AND user_id = ${member.user.id}`,
+        );
+        throw new Error("malformed role was accepted");
+      } catch (error) {
+        const cause = (
+          error as { cause?: { code?: string; constraint?: string } }
+        ).cause;
+        expect(cause?.code).toBe("23514");
+        expect(cause?.constraint).toBe("workspace_member_role_single_value");
+      }
+    }
+    for (const role of ["admin", "viewer"]) {
+      const result = await db.execute(
+        sql`UPDATE workspace_member SET role = ${role} WHERE workspace_id = ${workspace.id} AND user_id = ${member.user.id}`,
+      );
+      expect(result.rowCount).toBe(1);
+    }
+  });
+
   it("passes silently when every row is already canonical -- the migration must be a no-op on a healthy deployment, or nobody can deploy it", async () => {
     const { app } = createApp();
     await workspaceWithMember(app, "viewer");
 
-    const statements = await migrationStatements();
+    const statements = await migration0050Statements();
     const [repair, refuse] = statements;
     if (!repair || !refuse)
       throw new Error("migration 0050 is missing statements");
