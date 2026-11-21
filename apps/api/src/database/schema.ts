@@ -4520,15 +4520,11 @@ export const workItemTable = pgTable(
     // value moves to `work_item_key_alias` -- so `key` DOES change over the item's
     // lifetime under that one condition, which is exactly why a global unique index is
     // needed here (not stated as its own line in data-model.md's "## Indexing" list,
-    // which only names `(project_id, number)` -- and `project.slug` IS genuinely unique
-    // per instance, via `project_slug_unique` (`projectTable`'s own extra config,
-    // migration 0064), and `number` is unique per project, so `key` composes to a
-    // globally unique value; the alias mechanism depends on that holding at every
-    // instant). Until migration 0064, this comment claimed `project.slug` was "already
-    // unique per instance" when nothing enforced that -- #261's mandatory Opus security
-    // review (F1) found the resulting collision live and reproducible; see the `slug`
-    // column's own comment on `projectTable` above for the fix. Judgment call, flagged
-    // in the PR body.
+    // which only names `(project_id, number)`). `project_slug_unique` (migration 0064)
+    // enforces uniqueness among current project rows. `project_slug_claim` (migration 0065)
+    // permanently claims slugs, including after project rename or workspace hard-delete;
+    // see "BACKFILL, AND ITS HONEST LIMITATION" in drizzle/0065_project_slug_claim.sql for the pre-0065 history limitation. Numbers are unique per
+    // project, so the key and alias mechanism rely on both guarantees.
     //
     // #191 O2: also composite-FK'd to `work_item_key_claim(key, work_item_id)` below (see
     // that table's own comment for the full design) -- every value this column ever holds
@@ -4838,6 +4834,7 @@ export const workItemTable = pgTable(
     // exist). `onUpdate("no action")` per #191's O1 lesson (this FK's referenced columns
     // include the mutable `work_item_type.workspace_id`).
     foreignKey({
+      name: "work_item_workspace_type_fk",
       columns: [table.workspaceId, table.typeId],
       foreignColumns: [workItemTypeTable.workspaceId, workItemTypeTable.id],
     })

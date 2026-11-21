@@ -61,14 +61,14 @@ Identity is connection + subject; email is not a tenant key. Person organisation
 
 | Table | Key columns |
 | --- | --- |
-| `project` | `workspace_id`, `parent_id`, `key` (**unique per instance**), `name`, `icon` (a lucide icon name from the checked-in allowlist), `kind` (`project`\|`managed_service`, default `project`), `health` nullable RAG (`red`\|`amber`\|`green`), `organisation_id` **nullable** (null = internal), `manager_id` → `person` (the "exactly one project manager" of `PR-6`), `owner_team_id` null (reach step 5 in [permissions](permissions.md)), `start_date`, `end_date`, `support_level` nullable (`L1`\|`L2`\|`L3`), `service_calendar_id` nullable with composite same-workspace FK to `service_calendar`; a managed service requires both support level and calendar (`PR-9`), enforced by SQL CHECK, `sla_policy_id` null, `default_assignee_id`, `default_billable` (default true), `default_comment_visibility` (`public`\|`internal`, default `internal` — `CA-2`'s project default). Summary fields (migration `0213`, feature-contracts-p1 "Engagement structure"): `objective`, `in_scope`, `out_of_scope`, `success_criteria`, `status_note` (nullable text) and `status_note_at` (timestamptz, set by the server whenever the note changes). `status` (`planning`\|`active`\|`on_hold`\|`closed`, default `active`, SQL CHECK; decision D1, information only — archiving stays `archived_at`) |
+| `project` | `workspace_id`, `parent_id`, `slug` (the project key; unique among current projects via `project_slug_unique` and permanently claimed in `project_slug_claim`, § Additional schema rows), `name`, `icon` (a lucide icon name from the checked-in allowlist), `kind` (`project`\|`managed_service`, default `project`), `health` nullable RAG (`red`\|`amber`\|`green`), `organisation_id` **nullable** (null = internal), `manager_id` → `person` (the "exactly one project manager" of `PR-6`), `owner_team_id` null (reach step 5 in [permissions](permissions.md)), `start_date`, `end_date`, `support_level` nullable (`L1`\|`L2`\|`L3`), `service_calendar_id` nullable with composite same-workspace FK to `service_calendar`; a managed service requires both support level and calendar (`PR-9`), enforced by SQL CHECK, `sla_policy_id` null, `default_assignee_id`, `default_billable` (default true), `default_comment_visibility` (`public`\|`internal`, default `internal` — `CA-2`'s project default). Summary fields (migration `0213`, feature-contracts-p1 "Engagement structure"): `objective`, `in_scope`, `out_of_scope`, `success_criteria`, `status_note` (nullable text) and `status_note_at` (timestamptz, set by the server whenever the note changes). `status` (`planning`\|`active`\|`on_hold`\|`closed`, default `active`, SQL CHECK; decision D1, information only — archiving stays `archived_at`) |
 
 ## 4. Work
 
 | Table | Key columns |
 | --- | --- |
 | `work_item_type` | `workspace_id`, `key`, `name`, `icon`, `category` (`service`\|`delivery`), `workflow_id`, `sla_policy_id` (same-workspace policy binding), `is_epic`, `is_change` (drives CAB rules — never matched by type name). Unique `(workspace_id, key)` and, since issue #192, unique `(workspace_id, id)` — the composite-FK target `work_item.type_id` pins itself to (see the `work_item` row below) |
-| `work_item` | `project_id`, `workspace_id` **not null** (issue #192, decision log 2026-09-22 "#192's tenant-attribution decision: Option A+D" — denormalised from `project.workspace_id` at row-creation time by #23's write path, and composite-FK-anchored to `project (workspace_id, id)` so it can never drift from the project it was copied from), `type_id` (composite-FK'd to `work_item_type (workspace_id, id)`, not a plain single-column reference — closes the cross-tenant half of #186 S2, #191 O5: a work item's type must belong to its own `workspace_id`, not just exist), `number` (**`> 0`**), `key` (**stored**, set once at insert from `{project.key}-{number}`; never regenerated), `title`, `description jsonb` (Tiptap), `state_id` (**`ON DELETE RESTRICT`** — states are archived, never deleted out from under an item), `priority`, `assignee_id` (**`ON DELETE RESTRICT`** — people are deactivated, never deleted), `requester_id`, `parent_id`, `service_id` null, `start_date`, `due_date`, `position numeric(20,10)` (**never `NaN`** — `NaN` compares greater than every non-`NaN` value, so one bad row would head every `ORDER BY ... desc` and tail every `... asc` for ever), `estimate_point_id`, `cycle_id`, `module_id`, `sla_started_at` (copied from `submission.created_at` on acceptance; otherwise `created_at`), `sla_policy_version_id` (nullable pin selected at creation/acceptance using SLA-1 precedence and effective at `sla_started_at`; no mutable-binding backfill for existing rows), `first_response_at timestamptz null` (set once, by the first `comment` with `visibility = 'public'` whose author is a `side = 'staff'` person — the stored fact the `first_response` SLA metric is computed from, `SLA-7`), `resolved_at`, `customer_visibility` (`private`\|`organisation`), `archived_at`, `deleted_at`. **v**. Both new composite FKs are `ON UPDATE NO ACTION`, never `CASCADE` — PR #191's own O1 finding: a composite FK whose referenced columns include a mutable, non-PK column can silently cascade a work item across a tenant boundary if that keyword is `CASCADE`. Unique `(project_id, id)` (`work_item_project_id_id_unique`, the `parent_id` composite-FK target) and, since decision log 2026-09-23 ("Work-item activity gets its own `activity` table"), unique `(workspace_id, id)` (`work_item_workspace_id_id_unique`, following the `work_item_type_workspace_id_id_unique` precedent) — the composite-FK target `activity.work_item_id` pins itself to (see the `activity` row below) Canonical search also indexes normalized key prefixes, normalized old-key aliases and the plain rich-text description expression; the existing title trigram index remains. |
+| `work_item` | `project_id`, `workspace_id` **not null** (issue #192, decision log 2026-09-22 "#192's tenant-attribution decision: Option A+D" — denormalised from `project.workspace_id` at row-creation time by #23's write path, and composite-FK-anchored to `project (workspace_id, id)` so it can never drift from the project it was copied from), `type_id` (composite-FK'd to `work_item_type (workspace_id, id)`, not a plain single-column reference — closes the cross-tenant half of #186 S2, #191 O5: a work item's type must belong to its own `workspace_id`, not just exist), `number` (**`> 0`**), `key` (**stored**, set once at insert from `{project.slug}-{number}`; never regenerated), `title`, `description jsonb` (Tiptap), `state_id` (**`ON DELETE RESTRICT`** — states are archived, never deleted out from under an item), `priority`, `assignee_id` (**`ON DELETE RESTRICT`** — people are deactivated, never deleted), `requester_id`, `parent_id`, `service_id` null, `start_date`, `due_date`, `position numeric(20,10)` (**never `NaN`** — `NaN` compares greater than every non-`NaN` value, so one bad row would head every `ORDER BY ... desc` and tail every `... asc` for ever), `estimate_point_id`, `cycle_id`, `module_id`, `sla_started_at` (copied from `submission.created_at` on acceptance; otherwise `created_at`), `sla_policy_version_id` (nullable pin selected at creation/acceptance using SLA-1 precedence and effective at `sla_started_at`; no mutable-binding backfill for existing rows), `first_response_at timestamptz null` (set once, by the first `comment` with `visibility = 'public'` whose author is a `side = 'staff'` person — the stored fact the `first_response` SLA metric is computed from, `SLA-7`), `resolved_at`, `customer_visibility` (`private`\|`organisation`), `archived_at`, `deleted_at`. **v**. Both new composite FKs are `ON UPDATE NO ACTION`, never `CASCADE` — PR #191's own O1 finding: a composite FK whose referenced columns include a mutable, non-PK column can silently cascade a work item across a tenant boundary if that keyword is `CASCADE`. Unique `(project_id, id)` (`work_item_project_id_id_unique`, the `parent_id` composite-FK target) and, since decision log 2026-09-23 ("Work-item activity gets its own `activity` table"), unique `(workspace_id, id)` (`work_item_workspace_id_id_unique`, following the `work_item_type_workspace_id_id_unique` precedent) — the composite-FK target `activity.work_item_id` pins itself to (see the `activity` row below) Canonical search also indexes normalized key prefixes, normalized old-key aliases and the plain rich-text description expression; the existing title trigram index remains. |
 | `work_item_key_alias` | `old_key`, `work_item_id` — a cross-project move re-keys the item and the old key redirects |
 | `work_item_key_claim` | `key` (**primary key**), `work_item_id` — the shared uniqueness registry both `work_item.key` and `work_item_key_alias.old_key` are composite-FK'd into (issue #191, closing #186 S5's TOCTOU race in the trigger it replaces): a key string is claimed here exactly once, ever, for the life of the system, so Postgres's own real PRIMARY KEY index — not a hand-written trigger's `SELECT`/`EXISTS` check — is what rejects a collision, in either direction, under any concurrent interleaving. See the table's own comment in `schema.ts` for the full design |
 | `work_item_template` | `workspace_id`, `type_id`, `name`, `title`, `description jsonb`, `labels jsonb`, `custom_field_values jsonb`, `checklist_template_id` null, `recurrence jsonb` null (a recurrence rule; the scheduler instantiates — see review) |
@@ -246,3 +246,100 @@ Better Auth owns `user`, `session`, `account`, `verification`, `two_factor`, `pa
 `request_rate_limit_counter` (migration `0167`) stores shared SCIM ingress budgets: composite `(bucket,key_hash)` key, narrow anonymous-failure/connection bucket allowlist, HMAC client/connection digest, window start/count/expiry and UTC creation/update timestamps. No raw client address or credential is stored. Expired counters are ephemeral security state, not tenant content; enforcement fails closed without the database.
 
 Organisation restore fencing (0181): `project.archive_version` advances on every archive, delete or organisation-assignment write through a database trigger. Normal writes clear `organisation_deletion_operation_id`; org deletion may assign a new opaque operation marker. Restore changes only rows still owned by that exact operation/version, preserving independent later edits and pre-existing archives.
+
+## Timestamp without time zone catalogue
+
+The migration 0225 schema snapshot lists these columns as `timestamp` without time zone. Entries marked default `now()` use that database default; review the database session time zone when writing defaults as well as when comparing values. This inventory does not assert that unlisted code never compares these columns. Recheck it when the schema changes.
+
+| Table | Columns |
+| --- | --- |
+| `account` | `access_token_expires_at`, `refresh_token_expires_at`, `created_at` (default `now()`), `updated_at` |
+| `activity` | `created_at` (default `now()`), `imported_at` |
+| `apikey` | `last_refill_at`, `last_request`, `expires_at`, `created_at`, `updated_at` |
+| `approval` | `created_at` (default `now()`), `expires_at`, `reminder_50_sent_at`, `reminder_90_sent_at`, `decided_at` |
+| `asset` | `created_at` (default `now()`) |
+| `attachment` | `deleted_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `canned_response` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `checklist_item` | `done_at`, `created_at` (default `now()`) |
+| `checklist_template` | `archived_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `column` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `comment` | `edited_at`, `deleted_at`, `created_at` (default `now()`), `updated_at` (default `now()`), `imported_at` |
+| `comment_version` | `created_at` (default `now()`) |
+| `cycle` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `cycle_snapshot` | `created_at` (default `now()`) |
+| `document_link` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `estimate` | `created_at` (default `now()`) |
+| `external_link` | `created_at` (default `now()`), `updated_at` (default `now()`), `source_created_at`, `source_updated_at`, `source_resolved_at`, `last_seen_at`, `stale_at` |
+| `instance_setting` | `setup_completed_at`, `setup_token_expires_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `invitation` | `expires_at`, `created_at` (default `now()`) |
+| `job_lease` | `expires_at` |
+| `label` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `legal_hold` | `placed_at` (default `now()`), `lifted_at` |
+| `membership` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `milestone` | `date`, `reached_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `module` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `notification` | `read_at` |
+| `notification_delivery` | `next_attempt_at` (default `now()`), `delivered_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `notification_digest` | `window_start_at`, `window_end_at`, `next_attempt_at` (default `now()`), `delivered_at`, `lease_expires_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `notification_preference_handoff` | `created_at`, `expires_at` |
+| `organisation` | `deleted_at`, `purge_after`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `organisation_deletion_project_snapshot` | `prior_archived_at` |
+| `organisation_deletion_snapshot` | `deleted_at`, `purge_after` |
+| `organisation_quota` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `outbox_dedupe_reservation` | `lease_expires_at` |
+| `person` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `prerequisite` | `due_date`, `completed_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `project` | `created_at` (default `now()`), `archived_at`, `deleted_at`, `purge_after` |
+| `project_agile_setting` | `updated_at` (default `now()`) |
+| `project_slug_claim` | `created_at` (default `now()`) |
+| `role` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `saved_view` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `scheduled_transition` | `due_at`, `created_at` (default `now()`) |
+| `session` | `expires_at`, `created_at` (default `now()`), `updated_at` |
+| `stakeholder` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `state` | `archived_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `state_template` | `archived_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `state_wip_limit` | `updated_at` (default `now()`) |
+| `task` | `start_date`, `due_date`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `task_activity` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `task_comment` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `task_relation` | `created_at` (default `now()`) |
+| `task_reminder_sent` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `task_time_entry` | `start_time`, `end_time`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `team` | `created_at`, `updated_at` |
+| `team_member` | `created_at` |
+| `two_factor` | `locked_until` |
+| `user` | `created_at` (default `now()`), `updated_at` (default `now()`), `ban_expires` |
+| `user_avatar` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `user_notification_preference` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `user_notification_workspace_project` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `user_notification_workspace_rule` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `user_preference` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `verification` | `expires_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `watcher` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `work_item` | `start_date`, `due_date`, `sla_started_at`, `first_response_at`, `resolved_at`, `archived_at`, `deleted_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `work_item_key_alias` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `work_item_key_claim` | `created_at` (default `now()`) |
+| `work_item_template` | `archived_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `work_item_type` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `workflow` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `workflow_rule` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `workflow_transition` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `workflow_version` | `published_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `workspace` | `deleted_at`, `purge_after`, `created_at` |
+| `workspace_member` | `joined_at` |
+
+### Migration default sources
+
+`schema.ts` is not the only writer of these defaults. The raw-SQL sources below also install `DEFAULT now()` on a `timestamp` (without time zone) column, so the stored value is the session's local wall clock, not UTC, whenever the database `TimeZone` is not UTC.
+
+| Source | Effect |
+| --- | --- |
+| `apps/api/drizzle/0000` to `0148` and `0216` (generated files declaring `timestamp DEFAULT now() NOT NULL`, for example `0007_careful_moira_mactaggert.sql:45`, which adds `invitation.created_at` inside a guarded `DO` block) | Local-time `created_at`/`updated_at` defaults. The catalogue's "default `now()`" entries come from these. The later `with time zone` migrations (`0115`, `0140`, `0141`, `0196`, `0197`) are not affected |
+| `apps/api/src/database/repositories/migrate-session-column.repository.ts:116` | `ALTER COLUMN "created_at" SET DEFAULT NOW()` on `invitation`, after a backfill of `COALESCE("expires_at" - INTERVAL '1 month', NOW())`. Default and backfill are both local time |
+| `apps/api/src/database/repositories/migrate-notification-preferences-schema.repository.ts:38-107` | `CREATE TABLE IF NOT EXISTS` and `ADD COLUMN IF NOT EXISTS` of `created_at`/`updated_at` `timestamp DEFAULT now() NOT NULL` on `user_notification_preference`, `user_notification_workspace_rule` and `user_notification_workspace_project`. Local time, applied at startup rather than by a numbered migration |
+
+`CURRENT_TIMESTAMP`/`NOW()` in `0186_service_key_accountability.sql`, `0002_easy_miek.sql` and `apps/api/src/imports/project-retention.ts` only touch `timestamptz` columns (`api_key`, `notification.created_at`, `import_run`) and carry no offset risk. Any purge or expiry comparison against a column above must use `now() AT TIME ZONE 'UTC'` (`dbNowUtc()`).
+| `workspace_role` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+
+Known scheduler comparisons use UTC wall-clock cutoffs for `session.expires_at`, `job_lease.expires_at`, `outbox_dedupe_reservation.lease_expires_at`, `work_item.deleted_at`, `project.purge_after` and `scheduled_transition.due_at`. Other comparisons require individual review; do not assume they are absent. See [retained constraints](retained-constraints.md#database).
