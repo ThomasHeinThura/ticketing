@@ -4834,6 +4834,7 @@ export const workItemTable = pgTable(
     // exist). `onUpdate("no action")` per #191's O1 lesson (this FK's referenced columns
     // include the mutable `work_item_type.workspace_id`).
     foreignKey({
+      name: "work_item_workspace_type_fk",
       columns: [table.workspaceId, table.typeId],
       foreignColumns: [workItemTypeTable.workspaceId, workItemTypeTable.id],
     })

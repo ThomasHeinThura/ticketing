@@ -261,14 +261,8 @@ describe("#192 -- work_item.type_id is pinned to a work_item_type in THIS item's
 // `UPDATE work_item_type SET workspace_id`, the statement is still rejected -- but by
 // the PROJECT fk (`Key (workspace_id, project_id)=(...) is not present`), not by the
 // type fk's own NO ACTION check. So each test below asserts the SPECIFIC constraint
-// name Postgres reports, not merely that *some* rejection happened -- that is what
-// actually discriminates "this FK still enforces NO ACTION" from "the other FK happens
-// to catch the same attack". Names read directly out of a live `pg_constraint`, not
-// out of the migration file (the type fk's name is truncated to Postgres's 63-byte
-// NAMEDATALEN limit -- see the review's F2 -- so the migration file's own 64-byte
-// identifier is NOT what actually appears in the error).
-const TYPE_FK_NAME =
-  "work_item_workspace_id_type_id_work_item_type_workspace_id_id_f";
+// name Postgres reports, not merely that some other FK rejected the update.
+const TYPE_FK_NAME = "work_item_workspace_type_fk";
 const PROJECT_FK_NAME =
   "work_item_workspace_id_project_id_project_workspace_id_id_fk";
 
