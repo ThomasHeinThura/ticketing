@@ -20,28 +20,37 @@ type SavePicker = (options: { suggestedName: string }) => Promise<{
   createWritable: () => Promise<WritableStream<Uint8Array>>;
 }>;
 
-/** Streams a download response to disk so a large export is never held in memory. */
-export async function saveResponse(filename: string, response: Response) {
+/**
+ * Saves a ready export. The picker opens first, straight from the click, so a slow
+ * export cannot outlast the user-activation window; the file is streamed to disk and
+ * discarded (never left partial) when the download is refused or breaks.
+ */
+export async function saveReportExport(id: string) {
   const picker = (window as { showSaveFilePicker?: SavePicker })
     .showSaveFilePicker;
-  if (picker && response.body) {
-    let file: Awaited<ReturnType<SavePicker>> | undefined;
-    try {
-      file = await picker({ suggestedName: filename });
-    } catch (error) {
-      // Cancelled by the person: stop the transfer. Any other refusal falls back below.
-      if (error instanceof DOMException && error.name === "AbortError") {
-        await response.body.cancel();
-        return;
-      }
-    }
-    if (file) {
-      await response.body.pipeTo(await file.createWritable());
-      return;
-    }
+  if (!picker) {
+    // shortcut: browsers without showSaveFilePicker (Firefox, Safari) buffer the whole file as a Blob, upgrade when they ship it or the API offers a signed download URL.
+    const { filename, response } = await downloadReportExport(id);
+    saveBlob(filename, await response.blob());
+    return;
   }
-  // shortcut: browsers without showSaveFilePicker (Firefox, Safari) buffer the whole file as a Blob, upgrade when they ship it or the API offers a signed download URL.
-  saveBlob(filename, await response.blob());
+  let file: Awaited<ReturnType<SavePicker>>;
+  try {
+    file = await picker({ suggestedName: `report-export-${id}.csv` });
+  } catch (error) {
+    // Cancelled by the person: nothing happens.
+    if (error instanceof DOMException && error.name === "AbortError") return;
+    throw error;
+  }
+  const writable = await file.createWritable();
+  try {
+    const { response } = await downloadReportExport(id);
+    if (!response.body) throw new Error("The export had no content");
+    await response.body.pipeTo(writable);
+  } catch (error) {
+    await writable.abort(error).catch(() => undefined);
+    throw error;
+  }
 }
 
 export function saveBlob(filename: string, blob: Blob) {
@@ -102,10 +111,7 @@ export function ReportExportStatus({
   const { t } = useTranslation();
   const exported = useReportExport(id);
   const download = useMutation({
-    mutationFn: async () => {
-      const { filename, response } = await downloadReportExport(id);
-      await saveResponse(filename, response);
-    },
+    mutationFn: () => saveReportExport(id),
     onError: (error) => toast.error(error.message),
   });
   const info = exported.data?.data;
