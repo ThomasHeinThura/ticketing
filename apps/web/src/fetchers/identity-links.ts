@@ -46,8 +46,9 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 
 /**
  * The current provider and the providers it can link to, or `null` when this session cannot
- * link identities. Password sessions receive null. Older servers can answer 403 for that
- * state; other refusals still throw.
+ * link identities: the API answers 403 for a session not started through an identity provider
+ * (a password session). That is an expected state the panel explains, not an error to log
+ * (UX-8). Every other refusal still throws.
  */
 export async function getIdentityLinks(): Promise<IdentityLinkList | null> {
   const response = await apiFetch(getApiUrl(IDENTITY_LINK_BASE), {
