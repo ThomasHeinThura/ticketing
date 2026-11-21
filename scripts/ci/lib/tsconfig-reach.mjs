@@ -24,6 +24,9 @@ export function outOfPackageFiles(tsc, pkgDir, config) {
   if (fs.statSync(configPath).isDirectory())
     configPath = path.join(configPath, "tsconfig.json");
   const configDir = path.dirname(configPath);
+  // shortcut: roots only (include/files/extends), not files reached through imports or paths
+  // aliases, matching the gate's scope before #87; extend to the full program if an imported
+  // out-of-package file is ever left out of a typecheck input.
   return (JSON.parse(out).files ?? [])
     .map((file) => path.resolve(configDir, file))
     .filter((file) => path.relative(pkgDir, file).startsWith(".."));
@@ -43,7 +46,12 @@ function owningPackage(file, root) {
   return undefined;
 }
 
-/** Does `task` hash `rel` (relative to its package)? Default inputs hash every file. */
+/**
+ * Does `task` hash `rel` (relative to its package)? Default inputs hash every file.
+ * shortcut: Turbo's default inputs skip git-ignored files (for example `dist/`); this treats them
+ * as hashed because a `^build` dependency's own hash already changes when its sources change.
+ * Check real Turbo input membership if a downstream config ever compiles an ignored, hand-edited file.
+ */
 function taskHashes(task, rel) {
   const inputs = (task.inputs ?? []).map(String);
   const globs = inputs.filter((g) => g !== "$TURBO_DEFAULT$");
