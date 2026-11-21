@@ -5,6 +5,7 @@ const download = vi.hoisted(() => vi.fn());
 vi.mock("@/fetchers/report", () => ({ downloadReportExport: download }));
 
 import { saveReportExport } from "./report-export";
+import { chunkedResponse, fakeFile } from "./test-writable";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -12,40 +13,20 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** A picker whose writable records writes and aborts; `failWriteAt` breaks the disk. */
 function pick(failWriteAt?: number) {
-  const written: string[] = [];
-  const writable = new WritableStream<Uint8Array>({
-    write(chunk) {
-      if (written.length === failWriteAt) throw new Error("disk full");
-      written.push(new TextDecoder().decode(chunk));
-    },
-  });
-  const abort = vi.spyOn(writable, "abort");
-  const picker = vi.fn(async () => ({ createWritable: async () => writable }));
+  const file = fakeFile(failWriteAt);
+  const picker = vi.fn(async () => ({
+    createWritable: async () => file.writable,
+  }));
   vi.stubGlobal("showSaveFilePicker", picker);
-  return { written, abort, picker };
+  return { file, picker };
 }
 
-// Errors on the pull after the last chunk, so the written bytes are delivered first.
-const chunks = (parts: string[], failAfter = false) => {
-  const queue = [...parts];
-  return new Response(
-    new ReadableStream<Uint8Array>({
-      pull(controller) {
-        const part = queue.shift();
-        if (part !== undefined)
-          controller.enqueue(new TextEncoder().encode(part));
-        else if (failAfter) controller.error(new TypeError("network error"));
-        else controller.close();
-      },
-    }),
-  );
-};
+const chunks = chunkedResponse;
 
 describe("saveReportExport (RP-10)", () => {
   it("opens the picker before the request and streams without calling blob()", async () => {
-    const { written, picker } = pick();
+    const { file, picker } = pick();
     const response = chunks(["a,b\n", "1,2\n"]);
     const blob = vi.spyOn(response, "blob");
     download.mockImplementation(async () => {
@@ -53,7 +34,9 @@ describe("saveReportExport (RP-10)", () => {
       return { filename: "e.csv", response };
     });
     await saveReportExport("e1");
-    expect(written.join("")).toBe("a,b\n1,2\n");
+    expect(file.bytes.join("")).toBe("a,b\n1,2\n");
+    expect(file.closed).toBe(true);
+    expect(file.aborted).toBe(false);
     expect(blob).not.toHaveBeenCalled();
   });
 
@@ -71,33 +54,38 @@ describe("saveReportExport (RP-10)", () => {
   it.each([403, 409, 410])(
     "aborts the file and shows the %s when the download is refused",
     async (status) => {
-      const { abort } = pick();
+      const { file } = pick();
       download.mockRejectedValue(new HttpError(status, "refused"));
       await expect(saveReportExport("e1")).rejects.toMatchObject({ status });
-      expect(abort).toHaveBeenCalledTimes(1);
+      expect(file.aborted).toBe(true);
+      expect(file.closed).toBe(false);
+      expect(file.bytes).toEqual([]);
     },
   );
 
   it("aborts the file on a network error after some bytes were written", async () => {
-    const { written, abort } = pick();
+    const { file } = pick();
     download.mockResolvedValue({
       filename: "e.csv",
       response: chunks(["a,b\n"], true),
     });
     await expect(saveReportExport("e1")).rejects.toThrow("network error");
-    expect(written.length).toBeGreaterThan(0);
-    expect(abort).toHaveBeenCalled();
+    // Bytes arrived, yet the destination is discarded, never closed as a short file.
+    expect(file.bytes).toEqual(["a,b\n"]);
+    expect(file.aborted).toBe(true);
+    expect(file.closed).toBe(false);
   });
 
   it("aborts the file on a disk-write error after some bytes were written", async () => {
-    const { written, abort } = pick(1);
+    const { file } = pick(1);
     download.mockResolvedValue({
       filename: "e.csv",
       response: chunks(["a,b\n", "1,2\n", "3,4\n"]),
     });
     await expect(saveReportExport("e1")).rejects.toThrow("disk full");
-    expect(written).toEqual(["a,b\n"]);
-    expect(abort).toHaveBeenCalled();
+    expect(file.bytes).toEqual(["a,b\n"]);
+    expect(file.aborted).toBe(true);
+    expect(file.closed).toBe(false);
   });
 
   it("falls back to a Blob download under the response filename only without the picker", async () => {

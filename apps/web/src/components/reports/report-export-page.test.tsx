@@ -14,6 +14,7 @@ import { routes } from "@/lib/routes";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+  initReactI18next: { type: "3rdParty", init: () => undefined },
 }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
@@ -54,6 +55,7 @@ const saved = vi.hoisted(() => vi.fn());
 vi.mock("./report-export", () => ({ saveReportExport: saved }));
 
 import { ReportExportPage } from "./report-export-page";
+import { chunkedResponse, fakeFile } from "./test-writable";
 
 afterEach(() => {
   cleanup();
@@ -183,5 +185,32 @@ describe("ReportExportPage (P5-R3-01)", () => {
         screen.getByText("reports:exportPage.download.notReady.title"),
       ).toBeTruthy(),
     );
+  });
+
+  it("shows the failed-download alert when the connection drops mid-transfer", async () => {
+    const { saveReportExport } =
+      await vi.importActual<typeof import("./report-export")>(
+        "./report-export",
+      );
+    const file = fakeFile();
+    vi.stubGlobal("showSaveFilePicker", async () => ({
+      createWritable: async () => file.writable,
+    }));
+    download.mockResolvedValue({
+      filename: "e.csv",
+      response: chunkedResponse(["a,b\n"], true),
+    });
+    saved.mockImplementationOnce(saveReportExport);
+    show({ data: { data: info({}) } });
+    fireEvent.click(screen.getByRole("button", { name: /export.download/ }));
+    await waitFor(() =>
+      expect(
+        screen.getByText("reports:exportPage.download.failed.title"),
+      ).toBeTruthy(),
+    );
+    expect(screen.getByTestId("report-export-download-error")).toBeTruthy();
+    expect(file.aborted).toBe(true);
+    expect(file.closed).toBe(false);
+    vi.unstubAllGlobals();
   });
 });
