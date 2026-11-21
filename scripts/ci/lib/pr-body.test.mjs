@@ -697,6 +697,14 @@ describe("contentOf", () => {
 });
 
 describe("sections", () => {
+  it("rejects duplicate headings disguised with an invisible character", () => {
+    assert.throws(
+      () =>
+        sections("## Security review\nfirst\n## Security\u200b review\nsecond"),
+      DuplicateSectionError,
+    );
+  });
+
   it("splits on ## headings and keeps raw, text and content apart", () => {
     const found = sections(
       ["## Task", "real work", "", "## Gates", "<!-- hint -->", ""].join("\n"),
