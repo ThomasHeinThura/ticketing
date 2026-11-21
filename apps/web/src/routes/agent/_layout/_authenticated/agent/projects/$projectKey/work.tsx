@@ -1,5 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -199,8 +203,10 @@ import {
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/projects/$projectKey/work",
 )({
-  validateSearch: (raw) =>
-    parseWorkItemWorkSearch(normalizeCanonicalWorkItemSelection(raw)),
+  validateSearch: (raw) => ({
+    ...parseWorkItemWorkSearch(normalizeCanonicalWorkItemSelection(raw)),
+    ...(raw.layout === undefined && { layout: undefined }),
+  }),
   beforeLoad: ({ context, params, search, cause }) => {
     preloadWorkItemsPanel();
     // A table of more than 100 rows renders through the virtualized table; fetched with the
@@ -219,11 +225,12 @@ export const Route = createFileRoute(
         ? prefetchWorkListData(context.queryClient, {
             session: context.session,
             projectKey: params.projectKey,
-            search,
+            search: { ...search, layout: search.layout ?? "list" },
           })
         : undefined;
     return {
-      workListFirstPaint: search.layout === "list" ? reads : undefined,
+      workListFirstPaint:
+        (search.layout ?? "list") === "list" ? reads : undefined,
     };
   },
   // A direct visit to the grouped list renders once its rows are here, briefly (see
@@ -239,9 +246,11 @@ function WorkItemsRouteComponent() {
 }
 
 function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
+  const router = useRouter();
+  const status = useRouterState({ select: (state) => state.status });
   const { t } = useTranslation();
   const {
-    layout,
+    layout = "list",
     sort,
     dir,
     sorts,
@@ -603,17 +612,21 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   });
   const restoredLayoutProjectIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
+    void status;
+    const current = router.state;
     if (
+      current.status !== "idle" ||
+      !current.matches.some(
+        (match) =>
+          match.routeId === Route.id && match.params.projectKey === projectKey,
+      ) ||
       !project?.id ||
       !layoutPreference.settled ||
       restoredLayoutProjectIdRef.current === project.id
     )
       return;
     restoredLayoutProjectIdRef.current = project.id;
-    if (
-      typeof window !== "undefined" &&
-      !new URLSearchParams(window.location.search).has("layout")
-    ) {
+    if (!("layout" in current.location.search)) {
       const remembered =
         layoutPreference.value ?? readProjectLayoutPreference(project.id);
       if (layoutPreference.value)
@@ -630,10 +643,13 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     }
   }, [
     project?.id,
+    projectKey,
     layout,
     navigate,
     layoutPreference.settled,
     layoutPreference.value,
+    router,
+    status,
   ]);
 
   const handleRealtimeAvailabilityChange = useCallback(
