@@ -4523,7 +4523,7 @@ export const workItemTable = pgTable(
     // which only names `(project_id, number)`). `project_slug_unique` (migration 0064)
     // enforces uniqueness among current project rows. `project_slug_claim` (migration 0065)
     // permanently claims slugs, including after project rename or workspace hard-delete;
-    // see its schema comment for the pre-0065 history limitation. Numbers are unique per
+    // see "BACKFILL, AND ITS HONEST LIMITATION" in drizzle/0065_project_slug_claim.sql for the pre-0065 history limitation. Numbers are unique per
     // project, so the key and alias mechanism rely on both guarantees.
     //
     // #191 O2: also composite-FK'd to `work_item_key_claim(key, work_item_id)` below (see
