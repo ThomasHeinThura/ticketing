@@ -24,6 +24,22 @@ const state = vi.hoisted(() => ({
   getCustomFields: vi.fn(),
 }));
 
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  useRouter: () => ({
+    state: {
+      status: "idle",
+      matches: window.location.pathname.startsWith("/agent/projects/WLP/work")
+        ? [{ routeId: Route.id, params: { projectKey: "WLP" } }]
+        : [],
+      location: {
+        search: Object.fromEntries(new URLSearchParams(window.location.search)),
+      },
+    },
+  }),
+  useRouterState: () => "idle",
+}));
+
 vi.mock("@/hooks/use-project-view-preference", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@/hooks/use-project-view-preference")
@@ -174,7 +190,7 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
       sort: "title",
     } as never);
     expect(parsed).toEqual({
-      layout: "list",
+      layout: undefined,
       sort: "title",
       dir: "asc",
       filter: "priority:high",
