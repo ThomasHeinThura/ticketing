@@ -44,8 +44,6 @@ async function importInGroupMode(path = "/agent/projects/WLP/work") {
   return import("./index");
 }
 
-const flush = () => new Promise((resolve) => setTimeout(resolve, 20));
-
 describe("i18n group mode on the work list", () => {
   beforeEach(() => {
     rest.fail = 0;
@@ -117,8 +115,9 @@ describe("i18n group mode on the work list", () => {
     const { i18n, whenAllNamespacesLoaded } =
       await importInGroupMode("/dashboard");
     await whenAllNamespacesLoaded();
-    await flush();
-    expect(i18n.hasLoadedNamespace("settings")).toBe(true);
+    await vi.waitFor(() =>
+      expect(i18n.hasLoadedNamespace("settings")).toBe(true),
+    );
   });
 });
 
