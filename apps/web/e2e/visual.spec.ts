@@ -7726,6 +7726,8 @@ test("project overview screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Average first response", { exact: true }),
   ).toBeVisible();
+  // The project tab strip loads after the page body; slow runners caught its skeleton.
+  await expect(page.getByText("Prerequisites", { exact: true })).toBeVisible();
   await expect(page).toHaveScreenshot("project-overview.png", {
     animations: "disabled",
     caret: "hide",
