@@ -328,6 +328,18 @@ The migration 0225 schema snapshot lists these columns as `timestamp` without ti
 | `workflow_version` | `published_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
 | `workspace` | `deleted_at`, `purge_after`, `created_at` |
 | `workspace_member` | `joined_at` |
+
+### Migration default sources
+
+`schema.ts` is not the only writer of these defaults. The raw-SQL sources below also install `DEFAULT now()` on a `timestamp` (without time zone) column, so the stored value is the session's local wall clock, not UTC, whenever the database `TimeZone` is not UTC.
+
+| Source | Effect |
+| --- | --- |
+| `apps/api/drizzle/0000` to `0148` and `0216` (generated files declaring `timestamp DEFAULT now() NOT NULL`, for example `0007_careful_moira_mactaggert.sql:45`, which adds `invitation.created_at` inside a guarded `DO` block) | Local-time `created_at`/`updated_at` defaults. The catalogue's "default `now()`" entries come from these. The later `with time zone` migrations (`0115`, `0140`, `0141`, `0196`, `0197`) are not affected |
+| `apps/api/src/database/repositories/migrate-session-column.repository.ts:116` | `ALTER COLUMN "created_at" SET DEFAULT NOW()` on `invitation`, after a backfill of `COALESCE("expires_at" - INTERVAL '1 month', NOW())`. Default and backfill are both local time |
+| `apps/api/src/database/repositories/migrate-notification-preferences-schema.repository.ts:38-107` | `CREATE TABLE IF NOT EXISTS` and `ADD COLUMN IF NOT EXISTS` of `created_at`/`updated_at` `timestamp DEFAULT now() NOT NULL` on `user_notification_preference`, `user_notification_workspace_rule` and `user_notification_workspace_project`. Local time, applied at startup rather than by a numbered migration |
+
+`CURRENT_TIMESTAMP`/`NOW()` in `0186_service_key_accountability.sql`, `0002_easy_miek.sql` and `apps/api/src/imports/project-retention.ts` only touch `timestamptz` columns (`api_key`, `notification.created_at`, `import_run`) and carry no offset risk. Any purge or expiry comparison against a column above must use `now() AT TIME ZONE 'UTC'` (`dbNowUtc()`).
 | `workspace_role` | `created_at` (default `now()`), `updated_at` (default `now()`) |
 
 Known scheduler comparisons use UTC wall-clock cutoffs for `session.expires_at`, `job_lease.expires_at`, `outbox_dedupe_reservation.lease_expires_at`, `work_item.deleted_at`, `project.purge_after` and `scheduled_transition.due_at`. Other comparisons require individual review; do not assume they are absent. See [retained constraints](retained-constraints.md#database).
