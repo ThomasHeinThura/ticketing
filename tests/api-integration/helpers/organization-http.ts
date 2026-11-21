@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { getConfiguredAgentOrigin } from "../../../apps/api/src/auth";
 import { refreshStaffRegistration } from "../../../apps/api/src/auth/staff-registration";
 import db, { schema } from "../../../apps/api/src/database";
@@ -233,6 +236,18 @@ export async function invitationStatus(invitationId: string): Promise<string> {
   return row.status;
 }
 
+export async function migration0050Statements(): Promise<string[]> {
+  const path = resolve(
+    fileURLToPath(new URL(".", import.meta.url)),
+    "../../../apps/api/drizzle/0050_enforce_single_role_membership.sql",
+  );
+  const source = await readFile(path, "utf8");
+  return source
+    .split("--> statement-breakpoint")
+    .map((statement) => statement.trim())
+    .filter(Boolean);
+}
+
 export async function plantLegacyMembershipRole(
   workspaceId: string,
   userId: string,
@@ -247,7 +262,7 @@ export async function plantLegacyMembershipRole(
   await db.execute(
     sql`UPDATE "workspace_member" SET "role" = ${role} WHERE "workspace_id" = ${workspaceId} AND "user_id" = ${userId}`,
   );
-  await db.execute(
-    sql`ALTER TABLE "workspace_member" ADD CONSTRAINT "workspace_member_role_single_value" CHECK (position(',' in "role") = 0 AND "role" = btrim("role") AND btrim("role") <> '') NOT VALID`,
-  );
+  const constraint = (await migration0050Statements())[2];
+  if (!constraint) throw new Error("migration 0050 is missing its constraint");
+  await db.execute(sql.raw(`${constraint.replace(/;\s*$/, "")} NOT VALID`));
 }

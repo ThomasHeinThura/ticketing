@@ -6,6 +6,7 @@ import {
   planAccountDeletion,
   type WorkspaceMembershipSummary,
 } from "../../../apps/api/src/user/account-deletion";
+import { roleGrantsOwner } from "../../../apps/api/src/utils/workspace-member-roles";
 
 function membership(
   overrides: Partial<WorkspaceMembershipSummary> = {},
@@ -21,6 +22,12 @@ function membership(
 }
 
 describe("hasOwnerRole", () => {
+  it("shares the inclusive owner predicate", () => {
+    expect(hasOwnerRole).toBe(roleGrantsOwner);
+    for (const role of ["Owner", " owner ,admin", "owner-ish", ""]) {
+      expect(hasOwnerRole(role)).toBe(roleGrantsOwner(role));
+    }
+  });
   it("matches a plain owner role", () => {
     expect(hasOwnerRole("owner")).toBe(true);
   });

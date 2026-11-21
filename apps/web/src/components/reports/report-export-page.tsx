@@ -27,11 +27,11 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
-import { downloadReportExport, ReportsDisabledError } from "@/fetchers/report";
+import { ReportsDisabledError } from "@/fetchers/report";
 import { useReportExport } from "@/hooks/queries/report";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
-import { saveBlob } from "./report-export";
+import { saveReportExport } from "./report-export";
 import { ReportsFeatureGate } from "./reports-feature-gate";
 
 type PageState =
@@ -87,8 +87,7 @@ function ReportExportPageScreen({ exportId }: { exportId: string }) {
   const exported = useReportExport(exportId);
   const placeholderVisible = useDelayedPending(exported.isLoading);
   const download = useMutation({
-    mutationFn: () => downloadReportExport(exportId),
-    onSuccess: ({ filename, blob }) => saveBlob(filename, blob),
+    mutationFn: () => saveReportExport(exportId),
     onSettled: (_data, error) => {
       // A refused download may mean the file changed state (expired, failed): show the new one.
       if (error) void exported.refetch();

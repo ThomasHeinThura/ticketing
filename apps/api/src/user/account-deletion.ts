@@ -22,12 +22,7 @@ export type AccountDeletionPlan = {
  *
  * **Do NOT use it to COUNT owners** -- see `holdsOwnerExactly` below.
  */
-export function hasOwnerRole(role: string) {
-  return role
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .includes("owner");
-}
+export { roleGrantsOwner as hasOwnerRole } from "../utils/role-grants-owner";
 
 /**
  * Does this stored role value grant owner UNAMBIGUOUSLY -- exactly `"owner"`?

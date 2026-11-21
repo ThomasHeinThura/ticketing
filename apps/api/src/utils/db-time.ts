@@ -55,13 +55,13 @@ import { type SQL, sql } from "drizzle-orm";
  *
  * That is a lease expiring early, or a session outliving its own expiry. Use the bare
  * comparison for `timestamptz`; this helper is for the `timestamp without time zone` columns
- * that exist today and that no migration in this repository has yet converted —
- * `session.expires_at`, `job_lease.expires_at`, `task.due_date`.
+ * in the 0225 schema snapshot (190 columns; 249 are `timestamptz`) —
+ * see the catalogue in `docs/technical/data-model.md` § Timestamp without time zone catalogue.
  *
  * It lives in `utils/` rather than beside its two current callers in `scheduler/` because the
  * convention is a database-layer one: the next caller may be a job, a repository or a
  * controller, none of which should have to import from the scheduler to compare a timestamp
- * correctly. `docs/04-engineering/coding-standards.md` § Database states the rule.
+ * correctly. `docs/technical/retained-constraints.md` § Database states the rule.
  */
 export function dbNowUtc(): SQL {
   return sql`(now() AT TIME ZONE 'UTC')`;

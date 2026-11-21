@@ -14,6 +14,7 @@ import { routes } from "@/lib/routes";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+  initReactI18next: { type: "3rdParty", init: () => undefined },
 }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
@@ -51,9 +52,10 @@ vi.mock("@/fetchers/report", async () => {
   return { downloadReportExport: download, ReportsDisabledError };
 });
 const saved = vi.hoisted(() => vi.fn());
-vi.mock("./report-export", () => ({ saveBlob: saved }));
+vi.mock("./report-export", () => ({ saveReportExport: saved }));
 
 import { ReportExportPage } from "./report-export-page";
+import { chunkedResponse, fakeFile } from "./test-writable";
 
 afterEach(() => {
   cleanup();
@@ -109,15 +111,14 @@ describe("routes.reportExport (P5-R3-01)", () => {
 
 describe("ReportExportPage (P5-R3-01)", () => {
   it("offers the download of a ready export and fetches the file only when asked", async () => {
-    download.mockResolvedValue({ filename: "e.csv", blob: new Blob(["a"]) });
     show({ data: { data: info({}) } });
     expect(pageState()).toBe("ready");
     expect(screen.getByText("Customer performance")).toBeTruthy();
     // Opening the page never downloads (and so never audits) on its own.
-    expect(download).not.toHaveBeenCalled();
+    expect(saved).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: /export.download/ }));
     await waitFor(() => expect(saved).toHaveBeenCalledTimes(1));
-    expect(download).toHaveBeenCalledTimes(1);
+    expect(saved).toHaveBeenCalledWith("e1");
   });
 
   it("shows a queued or running export as waiting, with no download", () => {
@@ -158,14 +159,14 @@ describe("ReportExportPage (P5-R3-01)", () => {
   });
 
   it("turns a 410 download into the expired state and a 409 or 403 into an alert", async () => {
-    download.mockRejectedValueOnce(new HttpError(410, "expired"));
+    saved.mockRejectedValueOnce(new HttpError(410, "expired"));
     show({ data: { data: info({}) } });
     fireEvent.click(screen.getByRole("button", { name: /export.download/ }));
     await waitFor(() => expect(pageState()).toBe("expired"));
     expect(exported.current.refetch).toHaveBeenCalled();
     cleanup();
 
-    download.mockRejectedValueOnce(new HttpError(403, "rates_revoked"));
+    saved.mockRejectedValueOnce(new HttpError(403, "rates_revoked"));
     show({ data: { data: info({}) } });
     fireEvent.click(screen.getByRole("button", { name: /export.download/ }));
     await waitFor(() =>
@@ -176,7 +177,7 @@ describe("ReportExportPage (P5-R3-01)", () => {
     ).toBeTruthy();
     cleanup();
 
-    download.mockRejectedValueOnce(new HttpError(409, "not_ready"));
+    saved.mockRejectedValueOnce(new HttpError(409, "not_ready"));
     show({ data: { data: info({}) } });
     fireEvent.click(screen.getByRole("button", { name: /export.download/ }));
     await waitFor(() =>
@@ -184,5 +185,32 @@ describe("ReportExportPage (P5-R3-01)", () => {
         screen.getByText("reports:exportPage.download.notReady.title"),
       ).toBeTruthy(),
     );
+  });
+
+  it("shows the failed-download alert when the connection drops mid-transfer", async () => {
+    const { saveReportExport } =
+      await vi.importActual<typeof import("./report-export")>(
+        "./report-export",
+      );
+    const file = fakeFile();
+    vi.stubGlobal("showSaveFilePicker", async () => ({
+      createWritable: async () => file.writable,
+    }));
+    download.mockResolvedValue({
+      filename: "e.csv",
+      response: chunkedResponse(["a,b\n"], true),
+    });
+    saved.mockImplementationOnce(saveReportExport);
+    show({ data: { data: info({}) } });
+    fireEvent.click(screen.getByRole("button", { name: /export.download/ }));
+    await waitFor(() =>
+      expect(
+        screen.getByText("reports:exportPage.download.failed.title"),
+      ).toBeTruthy(),
+    );
+    expect(screen.getByTestId("report-export-download-error")).toBeTruthy();
+    expect(file.aborted).toBe(true);
+    expect(file.closed).toBe(false);
+    vi.unstubAllGlobals();
   });
 });

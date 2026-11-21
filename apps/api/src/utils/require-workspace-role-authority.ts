@@ -8,6 +8,7 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import { isInstanceAdmin } from "./is-instance-admin";
+import { parsePermissionStatements, satisfies } from "./permission-statements";
 import {
   resolveMembershipRole,
   workspaceRoleAuthority,
@@ -131,41 +132,6 @@ async function ownRoleSatisfies(
   }
   if (authority.kind === "none") return false;
 
-  let value: unknown;
-  try {
-    value = JSON.parse(authority.permission);
-  } catch {
-    return false;
-  }
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-
-  const result: Record<string, string[]> = {};
-  for (const [resource, actions] of Object.entries(
-    value as Record<string, unknown>,
-  )) {
-    if (!Array.isArray(actions)) continue;
-    const filtered = actions.filter(
-      (action): action is string => typeof action === "string",
-    );
-    if (filtered.length > 0) {
-      result[resource] = filtered;
-    }
-  }
-  return satisfies(result, required);
-}
-
-function satisfies(
-  statements: Record<string, readonly string[]>,
-  required: PermissionMap,
-): boolean {
-  for (const [resource, actions] of Object.entries(required)) {
-    const granted = statements[resource];
-    if (!granted) return false;
-    for (const action of actions) {
-      if (!granted.includes(action)) return false;
-    }
-  }
-  return true;
+  const statements = parsePermissionStatements(authority.permission);
+  return Boolean(statements && satisfies(statements, required));
 }
