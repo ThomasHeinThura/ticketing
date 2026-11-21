@@ -577,6 +577,7 @@ export function wordBoundaryContentOf(markdown) {
 export function normaliseHeading(heading) {
   return heading
     .replace(/[‐-―]/g, "-")
+    .replace(WORD_SEPARATING_BLANKS, " ")
     .replace(INVISIBLE, "")
     .replace(/\s+/g, " ")
     .trim()

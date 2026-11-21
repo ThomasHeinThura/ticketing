@@ -2695,3 +2695,8 @@ describe("meaningfulLines / declaredState — issue #473, the sibling of #152/#1
     assert.doesNotThrow(() => declaredState(`n/a ${chr(0x200d)}— no UI`));
   });
 });
+
+it("normaliseHeading keeps an ideographic space as a word separator", () => {
+  assert.equal(normaliseHeading("What\u3000and why"), "what and why");
+  assert.equal(normaliseHeading("What\u2800and why"), "what and why");
+});
