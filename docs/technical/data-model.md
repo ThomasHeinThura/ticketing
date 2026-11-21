@@ -246,3 +246,88 @@ Better Auth owns `user`, `session`, `account`, `verification`, `two_factor`, `pa
 `request_rate_limit_counter` (migration `0167`) stores shared SCIM ingress budgets: composite `(bucket,key_hash)` key, narrow anonymous-failure/connection bucket allowlist, HMAC client/connection digest, window start/count/expiry and UTC creation/update timestamps. No raw client address or credential is stored. Expired counters are ephemeral security state, not tenant content; enforcement fails closed without the database.
 
 Organisation restore fencing (0181): `project.archive_version` advances on every archive, delete or organisation-assignment write through a database trigger. Normal writes clear `organisation_deletion_operation_id`; org deletion may assign a new opaque operation marker. Restore changes only rows still owned by that exact operation/version, preserving independent later edits and pre-existing archives.
+
+## Timestamp without time zone catalogue
+
+The migration 0225 schema snapshot lists these columns as `timestamp` without time zone. Entries marked default `now()` use that database default; review the database session time zone when writing defaults as well as when comparing values. This inventory does not assert that unlisted code never compares these columns. Recheck it when the schema changes.
+
+| Table | Columns |
+| --- | --- |
+| `account` | `access_token_expires_at`, `refresh_token_expires_at`, `created_at` (default `now()`), `updated_at` |
+| `activity` | `created_at` (default `now()`), `imported_at` |
+| `apikey` | `last_refill_at`, `last_request`, `expires_at`, `created_at`, `updated_at` |
+| `approval` | `created_at` (default `now()`), `expires_at`, `reminder_50_sent_at`, `reminder_90_sent_at`, `decided_at` |
+| `asset` | `created_at` (default `now()`) |
+| `attachment` | `deleted_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `canned_response` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `checklist_item` | `done_at`, `created_at` (default `now()`) |
+| `checklist_template` | `archived_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `column` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `comment` | `edited_at`, `deleted_at`, `created_at` (default `now()`), `updated_at` (default `now()`), `imported_at` |
+| `comment_version` | `created_at` (default `now()`) |
+| `cycle` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `cycle_snapshot` | `created_at` (default `now()`) |
+| `document_link` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `estimate` | `created_at` (default `now()`) |
+| `external_link` | `created_at` (default `now()`), `updated_at` (default `now()`), `source_created_at`, `source_updated_at`, `source_resolved_at`, `last_seen_at`, `stale_at` |
+| `instance_setting` | `setup_completed_at`, `setup_token_expires_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `invitation` | `expires_at`, `created_at` (default `now()`) |
+| `job_lease` | `expires_at` |
+| `label` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `legal_hold` | `placed_at` (default `now()`), `lifted_at` |
+| `membership` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `milestone` | `date`, `reached_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `module` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `notification` | `read_at` |
+| `notification_delivery` | `next_attempt_at` (default `now()`), `delivered_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `notification_digest` | `window_start_at`, `window_end_at`, `next_attempt_at` (default `now()`), `delivered_at`, `lease_expires_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `notification_preference_handoff` | `created_at`, `expires_at` |
+| `organisation` | `deleted_at`, `purge_after`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `organisation_deletion_project_snapshot` | `prior_archived_at` |
+| `organisation_deletion_snapshot` | `deleted_at`, `purge_after` |
+| `organisation_quota` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `outbox_dedupe_reservation` | `lease_expires_at` |
+| `person` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `prerequisite` | `due_date`, `completed_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `project` | `created_at` (default `now()`), `archived_at`, `deleted_at`, `purge_after` |
+| `project_agile_setting` | `updated_at` (default `now()`) |
+| `project_slug_claim` | `created_at` (default `now()`) |
+| `role` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `saved_view` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `scheduled_transition` | `due_at`, `created_at` (default `now()`) |
+| `session` | `expires_at`, `created_at` (default `now()`), `updated_at` |
+| `stakeholder` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `state` | `archived_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `state_template` | `archived_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `state_wip_limit` | `updated_at` (default `now()`) |
+| `task` | `start_date`, `due_date`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `task_activity` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `task_comment` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `task_relation` | `created_at` (default `now()`) |
+| `task_reminder_sent` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `task_time_entry` | `start_time`, `end_time`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `team` | `created_at`, `updated_at` |
+| `team_member` | `created_at` |
+| `two_factor` | `locked_until` |
+| `user` | `created_at` (default `now()`), `updated_at` (default `now()`), `ban_expires` |
+| `user_avatar` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `user_notification_preference` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `user_notification_workspace_project` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `user_notification_workspace_rule` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `user_preference` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `verification` | `expires_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `watcher` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `work_item` | `start_date`, `due_date`, `sla_started_at`, `first_response_at`, `resolved_at`, `archived_at`, `deleted_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `work_item_key_alias` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `work_item_key_claim` | `created_at` (default `now()`) |
+| `work_item_template` | `archived_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `work_item_type` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `workflow` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `workflow_rule` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `workflow_transition` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `workflow_version` | `published_at`, `created_at` (default `now()`), `updated_at` (default `now()`) |
+| `workspace` | `deleted_at`, `purge_after`, `created_at` |
+| `workspace_member` | `joined_at` |
+| `workspace_role` | `created_at` (default `now()`), `updated_at` (default `now()`) |
+
+Known scheduler comparisons use UTC wall-clock cutoffs for `session.expires_at`, `job_lease.expires_at`, `outbox_dedupe_reservation.lease_expires_at`, `work_item.deleted_at`, `project.purge_after` and `scheduled_transition.due_at`. Other comparisons require individual review; do not assume they are absent. See [retained constraints](retained-constraints.md#database).
