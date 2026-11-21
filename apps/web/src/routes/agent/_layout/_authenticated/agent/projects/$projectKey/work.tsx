@@ -53,6 +53,7 @@ import {
 import { afterPrimaryContent } from "@/lib/after-primary-content";
 import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { normalizeCanonicalWorkItemSelection } from "@/lib/normalize-canonical-work-item-selection";
+import { routes } from "@/lib/routes";
 import { waitForWorkListFirstPaint } from "@/lib/work-list-first-paint";
 import { prefetchWorkListData } from "@/lib/work-list-prefetch";
 
@@ -606,6 +607,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     if (
       !project?.id ||
       !layoutPreference.settled ||
+      typeof window === "undefined" ||
+      window.location.pathname !==
+        routes.workItemList.build({ projectKey }).split("?")[0] ||
       restoredLayoutProjectIdRef.current === project.id
     )
       return;
@@ -630,6 +634,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     }
   }, [
     project?.id,
+    projectKey,
     layout,
     navigate,
     layoutPreference.settled,

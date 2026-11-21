@@ -507,6 +507,18 @@ describe("layout restore (VW-2)", () => {
     await renderRoute();
     expect(state.navigate).not.toHaveBeenCalled();
   });
+
+  it("does not restore a layout after navigation has left the project work page", async () => {
+    state.serverLayoutSettled = false;
+    state.serverLayout = "table";
+    writeSearchToBrowser({ layout: "board" });
+    const view = await renderRoute();
+    window.history.replaceState({}, "", "/agent/service-management/services");
+    state.serverLayoutSettled = true;
+    const Component = Route.options.component as () => React.JSX.Element;
+    view.rerender(<Component />);
+    expect(state.navigate).not.toHaveBeenCalled();
+  });
 });
 
 describe("pending work item sheet navigation", () => {

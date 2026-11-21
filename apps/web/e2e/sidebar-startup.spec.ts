@@ -1,6 +1,19 @@
 import { expect, test } from "@playwright/test";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
 
+test("service catalogue opens from a project board", async ({ page }) => {
+  await installPerformanceApiFixture(page);
+  await page.route("**/api/service-catalogue/status?*", async (route) => {
+    await route.fulfill({ json: { enabled: true } });
+  });
+  await page.route("**/api/service-catalogue/status", async (route) => {
+    await route.fulfill({ json: { enabled: true } });
+  });
+  await page.goto("/agent/projects/WLP/work?layout=board");
+  await page.getByRole("button", { name: "Service catalogue" }).click();
+  await expect(page).toHaveURL(/\/agent\/service-management\/services(?:\?|$)/);
+});
+
 test("project navigation downloads after primary content without waiting for the sidebar chunk", async ({
   page,
 }) => {
