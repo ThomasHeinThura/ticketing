@@ -697,6 +697,14 @@ describe("contentOf", () => {
 });
 
 describe("sections", () => {
+  it("rejects duplicate headings disguised with an invisible character", () => {
+    assert.throws(
+      () =>
+        sections("## Security review\nfirst\n## Security\u200b review\nsecond"),
+      DuplicateSectionError,
+    );
+  });
+
   it("splits on ## headings and keeps raw, text and content apart", () => {
     const found = sections(
       ["## Task", "real work", "", "## Gates", "<!-- hint -->", ""].join("\n"),
@@ -2686,4 +2694,9 @@ describe("meaningfulLines / declaredState — issue #473, the sibling of #152/#1
   it("does not reject a harmless Cf character (a zero-width joiner) that cannot reorder rendering", () => {
     assert.doesNotThrow(() => declaredState(`n/a ${chr(0x200d)}— no UI`));
   });
+});
+
+it("normaliseHeading keeps an ideographic space as a word separator", () => {
+  assert.equal(normaliseHeading("What\u3000and why"), "what and why");
+  assert.equal(normaliseHeading("What\u2800and why"), "what and why");
 });

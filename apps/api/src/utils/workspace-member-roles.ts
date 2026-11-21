@@ -16,6 +16,7 @@ import {
   listMemberRoleRows,
   listRolePermissionRows,
 } from "./access-lookups.repository";
+import { roleGrantsOwner } from "./role-grants-owner";
 
 type DbOrTx = Executor;
 
@@ -105,12 +106,7 @@ export async function workspaceMemberRoles(
  * owners nobody can ever transfer ownership. So these native routes were LESS
  * safe than the plugin routes they replace, for that one input.
  */
-export function roleGrantsOwner(role: string): boolean {
-  return role
-    .split(",")
-    .map((piece) => piece.trim().toLowerCase())
-    .includes("owner");
-}
+export { roleGrantsOwner } from "./role-grants-owner";
 
 export function anyRoleIsOwner(roles: string[]): boolean {
   return roles.some(roleGrantsOwner);

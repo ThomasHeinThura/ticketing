@@ -14,6 +14,7 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import { findWorkspaceRoleByKey } from "../permissions/workspace-role-authority.repository";
+import { parsePermissionStatements, satisfies } from "./permission-statements";
 import { apiKeyHasPermissionScope } from "./require-api-key-permission-scope";
 import {
   serviceKeyOfRequest,
@@ -39,37 +40,6 @@ function builtInRoleStatements(
   return null;
 }
 
-function parsePermissionStatements(
-  raw: string,
-): Record<string, readonly string[]> | null {
-  let value: unknown;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  // Only keep entries shaped like { [resource: string]: string[] }.
-  // Anything malformed is dropped so `satisfies()` never calls
-  // `.includes()` on a non-array.
-  const result: Record<string, string[]> = {};
-  for (const [resource, actions] of Object.entries(
-    value as Record<string, unknown>,
-  )) {
-    if (!Array.isArray(actions)) continue;
-    const filtered = actions.filter(
-      (action): action is string => typeof action === "string",
-    );
-    if (filtered.length > 0) {
-      result[resource] = filtered;
-    }
-  }
-  return result;
-}
-
 /**
  * What this workspace's own role row grants to a legacy statement gate: a custom role is answered
  * from its canonical `role.capabilities`; a built-in default row from its legacy statements.
@@ -92,20 +62,6 @@ async function roleSatisfies(
     return Boolean(statements && satisfies(statements, required));
   }
   return false;
-}
-
-function satisfies(
-  statements: Record<string, readonly string[]>,
-  required: PermissionMap,
-): boolean {
-  for (const [resource, actions] of Object.entries(required)) {
-    const granted = statements[resource];
-    if (!granted) return false;
-    for (const action of actions) {
-      if (!granted.includes(action)) return false;
-    }
-  }
-  return true;
 }
 
 export async function hasWorkspacePermission(
