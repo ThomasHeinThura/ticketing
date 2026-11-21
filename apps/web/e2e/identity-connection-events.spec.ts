@@ -53,8 +53,15 @@ test("tab selection is URL state and a failed history load is retryable", async 
   await page.goto(EVENTS);
   await page.getByRole("tab", { name: "Provisioning history" }).click();
   await expect(page).toHaveURL(/tab=events$/u);
+  await expect(
+    page.getByRole("tab", { name: "Provisioning history" }),
+  ).toHaveAttribute("aria-selected", "true");
   await page.getByRole("tab", { name: "Connection" }).click();
   await expect(page).toHaveURL(new RegExp(`${EVENTS}$`, "u"));
+  await expect(page.getByRole("tab", { name: "Connection" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   await page.route("**/identity-connections/conn-staff/events**", (route) =>
     route.fulfill({ status: 500, contentType: "application/json", body: "{}" }),
   );

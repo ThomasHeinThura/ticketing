@@ -403,10 +403,22 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
       const rankWrites: Array<{ path: string; body: unknown }> = [];
       page.on("request", (request) => {
         const path = pathOf(request.url());
-        if (request.method() !== "GET" && path.startsWith("/api/work-items/")) {
+        if (
+          request.method() !== "GET" &&
+          path.startsWith("/api/work-items/") &&
+          !(request.method() === "POST" && path === "/api/work-items/search")
+        ) {
           rankWrites.push({ path, body: request.postDataJSON() });
         }
       });
+
+      await page.evaluate(() =>
+        fetch("/api/work-items/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        }),
+      );
 
       await keyboardCard.focus();
       await expect(keyboardCard).toBeFocused();
