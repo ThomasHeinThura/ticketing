@@ -99,34 +99,40 @@ const TRANSIENT_PG_CODES = new Set([
   "53400",
 ]);
 
+const BROKEN_CLIENT_MESSAGE =
+  /connection terminated|connection ended|not queryable|client was closed/i;
+
 /**
  * A database or connection failure that a fresh attempt can clear. Validation, authority and mapping
  * errors (`EngineStop`, `HTTPException`) carry no such code, so they are never retried.
  */
 export function isTransientImportError(error: unknown): boolean {
-  let nested: unknown = error;
+  const chain: { code?: unknown; message?: unknown; cause?: unknown }[] = [];
   for (
-    let depth = 0;
-    depth < 5 && nested && typeof nested === "object";
-    depth++
-  ) {
-    const failure = nested as {
-      code?: unknown;
-      message?: unknown;
-      cause?: unknown;
-    };
-    const code = typeof failure.code === "string" ? failure.code : "";
-    if (
+    let nested: unknown = error;
+    chain.length < 5 && nested && typeof nested === "object";
+    nested = (nested as { cause?: unknown }).cause
+  )
+    chain.push(nested as (typeof chain)[number]);
+  // The driver's code decides. Drizzle's query wrapper puts the (imported) query parameters in its
+  // message, so message text is never trusted when any error in the chain has a code.
+  const coded = chain.find((e) => typeof e.code === "string");
+  if (coded) {
+    const code = coded.code as string;
+    return (
       TRANSIENT_PG_CODES.has(code) ||
       code.startsWith("08") ||
-      TRANSIENT_NODE_CODES.has(code) ||
-      (typeof failure.message === "string" &&
-        /connection terminated|connection ended/i.test(failure.message))
-    )
-      return true;
-    nested = failure.cause;
+      TRANSIENT_NODE_CODES.has(code)
+    );
   }
-  return false;
+  // After a connection failure Drizzle's rollback fails and node-postgres throws its own code-less
+  // error in place of the original one.
+  return chain.some(
+    (e) =>
+      typeof e.message === "string" &&
+      !e.message.startsWith("Failed query") &&
+      BROKEN_CLIENT_MESSAGE.test(e.message),
+  );
 }
 
 const backoff = (attempt: number) =>
@@ -151,9 +157,13 @@ export type RunnerOptions = {
    * Test seam: awaited inside the chunk transaction after its writes, before it commits, so a test
    * can change an administrator while a chunk is genuinely in flight (and prove it is not blocked).
    */
-  duringChunk?: () => Promise<void>;
+  duringChunk?: (tx: Transaction) => Promise<void>;
+  /** Test seam: awaited inside the finalize transaction before it completes the run. */
+  duringFinalize?: (tx: Transaction) => Promise<void>;
   /** Test seam: awaited right after a chunk transaction returned, so a test can fail an "uncertain" commit. */
   afterCommit?: () => Promise<void>;
+  /** Test seam: awaited before each run reload, so a test can fail the reload itself. */
+  beforeSnapshot?: () => Promise<void>;
   /** Test seam: awaited after a transient failure's backoff, before the run is reloaded for the retry. */
   beforeRetry?: () => Promise<void>;
 };
@@ -339,7 +349,7 @@ async function chunkTransaction(
     page: SourcePage;
     resolved: ResolvedRecord[];
     needsApproval: boolean;
-    duringChunk?: (() => Promise<void>) | undefined;
+    duringChunk?: ((tx: Transaction) => Promise<void>) | undefined;
   },
 ): Promise<ChunkOutcome> {
   const [locked] = await tx
@@ -478,7 +488,7 @@ async function chunkTransaction(
       .values(lossRows.slice(offset, offset + 500))
       .onConflictDoNothing();
 
-  await input.duringChunk?.();
+  await input.duringChunk?.(tx);
 
   // Advance the cursor and engine-level rejects in the same transaction as the commit. The run stays
   // `running` when the source is exhausted: `finalizeRun` closes it (attachments, deferred links,
@@ -558,6 +568,7 @@ async function finalizeRun(
           });
           if (step.processed === 0) break;
         }
+        await options.duringFinalize?.(tx);
         if (writer.losses.length)
           await insertImportLossRows(
             tx,
@@ -609,6 +620,7 @@ async function finalizeRun(
         });
         return { kind: "completed" as const, auditFailure };
       });
+      await options.afterCommit?.();
     } catch (error) {
       if (error instanceof EngineStop) paused = error.reason;
       else if (error instanceof HTTPException && error.status === 409)
@@ -634,6 +646,31 @@ async function finalizeRun(
   return "done";
 }
 
+/** One read-only view of the run, its connection, mapping, actor and resolve context. */
+async function loadSnapshot(runId: string) {
+  return db.transaction(async (tx) => {
+    const [row] = await tx.select().from(RUN).where(eq(RUN.id, runId)).limit(1);
+    if (!row?.projectId || !row.sourceConnectionId) return null;
+    const run = asEngineRun(row);
+    if (run.state !== "running" || run.enginePhase !== "executing")
+      return { run, inactive: true as const };
+    const connection = await loadConnection(
+      tx,
+      run.workspaceId,
+      run.sourceConnectionId,
+    );
+    const mapping = await loadMapping(tx, run, "share");
+    return {
+      run,
+      inactive: false as const,
+      connection,
+      mapping,
+      actor: await loadRunActor(tx, run),
+      context: await loadResolveContext(tx, run, mapping.entries),
+    };
+  });
+}
+
 /** Core loop (lease-free so tests can drive it). Safe to call repeatedly: it resumes from the cursor. */
 export async function runImportRun(
   runId: string,
@@ -642,33 +679,47 @@ export async function runImportRun(
   const capabilities = options.capabilities ?? WRITER_V2_CAPABILITIES;
   let chunks = 0;
   let retries = 0;
+  const unpublished: {
+    current: {
+      commit: NonNullable<
+        Extract<ChunkOutcome, { kind: "advanced" }>["commit"]
+      >;
+      nextCursor: string | null;
+    } | null;
+  } = { current: null };
   for (;;) {
     await assertJobExecutionOwned();
-    const snapshot = await db.transaction(async (tx) => {
-      const [row] = await tx
-        .select()
-        .from(RUN)
-        .where(eq(RUN.id, runId))
-        .limit(1);
-      if (!row?.projectId || !row.sourceConnectionId) return null;
-      const run = asEngineRun(row);
-      if (run.state !== "running" || run.enginePhase !== "executing")
-        return { run, inactive: true as const };
-      const connection = await loadConnection(
-        tx,
-        run.workspaceId,
-        run.sourceConnectionId,
-      );
-      const mapping = await loadMapping(tx, run, "share");
-      return {
-        run,
-        inactive: false as const,
-        connection,
-        mapping,
-        actor: await loadRunActor(tx, run),
-        context: await loadResolveContext(tx, run, mapping.entries),
-      };
-    });
+    let snapshot: Awaited<ReturnType<typeof loadSnapshot>>;
+    try {
+      await options.beforeSnapshot?.();
+      snapshot = await loadSnapshot(runId);
+    } catch (error) {
+      // A connection still unavailable right after a transient failure belongs to the same budget.
+      if (!isTransientImportError(error)) throw error;
+      if (retries >= TRANSIENT_RETRIES) {
+        await pauseRun(runId, "chunk_failed", null);
+        return { status: "paused", chunks, pausedReason: "chunk_failed" };
+      }
+      await backoff(retries);
+      retries += 1;
+      await options.beforeRetry?.();
+      continue;
+    }
+    if (snapshot && unpublished.current) {
+      const stored = snapshot.run.sourceCursor;
+      // The last chunk's commit result is kept until its publication is confirmed. When the commit's
+      // response was lost, the persisted cursor tells whether it landed. shortcut: in memory only, so
+      // a process crash between commit and publish still loses the events.
+      if (
+        stored?.cursor === unpublished.current.nextCursor &&
+        stored.exhausted === (unpublished.current.nextCursor === null)
+      ) {
+        await publishCommittedImport(unpublished.current.commit);
+        chunks += 1;
+        retries = 0; // reconciliation confirmed progress: fresh budget for the next chunk
+      }
+      unpublished.current = null;
+    }
     if (!snapshot) return { status: "idle", chunks };
     if (snapshot.inactive && snapshot.run.state === "completed")
       return { status: "completed", chunks };
@@ -731,16 +782,23 @@ export async function runImportRun(
     let outcome: ChunkOutcome;
     try {
       await recheckAuthorityUnderSharedLock(run.id);
-      outcome = await withCreationTransaction((tx) =>
-        chunkTransaction(tx, {
+      outcome = await withCreationTransaction(async (tx) => {
+        unpublished.current = null;
+        const done = await chunkTransaction(tx, {
           runId: run.id,
           cursor: cursor.cursor,
           page,
           resolved,
           needsApproval,
           duringChunk: options.duringChunk,
-        }),
-      );
+        });
+        if (done.kind === "advanced" && done.commit)
+          unpublished.current = {
+            commit: done.commit,
+            nextCursor: page.nextCursor,
+          };
+        return done;
+      });
       await options.afterCommit?.();
     } catch (error) {
       if (error instanceof EngineStop) return pause(error.reason);
@@ -758,6 +816,7 @@ export async function runImportRun(
       return pause("chunk_failed");
     }
     retries = 0;
+    unpublished.current = null;
     if (outcome.kind === "stopped") return { status: "idle", chunks };
     if (outcome.commit) await publishCommittedImport(outcome.commit);
     await reportImportAuditWriteFailure(outcome.auditFailure);

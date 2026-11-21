@@ -3,8 +3,11 @@
  * number of times inside the runner, reconciling against the persisted run before each retry, so a
  * blip does not force a manual resume. Persistent failures still pause as `chunk_failed`.
  */
+import type { EventEmitter } from "node:events";
+import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
+import { subscribeToEvent } from "../../../apps/api/src/events";
 import { unregisterImportAdapter } from "../../../apps/api/src/imports/engine/adapter";
 import {
   isTransientImportError,
@@ -66,6 +69,27 @@ describe("transient chunk failures (#895)", () => {
     for (const code of ["23505", "22P02", "42P01", "40001"])
       expect(isTransientImportError(pgError(code))).toBe(false);
     expect(isTransientImportError(new Error("boom"))).toBe(false);
+    // Driver errors without a code: what node-postgres throws once Drizzle's rollback fails.
+    expect(
+      isTransientImportError(
+        new Error(
+          "Client has encountered a connection error and is not queryable",
+        ),
+      ),
+    ).toBe(true);
+    // Imported text in a wrapped query must never make a terminal error retryable.
+    expect(
+      isTransientImportError(
+        new Error("Failed query: insert ... params: connection terminated", {
+          cause: pgError("23505"),
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isTransientImportError(
+        new Error("Failed query: insert ... params: connection terminated"),
+      ),
+    ).toBe(false);
   });
 
   it("a transient error injected once succeeds without a manual resume", async () => {
@@ -153,5 +177,152 @@ describe("transient chunk failures (#895)", () => {
     });
     expect(calls).toBe(1);
     expect(await itemCount()).toBe(0);
+  });
+
+  it("a real broken connection whose rollback fails is still retried", async () => {
+    const { run } = await executed("broken", 20);
+    let calls = 0;
+    const outcome = await runImportRun(run.id, {
+      duringChunk: async (tx) => {
+        calls += 1;
+        if (calls !== 1) return;
+        // pg emits 'error' on a checked-out client that nothing listens to; absorb it for this client.
+        (
+          tx as unknown as { session: { client: EventEmitter } }
+        ).session.client.on("error", () => {});
+        await tx.execute(sql`select pg_terminate_backend(pg_backend_pid())`);
+      },
+    });
+    expect(outcome).toMatchObject({ status: "completed" });
+    expect(await itemCount()).toBe(20);
+  });
+
+  it("failures reloading the run share the retry budget: recovery, then exhaustion", async () => {
+    const first = await executed("reload-ok", 20);
+    let chunkCalls = 0;
+    let reloads = 0;
+    const ok = await runImportRun(first.run.id, {
+      duringChunk: async () => {
+        chunkCalls += 1;
+        if (chunkCalls === 1) throw pgError("57P01");
+      },
+      beforeSnapshot: async () => {
+        reloads += 1;
+        // The reload straight after the chunk failure is refused too (reloads 2 and 3).
+        if (reloads === 2 || reloads === 3) throw pgError("57P01");
+      },
+    });
+    expect(ok).toMatchObject({ status: "completed" });
+    expect(await itemCount()).toBe(20);
+
+    await resetTestDatabase();
+    clearFakeFixtures();
+    const second = await executed("reload-bad", 20);
+    const bad = await runImportRun(second.run.id, {
+      beforeSnapshot: async () => {
+        throw pgError("57P01");
+      },
+    });
+    expect(bad).toMatchObject({
+      status: "paused",
+      pausedReason: "chunk_failed",
+    });
+    expect(await runRow(second.run.id)).toMatchObject({
+      state: "paused",
+      pausedReason: "chunk_failed",
+    });
+  });
+
+  it("each chunk gets its own budget after reconciliation confirms progress, and every chunk is published once", async () => {
+    const { run } = await executed("budget", 50);
+    const created: unknown[] = [];
+    await subscribeToEvent("work_item.created", async (d) => {
+      created.push(d);
+    });
+    let calls = 0;
+    const outcome = await runImportRun(run.id, {
+      afterCommit: async () => {
+        calls += 1;
+        if (calls <= 4) throw pgError("08006");
+      },
+    });
+    expect(outcome).toMatchObject({ status: "completed", chunks: 5 });
+    expect(await itemCount()).toBe(50);
+    expect(await linkCount()).toBe(50);
+    expect(created).toHaveLength(50);
+  });
+
+  it("a lost response on the final chunk still publishes that chunk before completion", async () => {
+    const { run } = await executed("lost-final", 10);
+    const created: unknown[] = [];
+    await subscribeToEvent("work_item.created", async (d) => {
+      created.push(d);
+    });
+    let calls = 0;
+    const outcome = await runImportRun(run.id, {
+      afterCommit: async () => {
+        calls += 1;
+        if (calls === 1) throw pgError("57P01");
+      },
+    });
+    expect(outcome).toMatchObject({ status: "completed" });
+    expect(await itemCount()).toBe(10);
+    expect(created).toHaveLength(10);
+  });
+
+  it("finalization: a transient failure recovers; an uncertain completion is not repeated", async () => {
+    const { run } = await executed("final-ok", 10);
+    let finals = 0;
+    const outcome = await runImportRun(run.id, {
+      duringFinalize: async () => {
+        finals += 1;
+        if (finals === 1) throw pgError("57P01");
+      },
+    });
+    expect(outcome).toMatchObject({ status: "completed" });
+    expect(finals).toBe(2);
+    expect(await runRow(run.id)).toMatchObject({ state: "completed" });
+
+    await resetTestDatabase();
+    clearFakeFixtures();
+    const second = await executed("final-uncertain", 10);
+    let commits = 0;
+    let finalizeRuns = 0;
+    const again = await runImportRun(second.run.id, {
+      duringFinalize: async () => {
+        finalizeRuns += 1;
+      },
+      afterCommit: async () => {
+        commits += 1;
+        // Call 1 is the chunk, call 2 the completed finalize transaction.
+        if (commits === 2) throw pgError("08006");
+      },
+    });
+    expect(again).toMatchObject({ status: "completed" });
+    expect(finalizeRuns).toBe(1);
+    expect(await runRow(second.run.id)).toMatchObject({ state: "completed" });
+  });
+
+  it("finalization: the retry bound pauses as chunk_failed with the exhausted cursor persisted", async () => {
+    const { run } = await executed("final-bad", 10);
+    let finals = 0;
+    const outcome = await runImportRun(run.id, {
+      duringFinalize: async () => {
+        finals += 1;
+        throw pgError("53300");
+      },
+    });
+    expect(outcome).toMatchObject({
+      status: "paused",
+      pausedReason: "chunk_failed",
+    });
+    expect(finals).toBe(4);
+    expect(await itemCount()).toBe(10);
+    const row = await runRow(run.id);
+    expect(row).toMatchObject({
+      state: "paused",
+      pausedReason: "chunk_failed",
+    });
+    expect(row.sourceCursor).toMatchObject({ exhausted: true });
   });
 });
