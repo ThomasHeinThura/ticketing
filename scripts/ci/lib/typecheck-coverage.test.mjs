@@ -342,6 +342,7 @@ describe("every out-of-package tsconfig reach is declared to turbo", () => {
           configs: [...new Set([...invoked, ...onDisk])],
           inputs: task.inputs ?? [],
           dependsOn: task.dependsOn,
+          tasks,
           manifest,
         });
         reaches += result.reaches;
@@ -367,6 +368,8 @@ describe("every out-of-package tsconfig reach is declared to turbo", () => {
       extra = {},
       inputs,
       dependsOn,
+      tasks,
+      configs = ["tsconfig.json"],
       manifest = {},
     }) {
       const root = await fs.mkdtemp(path.join(os.tmpdir(), "reach-"));
@@ -390,9 +393,10 @@ describe("every out-of-package tsconfig reach is declared to turbo", () => {
           tsc,
           root: realRoot,
           pkgDir: path.join(realRoot, "pkg"),
-          configs: ["tsconfig.json"],
+          configs,
           inputs,
           dependsOn,
+          tasks,
           manifest: { name: "@f/pkg", ...manifest },
         });
       } finally {
@@ -444,6 +448,56 @@ describe("every out-of-package tsconfig reach is declared to turbo", () => {
         manifest: { dependencies: { "@f/shared": "workspace:*" } },
       });
       assert.deepEqual(byDependency.problems, []);
+    });
+
+    it("RED: a dependency-owned file the upstream task's inputs exclude is flagged", async () => {
+      const tsconfig = { files: ["../shared/b.ts"], include: ["src"] };
+      const args = {
+        tsconfig,
+        inputs: bare,
+        dependsOn: ["^build"],
+        manifest: { dependencies: { "@f/shared": "workspace:*" } },
+      };
+      // Upstream build hashes only its own src/, so a change to b.ts leaves it cached.
+      const excluded = await fixture({
+        ...args,
+        tasks: { build: { inputs: ["src/**"] } },
+      });
+      assert.equal(excluded.problems.length, 1);
+      // Negated default inputs exclude it too.
+      const negated = await fixture({
+        ...args,
+        tasks: { build: { inputs: ["$TURBO_DEFAULT$", "!b.ts"] } },
+      });
+      assert.equal(negated.problems.length, 1);
+      // Default (all-files) inputs, or an explicit glob that matches, pass.
+      for (const build of [
+        {},
+        { inputs: ["$TURBO_DEFAULT$"] },
+        { inputs: ["*.ts"] },
+      ])
+        assert.deepEqual(
+          (await fixture({ ...args, tasks: { build } })).problems,
+          [],
+        );
+    });
+
+    it("resolves a directory argument (`tsc -p .`) from that directory, not its parent", async () => {
+      // `.` must read pkg/tsconfig.json and resolve ./src/a.ts inside the package (no reach);
+      // resolved from the parent it would look like an out-of-package file.
+      const dir = await fixture({
+        tsconfig: { include: ["src"] },
+        inputs: bare,
+        configs: ["."],
+      });
+      assert.deepEqual(dir, { reaches: 0, problems: [] });
+      const reach = await fixture({
+        tsconfig: { files: ["../shared/b.ts"], include: ["src"] },
+        inputs: bare,
+        configs: ["."],
+      });
+      assert.equal(reach.reaches, 1);
+      assert.match(reach.problems[0], /compiles \.\.\/shared\/b\.ts/);
     });
   });
 });

@@ -19,14 +19,18 @@ export function outOfPackageFiles(tsc, pkgDir, config) {
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   });
-  const configDir = path.dirname(path.resolve(pkgDir, config));
+  // `tsc -p .` names a directory; tsc resolves files from that directory's tsconfig.json.
+  let configPath = path.resolve(pkgDir, config);
+  if (fs.statSync(configPath).isDirectory())
+    configPath = path.join(configPath, "tsconfig.json");
+  const configDir = path.dirname(configPath);
   return (JSON.parse(out).files ?? [])
     .map((file) => path.resolve(configDir, file))
     .filter((file) => path.relative(pkgDir, file).startsWith(".."));
 }
 
-/** Name of the workspace package that owns `file`, or undefined. Stops at `root`. */
-function owningPackageName(file, root) {
+/** `{ name, dir }` of the workspace package that owns `file`, or undefined. Stops at `root`. */
+function owningPackage(file, root) {
   for (
     let dir = path.dirname(file);
     dir.startsWith(root);
@@ -34,16 +38,32 @@ function owningPackageName(file, root) {
   ) {
     const manifest = path.join(dir, "package.json");
     if (fs.existsSync(manifest))
-      return JSON.parse(fs.readFileSync(manifest, "utf8")).name;
+      return { name: JSON.parse(fs.readFileSync(manifest, "utf8")).name, dir };
   }
   return undefined;
 }
 
+/** Does `task` hash `rel` (relative to its package)? Default inputs hash every file. */
+function taskHashes(task, rel) {
+  const inputs = (task.inputs ?? []).map(String);
+  const globs = inputs.filter((g) => g !== "$TURBO_DEFAULT$");
+  const hit = (list) => list.some((g) => path.matchesGlob(rel, g));
+  const wanted =
+    inputs.length === 0 || inputs.includes("$TURBO_DEFAULT$")
+      ? true
+      : hit(globs.filter((g) => !g.startsWith("!")));
+  return (
+    wanted &&
+    !hit(globs.filter((g) => g.startsWith("!")).map((g) => g.slice(1)))
+  );
+}
+
 /**
- * Out-of-package files compiled by `configs` that neither a typecheck input glob nor a
- * `^build`/`^typecheck` dependency on the owning workspace package covers.
+ * Out-of-package files compiled by `configs` that neither a typecheck input glob nor an
+ * upstream `build`/`typecheck` task of the owning workspace dependency hashes.
  *
- * `inputs`/`dependsOn` are the resolved turbo task; `manifest` is the package.json.
+ * `inputs`/`dependsOn` are the resolved turbo task; `tasks` is turbo's task map, used to
+ * resolve the upstream task's own inputs; `manifest` is the package.json.
  */
 export function uncoveredReaches({
   tsc,
@@ -52,6 +72,7 @@ export function uncoveredReaches({
   configs,
   inputs,
   dependsOn,
+  tasks = {},
   manifest,
 }) {
   const globs = inputs.map(String).filter((g) => g !== "$TURBO_DEFAULT$");
@@ -59,9 +80,9 @@ export function uncoveredReaches({
   const negative = globs
     .filter((g) => g.startsWith("!"))
     .map((g) => g.slice(1));
-  const upstream = (dependsOn ?? []).some(
-    (d) => d === "^build" || d === "^typecheck",
-  );
+  const upstream = (dependsOn ?? [])
+    .filter((d) => d === "^build" || d === "^typecheck")
+    .map((d) => d.slice(1));
   const deps = new Set(
     Object.keys({ ...manifest.dependencies, ...manifest.devDependencies }),
   );
@@ -75,8 +96,16 @@ export function uncoveredReaches({
       const byInput =
         positive.some((g) => path.matchesGlob(rel, g)) &&
         !negative.some((g) => path.matchesGlob(rel, g));
-      const owner = owningPackageName(file, root);
-      const byDependency = upstream && owner !== undefined && deps.has(owner);
+      const owner = owningPackage(file, root);
+      const byDependency =
+        owner !== undefined &&
+        deps.has(owner.name) &&
+        upstream.some((name) =>
+          taskHashes(
+            tasks[`${owner.name}#${name}`] ?? tasks[name] ?? {},
+            path.relative(owner.dir, file).split(path.sep).join("/"),
+          ),
+        );
       if (!byInput && !byDependency) {
         problems.push(
           `${path.relative(root, path.resolve(pkgDir, config))} compiles ${rel}, which is ` +
