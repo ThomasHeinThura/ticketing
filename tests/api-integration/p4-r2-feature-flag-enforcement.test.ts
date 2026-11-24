@@ -19,6 +19,7 @@ import {
   resolveProjectFeatures,
 } from "../../apps/api/src/feature-flag/repository";
 import { createApp } from "../../apps/api/src/index";
+import { reportFeatureScope } from "../../apps/api/src/report/feature-scope";
 import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
 import {
   addCustomer,
@@ -254,7 +255,9 @@ describe("resolution parity: settings view equals enforcement (P4R2-M2)", () => 
       const view = (
         await resolveProjectFeatures(project.id, workspace.id)
       ).find((f) => f.key === "feature.sla");
-      const expected = c.project ?? c.workspace ?? c.instance;
+      // #897: a project-on override needs the workspace value on.
+      const workspaceValue = c.workspace ?? c.instance;
+      const expected = workspaceValue ? (c.project ?? true) : false;
       expect(view?.enabled, JSON.stringify(c)).toBe(expected);
       expect(
         await projectFeatureEnabled("feature.sla", project.id),
@@ -265,6 +268,36 @@ describe("resolution parity: settings view equals enforcement (P4R2-M2)", () => 
         JSON.stringify(c),
       ).toBe(c.workspace ?? c.instance);
     }
+  });
+});
+
+describe("project SLA needs the workspace flag (#897)", () => {
+  beforeEach(async () => {
+    await resetTestDatabase();
+  });
+
+  it("ignores a project-on override while the workspace is off, in the runtime check and the report scope", async () => {
+    const { workspace } = await createSeesAllWorkspaceMember({
+      role: "owner",
+    });
+    const { project } = await createProjectFixture({
+      workspaceId: workspace.id,
+    });
+    await setInstanceFlag("feature.sla", true);
+    await setWorkspaceFlag(workspace.id, "feature.sla", false);
+    await setProjectFlag(project.id, "feature.sla", true);
+    expect(await projectFeatureEnabled("feature.sla", project.id)).toBe(false);
+    expect(await reportFeatureScope("feature.sla", workspace.id)).toBe("off");
+
+    await setWorkspaceFlag(workspace.id, "feature.sla", true);
+    expect(await projectFeatureEnabled("feature.sla", project.id)).toBe(true);
+    expect(await reportFeatureScope("feature.sla", workspace.id)).toEqual([
+      project.id,
+    ]);
+
+    await setProjectFlag(project.id, "feature.sla", false);
+    expect(await projectFeatureEnabled("feature.sla", project.id)).toBe(false);
+    expect(await reportFeatureScope("feature.sla", workspace.id)).toEqual([]);
   });
 });
 

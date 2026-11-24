@@ -17,6 +17,13 @@ click-confirmation entry in the confirmation table and aligns it with ST-8. TM-7
 permissions, target-change checks and audit history remain. Existing click requests must
 be cancelled and re-requested; stored pending actions are not rewritten.
 
+## Project SLA needs the workspace flag — 24 November 2026
+
+Thomas chose option A (#897): a project-level `feature.sla` override can only turn SLA off.
+While the workspace resolves `feature.sla` off, a project-on override is ignored by the
+scanner, work-item creation, badges, the portal and reports, matching the settings screens
+that already hide SLA policy and calendar management. No permission change.
+
 <a id="0001-kaneo-as-foundation"></a>
 ## 0001 — kaneo as the foundation, taken once, not forked
 
