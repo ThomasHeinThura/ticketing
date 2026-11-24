@@ -1780,8 +1780,8 @@ export async function drainImportAttachmentJobs(
       chunkJobs.filter((job) => !retryKeys.has(importAttachmentJobKey(job))),
       chunkLosses,
       retrying.filter((job) => job.chunkRowId === chunkRowId),
-      first && chunkLosses.length
-        ? (tx) =>
+      first
+        ? (tx, accepted) =>
             insertImportLossRows(
               tx,
               {
@@ -1789,7 +1789,7 @@ export async function drainImportAttachmentJobs(
                 importRunId: first.runId,
                 importChunkId: chunkRowId,
               },
-              chunkLosses,
+              accepted,
             )
         : undefined,
     );

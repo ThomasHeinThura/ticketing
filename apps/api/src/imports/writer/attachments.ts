@@ -478,7 +478,10 @@ export async function settleChunkAttachments(
   settled: readonly ImportAttachmentJob[],
   losses: readonly ImportLoss[],
   retried: readonly ImportAttachmentJob[] = [],
-  indexLosses?: (tx: Transaction) => Promise<unknown>,
+  indexLosses?: (
+    tx: Transaction,
+    accepted: readonly ImportLoss[],
+  ) => Promise<unknown>,
 ) {
   if (!settled.length && !losses.length && !retried.length) return;
   await db.transaction(async (tx) => {
@@ -524,7 +527,8 @@ export async function settleChunkAttachments(
           : merged,
       })
       .where(eq(schema.importChunkTable.id, chunkRowId));
-    await indexLosses?.(tx);
+    // Only the losses accepted under the chunk lock are indexed, so the index never outruns the report.
+    await indexLosses?.(tx, fresh);
   });
 }
 

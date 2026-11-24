@@ -654,6 +654,28 @@ describe("import writer: transient attachment failures (#896)", () => {
     expect(await lossRows()).toHaveLength(1);
   });
 
+  it("indexes no loss when an overlapping replay stored the attachment before the slower one failed", async () => {
+    const stored = { ok: true as const, bytes: PNG, contentType: "image/png" };
+    const f = await writerFixture();
+    const { app } = createApp();
+    const { run } = await commitWithoutDrain(app, f, "att-overlap-stored");
+    const jobs = await listPendingImportAttachmentJobs(run.id);
+    expect(jobs).toHaveLength(1);
+    let slow = true;
+    setImportAttachmentDependencies({
+      download: async () => {
+        if (!slow) return stored;
+        slow = false; // the faster pass stores the attachment while this one is still downloading
+        await drainImportAttachmentJobs(jobs);
+        return terminal;
+      },
+    });
+    await drainImportAttachmentJobs(jobs);
+    expect(await listPendingImportAttachmentJobs(run.id)).toHaveLength(0);
+    expect((await chunkOf(app, f, run.id)).lossCounts ?? {}).toEqual({});
+    expect(await lossRows()).toHaveLength(0);
+  });
+
   it("rolls settlement back when the loss-index insert fails, even with the report full, and a replay recovers", async () => {
     const download = vi.fn(async () => terminal);
     const f = await writerFixture();
