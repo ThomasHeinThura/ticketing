@@ -65,6 +65,19 @@ test('fails with a secret on screen', async ({ page }) => {
     },
   );
   assert.equal(result.status, 1, `${name}: the canary spec must fail`);
+  // Exit 1 alone also means a broken import or config. Require the one test to
+  // run and fail at the designated assertion, with no collection errors.
+  const report = JSON.parse(readFileSync(join(dir, "report.json"), "utf8"));
+  assert.deepEqual(report.errors, [], `${name}: collection or setup errors`);
+  assert.equal(report.stats.unexpected, 1, `${name}: one failed test expected`);
+  assert.equal(report.stats.expected + report.stats.skipped, 0, name);
+  const attempt = report.suites[0]?.specs[0]?.tests[0]?.results[0];
+  assert.equal(attempt?.status, "failed", `${name}: the test must have run`);
+  assert.match(
+    attempt.error?.message ?? "",
+    /toBeVisible[\s\S]*never rendered/u,
+    `${name}: must fail at the designated assertion`,
+  );
   return files(dir)
     .map((path) => readFileSync(path, "utf8"))
     .join("\n")

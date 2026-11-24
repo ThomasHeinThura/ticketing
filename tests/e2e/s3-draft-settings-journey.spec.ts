@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
-import { fillSensitive } from "./helpers/fill-sensitive";
+import { expectCleared, fillSensitive } from "./helpers/fill-sensitive";
 import { withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -128,9 +128,10 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
           .getByLabel("Full name")
           .fill("Storage journey administrator");
         await page.getByLabel("Email").fill(fixture.email);
-        await page
-          .locator('input[autocomplete="new-password"]')
-          .fill(fixture.password);
+        await fillSensitive(
+          page.locator('input[autocomplete="new-password"]'),
+          fixture.password,
+        );
         const signup = page.waitForResponse(
           (response) =>
             new URL(response.url()).pathname === "/api/auth/sign-up/email" &&
@@ -175,10 +176,16 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
         await page.locator("#s3-keyPrefix").fill("browser-journey/");
         await page.locator("#s3-access-mode").click();
         await page.getByRole("option", { name: "Replace" }).click();
-        await page.locator("#s3-access-value").fill(synthetic.accessKeyId);
+        await fillSensitive(
+          page.locator("#s3-access-value"),
+          synthetic.accessKeyId,
+        );
         await page.locator("#s3-secret-mode").click();
         await page.getByRole("option", { name: "Replace" }).click();
-        await page.locator("#s3-secret-value").fill(synthetic.secretAccessKey);
+        await fillSensitive(
+          page.locator("#s3-secret-value"),
+          synthetic.secretAccessKey,
+        );
         await page.locator("#s3-draft-step-up-method").click();
         await page.getByRole("option", { name: "Backup code" }).click();
         await fillSensitive(
@@ -205,7 +212,9 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
           accessKeyIdConfigured: true,
           secretAccessKeyConfigured: true,
         });
-        expect(JSON.stringify(savedBody)).not.toContain(synthetic.accessKeyId);
+        expect(JSON.stringify(savedBody).includes(synthetic.accessKeyId)).toBe(
+          false,
+        );
         expect(JSON.stringify(savedBody)).not.toContain(
           synthetic.secretAccessKey,
         );
@@ -295,14 +304,14 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
         });
         expect(afterUsage.attachments).toEqual(beforeUsage.attachments);
         expect(await readdir(storageRoot)).toEqual([]);
-        await expect(page.locator("#s3-draft-step-up-secret")).toHaveValue("");
+        await expectCleared(page.locator("#s3-draft-step-up-secret"), expect);
         await expect(
           page.locator("#s3-access-value, #s3-secret-value"),
         ).toHaveCount(0);
         const outcomeText = await page.locator("body").innerText();
-        expect(outcomeText).not.toContain(synthetic.accessKeyId);
-        expect(outcomeText).not.toContain(synthetic.secretAccessKey);
-        expect(outcomeText).not.toContain(fixture.password);
+        expect(outcomeText.includes(synthetic.accessKeyId)).toBe(false);
+        expect(outcomeText.includes(synthetic.secretAccessKey)).toBe(false);
+        expect(outcomeText.includes(fixture.password)).toBe(false);
         await testInfo.attach("s3-draft-probe-result", {
           body: await page.screenshot({ fullPage: true }),
           contentType: "image/png",
@@ -330,16 +339,17 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
             await expect(page.locator("#s3-bucket")).toHaveValue(
               synthetic.bucket,
             );
-            await expect(page.locator("#s3-draft-step-up-secret")).toHaveValue(
-              "",
+            await expectCleared(
+              page.locator("#s3-draft-step-up-secret"),
+              expect,
             );
             await expect(
               page.locator("#s3-access-value, #s3-secret-value"),
             ).toHaveCount(0);
             const text = await page.locator("body").innerText();
-            expect(text).not.toContain(synthetic.accessKeyId);
-            expect(text).not.toContain(synthetic.secretAccessKey);
-            expect(text).not.toContain(fixture.password);
+            expect(text.includes(synthetic.accessKeyId)).toBe(false);
+            expect(text.includes(synthetic.secretAccessKey)).toBe(false);
+            expect(text.includes(fixture.password)).toBe(false);
             expect(
               await page.evaluate(
                 () => document.documentElement.scrollWidth <= window.innerWidth,

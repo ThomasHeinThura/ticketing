@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectCleared } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   enterVerification,
   expectNoSeriousAxeViolations,
@@ -51,7 +52,7 @@ test("SCIM settings save one closed request bound to the connection version @a11
       body: request,
     },
   ]);
-  await expect(page.getByLabel("Authenticator code")).toHaveValue("");
+  await expectCleared(page.getByLabel("Authenticator code"), expect);
   await expect(page.getByText("Version 8")).toBeVisible();
 });
 
@@ -84,8 +85,8 @@ test("a rotated bearer is shown once, never in the URL, and gone after dismissal
   const bearer = page.getByLabel("New bearer token");
   await expect(bearer).toBeVisible();
   const value = await bearer.inputValue();
-  expect(value).toHaveLength(43);
-  expect(page.url()).not.toContain(value);
+  expect(value.length).toBe(43);
+  expect(page.url().includes(value)).toBe(false);
   await expect(page.getByText(/shown once/u)).toBeVisible();
   await expectNoSeriousAxeViolations(page);
   expect(fixture.challenges[0]).toEqual({
@@ -97,7 +98,7 @@ test("a rotated bearer is shown once, never in the URL, and gone after dismissal
   await page.getByRole("button", { name: "I have stored the token" }).click();
   await expect(page.getByLabel("New bearer token")).toHaveCount(0);
   await page.reload();
-  expect(await page.content()).not.toContain(value);
+  expect((await page.content()).includes(value)).toBe(false);
 });
 
 test("revoking with no token is a rejected no-op; enabling needs a token", async ({

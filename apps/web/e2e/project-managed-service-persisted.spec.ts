@@ -6,6 +6,7 @@ import {
   type Request,
   test,
 } from "@playwright/test";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   withMfaCsrfApp,
@@ -167,7 +168,10 @@ test("S5 creates managed services from the catalogue and filters them by kind on
     await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill("Disposable Service Admin");
     await page.getByLabel("Email").fill(email);
-    await page.locator('input[autocomplete="new-password"]').fill(password);
+    await fillSensitive(
+      page.locator('input[autocomplete="new-password"]'),
+      password,
+    );
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
     const workspaceId = await createFirstWorkspace(

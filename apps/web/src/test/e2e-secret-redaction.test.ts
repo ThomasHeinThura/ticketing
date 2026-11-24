@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -87,6 +87,24 @@ describe("files Playwright collects for the default and approvals configs", () =
       /\b(trace|video|screenshot)\s*:(?!\s*"off")/u,
     );
   });
+});
+
+// A rejected raw fill puts its argument in Playwright's call log.
+describe("secret form input in e2e sources", () => {
+  const sources = ["apps/web/e2e", "tests/e2e"].flatMap((dir) =>
+    (readdirSync(resolve(repoRoot, dir), { recursive: true }) as string[])
+      .filter((name) => name.endsWith(".ts"))
+      .map((name) => resolve(repoRoot, dir, name)),
+  );
+
+  it.each(sources.map((path) => [relative(repoRoot, path), path] as const))(
+    "%s fills secrets only through fillSensitive",
+    (_name, path) => {
+      expect(readFileSync(path, "utf8")).not.toMatch(
+        /\.fill\(\s*[^)]*(?:password|totpForUri|backupCode|secret|accessKey)/iu,
+      );
+    },
+  );
 });
 
 describe("redactSecretErrorContext", () => {

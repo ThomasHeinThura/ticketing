@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { fillSensitive } from "../../../../tests/e2e/helpers/fill-sensitive";
 import { totpForUri } from "../../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 
 /** Complete the first administrator's required enrollment before onboarding. */
@@ -10,7 +11,7 @@ export async function enrollFirstAdmin(
   await expect(page).toHaveURL(
     /\/dashboard\/settings\/account\/security\?enrollmentRequired=true/,
   );
-  await page.locator("#factor-password").fill(password);
+  await fillSensitive(page.locator("#factor-password"), password);
   const enable = page.waitForResponse(
     (response) =>
       response.url().endsWith("/api/auth/two-factor/enable") &&
@@ -38,7 +39,10 @@ export async function enrollFirstAdmin(
       response.url().endsWith("/api/auth/two-factor/verify-totp") &&
       response.request().method() === "POST",
   );
-  await page.locator("#enrollment-code").fill(totpForUri(provisioningUri));
+  await fillSensitive(
+    page.locator("#enrollment-code"),
+    totpForUri(provisioningUri),
+  );
   await page.getByRole("button", { name: "Verify and enable" }).click();
   expect((await verify).ok()).toBe(true);
   const after = (await page.context().cookies()).find(

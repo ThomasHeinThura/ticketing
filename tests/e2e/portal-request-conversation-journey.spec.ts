@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { APIRequestContext, Page, Response } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
+import { fillSensitive } from "./helpers/fill-sensitive";
 import {
   fixtureOwnershipJournal,
   type MfaCsrfAppFixture,
@@ -153,7 +154,7 @@ async function signUpStaff(page: Page, fixture: MfaCsrfAppFixture) {
   await page.goto(new URL("/auth/sign-up", fixture.origin).toString());
   await page.getByLabel("Full name").fill("Portal conversation agent");
   await page.getByLabel("Email").fill(fixture.email);
-  await page.locator('input[name="password"]').fill(fixture.password);
+  await fillSensitive(page.locator('input[name="password"]'), fixture.password);
   const responsePromise = apiResponse(page, "POST", "/api/auth/sign-up/email");
   await page.getByRole("button", { name: /^create account$/i }).click();
   expect((await responsePromise).status()).toBe(200);
@@ -216,7 +217,10 @@ async function signInThroughPortal(
   await page.goto(new URL("/sign-in", portalOrigin).toString());
   await page.getByLabel("Email").fill(person.email);
   await page.getByRole("button", { name: /^sign in$/i }).click();
-  await page.getByLabel("Password", { exact: true }).fill(person.password);
+  await fillSensitive(
+    page.getByLabel("Password", { exact: true }),
+    person.password,
+  );
   const responsePromise = apiResponse(page, "POST", "/api/auth/sign-in/email");
   await page.getByRole("button", { name: /^sign in$/i }).click();
   expect((await responsePromise).status()).toBe(200);

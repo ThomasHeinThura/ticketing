@@ -10,7 +10,7 @@ import type {
 } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
-import { fillSensitive } from "./helpers/fill-sensitive";
+import { expectCleared, fillSensitive } from "./helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixture,
   withMfaCsrfApp,
@@ -106,7 +106,10 @@ async function signUpWithWorkspace(
   await page.goto(new URL("/auth/sign-up", origin).toString());
   await page.getByLabel("Full name").fill(input.name);
   await page.getByLabel("Email").fill(input.email);
-  await page.locator('input[autocomplete="new-password"]').fill(input.password);
+  await fillSensitive(
+    page.locator('input[autocomplete="new-password"]'),
+    input.password,
+  );
   const response = page.waitForResponse(
     (candidate) =>
       new URL(candidate.url()).pathname === "/api/auth/sign-up/email" &&
@@ -360,7 +363,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       ).toBeVisible();
       // The step-up prompt is shown again, empty, and the request is still pending.
       await expect(secret).toBeVisible();
-      await expect(secret).toHaveValue("");
+      await expectCleared(secret, expect);
       const pending = await database.query<{ state: string }>(
         "SELECT state FROM pending_action WHERE id = $1",
         [pendingActionId],

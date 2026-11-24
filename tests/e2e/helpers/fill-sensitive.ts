@@ -20,3 +20,15 @@ export async function privateRequest<T>(
     throw new Error("Sensitive API request failed.");
   }
 }
+
+/** Assert a secret field is empty; toHaveValue("") would print the leftover value. */
+export async function expectCleared(
+  locator: { inputValue(): Promise<string> },
+  expectFn: typeof import("@playwright/test").expect,
+): Promise<void> {
+  await expectFn
+    .poll(async () => (await locator.inputValue()) === "", {
+      message: "Sensitive field was not cleared.",
+    })
+    .toBe(true);
+}

@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   withMfaCsrfApp,
@@ -155,7 +156,10 @@ test("Overview writes persist: milestone, prerequisite, stakeholder stand-down",
     await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill(OWNER);
     await page.getByLabel("Email").fill(email);
-    await page.locator('input[autocomplete="new-password"]').fill(password);
+    await fillSensitive(
+      page.locator('input[autocomplete="new-password"]'),
+      password,
+    );
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
     await createFirstWorkspace(page, "Persisted Overview Workspace");

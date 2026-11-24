@@ -231,7 +231,10 @@ async function signInThroughPortal(
   await page.goto(new URL("/sign-in", portalOrigin).toString());
   await page.getByLabel("Email").fill(person.email);
   await page.getByRole("button", { name: /^sign in$/i }).click();
-  await page.getByLabel("Password", { exact: true }).fill(person.password);
+  await fillSensitive(
+    page.getByLabel("Password", { exact: true }),
+    person.password,
+  );
   const responsePromise = apiResponse(page, "POST", "/api/auth/sign-in/email");
   await page.getByRole("button", { name: /^sign in$/i }).click();
   expect((await responsePromise).status()).toBe(200);

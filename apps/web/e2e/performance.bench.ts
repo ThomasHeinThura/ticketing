@@ -20,6 +20,7 @@ import {
   PERFORMANCE_REFERENCE,
   resolveJobCalibrationLogged,
 } from "../../../scripts/ci/lib/performance-calibration.mjs";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   BOARD_ITEM_COUNT,
   BOARD_PROJECT_KEY,
@@ -439,7 +440,7 @@ async function collectSignInInteraction(page: Page) {
   const email = page.getByLabel("Email", { exact: true });
   const password = page.locator('input[type="password"]');
   await email.fill("g11@example.test");
-  await password.fill("correct-horse-battery-staple");
+  await fillSensitive(password, "correct-horse-battery-staple");
   const submit = page.locator('form button[type="submit"]');
   await captureScreen(page, "sign-in");
   await submit.click();

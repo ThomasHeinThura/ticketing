@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   enterVerification,
   expectNoSeriousAxeViolations,
@@ -132,9 +133,9 @@ for (const width of [375, 820, 1440])
       const accessInput = page.getByLabel("New access key ID");
       const secretInput = page.getByLabel("New secret access key");
       await expect(accessInput).toHaveAttribute("type", "password");
-      await accessInput.fill("  AKIAEXAMPLE  ");
+      await fillSensitive(accessInput, "  AKIAEXAMPLE  ");
       await expect(save).toBeDisabled();
-      await secretInput.fill(" example-secret ");
+      await fillSensitive(secretInput, " example-secret ");
       await expect(save).toBeEnabled();
       await expectNoSeriousAxeViolations(page);
       await testInfo.attach(`s3-draft-credentials-${width}-${theme}`, {

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { expect, type Page } from "@playwright/test";
+import { fillSensitive } from "../../../../tests/e2e/helpers/fill-sensitive";
 
 const uiRequire = createRequire(
   new URL("../../../../packages/ui/package.json", import.meta.url),
@@ -573,5 +574,5 @@ export async function installIdentityAdminFixture(
 
 export async function enterVerification(page: Page, value = "123456") {
   // The fixture reports an enrolled authenticator, so the default factor is a code.
-  await page.getByLabel("Authenticator code").first().fill(value);
+  await fillSensitive(page.getByLabel("Authenticator code").first(), value);
 }

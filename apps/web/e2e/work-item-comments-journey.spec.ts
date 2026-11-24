@@ -9,6 +9,7 @@ import {
   type Request,
   test,
 } from "@playwright/test";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   totpForUri,
@@ -72,7 +73,10 @@ async function createAdminWorkspace(
   });
   await test.step("Setup diagnostic: sign-up password field entry", async () => {
     console.info("Setup diagnostic begin: sign-up password field entry");
-    await page.locator('input[autocomplete="new-password"]').fill(password);
+    await fillSensitive(
+      page.locator('input[autocomplete="new-password"]'),
+      password,
+    );
     console.info("Setup diagnostic completed: sign-up password field entry");
   });
   const signUpListener =
@@ -164,7 +168,10 @@ async function signInThroughUi(
   });
   await test.step("Setup diagnostic: sign-in password field entry", async () => {
     console.info("Setup diagnostic begin: sign-in password field entry");
-    await page.locator('input[autocomplete="current-password"]').fill(password);
+    await fillSensitive(
+      page.locator('input[autocomplete="current-password"]'),
+      password,
+    );
     console.info("Setup diagnostic completed: sign-in password field entry");
   });
   await test.step("Setup diagnostic: sign-in button click", async () => {
@@ -175,7 +182,10 @@ async function signInThroughUi(
   if (provisioningUri) {
     await test.step("Setup diagnostic: complete authenticator challenge", async () => {
       await expect(page).toHaveURL(/\/auth\/two-factor(?:\?|$)/);
-      await page.locator("#factor-code").fill(totpForUri(provisioningUri));
+      await fillSensitive(
+        page.locator("#factor-code"),
+        totpForUri(provisioningUri),
+      );
       await page.getByRole("button", { name: "Verify and sign in" }).click();
     });
   }
