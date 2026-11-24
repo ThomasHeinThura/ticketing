@@ -606,7 +606,7 @@ S3 SigV4 signature covers the `Host` header, so a URL presigned for the internal
 `seaweedfs:8333` endpoint does not verify when the browser fetches it at
 `https://files.<domain>`; the plugin's public endpoint is what goes into the signature.
 For the same reason the **bucket's own CORS** — not a Traefik middleware — must allow
-exactly the two portal origins, because a presigned POST is a cross-origin request from the
+exactly the two portal origins, because a presigned PUT is a cross-origin request from the
 agent or portal page straight to the storage endpoint. Both are stated once here and cited
 elsewhere.
 
@@ -2450,8 +2450,8 @@ comes from the storage plugin's configured public endpoint, read at runtime, and
 environment variable for it ([configuration-reference.md](configuration.md)).
 
 Two things this middleware does **not** do. It does not set the storage backend's CORS — a
-presigned POST goes from the browser straight to the storage endpoint, so the **bucket's own**
-CORS rules are what admit the agent and portal origins. And it does not affect signatures: a
+presigned PUT goes from the browser straight to the storage endpoint, so the **bucket's own**
+CORS rules (the `PUT` method and the `Content-Type` header) are what admit the agent and portal origins. And it does not affect signatures: a
 URL presigned for the internal endpoint will not verify at `files.<domain>`, which is why the
 plugin's configured public endpoint must equal the browser-facing one. Both are stated in
 full in [deployment.md](#deployment).

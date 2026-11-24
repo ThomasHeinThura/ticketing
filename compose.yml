@@ -175,7 +175,7 @@ services:
   # origin (https://files.<domain>): an S3 SigV4 signature covers the Host
   # header, so a URL presigned for seaweedfs:8333 will not verify in a browser.
   # And the BUCKET's own CORS — not a Traefik middleware — is what admits the
-  # agent and portal origins for a presigned POST.
+  # agent and portal origins for a presigned PUT.
   # docs/05-operations/deployment.md § Object storage, when it is wanted
   # ---------------------------------------------------------------------
   seaweedfs:
