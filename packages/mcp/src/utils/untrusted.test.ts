@@ -25,6 +25,17 @@ describe("wrapUntrusted", () => {
     });
   });
 
+  it("keeps a 15-letter project key usable as a key and a slug (#1199)", () => {
+    const out = wrapUntrusted({
+      key: "PROJECTPROJECTS-1234",
+      slug: "PROJECTPROJECTS",
+    });
+    expect(out).toEqual({
+      key: "PROJECTPROJECTS-1234",
+      slug: "PROJECTPROJECTS",
+    });
+  });
+
   it("labels automation and system authors as system and nobody as staff", () => {
     const out = wrapUntrusted([
       { actorType: "automation", body: "a" },

@@ -249,4 +249,45 @@ describe("MCP prompt-injection journey on the real API (MC-18)", () => {
       expect(out.result.isError, `${step.tool}: ${out.text}`).toBe(false);
     }
   });
+
+  it("get_work_item returns the exact key and id of an item in a 15-letter project (#1199)", async () => {
+    const world = await setupWorld();
+    const { app } = createApp();
+    const slug = "PROJECTPROJECTS";
+    await db
+      .update(schema.projectTable)
+      .set({ slug })
+      .where(eq(schema.projectTable.id, world.project.id));
+    const item = await createItem(app, world, "Long key item");
+    expect(item.key).toBe(`${slug}-1`);
+    await db
+      .insert(schema.instanceFeatureFlagTable)
+      .values({ featureKey: "feature.mcp", enabled: true })
+      .onConflictDoUpdate({
+        target: schema.instanceFeatureFlagTable.featureKey,
+        set: { enabled: true },
+      });
+    const key = await createPersonalApiKey(
+      { userId: world.admin.user.id },
+      {
+        name: "long key read",
+        isMcp: true,
+        capabilities: ["workspace:read", "project:read", "work_item:read"],
+      },
+    );
+
+    const read = await mcpTools(app, key.key)("get_work_item", {
+      key: item.key,
+    });
+
+    expect(read.result.isError, read.text).not.toBe(true);
+    const body = JSON.parse(read.text);
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, item.id));
+    expect(row?.key).toBe(`${slug}-1`);
+    expect(body.key).toBe(row?.key);
+    expect(body.id).toBe(row?.id);
+  });
 });

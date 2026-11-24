@@ -36,12 +36,12 @@ const bcrypt = apiRequire("bcryptjs") as {
   hash(password: string, rounds: number): Promise<string>;
 };
 
-async function fixture(role: "owner" | "admin" = "owner") {
+async function fixture(role: "owner" | "admin" = "owner", slug = "EXACT") {
   const member = await createWorkspaceMember({ role });
   const { project, columns } = await createProjectFixture({
     workspaceId: member.workspace.id,
     name: "Exact Project Name",
-    slug: "EXACT",
+    slug,
   });
   await grantProjectManageAccess(member.user.id, project.id);
   const person = requireRow(
@@ -221,6 +221,38 @@ describe("project deletion through a typed-key pending action", () => {
     expect(after.deletedAt).toBeInstanceOf(Date);
     expect(after.purgeAfter).toBeInstanceOf(Date);
     expect((await pending(action.pendingActionId)).state).toBe("executed");
+  });
+
+  it("confirms deletion of a 15-letter project key by typing the whole key (#1199)", async () => {
+    const longKey = "ABCDEFGHIJKLMNO";
+    const f = await fixture("owner", longKey);
+    const response = await f.app.request(`/api/project/${f.project.id}`, {
+      method: "DELETE",
+    });
+    expect(response.status, await response.clone().text()).toBe(202);
+    const action = (await response.json()) as {
+      pendingActionId: string;
+      summary: Record<string, unknown>;
+    };
+    expect(action.summary).toMatchObject({ name: longKey, slug: longKey });
+    const token = await f.proof(action.pendingActionId);
+    const approve = (typedName: string) =>
+      f.app.request(
+        `/api/me/pending-actions/${action.pendingActionId}/approve`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-taskdesk-step-up-token": token,
+          },
+          body: JSON.stringify({ typedName }),
+        },
+      );
+    expect((await approve(longKey.slice(0, 8))).status).toBe(400);
+    expect((await project(f.project.id)).deletedAt).toBeNull();
+    const approved = await approve(longKey);
+    expect(approved.status, await approved.clone().text()).toBe(200);
+    expect((await project(f.project.id)).deletedAt).toBeInstanceOf(Date);
   });
 
   it("refuses an API-key origin at request time (session only)", async () => {
