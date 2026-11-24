@@ -4103,7 +4103,7 @@ Generated, never derived from the user's filename:
 <a id="storage-and-attachments-upload-flow"></a>
 ### Upload flow
 
-Uploads go **direct to storage** via a presigned PUT. The API never proxies file bytes.
+With the S3 driver, uploads go **direct to storage** via a presigned PUT and the API never handles file bytes. With the default filesystem driver, the API receives the upload.
 
 ```
 1. POST /api/work-items/{key}/attachments/presign

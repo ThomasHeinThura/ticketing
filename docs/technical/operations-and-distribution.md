@@ -1563,12 +1563,12 @@ project inherit that key range. Requires database access; take a backup first.
    `LIKE` pattern is safe; refuse to continue if the slug has any other character.
    `select 1 from work_item_key_claim where key like 'ABC-%';` must return no rows.
 3. Back up the database (see [Backup and restore](#backup-and-restore)).
-4. Stop the `taskdesk` application container (the application has no maintenance mode;
-   use `docker compose stop taskdesk` with the same `-f` files as your deployment, or
-   the `scripts/deploy.sh` equivalent) before the checks and keep it stopped until the
-   commit: a concurrent rename could otherwise
+4. Stop **every** running TaskDesk API instance (all replicas; the application has no
+   maintenance mode; use `docker compose stop taskdesk` with the same `-f` files as your
+   deployment, or the `scripts/deploy.sh` equivalent) before the checks and keep all of
+   them stopped until the commit: a concurrent rename on any instance could otherwise
    reclaim the old slug between the checks and the delete and leave the live project
-   without its permanent claim. Start it again after the commit (`docker compose start taskdesk`).
+   without its permanent claim. Start them again after the commit (`docker compose start taskdesk`).
 5. Release the claim in one statement; the predicate repeats the check atomically:
 
 ```sql
