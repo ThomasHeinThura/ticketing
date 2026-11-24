@@ -330,6 +330,114 @@ describe("API integration: work item templates (WI-5)", () => {
     expect(items).toHaveLength(0);
   });
 
+  it("skips stale and foreign template values on create: removed option, other type, other workspace", async () => {
+    const color = await makeCustomField(world.workspaceId, world.type.id, {
+      key: "color",
+      format: "select",
+      options: [
+        { key: "red", label: "Red" },
+        { key: "blue", label: "Blue" },
+      ],
+    });
+    mockAuthenticatedSession(world.admin.user);
+    const other = await createWorkspaceMember({ role: "admin" });
+    const now = new Date();
+    const [otherType] = await db
+      .insert(schema.workItemTypeTable)
+      .values({
+        workspaceId: world.workspaceId,
+        key: `type-${randomUUID()}`,
+        name: "Other type",
+        category: "service",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    const [foreignType] = await db
+      .insert(schema.workItemTypeTable)
+      .values({
+        workspaceId: other.workspace.id,
+        key: `type-${randomUUID()}`,
+        name: "Foreign type",
+        category: "service",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!otherType || !foreignType) throw new Error("type fixtures");
+    const otherTypeField = await makeCustomField(
+      world.workspaceId,
+      otherType.id,
+      { key: "other_type_only", format: "text" },
+    );
+    const foreignField = await makeCustomField(
+      other.workspace.id,
+      foreignType.id,
+      { key: "foreign_only", format: "text" },
+    );
+    const template = await json(app, "POST", `${base()}/work-item-templates`, {
+      name: "Stale",
+      typeId: world.type.id,
+      title: "Stale",
+      customFieldValues: {
+        color: "red",
+        other_type_only: "no",
+        foreign_only: "no",
+      },
+    });
+    expect(template.status, await template.clone().text()).toBe(200);
+    const { id } = (await template.json()) as { id: string };
+    const create = (title: string, customFields?: Record<string, unknown>) =>
+      json(app, "POST", `/api/projects/${world.project.id}/work-items`, {
+        typeId: world.type.id,
+        title,
+        templateId: id,
+        customFields,
+      });
+    const valuesOf = async (itemId: string) =>
+      Object.fromEntries(
+        (
+          await db
+            .select()
+            .from(customFieldValueTable)
+            .where(eq(customFieldValueTable.entityId, itemId))
+        ).map((value) => [value.customFieldId, value.value]),
+      );
+
+    const fresh = await create("Fresh");
+    expect(fresh.status, await fresh.clone().text()).toBe(200);
+    expect(await valuesOf(((await fresh.json()) as { id: string }).id)).toEqual(
+      { [color.id]: "red" },
+    );
+
+    // The option is removed from the field after the template was saved.
+    await db
+      .update(customFieldTable)
+      .set({ options: [{ key: "blue", label: "Blue" }] })
+      .where(eq(customFieldTable.id, color.id));
+    const stale = await create("Stale option");
+    expect(stale.status, await stale.clone().text()).toBe(200);
+    expect(await valuesOf(((await stale.json()) as { id: string }).id)).toEqual(
+      {},
+    );
+
+    // A caller who types the removed option explicitly is still refused.
+    const explicit = await create("Explicit stale", { color: "red" });
+    expect(explicit.status).toBe(400);
+    const none = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.title, "Explicit stale"));
+    expect(none).toHaveLength(0);
+    const leaked = await db
+      .select()
+      .from(customFieldValueTable)
+      .where(
+        sql`${customFieldValueTable.customFieldId} in (${otherTypeField.id}, ${foreignField.id})`,
+      );
+    expect(leaked).toHaveLength(0);
+  });
+
   it("a template from another workspace or an archived one is a 404 on create", async () => {
     mockAuthenticatedSession(world.admin.user);
     const template = await json(app, "POST", `${base()}/work-item-templates`, {
