@@ -226,7 +226,7 @@ export function entityHistoryRow(
   if (row.action === "feature_flag.changed")
     fields =
       typeof after?.feature === "string" && isFeatureFlag(after.feature)
-        ? ["featureFlag"]
+        ? [`featureFlag:${after.feature}`] // closed key only, never the values
         : [];
   else if (row.action === "automation.updated")
     fields = changedSnapshotFields([

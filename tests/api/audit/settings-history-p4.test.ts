@@ -333,7 +333,7 @@ describe("P4 closed settings history", () => {
     expect(HISTORY_RESPONSE_TYPES).toContain("workspace");
   });
 
-  it("projects a feature-switch row to one marker and never echoes the payload", () => {
+  it("projects a feature-switch row to one closed key marker and never echoes the payload", () => {
     const row = (feature: unknown) =>
       entityHistoryRow(
         {
@@ -345,7 +345,9 @@ describe("P4 closed settings history", () => {
         },
         "actor",
       );
-    expect(row("feature.estimates").changedFields).toEqual(["featureFlag"]);
+    expect(row("feature.estimates").changedFields).toEqual([
+      "featureFlag:feature.estimates",
+    ]);
     expect(row("not-a-flag").changedFields).toEqual([]);
     expect(JSON.stringify(row("feature.estimates"))).not.toContain("private");
   });
