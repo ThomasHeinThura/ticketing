@@ -1597,6 +1597,13 @@
 			"when": 1795524056978,
 			"tag": "0227_p4c_membership_role_guards",
 			"breakpoints": true
+		},
+		{
+			"idx": 228,
+			"version": "7",
+			"when": 1795527306568,
+			"tag": "0228_drop_legacy_task_permission_key",
+			"breakpoints": true
 		}
 	]
 }
