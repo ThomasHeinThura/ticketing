@@ -211,8 +211,9 @@ No circular imports. The dependency-cruiser check fails the build on one.
 - Every foreign key declares its `ON DELETE`.
 - Index anything you filter, sort or join on. Verify with `EXPLAIN`.
 - `timestamptz`, always UTC.
-- Some columns predate that rule and are `timestamp` (without time zone) —
-  `session.expires_at`, `job_lease.expires_at`, `task.due_date`. Those hold **UTC wall
+- The 0225 schema snapshot has 190 `timestamp` (without time zone) columns and 249
+  `timestamptz` columns. The former predate that rule;
+  see the [catalogue](data-model.md#timestamp-without-time-zone-catalogue). Those hold **UTC wall
   clock**, because Drizzle writes them through `PgTimestamp.mapToDriverValue`
   (`Date.prototype.toISOString()`) and reads them back with `mapFromDriverValue`, which
   re-attaches `+0000`.

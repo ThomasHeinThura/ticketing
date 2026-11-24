@@ -7539,7 +7539,7 @@
 				"workspace__delete": "Delete the workspace",
 				"workspace__manage_members": "Add and remove workspace members",
 				"workspace__manage_roles": "Create and edit roles",
-				"workspace__manage_settings": "Types, workflows, SLA policies, calendars, custom fields, labels, estimates, automations, canned responses, workspace terminology",
+				"workspace__manage_settings": "Types, workflows, SLA policies, calendars, custom fields, labels, estimates, automations, canned responses, work item templates, workspace terminology",
 				"workspace__transfer_ownership": "Transfer ownership of the workspace to another existing member",
 				"project__create": "Create a project or managed service",
 				"project__read": "See a project in reach",

@@ -383,7 +383,7 @@ export const getReportExport = (id: string) =>
 /** The stored CSV of a finished export, from the authenticated download route. */
 export async function downloadReportExport(
   id: string,
-): Promise<{ filename: string; blob: Blob }> {
+): Promise<{ filename: string; response: Response }> {
   const response = await send(
     `/report-exports/${enc(id)}/download`,
     {},
@@ -392,7 +392,8 @@ export async function downloadReportExport(
   const disposition = response.headers.get("content-disposition") ?? "";
   return {
     filename: /filename="([^"]+)"/.exec(disposition)?.[1] ?? "report.csv",
-    blob: await response.blob(),
+    // The body stays unread: the caller streams it to disk (see saveResponse).
+    response,
   };
 }
 

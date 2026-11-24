@@ -20,7 +20,7 @@ Project reordering returns and updates only projects the caller reaches. Unreach
 | | `workspace:delete` | `workspace:update` | Delete the workspace |
 | | `workspace:manage_members` | `workspace:read` | Add and remove workspace members |
 | | `workspace:manage_roles` | `workspace:read` | Create and edit roles |
-| | `workspace:manage_settings` | `workspace:read` | Types, workflows, SLA policies, calendars, custom fields, labels, estimates, automations, canned responses, workspace terminology |
+| | `workspace:manage_settings` | `workspace:read` | Types, workflows, SLA policies, calendars, custom fields, labels, estimates, automations, canned responses, work item templates, workspace terminology |
 | | `workspace:transfer_ownership` | `workspace:read` | Transfer ownership of the workspace to another existing member |
 | **Projects** | `project:create` | | Create a project or managed service |
 | | `project:read` | | See a project in reach |

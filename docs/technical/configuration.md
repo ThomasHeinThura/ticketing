@@ -60,6 +60,10 @@ These names configure deployment tooling or an external client. Registering them
 | `TASKDESK_LOCAL_HTTP_PORT` · `TASKDESK_LOCAL_HTTPS_PORT` | Compose, `deploy/compose.traefik.yml` (`local` mode only) | Local proxy listener ports, default 80/443; verify availability before starting. |
 | `TASKDESK_API_URL` · `TASKDESK_API_KEY` | `@taskdesk/mcp`, on the user's own machine | External MCP client's instance URL and scoped API credential; the API server reads neither name. |
 
+### Switching storage drivers
+
+A driver change is a planned migration, not a live configuration flip. Stop application writes and drain or reconcile pending uploads and cleanup intents using the old driver. Stop cleanup jobs, back up the database and source objects, and verify the backups. Copy every remaining attachment and asset object to the destination under the same key; verify the inventory and bytes before changing the driver. If the destination or an object cannot be verified, keep the old driver active and investigate. Switch the configuration only after verification, restart the application, and check existing downloads and use a disposable object to check uploads and deletion on the destination. Keep the source and backups for rollback until the migration is accepted; reconcile any pending cleanup before removing old bytes. The supplied backup script supports filesystem storage only; arrange and verify a separate backup for S3.
+
 ## Runtime configuration
 
 | Area | Required persisted configuration |

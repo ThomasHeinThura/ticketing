@@ -29,6 +29,7 @@ const toasts = vi.hoisted(() => ({ info: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/toast", () => ({ toast: toasts }));
 
 import { ReportExportStatus, useExportAction } from "./report-export";
+import { chunkedResponse, fakeFile } from "./test-writable";
 
 afterEach(() => {
   cleanup();
@@ -77,7 +78,7 @@ describe("a queued export (RP-10)", () => {
   it("offers the authenticated download once ready, and says when rows were cut", async () => {
     download.mockResolvedValue({
       filename: "x.csv",
-      blob: new Blob(["a"]),
+      response: new Response("a"),
     });
     URL.createObjectURL = vi.fn(() => "blob:x");
     URL.revokeObjectURL = vi.fn();
@@ -90,6 +91,27 @@ describe("a queued export (RP-10)", () => {
       screen.getByRole("button", { name: "reports:export.download" }),
     );
     await vi.waitFor(() => expect(download).toHaveBeenCalledWith("e1"));
+  });
+
+  it("toasts the error and discards the file when the connection drops mid-transfer", async () => {
+    const file = fakeFile();
+    vi.stubGlobal("showSaveFilePicker", async () => ({
+      createWritable: async () => file.writable,
+    }));
+    download.mockResolvedValue({
+      filename: "x.csv",
+      response: chunkedResponse(["a,b\n"], true),
+    });
+    show(info({ status: "ready" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "reports:export.download" }),
+    );
+    await vi.waitFor(() =>
+      expect(toasts.error).toHaveBeenCalledWith("network error"),
+    );
+    expect(file.aborted).toBe(true);
+    expect(file.closed).toBe(false);
+    vi.unstubAllGlobals();
   });
 
   it("states a failure and an expiry, and lets them be dismissed", () => {
