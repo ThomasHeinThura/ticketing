@@ -15,12 +15,13 @@
  * exactly as it did when it had to wait for the chunk's lock. Any loss pauses the run (fail closed).
  * The runner never falls back to a system actor.
  */
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../../database";
 import type { Transaction } from "../../database/executor";
 import {
   type ImportPausedReason,
+  importChunkTable,
   importLossTable,
 } from "../../database/schema-imports";
 import { lockInstanceAdminSerializationShared } from "../../instance/users/repository";
@@ -337,11 +338,46 @@ async function recheckAuthorityUnderSharedLock(runId: string) {
 
 type ChunkOutcome =
   | { kind: "stopped" }
-  | {
-      kind: "advanced";
-      commit: Awaited<ReturnType<typeof commitImportChunk>> | null;
-      auditFailure: boolean;
-    };
+  | { kind: "advanced"; auditFailure: boolean };
+
+// JSON turns the stored Dates into ISO strings; the publishers call Date methods on them.
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+/**
+ * Dispatch every chunk's stored publish events in sequence order and clear each only after its
+ * dispatch succeeded. A crash between dispatch and clear republishes (duplicates are allowed).
+ */
+async function drainPendingPublish(runId: string) {
+  const rows = await db
+    .select({
+      id: importChunkTable.id,
+      pending: importChunkTable.pendingPublish,
+    })
+    .from(importChunkTable)
+    .where(
+      and(
+        eq(importChunkTable.importRunId, runId),
+        isNotNull(importChunkTable.pendingPublish),
+      ),
+    )
+    .orderBy(asc(importChunkTable.sequence));
+  for (const row of rows) {
+    await assertJobExecutionOwned();
+    const pending = JSON.parse(JSON.stringify(row.pending), (_key, value) =>
+      typeof value === "string" && ISO_DATE.test(value)
+        ? new Date(value)
+        : value,
+    );
+    await publishCommittedImport({
+      kind: "committed",
+      ...pending,
+    } as Parameters<typeof publishCommittedImport>[0]);
+    await db
+      .update(importChunkTable)
+      .set({ pendingPublish: null })
+      .where(eq(importChunkTable.id, row.id));
+  }
+}
 
 async function chunkTransaction(
   tx: Transaction,
@@ -439,6 +475,19 @@ async function chunkTransaction(
     });
     if (commit.kind !== "committed")
       throw new HTTPException(409, { message: "Import chunk not committed" });
+    if (!staged.chunkRowId) throw new Error("Import chunk row missing");
+    // Durable publication: the events are stored with the commit and cleared only after dispatch.
+    await tx
+      .update(importChunkTable)
+      .set({
+        pendingPublish: {
+          createdResults: commit.createdResults,
+          updateResults: commit.updateResults,
+          attachmentJobs: commit.attachmentJobs ?? [],
+          auditFailure: commit.auditFailure === true,
+        },
+      })
+      .where(eq(importChunkTable.id, staged.chunkRowId));
     // Losses the writer recorded for this chunk's members (comments, relations, custom fields...).
     if (commit.writerLosses?.length)
       await insertImportLossRows(
@@ -518,7 +567,7 @@ async function chunkTransaction(
       updatedAt: new Date(),
     })
     .where(eq(RUN.id, run.id));
-  return { kind: "advanced", commit, auditFailure: false };
+  return { kind: "advanced", auditFailure: false };
 }
 
 type FinalizeOutcome =
@@ -684,12 +733,10 @@ export async function runImportRun(
   let retries = 0;
   // Set when the budget is spent but the last attempt may have committed: reload once, then decide.
   let reconcileOnly = false;
-  const unpublished: {
-    current: {
-      commit: Extract<ChunkOutcome, { kind: "advanced" }>["commit"];
-      nextCursor: string | null;
-    } | null;
-  } = { current: null };
+  // The last chunk attempt's target cursor, to tell after a lost commit response whether it landed.
+  const unpublished: { current: { nextCursor: string | null } | null } = {
+    current: null,
+  };
   for (;;) {
     await assertJobExecutionOwned();
     let snapshot: Awaited<ReturnType<typeof loadSnapshot>>;
@@ -708,17 +755,16 @@ export async function runImportRun(
       await options.beforeRetry?.();
       continue;
     }
+    // Publish events are durable on the chunk row: drain whatever earlier commits (this process's,
+    // a lost response's or a crashed one's) left before advancing, finalizing or pausing again.
+    if (snapshot) await drainPendingPublish(runId);
     if (snapshot && unpublished.current) {
       const stored = snapshot.run.sourceCursor;
-      // The last chunk's commit result is kept until its publication is confirmed. When the commit's
-      // response was lost, the persisted cursor tells whether it landed. shortcut: in memory only, so
-      // a process crash between commit and publish still loses the events.
+      // When the commit's response was lost, the persisted cursor tells whether it landed.
       if (
         stored?.cursor === unpublished.current.nextCursor &&
         stored.exhausted === (unpublished.current.nextCursor === null)
       ) {
-        if (unpublished.current.commit)
-          await publishCommittedImport(unpublished.current.commit);
         chunks += 1;
         retries = 0; // reconciliation confirmed progress: fresh budget for the next chunk
       }
@@ -803,10 +849,7 @@ export async function runImportRun(
           duringChunk: options.duringChunk,
         });
         if (done.kind === "advanced")
-          unpublished.current = {
-            commit: done.commit,
-            nextCursor: page.nextCursor,
-          };
+          unpublished.current = { nextCursor: page.nextCursor };
         return done;
       });
       await options.afterCommit?.();
@@ -834,7 +877,7 @@ export async function runImportRun(
     retries = 0;
     unpublished.current = null;
     if (outcome.kind === "stopped") return { status: "idle", chunks };
-    if (outcome.commit) await publishCommittedImport(outcome.commit);
+    await drainPendingPublish(run.id);
     await reportImportAuditWriteFailure(outcome.auditFailure);
     chunks += 1;
   }

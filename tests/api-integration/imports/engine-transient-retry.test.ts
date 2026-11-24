@@ -44,6 +44,10 @@ const pgError = (code: string) =>
   Object.assign(new Error(`injected ${code}`), { code });
 const itemCount = async () =>
   (await db.select().from(schema.workItemTable)).length;
+const pendingChunks = async () =>
+  (await db.select().from(schema.importChunkTable)).filter(
+    (c) => c.pendingPublish !== null,
+  ).length;
 const linkCount = async () =>
   (await db.select().from(schema.importRecordLinkTable)).length;
 
@@ -409,5 +413,95 @@ describe("transient chunk failures (#895)", () => {
     expect(outcome).toMatchObject({ status: "completed" });
     expect(await itemCount()).toBe(10);
     expect(created).toHaveLength(10);
+  });
+
+  it("publish events survive a pause: uncertain 4th commit, failed reload, pause, manual resume publishes", async () => {
+    const { f, app, run } = await executed("durable-pause", 10);
+    const created: unknown[] = [];
+    await subscribeToEvent("work_item.created", async (d) => {
+      created.push(d);
+    });
+    let chunkCalls = 0;
+    let lost = false;
+    const outcome = await runImportRun(run.id, {
+      duringChunk: async () => {
+        chunkCalls += 1;
+        if (chunkCalls <= 3) throw pgError("57P01");
+      },
+      afterCommit: async () => {
+        lost = true;
+        throw pgError("08006"); // attempt 4 committed; its response is lost
+      },
+      beforeSnapshot: async () => {
+        if (lost) throw pgError("57P01"); // the reconciling reload fails too
+      },
+    });
+    expect(outcome).toMatchObject({
+      status: "paused",
+      pausedReason: "chunk_failed",
+    });
+    expect(await itemCount()).toBe(10);
+    expect(created).toHaveLength(0);
+    expect(await pendingChunks()).toBe(1);
+
+    await call(app, f.key, `/api/imports/${run.id}/resume`, post(), 200);
+    expect(await runImportRun(run.id)).toMatchObject({ status: "completed" });
+    expect(created).toHaveLength(10);
+    expect(await pendingChunks()).toBe(0);
+  });
+
+  it("publish events survive a process restart between commit and dispatch", async () => {
+    const { run } = await executed("durable-restart", 30);
+    const created: unknown[] = [];
+    await subscribeToEvent("work_item.created", async (d) => {
+      created.push(d);
+    });
+    let commits = 0;
+    await expect(
+      runImportRun(run.id, {
+        afterCommit: async () => {
+          commits += 1;
+          if (commits === 1) throw pgError("08006");
+        },
+        beforeSnapshot: async () => {
+          if (commits === 1) {
+            commits += 1;
+            throw new Error("process died"); // not transient: escapes the runner
+          }
+        },
+      }),
+    ).rejects.toThrow("process died");
+    expect(await itemCount()).toBe(10);
+    expect(created).toHaveLength(0);
+    expect(await pendingChunks()).toBe(1);
+
+    expect(await runImportRun(run.id)).toMatchObject({ status: "completed" });
+    expect(await itemCount()).toBe(30);
+    expect(created).toHaveLength(30);
+    expect(await pendingChunks()).toBe(0);
+  });
+
+  it("a crash after dispatch but before clearing republishes (duplicates allowed)", async () => {
+    const { run } = await executed("durable-dup", 10);
+    const created: unknown[] = [];
+    let stored: unknown = null;
+    await subscribeToEvent("work_item.created", async (d) => {
+      created.push(d);
+      // Handlers may overlap: only a read made before the clear holds the events.
+      const [row] = await db
+        .select({ pending: schema.importChunkTable.pendingPublish })
+        .from(schema.importChunkTable);
+      if (row?.pending) stored = row.pending;
+    });
+    expect(await runImportRun(run.id)).toMatchObject({ status: "completed" });
+    expect(created).toHaveLength(10);
+    expect(stored).not.toBeNull();
+    // The dispatch happened, the clear did not: put the stored events back.
+    await db
+      .update(schema.importChunkTable)
+      .set({ pendingPublish: stored as Record<string, unknown> });
+    await runImportRun(run.id);
+    expect(created).toHaveLength(20);
+    expect(await pendingChunks()).toBe(0);
   });
 });
