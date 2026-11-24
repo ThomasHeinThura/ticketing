@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 /** Keep Playwright's rejected fill call log from including generated credentials. */
 export async function fillSensitive(
   locator: { fill(value: string): Promise<void> },
@@ -34,13 +36,37 @@ export async function expectCleared(
 }
 
 /**
- * Run an assertion whose received value may be a secret or a raw response
- * body; a failing expect would print that value, so only `message` surfaces.
+ * Assert a private check. Callers compute `ok` with plain JS so no Playwright
+ * expect ever sees the value: expect records its own failure message in the
+ * test step (and HTML report), and that message can hold a secret or a body.
  */
-export function expectPrivately(check: () => void, message: string): void {
-  try {
-    check();
-  } catch {
-    throw new Error(message);
-  }
+export function expectPrivately(
+  ok: boolean | (() => boolean),
+  message: string,
+): void {
+  // Plain throw: tests/e2e has no @playwright/test to import, and nothing is recorded.
+  if (!(typeof ok === "function" ? ok() : ok)) throw new Error(message);
+}
+
+/** Partial deep match like toMatchObject: objects by key, arrays by index. */
+export function matchesPartial(actual: unknown, expected: unknown): boolean {
+  if (Array.isArray(expected))
+    return (
+      Array.isArray(actual) &&
+      actual.length === expected.length &&
+      expected.every((item, index) => matchesPartial(actual[index], item))
+    );
+  if (
+    expected !== null &&
+    typeof expected === "object" &&
+    Object.getPrototypeOf(expected) === Object.prototype
+  )
+    return (
+      actual !== null &&
+      typeof actual === "object" &&
+      Object.entries(expected).every(([key, value]) =>
+        matchesPartial((actual as Record<string, unknown>)[key], value),
+      )
+    );
+  return isDeepStrictEqual(actual, expected);
 }

@@ -202,6 +202,22 @@ describe("response bodies in e2e assertions", () => {
   });
 });
 
+// A Playwright expect inside expectPrivately records the received value in the
+// test step, which HTML reports serialize; the check must be plain JS.
+describe("expectPrivately arguments in e2e sources", () => {
+  it.each(
+    e2eSources()
+      .filter((path) => !path.endsWith("fill-sensitive.ts"))
+      .map((path) => [relative(repoRoot, path), path] as const),
+  )("%s runs no Playwright expect inside expectPrivately", (_name, path) => {
+    expect(
+      /expectPrivately\((?:(?!\);)[\s\S])*?\bexpect\(/u.test(
+        readFileSync(path, "utf8"),
+      ),
+    ).toBe(false);
+  });
+});
+
 // Console output ends up in CI logs, and a thrown message in the report.
 describe("log and error output in e2e sources", () => {
   it.each(

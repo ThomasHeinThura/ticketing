@@ -278,10 +278,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       );
       expect(session.status()).toBe(200);
       const received2 = await session.json();
-      expectPrivately(
-        () => expect(received2).toBeNull(),
-        "Private assertion failed (toBeNull).",
-      );
+      expectPrivately(received2 === null, "Private check failed.");
     });
 
     await test.step("expired step-up proof: the approval asks for fresh verification again", async () => {
@@ -363,8 +360,8 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       expect(refusal.status()).toBe(403);
       const received1 = await refusal.text();
       expectPrivately(
-        () => expect(received1).toContain("step_up_expired"),
-        "Private assertion failed (toContain).",
+        received1.includes("step_up_expired"),
+        "Private check failed.",
       );
       await adminPage.unroute(approvePattern);
 

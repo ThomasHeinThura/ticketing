@@ -3,10 +3,15 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import type { APIRequestContext, APIResponse } from "@playwright/test";
 import type { Client as PgClient } from "pg";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
-import { expectPrivately, privateRequest } from "./helpers/fill-sensitive";
+import {
+  expectPrivately,
+  matchesPartial,
+  privateRequest,
+} from "./helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
@@ -166,10 +171,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       password,
     });
     const signupBody = await statusText(firstSignup, 200);
-    expectPrivately(
-      () => expect(signupBody).not.toContain("password"),
-      "Private assertion failed (toContain).",
-    );
+    expectPrivately(!signupBody.includes("password"), "Private check failed.");
 
     const enrollment = await privateRequest(() =>
       admin.post(new URL("/api/auth/two-factor/enable", origin).toString(), {
@@ -267,8 +269,8 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     );
     const selfBody = await statusText(selfDeactivation, 409);
     expectPrivately(
-      () => expect(selfBody).toContain("self_target_refused"),
-      "Private assertion failed (toContain).",
+      selfBody.includes("self_target_refused"),
+      "Private check failed.",
     );
 
     const employeeEmail = `users-primary-employee-${randomUUID()}@example.test`;
@@ -343,14 +345,13 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     );
     const actionReadBody = await statusText(actionRead, 200);
     expectPrivately(
-      () =>
-        expect(JSON.parse(actionReadBody)).toMatchObject({
-          state: "pending",
-          approvalSupported: true,
-          action: "delete",
-          targetType: "user",
-        }),
-      "Private assertion failed (toMatchObject).",
+      matchesPartial(JSON.parse(actionReadBody), {
+        state: "pending",
+        approvalSupported: true,
+        action: "delete",
+        targetType: "user",
+      }),
+      "Private check failed.",
     );
 
     const challengeResponse = await postWithCsrf(
@@ -383,12 +384,11 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
     );
     const approvedBody = await statusText(approved, 200);
     expectPrivately(
-      () =>
-        expect(JSON.parse(approvedBody)).toEqual({
-          id: requested.pendingActionId,
-          state: "executed",
-        }),
-      "Private assertion failed (toEqual).",
+      isDeepStrictEqual(JSON.parse(approvedBody), {
+        id: requested.pendingActionId,
+        state: "executed",
+      }),
+      "Private check failed.",
     );
 
     const pendingRow = await client.query<{

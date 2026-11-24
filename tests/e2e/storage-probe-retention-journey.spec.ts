@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
-import { expectPrivately, fillSensitive } from "./helpers/fill-sensitive";
+import {
+  expectPrivately,
+  fillSensitive,
+  matchesPartial,
+} from "./helpers/fill-sensitive";
 import { withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -144,13 +148,12 @@ test("storage probe retains a diagnostic object on the real filesystem @a11y", a
         ).toBe(true);
         const received1 = await response.json();
         expectPrivately(
-          () =>
-            expect(received1).toMatchObject({
-              status: "verified",
-              cleanup: "not_attempted",
-              diagnosticObjectMayRemain: true,
-            }),
-          "Private assertion failed (toMatchObject).",
+          matchesPartial(received1, {
+            status: "verified",
+            cleanup: "not_attempted",
+            diagnosticObjectMayRemain: true,
+          }),
+          "Private check failed.",
         );
         const outcome = page
           .getByRole("alert")

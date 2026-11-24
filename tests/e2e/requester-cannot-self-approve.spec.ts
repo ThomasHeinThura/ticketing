@@ -1,7 +1,6 @@
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import {
   contextFor,
-  expect,
   expectStatus,
   postWithCsrf,
   test,
@@ -32,8 +31,8 @@ test("requester cannot self-approve", async () => {
       );
       const selfRequestBody = await expectStatus(selfRequest, 422);
       expectPrivately(
-        () => expect(selfRequestBody).toContain("self_approval"),
-        "Private assertion failed (toContain).",
+        selfRequestBody.includes("self_approval"),
+        "Private check failed.",
       );
 
       const requested = await postWithCsrf(
@@ -56,12 +55,12 @@ test("requester cannot self-approve", async () => {
       );
       const requesterDecisionBody = await expectStatus(requesterDecision, 403);
       expectPrivately(
-        () => expect(requesterDecisionBody).toContain("not_named_approver"),
-        "Private assertion failed (toContain).",
+        requesterDecisionBody.includes("not_named_approver"),
+        "Private check failed.",
       );
       expectPrivately(
-        () => expect(requesterDecisionBody).toContain("self_approval"),
-        "Private assertion failed (toContain).",
+        requesterDecisionBody.includes("self_approval"),
+        "Private check failed.",
       );
     } finally {
       await requester.dispose();

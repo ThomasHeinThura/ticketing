@@ -383,13 +383,10 @@ async function runJourney(
     expect(detail.status()).toBe(200);
     const detailText = await detail.text();
     expectPrivately(
-      () => expect(detailText).not.toContain("INTERNAL NOTE"),
-      "Private assertion failed (toContain).",
+      !detailText.includes("INTERNAL NOTE"),
+      "Private check failed.",
     );
-    expectPrivately(
-      () => expect(detailText).not.toContain("margin"),
-      "Private assertion failed (toContain).",
-    );
+    expectPrivately(!detailText.includes("margin"), "Private check failed.");
     await expect(
       page.getByRole("heading", { level: 1, name: "Portal rollout" }),
     ).toBeVisible();

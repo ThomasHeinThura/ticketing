@@ -9,6 +9,7 @@ import {
 import {
   expectPrivately,
   fillSensitive,
+  matchesPartial,
 } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
@@ -292,16 +293,15 @@ test("S5 creates managed services from the catalogue and filters them by kind on
     ]);
     const inheritBody = await lastCreateProjectBody(page);
     expectPrivately(
-      () =>
-        expect(inheritBody).toMatchObject({
-          kind: "managed_service",
-          supportLevel: "L1",
-        }),
-      "Private assertion failed (toMatchObject).",
+      matchesPartial(inheritBody, {
+        kind: "managed_service",
+        supportLevel: "L1",
+      }),
+      "Private check failed.",
     );
     expectPrivately(
-      () => expect(inheritBody).not.toHaveProperty("serviceCalendarId"),
-      "Private assertion failed (toHaveProperty).",
+      !Object.hasOwn(inheritBody, "serviceCalendarId"),
+      "Private check failed.",
     );
     const inherited = (await bodyAt(inheritResponse, 200)) as { id: string };
     await expect(page).toHaveURL(new RegExp(`/${inherited.id}(?:/|\\?|$)`));

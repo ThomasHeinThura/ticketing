@@ -1,5 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
-import { expectPrivately } from "../../../tests/e2e/helpers/fill-sensitive";
+import {
+  expectPrivately,
+  matchesPartial,
+} from "../../../tests/e2e/helpers/fill-sensitive";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 import { createVersionedTaskFixture } from "./helpers/versioned-task-fixture";
 
@@ -87,16 +90,15 @@ test.describe("G11 versioned task API fixture in Chromium", () => {
 
     expect(result.successStatus).toBe(200);
     expectPrivately(
-      () =>
-        expect(result.successBody).toMatchObject({
-          id: TASK_ID,
-          projectId: PROJECT_ID,
-          version: 2,
-          status: "in-progress",
-          position: 0,
-          userId: null,
-        }),
-      "Private assertion failed (toMatchObject).",
+      matchesPartial(result.successBody, {
+        id: TASK_ID,
+        projectId: PROJECT_ID,
+        version: 2,
+        status: "in-progress",
+        position: 0,
+        userId: null,
+      }),
+      "Private check failed.",
     );
     expect(fixture.getTask(TASK_ID)).toMatchObject({
       version: 2,
@@ -106,12 +108,11 @@ test.describe("G11 versioned task API fixture in Chromium", () => {
     });
     expect(result.staleStatus).toBe(409);
     expectPrivately(
-      () =>
-        expect(result.staleBody).toMatchObject({
-          assertedVersion: 1,
-          currentVersion: 2,
-        }),
-      "Private assertion failed (toMatchObject).",
+      matchesPartial(result.staleBody, {
+        assertedVersion: 1,
+        currentVersion: 2,
+      }),
+      "Private check failed.",
     );
     expect(fixture.getTask(TASK_ID)).toMatchObject({
       version: 2,

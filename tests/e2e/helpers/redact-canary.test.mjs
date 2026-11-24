@@ -107,10 +107,25 @@ const channels = {
     setup:
       "const body = JSON.stringify({ echoed: process.env.CANARY_SECRET });",
     leaky: `expect(body).toContain("never present");`,
-    safe: `expectPrivately(() => expect(body).toContain("never present"), "Private assertion failed.");`,
+    safe: `expectPrivately(body.includes("never present"), "Private assertion failed.");`,
     imports: `import { expectPrivately } from ${JSON.stringify(fillSensitive)};`,
   },
 };
+
+// The JSON reporter omits expectation steps, but HTML reports serialize them.
+// This reporter writes every step error and result error to steps.txt.
+const stepReporter = join(temp, "step-reporter.mjs");
+writeFileSync(
+  stepReporter,
+  `import { appendFileSync } from "node:fs";
+import { join } from "node:path";
+export default class StepReporter {
+  onBegin(config) { this.file = join(config.projects[0].testDir, "steps.txt"); appendFileSync(this.file, "steps\\n"); }
+  onStepEnd(_test, _result, step) { if (step.error) appendFileSync(this.file, (step.error.message ?? "") + "\\n"); }
+  onTestEnd(_test, result) { for (const e of result.errors) appendFileSync(this.file, (e.message ?? "") + "\\n"); }
+}
+`,
+);
 
 const runChannel = (name, { setup, imports }, check) => {
   const dir = join(temp, name);
@@ -120,7 +135,7 @@ const runChannel = (name, { setup, imports }, check) => {
   writeFileSync(join(dir, "package.json"), '{"type":"module"}');
   writeFileSync(
     join(temp, `${name}.config.ts`),
-    `export default { testDir: ${JSON.stringify(dir)}, outputDir: ${JSON.stringify(join(dir, "out"))}, reporter: [['json', { outputFile: ${JSON.stringify(join(dir, "report.json"))} }], ['list']], workers: 1, use: { trace: 'off', video: 'off', screenshot: 'off' } };\n`,
+    `export default { testDir: ${JSON.stringify(dir)}, outputDir: ${JSON.stringify(join(dir, "out"))}, reporter: [['json', { outputFile: ${JSON.stringify(join(dir, "report.json"))} }], ['list'], [${JSON.stringify(stepReporter)}]], workers: 1, use: { trace: 'off', video: 'off', screenshot: 'off' } };\n`,
   );
   writeFileSync(
     join(dir, "canary.spec.ts"),
@@ -168,6 +183,16 @@ try {
       `${name}: the repaired channel still exposes the secret`,
     );
   }
+  // Step errors alone: the control must leak, the repaired call must not.
+  const steps = (name) => readFileSync(join(temp, name, "steps.txt"), "utf8");
+  assert.ok(
+    steps("body-control").includes(secret),
+    "Control step errors must expose the secret, or the step check proves nothing",
+  );
+  assert.ok(
+    !steps("body-safe").includes(secret),
+    "expectPrivately still leaks the value through a recorded step error",
+  );
   console.log("E2E secret redaction canary: passed (control and redacted).");
 } finally {
   rmSync(temp, { recursive: true, force: true });

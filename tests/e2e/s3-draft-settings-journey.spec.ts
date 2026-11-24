@@ -9,6 +9,7 @@ import {
   expectCleared,
   expectPrivately,
   fillSensitive,
+  matchesPartial,
 } from "./helpers/fill-sensitive";
 import { withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
 
@@ -210,18 +211,17 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
         expect(savedResponse.status()).toBe(200);
         const savedBody = await savedResponse.json();
         expectPrivately(
-          () =>
-            expect(savedBody).toMatchObject({
-              version: 1,
-              config: {
-                connector: "bundled_seaweedfs",
-                bucket: synthetic.bucket,
-              },
-              credentialConfigured: true,
-              accessKeyIdConfigured: true,
-              secretAccessKeyConfigured: true,
-            }),
-          "Private assertion failed (toMatchObject).",
+          matchesPartial(savedBody, {
+            version: 1,
+            config: {
+              connector: "bundled_seaweedfs",
+              bucket: synthetic.bucket,
+            },
+            credentialConfigured: true,
+            accessKeyIdConfigured: true,
+            secretAccessKeyConfigured: true,
+          }),
+          "Private check failed.",
         );
         const savedText = JSON.stringify(savedBody);
         expect(savedText.includes(synthetic.accessKeyId)).toBe(false);
@@ -250,12 +250,11 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
         expect(getDraft.status()).toBe(200);
         const received2 = await getDraft.json();
         expectPrivately(
-          () =>
-            expect(received2).toMatchObject({
-              version: 1,
-              credentialConfigured: true,
-            }),
-          "Private assertion failed (toMatchObject).",
+          matchesPartial(received2, {
+            version: 1,
+            credentialConfigured: true,
+          }),
+          "Private check failed.",
         );
         await page.locator("#s3-draft-step-up-method").click();
         await page.getByRole("option", { name: "Backup code" }).click();
@@ -277,14 +276,13 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
         expect(testResponse.status()).toBe(200);
         const received1 = await testResponse.json();
         expectPrivately(
-          () =>
-            expect(received1).toMatchObject({
-              status: "verified",
-              cleanup: "not_attempted",
-              diagnosticObjectMayRemain: true,
-              browserPathVerified: false,
-            }),
-          "Private assertion failed (toMatchObject).",
+          matchesPartial(received1, {
+            status: "verified",
+            cleanup: "not_attempted",
+            diagnosticObjectMayRemain: true,
+            browserPathVerified: false,
+          }),
+          "Private check failed.",
         );
         const outcome = page
           .getByRole("alert")

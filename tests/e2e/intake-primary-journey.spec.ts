@@ -954,10 +954,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       );
       expect(csv.status()).toBe(200);
       const received1 = await csv.text();
-      expectPrivately(
-        () => expect(received1).toContain(ref),
-        "Private assertion failed (toContain).",
-      );
+      expectPrivately(received1.includes(ref), "Private check failed.");
     });
     await runPhase(phaseJournal, "requester-dashboard", async () => {
       const homeResponse = apiResponse(

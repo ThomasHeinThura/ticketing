@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   expectPrivately,
   fillSensitive,
+  matchesPartial,
 } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
@@ -181,12 +182,11 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
     expect(afterRejectedImport.status()).toBe(200);
     const received1 = await afterRejectedImport.json();
     expectPrivately(
-      () =>
-        expect(received1).toMatchObject({
-          version: 2,
-          holidays: [{ date: "2026-12-25", name: "Browser proof holiday" }],
-        }),
-      "Private assertion failed (toMatchObject).",
+      matchesPartial(received1, {
+        version: 2,
+        holidays: [{ date: "2026-12-25", name: "Browser proof holiday" }],
+      }),
+      "Private check failed.",
     );
 
     const screenshot = testInfo.outputPath("calendar-import-persisted.png");

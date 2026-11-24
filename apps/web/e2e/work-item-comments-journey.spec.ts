@@ -12,6 +12,7 @@ import {
 import {
   expectPrivately,
   fillSensitive,
+  matchesPartial,
 } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
@@ -759,13 +760,12 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
     expect(capabilities.status()).toBe(200);
     const received2 = await capabilities.json();
     expectPrivately(
-      () =>
-        expect(received2).toMatchObject({
-          updateTasks: false,
-          createPublicComments: true,
-          createInternalComments: true,
-        }),
-      "Private assertion failed (toMatchObject).",
+      matchesPartial(received2, {
+        updateTasks: false,
+        createPublicComments: true,
+        createInternalComments: true,
+      }),
+      "Private check failed.",
     );
     await page.goto(itemUrl);
     await expect(
@@ -896,8 +896,8 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       expect(response.status()).toBe(400);
       const received1 = await response.text();
       expectPrivately(
-        () => expect(received1).toContain("body must not exceed"),
-        "Private assertion failed (toContain).",
+        received1.includes("body must not exceed"),
+        "Private check failed.",
       );
     });
 

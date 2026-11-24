@@ -374,8 +374,8 @@ async function runJourney(
     expect(detail.status()).toBe(200);
     const received1 = await detail.text();
     expectPrivately(
-      () => expect(received1).not.toContain("INTERNAL NOTE"),
-      "Private assertion failed (toContain).",
+      !received1.includes("INTERNAL NOTE"),
+      "Private check failed.",
     );
     await expect(page).toHaveURL(new RegExp(`/requests/${request.key}$`, "u"));
     await expect(

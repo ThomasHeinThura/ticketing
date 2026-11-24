@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { expectPrivately } from "../../../tests/e2e/helpers/fill-sensitive";
+import {
+  expectPrivately,
+  matchesPartial,
+} from "../../../tests/e2e/helpers/fill-sensitive";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
@@ -112,8 +115,8 @@ for (const view of ["work?layout=list", "backlog"]) {
     const response = await projectCapabilityReply;
     const received1 = await response.json();
     expectPrivately(
-      () => expect(received1).toMatchObject({ createTasks: false }),
-      "Private assertion failed (toMatchObject).",
+      matchesPartial(received1, { createTasks: false }),
+      "Private check failed.",
     );
     await expect(
       page.getByRole("heading", { name: /Performance fixture/ }),

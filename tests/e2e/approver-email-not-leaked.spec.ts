@@ -1,7 +1,6 @@
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import {
   contextFor,
-  expect,
   expectStatus,
   postWithCsrf,
   test,
@@ -41,12 +40,12 @@ test("approval responses do not leak the approver email", async () => {
       await expectStatus(listed, 200);
       const body = await listed.text();
       expectPrivately(
-        () => expect(body).not.toContain(tenant.approver.email),
-        "Private assertion failed (toContain).",
+        !body.includes(tenant.approver.email),
+        "Private check failed.",
       );
       expectPrivately(
-        () => expect(body).toContain(tenant.approver.name),
-        "Private assertion failed (toContain).",
+        body.includes(tenant.approver.name),
+        "Private check failed.",
       );
     } finally {
       await requester.dispose();
