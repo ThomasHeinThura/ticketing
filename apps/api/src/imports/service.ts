@@ -1665,7 +1665,13 @@ export async function publishCommittedImport(
     await publishCreatedWorkItem(created);
   for (const updated of result.updateResults)
     await publishImportedWorkItemUpdate(updated);
-  await drainImportAttachmentJobs(result.attachmentJobs ?? [], options);
+  const jobs = result.attachmentJobs ?? [];
+  const drained = await drainImportAttachmentJobs(jobs, options);
+  // A run driven through the records route never reaches the engine's finalize step, so finish
+  // the bounded retries here: a transient failure ends as a stored attachment or one loss.
+  if (drained.retrying)
+    for (const runId of new Set(jobs.map((job) => job.runId)))
+      await resumePendingImportAttachments(runId, options);
 }
 
 /**

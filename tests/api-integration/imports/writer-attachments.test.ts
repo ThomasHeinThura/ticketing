@@ -500,34 +500,30 @@ describe("import writer: transient attachment failures (#896)", () => {
     return { f, app, run };
   }
 
-  it("retries a transient failure and ends as a written attachment with no loss", async () => {
+  it("retries a transient failure within the records route and ends as a written attachment with no loss", async () => {
     let calls = 0;
     const download = vi.fn(async () =>
       ++calls === 1
         ? transient
         : { ok: true as const, bytes: PNG, contentType: "image/png" },
     );
+    // Only the route runs: no manual resume, no engine finalize.
     const { f, app, run } = await commitOne(download, "att-retry");
-    expect(await db.select().from(schema.attachmentTable)).toHaveLength(0);
-    expect(await chunkOf(app, f, run.id)).toMatchObject({
-      pendingAttachments: 1,
-    });
-    expect((await resumePendingImportAttachments(run.id)).written).toBe(1);
     expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
     const chunk = await chunkOf(app, f, run.id);
     expect(chunk.pendingAttachments).toBeUndefined();
     expect(chunk.lossCounts ?? {}).toEqual({});
     expect(await lossRows()).toHaveLength(0);
+    expect(download).toHaveBeenCalledTimes(2);
     // a replay finds nothing pending and creates no second copy
     expect((await resumePendingImportAttachments(run.id)).written).toBe(0);
     expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
     expect(download).toHaveBeenCalledTimes(2);
   });
 
-  it("turns exhausted retries into exactly one terminal loss", async () => {
+  it("turns exhausted retries into exactly one terminal loss, never left pending", async () => {
     const download = vi.fn(async () => transient);
     const { f, app, run } = await commitOne(download, "att-exhaust");
-    await resumePendingImportAttachments(run.id);
     expect(download).toHaveBeenCalledTimes(3);
     const chunk = await chunkOf(app, f, run.id);
     expect(chunk.pendingAttachments).toBeUndefined();
@@ -535,6 +531,7 @@ describe("import writer: transient attachment failures (#896)", () => {
     expect(await lossRows()).toHaveLength(1);
     await resumePendingImportAttachments(run.id);
     expect(download).toHaveBeenCalledTimes(3);
+    expect(await lossRows()).toHaveLength(1);
   });
 
   it("does not retry a terminal failure", async () => {

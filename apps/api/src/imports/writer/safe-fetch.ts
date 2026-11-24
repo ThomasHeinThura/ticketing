@@ -195,8 +195,13 @@ async function downloadOnce(
           request.destroy(new Error("connected_to_forbidden_address"));
       });
     });
-    request.on("error", () =>
-      finish({ ok: false, code: "failed", retryable: true }),
+    request.on("error", (error) =>
+      finish({
+        ok: false,
+        code: "failed",
+        // a refused destination is a policy answer, not an outage
+        retryable: error.message !== "connected_to_forbidden_address",
+      }),
     );
     const deadline = setTimeout(() => {
       finish({ ok: false, code: "failed", retryable: true });
