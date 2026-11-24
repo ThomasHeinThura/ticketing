@@ -17,6 +17,7 @@ import {
   normaliseSample,
   PERFORMANCE_REFERENCE,
   resolveJobCalibration,
+  resolveJobCalibrationLogged,
   sha256Hex,
   summariseCalibration,
 } from "./performance-calibration.mjs";
@@ -802,23 +803,37 @@ test("host description reads the CPU model from /proc/cpuinfo", () => {
   assert.deepEqual(describeHost({}), { cpuModel: "unavailable", nproc: null });
 });
 
-test("raw batches are describable even when the job calibration throws on spread (#876)", () => {
+test("raw batches are logged only when the job calibration throws (#876)", () => {
   const spiky = [40, 90, 100, 110, 190];
-  const batches = [spiky, spiky, spiky];
+  const logged = [];
   assert.throws(
     () =>
-      resolveJobCalibration({
-        batches,
-        state: "unthrottled",
-        reference: pinned(),
-      }),
+      resolveJobCalibrationLogged(
+        {
+          batches: [spiky, spiky, spiky],
+          state: "unthrottled",
+          reference: pinned(),
+        },
+        (line) => logged.push(line),
+      ),
     /unstable/,
   );
-  const lines = describeRawBatches(batches, "unthrottled");
-  assert.equal(lines.length, CALIBRATION_BATCHES);
+  assert.equal(logged.length, CALIBRATION_BATCHES);
   assert.match(
-    lines[0],
+    logged[0],
     /raw batch 1 \[unthrottled\]: runs \(40, 90, 100, 110, 190\)/,
   );
+  // Success path stays quiet.
+  const quiet = [];
+  const steady = runsAt(100);
+  resolveJobCalibrationLogged(
+    {
+      batches: [steady, steady, steady],
+      state: "unthrottled",
+      reference: pinned(),
+    },
+    (line) => quiet.push(line),
+  );
+  assert.deepEqual(quiet, []);
   assert.deepEqual(describeRawBatches(undefined, "throttled"), []);
 });

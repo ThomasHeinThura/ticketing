@@ -333,6 +333,17 @@ export function describeRawBatches(batches, state) {
   );
 }
 
+/** resolveJobCalibration that emits the raw batches via log only when it throws (#876). */
+export function resolveJobCalibrationLogged(options, log = console.log) {
+  try {
+    return resolveJobCalibration(options);
+  } catch (error) {
+    for (const line of describeRawBatches(options.batches, options.state))
+      log(line);
+    throw error;
+  }
+}
+
 /**
  * Turns the calibration batches of one throttle state into the job's calibration verdict.
  * mode "calibration-only": R0 unpinned; measured and logged, never gated, factor is 1.

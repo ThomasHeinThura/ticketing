@@ -1188,7 +1188,7 @@ export function baselineKey(violationText) {
 
 /**
  * Split violations into new ones and known debt. The baseline maps key to the count frozen
- * on 24 Nov 2026 (#580); a key may only shrink, so a second copy of a known violation in
+ * on 24 Nov 2026 (#580); a key may only shrink and unused counts fail the check (so a fixed violation cannot be reused), so a second copy of a known violation in
  * the same file still fails.
  */
 export function applyBaseline(violations, baseline) {
@@ -1201,6 +1201,17 @@ export function applyBaseline(violations, baseline) {
   }
   const fixed = Object.values(left).reduce((sum, n) => sum + n, 0);
   return { fresh, fixed };
+}
+
+/** New violations plus a failure when baseline allowances are unused, so the baseline only shrinks. */
+export function baselineFailures(violations, baseline) {
+  const { fresh, fixed } = applyBaseline(violations, baseline);
+  return fixed
+    ? [
+        ...fresh,
+        `${fixed} baselined violation(s) no longer occur; run check:queries -- --update-baseline and commit the smaller baseline`,
+      ]
+    : fresh;
 }
 
 if (
@@ -1218,18 +1229,12 @@ if (
     writeFileSync(BASELINE, `${JSON.stringify(sorted, null, "\t")}\n`);
     process.stdout.write(`${NAME}: baseline written (${violations.length})\n`);
   } else {
-    const { fresh, fixed } = applyBaseline(
-      violations,
-      JSON.parse(readFileSync(BASELINE, "utf8")),
-    );
     finish({
       name: NAME,
-      failures: fresh,
-      warnings: fixed
-        ? [
-            `${fixed} baselined violation(s) no longer occur; run check:queries -- --update-baseline to shrink the debt`,
-          ]
-        : [],
+      failures: baselineFailures(
+        violations,
+        JSON.parse(readFileSync(BASELINE, "utf8")),
+      ),
     });
   }
 }

@@ -6,6 +6,7 @@ import { API } from "typescript/unstable/sync";
 import {
   analyzeQueryOwnership,
   applyBaseline,
+  baselineFailures,
   baselineKey,
   isRepositoryPath,
 } from "./check-queries.mjs";
@@ -834,4 +835,9 @@ test("baseline freezes known violations and fails new ones", () => {
   assert.deepEqual(result.fresh, [shifted, other]);
   // A baselined violation that disappeared is reported as shrinkable.
   assert.equal(applyBaseline([], { [key]: 2 }).fixed, 2);
+  // An unused allowance fails, so a fixed violation cannot be reused by a later one.
+  assert.equal(baselineFailures([], { [key]: 1 }).length, 1);
+  assert.match(baselineFailures([], { [key]: 1 })[0], /--update-baseline/);
+  assert.deepEqual(baselineFailures([known], { [key]: 1 }), []);
+  assert.equal(baselineFailures([other], { [key]: 1 }).length, 2);
 });
