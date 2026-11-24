@@ -422,7 +422,7 @@ function hasExpectedUse(config, storybook) {
       ["timezoneId", "UTC"],
       ["colorScheme", "light"],
       ["reducedMotion", "reduce"],
-      ["trace", "retain-on-failure"],
+      ["trace", "off"],
     ].every(([name, value]) =>
       hasLiteralProperty(use, name, value, ts.isStringLiteral),
     )
