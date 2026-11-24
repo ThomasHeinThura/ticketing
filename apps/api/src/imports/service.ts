@@ -1368,6 +1368,7 @@ export async function commitImportChunk(
         workspaceId: run.workspaceId,
         projectId: run.projectId,
         typeId: record.item.typeId,
+        priority: record.item.priority,
         startDate: record.item.startDate,
         dueDate: record.item.dueDate,
         labelIds: record.item.labelIds,

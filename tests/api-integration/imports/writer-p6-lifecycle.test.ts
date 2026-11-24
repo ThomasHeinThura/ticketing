@@ -409,3 +409,60 @@ describe("#348: import preview honours the initial priority permission", () => {
     expect((await dryRun({})).counts).toMatchObject({ rejected: 0 });
   });
 });
+
+describe("#348: import commit re-checks priority permission on updates", () => {
+  it("rejects committing a priority change with a key lacking set_priority", async () => {
+    const f = await writerFixture();
+    const { app } = createApp();
+    const sourceRef = `upd-${randomUUID()}`;
+    await commitChunk(app, f, (await createRun(app, f, sourceRef)).id, "c0", [
+      record(f, "U1"),
+    ]);
+    const restricted = await createPersonalApiKey(
+      { userId: f.user.id },
+      {
+        name: "no set_priority commit MCP",
+        capabilities: [
+          "instance:admin",
+          "work_item:create",
+          "work_item:read",
+          "work_item:update",
+        ],
+        isMcp: true,
+      },
+    );
+    const run = await createRun(app, f, sourceRef);
+    const records = [
+      record(f, "U1", {
+        item: { typeId: f.type.id, title: "U1", priority: "high" },
+      }),
+    ];
+    const preview = await request(
+      app,
+      f.fullKey.key,
+      `/api/imports/${run.id}/dry-run`,
+      idempotentJson("POST", {
+        chunkId: "c1",
+        expectedVersion: run.version,
+        records,
+      }),
+    );
+    expect(preview.status, await preview.clone().text()).toBe(200);
+    const p = (await preview.json()) as {
+      previewDigest: string;
+      runVersion: number;
+    };
+    const exec = await request(
+      app,
+      restricted.key,
+      `/api/imports/${run.id}/records`,
+      idempotentJson("POST", {
+        chunkId: "c1",
+        expectedVersion: p.runVersion,
+        records,
+        previewDigest: p.previewDigest,
+      }),
+    );
+    expect(exec.status, await exec.clone().text()).toBe(403);
+  });
+});
