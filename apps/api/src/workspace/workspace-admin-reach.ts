@@ -10,6 +10,7 @@ import {
   findWorkspaceAdminReachRole,
   insertWorkspaceAdminReachGrant,
   listWorkspaceAdminReachReconcileCandidates,
+  listWorkspaceAdminReachStaleCandidates,
   lockWorkspaceAdminReachPersonsInOrder,
   revokeWorkspaceAdminReachGrant,
   updateWorkspaceAdminReachGrant,
@@ -77,7 +78,10 @@ export async function syncWorkspaceAdminReach(
   // No provisioned staff person: there is nothing to hold a grant.
   if (person?.side !== "staff") return;
 
-  const desired = await desiredWorkspaceAdminReachRole(tx, workspaceId, userId);
+  // #737: a deactivated person has no desired reach, so any grant they hold is revoked.
+  const desired = person.active
+    ? await desiredWorkspaceAdminReachRole(tx, workspaceId, userId)
+    : null;
   let roleId: string | null = null;
   if (desired !== null) {
     let role = await findWorkspaceAdminReachRole(tx, workspaceId, desired);
@@ -182,7 +186,12 @@ export async function reconcileWorkspaceAdminReach(): Promise<{
   failed: number;
 }> {
   const database = db;
-  const candidates = await listWorkspaceAdminReachReconcileCandidates();
+  // #737: also revisit stale `system_backfill` grants (demoted or deactivated people); the
+  // same sync revokes them and audits `membership.changed`.
+  const candidates = [
+    ...(await listWorkspaceAdminReachReconcileCandidates()),
+    ...(await listWorkspaceAdminReachStaleCandidates()),
+  ];
   // Each member is fail-safe: one bad row (corrupt data, a failed audit write) must never
   // abort API boot. A failure is logged with the workspace and person ids, counted, and
   // the next member is tried; the member simply keeps no grant until the next boot or role
