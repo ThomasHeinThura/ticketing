@@ -61,6 +61,7 @@ import {
   isImportLossCode,
   listPendingImportAttachmentJobs,
   MAX_REPORTED_LOSSES,
+  pendingAttachmentKeysByChunk,
   processImportAttachmentJobs,
   resolveDeferredImportLinks,
   resolveImportedAssigneeId,
@@ -114,10 +115,19 @@ export async function appendImportAudit(
   }
 }
 
-export async function reportImportAuditWriteFailure(failed: boolean) {
+export async function reportImportAuditWriteFailure(
+  failed: boolean,
+  alertKey?: string,
+) {
   if (!failed) return;
   recordAuditWriteFailure("mutation");
-  await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  if (alertKey)
+    await notifyCurrentInstanceAdminsOfAuditFailure(
+      "mutation",
+      new Date(),
+      alertKey,
+    );
+  else await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
 }
 
 export function canonicalRecords(records: ImportRecord[]) {
@@ -1656,14 +1666,26 @@ export type ImportAttachmentAuthForRun = (
 
 export async function publishCommittedImport(
   result: Awaited<ReturnType<typeof commitImportChunk>>,
-  options: { attachmentAuth?: ImportAttachmentAuthForRun } = {},
+  options: {
+    attachmentAuth?: ImportAttachmentAuthForRun;
+    /** Stable chunk id: a replayed publish raises each audit-failure alert at most once. */
+    alertKey?: string;
+  } = {},
 ) {
   if (result.kind !== "committed") return;
-  await reportImportAuditWriteFailure(result.auditFailure === true);
+  await reportImportAuditWriteFailure(
+    result.auditFailure === true,
+    options.alertKey ? `${options.alertKey}:chunk` : undefined,
+  );
   for (const created of result.createdResults)
     await publishCreatedWorkItem(created);
   for (const updated of result.updateResults)
-    await publishImportedWorkItemUpdate(updated);
+    await publishImportedWorkItemUpdate(
+      updated,
+      options.alertKey
+        ? `${options.alertKey}:update:${updated.updated.id}`
+        : undefined,
+    );
   await drainImportAttachmentJobs(result.attachmentJobs ?? [], options);
 }
 
@@ -1716,9 +1738,18 @@ export async function insertImportLossRows(
  * recognised by their provenance row and skipped.
  */
 export async function drainImportAttachmentJobs(
-  jobs: readonly ImportAttachmentJob[],
+  allJobs: readonly ImportAttachmentJob[],
   options: { attachmentAuth?: ImportAttachmentAuthForRun } = {},
 ): Promise<{ written: number; losses: ImportLoss[] }> {
+  // A replayed job that already settled (it left the chunk's pending ledger) is skipped before any
+  // download, so a success can never be re-reported as a failure.
+  const ledger = await pendingAttachmentKeysByChunk([
+    ...new Set(allJobs.map((job) => job.chunkRowId)),
+  ]);
+  const jobs = allJobs.filter((job) => {
+    const pending = ledger.get(job.chunkRowId);
+    return pending === undefined || pending.has(importAttachmentJobKey(job));
+  });
   if (!jobs.length) return { written: 0, losses: [] };
   let written = 0;
   const losses: ImportLoss[] = [];
@@ -1756,9 +1787,13 @@ export async function drainImportAttachmentJobs(
     const chunkJobs = jobs.filter((job) => job.chunkRowId === chunkRowId);
     const keys = new Set(chunkJobs.map(importAttachmentJobKey));
     const chunkLosses = losses.filter((loss) => keys.has(lossKey(loss)));
-    await settleChunkAttachments(chunkRowId, chunkJobs, chunkLosses);
+    const accepted = await settleChunkAttachments(
+      chunkRowId,
+      chunkJobs,
+      chunkLosses,
+    );
     const first = chunkJobs[0];
-    if (first && chunkLosses.length)
+    if (first && accepted.length)
       // The chunk report above already holds every loss durably; the per-run table is the index the
       // wizard reads, so a failure here must not fail the import.
       await insertImportLossRows(
@@ -1768,7 +1803,7 @@ export async function drainImportAttachmentJobs(
           importRunId: first.runId,
           importChunkId: chunkRowId,
         },
-        chunkLosses,
+        accepted,
       ).catch(() => undefined);
   }
   return { written, losses };

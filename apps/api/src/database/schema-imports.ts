@@ -445,6 +445,11 @@ export const importChunkTable = pgTable(
       .default({}),
     recordCount: integer("record_count").notNull(),
     sourceCursor: text("source_cursor"),
+    /** Publish events of a committed runner chunk, written with it and cleared after dispatch. */
+    pendingPublish: jsonb("pending_publish").$type<Record<
+      string,
+      unknown
+    > | null>(),
     pendingActionId: text("pending_action_id").references(
       () => pendingActionTable.id,
       { onDelete: "set null", onUpdate: "cascade" },
