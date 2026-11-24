@@ -7,6 +7,7 @@ import {
   analyzeQueryOwnership,
   applyBaseline,
   baselineFailures,
+  baselinePath,
   baselineKey,
   isRepositoryPath,
 } from "./check-queries.mjs";
@@ -840,4 +841,11 @@ test("baseline freezes known violations and fails new ones", () => {
   assert.match(baselineFailures([], { [key]: 1 })[0], /--update-baseline/);
   assert.deepEqual(baselineFailures([known], { [key]: 1 }), []);
   assert.equal(baselineFailures([other], { [key]: 1 }).length, 2);
+});
+
+test("baseline path follows the scanned root, not the script location", () => {
+  assert.equal(
+    baselinePath("/other/worktree"),
+    "/other/worktree/scripts/ci/check-queries.baseline.json",
+  );
 });

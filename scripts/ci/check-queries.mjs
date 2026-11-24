@@ -1175,10 +1175,10 @@ export async function runQueryOwnershipCheck({ root = repoRoot } = {}) {
   }
 }
 
-const BASELINE = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "check-queries.baseline.json",
-);
+/** Baseline of the scanned worktree, not of the worktree this script file lives in. */
+export const baselinePath = (root = repoRoot) =>
+  path.join(root, "scripts", "ci", "check-queries.baseline.json");
+const BASELINE = baselinePath();
 
 /** Violation key without the line number, so unrelated edits do not shift the baseline. */
 export function baselineKey(violationText) {

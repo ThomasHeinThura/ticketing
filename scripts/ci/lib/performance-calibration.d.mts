@@ -85,7 +85,7 @@ export declare function describeRawBatches(
   state: string,
 ): string[];
 
-export declare function resolveJobCalibration(options: {
+type ResolveJobCalibrationOptions = {
   batches: number[][];
   state: CalibrationState;
   reference?: PerformanceReference;
@@ -94,7 +94,14 @@ export declare function resolveJobCalibration(options: {
   maxSpread?: number;
   factorMin?: number;
   factorMax?: number;
-}): Calibration;
+};
+export declare function resolveJobCalibration(
+  options: ResolveJobCalibrationOptions,
+): Calibration;
+export declare function resolveJobCalibrationLogged(
+  options: ResolveJobCalibrationOptions,
+  log?: (line: string) => void,
+): Calibration;
 export declare function normaliseSample(
   sample: CalibrationSample,
   calibration: Calibration,
