@@ -400,7 +400,21 @@ describe("no staff path can see or accept a customer invitation (CP-21)", () => 
     const path = `/api/invitation/public/${sent.id}`;
     const first = await w.app.request(path, { headers: JSON_HEADERS });
     expect(first.status).toBe(200);
-    expect(await first.json()).toMatchObject({ valid: true });
+    const preview = (await first.json()) as {
+      valid: boolean;
+      invitation: Record<string, unknown>;
+    };
+    expect(preview.valid).toBe(true);
+    // #257: the disclosed field set is deliberate; a new key must be a reviewed decision.
+    expect(Object.keys(preview.invitation).sort()).toEqual([
+      "email",
+      "expired",
+      "expiresAt",
+      "id",
+      "inviterName",
+      "status",
+      "workspaceName",
+    ]);
 
     const limited = await w.app.request(path, { headers: JSON_HEADERS });
     expect(limited.status).toBe(429);

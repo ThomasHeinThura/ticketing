@@ -309,15 +309,19 @@ export const platformPolicies = {
   // here honestly because `getInvitationDetails` (apps/api/src/utils/
   // check-registration-allowed.ts) requires no credential and none is checked. The id is a
   // `createId()` cuid2 (apps/api/src/database/schema.ts's invitationTable) — collision-
-  // resistant and non-sequential, not a guessable index — so the email address the response
-  // includes is only reachable by whoever already holds the exact invitation link (which was
-  // itself delivered to that same email address), the same trust model as a password-reset
-  // link.
+  // resistant and non-sequential, not a guessable index — so the invitee email, workspace name
+  // and inviter name the response includes are only reachable by whoever already holds the
+  // exact invitation link (which was itself delivered to that same email address), the same
+  // trust model as a password-reset link. An EXPIRED invitation still returns all three, so the
+  // page can say "expired, ask <inviter>" (#257, owner decision 24 Nov 2026). The route is
+  // rate-limited in the anonymous class.
   "GET /api/invitation/public/{id}": {
     public: true,
     reason:
-      "invitation preview for a recipient who has not signed in yet; the invitation id is a " +
-      "non-guessable cuid2, so this is the same trust model as a password-reset link",
+      "invitation preview for a recipient who has not signed in yet; discloses invitee email, " +
+      "workspace name and inviter name (also when expired, so the page can say who to ask) to " +
+      "whoever holds the non-guessable cuid2 link, the same trust model as a password-reset " +
+      "link; rate-limited in the anonymous class",
   },
 
   // `GET /api/auth/get-session` (index.ts ~line 378) and `GET /api/auth/device` (index.ts
