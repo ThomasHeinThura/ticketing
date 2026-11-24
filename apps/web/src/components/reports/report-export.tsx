@@ -10,7 +10,12 @@ import {
 import { Download } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { downloadReportExport, type ExportOutcome } from "@/fetchers/report";
+import {
+  downloadReportExport,
+  type ExportOutcome,
+  getReportExport,
+  reportExportDownloadUrl,
+} from "@/fetchers/report";
 import { useReportExport } from "@/hooks/queries/report";
 import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
@@ -29,9 +34,20 @@ export async function saveReportExport(id: string) {
   const picker = (window as { showSaveFilePicker?: SavePicker })
     .showSaveFilePicker;
   if (!picker) {
-    // shortcut: browsers without showSaveFilePicker (Firefox, Safari) buffer the whole file as a Blob, upgrade when they ship it or the API offers a signed download URL.
-    const { filename, response } = await downloadReportExport(id);
-    saveBlob(filename, await response.blob());
+    // Firefox and Safari have no save picker: check the state first so a refusal stays an in-app
+    // error, then let the browser itself stream the authenticated route to disk (session cookie,
+    // same origin). A 403 or race after this check shows as a failed browser download instead.
+    const { status } = (await getReportExport(id)).data;
+    if (status !== "ready")
+      throw status === "expired"
+        ? new HttpError(410, "expired")
+        : new HttpError(409, "not_ready");
+    const link = document.createElement("a");
+    link.href = reportExportDownloadUrl(id);
+    link.download = "";
+    document.body.append(link);
+    link.click();
+    link.remove();
     return;
   }
   let file: Awaited<ReturnType<SavePicker>>;

@@ -380,6 +380,10 @@ export const getReportExport = (id: string) =>
     "Failed to load the export",
   );
 
+/** The authenticated download route as a URL, for a browser-native download (no Blob). */
+export const reportExportDownloadUrl = (id: string) =>
+  getApiUrl(`/report-exports/${enc(id)}/download`);
+
 /** The stored CSV of a finished export, from the authenticated download route. */
 export async function downloadReportExport(
   id: string,
