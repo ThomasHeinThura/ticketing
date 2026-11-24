@@ -149,8 +149,9 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   }
 
   // Re-check the actual stored size against `attachment_max_bytes` -- `presign`'s own check
-  // only bounds the CLAIMED size. The presigned PUT signs that exact Content-Length, but this
-  // stays as defence in depth (and covers the filesystem driver) before the object is
+  // only bounds the CLAIMED size. The S3 presigned PUT signs that exact Content-Length, but the
+  // filesystem token binds only a size ceiling, so this check is required there and
+  // defence in depth on S3 before the object is
   // recorded as "ready".
   const [settings] = await getAttachmentSizeLimit(db);
   const maxBytes = settings?.maxBytes ?? FALLBACK_MAX_BYTES;

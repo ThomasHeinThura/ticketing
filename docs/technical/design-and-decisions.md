@@ -3793,7 +3793,7 @@ use durable cursors and skip missed cron windows. Browser and deployed acceptanc
 
 ### 24 Nov 2026 — Thomas: attachment upload is a presigned PUT, not a POST (#906)
 
-`AT-2` now describes what the code does: a presigned PUT that signs the exact `Content-Length` and `Content-Type`, with a size re-check and copy to a new key at `complete`. No `content-length-range` POST policy; no code change.
+`AT-2` now describes what the code does: a presigned PUT (S3: signs the exact `Content-Length` and `Content-Type`; filesystem: an API upload with a size-ceiling token), with a size re-check and copy to a new key at `complete`. No `content-length-range` POST policy; no code change.
 
 ### 24 Nov 2026 — Thomas: imported placeholders stay stored active (#907)
 
