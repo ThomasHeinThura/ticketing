@@ -10464,6 +10464,89 @@
         }
       }
     },
+    "/project/by-key": {
+      "get": {
+        "operationId": "resolveProjectKey",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Resolve a project key, including one it was renamed from",
+        "description": "Answers the project's current key for a key it holds or once held, so an old project link can redirect after a rename. The caller's project reach applies exactly as for the project list; an unknown key, a key of a project the caller cannot reach and a key of another workspace all answer the same 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "key",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The project's current key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slug"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No access to the workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found or out of reach",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/project": {
       "get": {
         "operationId": "listProjects",
