@@ -1926,7 +1926,7 @@ This gives, for free, the things other tools build separately:
 Borrowed from OpenProject's journal design.
 
 - `AU-8` Reconstruction is a domain function over activity rows, not a stored snapshot.
-- `AU-9` Reconstruction is available for work items in P2, and for projects in P5.
+- `AU-9` Reconstruction is available for work items. Project reconstruction is out of scope: projects have no activity journal, and the existing project settings history list is the project history surface (project changes also appear in the audit log) (owner decision 24 Nov 2026, #912).
 
 <a id="audit-trail-access"></a>
 ### Access

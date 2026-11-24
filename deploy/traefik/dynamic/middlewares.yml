@@ -82,7 +82,7 @@ http:
     # endpoint is served behind this Traefik. A hostile uploaded file must not
     # execute, so: no scripts, no framing, sandboxed, and downloaded rather than
     # rendered. This middleware does NOT set the storage backend's CORS — a
-    # presigned POST goes from the browser straight to the storage endpoint, so
+    # presigned PUT goes from the browser straight to the storage endpoint, so
     # the bucket's own CORS rules are what admit the agent and portal origins.
     files-headers:
       headers:

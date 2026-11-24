@@ -66,8 +66,10 @@ authenticated API a person would use.
 - `IM-6` **Preserve authorship and timestamps** where the source provides them. An import
   that stamps everything with today's date and the importer's name destroys the history it
   was supposed to save.
-- `IM-7` **Users are matched by email**, and unmatched users become inactive placeholder
-  records rather than being dropped. Comments by departed staff still say who wrote them.
+- `IM-7` **Users are matched by email**, and unmatched users become placeholder person
+  records rather than being dropped: no login, no membership, never assignable, and
+  claimable only through the verified `IP-30` path. Placeholder rows are stored active so
+  that claim proof works. Comments by departed staff still say who wrote them.
 
 <a id="import-strategy-the-pipeline"></a>
 ### The pipeline
@@ -202,7 +204,7 @@ path ([mcp-server.md](feature-contracts-p4.md#mcp-server)); an agent-driven impo
 | Same source imported twice | Mapping rows cause updates, not duplicates |
 | Source record deleted after import | Target retained; the provenance link is marked stale |
 | Circular parent references in the source | Detected; the cycle is broken and reported |
-| Comment author not in the directory | Inactive placeholder person created, authorship preserved |
+| Comment author not in the directory | Placeholder person created (no login, no membership, never assignable), authorship preserved |
 | Attachment download fails | Item imported, attachment reported as missing with the source URL |
 | Source has more states than the target | Mapping is required; the import will not start until every state is mapped |
 | 100,000 items | Chunked at 500; hours; resumable; progress visible |
@@ -253,7 +255,7 @@ Organisation → Workspace → Project → Work item
 
 | Rule | |
 | --- | --- |
-| **People** | Matched by email, case-insensitive. Unmatched become inactive placeholders — never dropped, never collapsed into "unknown" |
+| **People** | Matched by email, case-insensitive. Unmatched become placeholders (no login, never assignable) — never dropped, never collapsed into "unknown" |
 | **Timestamps** | Preserved. `created_at`, `updated_at`, `resolved_at` come from the source |
 | **Authorship** | Preserved on comments and activity |
 | **Provenance** | Every record gets an `external_link` row: system, id, URL |
@@ -604,7 +606,7 @@ After import:
 - Required: Relations resolve
 - Required: Activity shows history, not just a creation event
 - Required: The provenance link opens the original in Azure DevOps
-- Required: Placeholder users are marked inactive and are not assignable
+- Required: Placeholder users have no login or membership and are not assignable
 
 <a id="azure-devops-related"></a>
 ### Related
