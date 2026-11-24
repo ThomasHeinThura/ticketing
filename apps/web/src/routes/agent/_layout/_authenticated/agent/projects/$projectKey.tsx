@@ -1,12 +1,6 @@
-import {
-  createFileRoute,
-  Outlet,
-  useLocation,
-  useRouter,
-} from "@tanstack/react-router";
-import { lazy, Suspense, useEffect } from "react";
+import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
 import { PageLoading } from "@/components/page-loading";
-import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
 import { projectOverviewOptions } from "@/hooks/queries/project/project-overview-options";
 import { projectOptions } from "@/hooks/queries/project/use-get-project";
 import { resolveRouteProject } from "@/lib/route-project-prefetch";
@@ -15,6 +9,10 @@ import { resolveRouteProject } from "@/lib/route-project-prefetch";
 // never download it (G11).
 const ProjectOverviewPage = lazy(
   () => import("@/components/project/overview/project-overview-page"),
+);
+// #1200 old-key redirect: off the first paint for the same reason.
+const ProjectKeyRedirect = lazy(
+  () => import("@/components/project/project-key-redirect"),
 );
 
 function startOverviewReads(
@@ -66,29 +64,30 @@ export const Route = createFileRoute(
 function ProjectRootRoute() {
   const { projectKey } = Route.useParams();
   const location = useLocation();
-  const router = useRouter();
-  const { currentKey } = useProjectByKey(projectKey);
-  // A project renamed since the link was made: replace the old key with the current one, keeping
-  // the rest of the path, the search and the fragment.
-  const { pathname, searchStr, hash } = location;
-  useEffect(() => {
-    if (!currentKey || currentKey === projectKey) return;
-    const [, agent, projects, , ...rest] = pathname.split("/");
-    router.history.replace(
-      `/${[agent, projects, encodeURIComponent(currentKey), ...rest].join("/")}${searchStr}${hash ? `#${hash}` : ""}`,
-    );
-  }, [currentKey, projectKey, pathname, searchStr, hash, router]);
   const encodedBase = `/agent/projects/${encodeURIComponent(projectKey)}`;
   const rawBase = `/agent/projects/${projectKey}`;
+  const redirect = (
+    <Suspense fallback={null}>
+      <ProjectKeyRedirect projectKey={projectKey} />
+    </Suspense>
+  );
   if (
     ![encodedBase, `${encodedBase}/`, rawBase, `${rawBase}/`].includes(
       location.pathname,
     )
   )
-    return <Outlet />;
+    return (
+      <>
+        {redirect}
+        <Outlet />
+      </>
+    );
   return (
-    <Suspense fallback={<PageLoading />}>
-      <ProjectOverviewPage projectKey={projectKey} prefetched />
-    </Suspense>
+    <>
+      {redirect}
+      <Suspense fallback={<PageLoading />}>
+        <ProjectOverviewPage projectKey={projectKey} prefetched />
+      </Suspense>
+    </>
   );
 }
