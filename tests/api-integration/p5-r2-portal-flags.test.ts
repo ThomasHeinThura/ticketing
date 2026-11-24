@@ -202,7 +202,7 @@ describe("portal release notes follow feature.customer_portal", () => {
 });
 
 describe("SLA reports follow feature.sla at project scope", () => {
-  it("runs when only a project switches SLA on, and counts that project's rows only", async () => {
+  it("ignores a project SLA override while the workspace SLA is off (#897), and counts only projects with SLA on", async () => {
     const w = await reportsWorld();
     const inA = await w.addItem({
       createdDaysAgo: 2,
@@ -229,11 +229,11 @@ describe("SLA reports follow feature.sla at project scope", () => {
       409,
     );
 
+    // #897 option A: a project-on override does not run SLA while the workspace is off.
     await setProjectFlag(w.projectA.id, "feature.sla", true);
-    const onlyA = await w.report(w.owner.user, "at_risk_now");
-    expect(onlyA.response.status).toBe(200);
-    expect(keysOf(onlyA.body.rows)).toContain(inA.key);
-    expect(keysOf(onlyA.body.rows)).not.toContain(inB.key);
+    expect((await w.report(w.owner.user, "at_risk_now")).response.status).toBe(
+      409,
+    );
 
     // The workspace on with project B switched off: B's rows leave the report.
     await setWorkspaceFlag(w.workspaceId, "feature.sla", true);
@@ -243,7 +243,7 @@ describe("SLA reports follow feature.sla at project scope", () => {
     expect(keysOf(withoutB.body.rows)).toContain(inA.key);
     expect(keysOf(withoutB.body.rows)).not.toContain(inB.key);
 
-    // The report list marks SLA reports available while any project has SLA on.
+    // The report list marks SLA reports available while the workspace and a project have SLA on.
     const list = await w.get(
       w.owner.user,
       `/api/reports?workspaceId=${w.workspaceId}`,
