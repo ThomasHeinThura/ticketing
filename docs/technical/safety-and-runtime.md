@@ -4103,7 +4103,7 @@ Generated, never derived from the user's filename:
 <a id="storage-and-attachments-upload-flow"></a>
 ### Upload flow
 
-With the S3 driver, uploads go **direct to storage** via a presigned PUT and the API never handles file bytes. With the default filesystem driver, the API receives the upload.
+With the S3 driver, uploads go **direct to storage** via a presigned PUT; the API reads only the first bytes of the stored object at completion to check its type. With the default filesystem driver, the API receives the upload.
 
 ```
 1. POST /api/work-items/{key}/attachments/presign
@@ -4115,7 +4115,8 @@ With the S3 driver, uploads go **direct to storage** via a presigned PUT and the
 2. Browser PUTs the file to uploadUrl with uploadHeaders.
 
 3. POST /api/attachments/{id}/complete
-   → server stats the object: exists? size matches? 
+   → server copies the object to its final key, then checks the copy:
+     exists? S3: size matches the signed size; filesystem: size within the limit
    → sniffs magic bytes against the declared MIME type
    → state = ready, emits activity + websocket event
 ```

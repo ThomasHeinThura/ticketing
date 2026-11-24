@@ -1530,8 +1530,8 @@ This document covers behaviour and interface.
 - `AT-2` S3 driver: upload goes direct to object storage via a presigned PUT that signs
   the exact key, `Content-Length` and `Content-Type`. Filesystem driver (the default): the
   upload goes through the API (`PUT` with a key-scoped, expiring token that binds only a
-  size ceiling, not the declared size or content type). Both paths: `complete` re-checks
-  the stored size and the magic bytes and copies the object to its final key (#906). The portal download
+  size ceiling, not the declared size or content type). Both paths: `complete` first copies
+  the object to its final key, then checks that copy's size and magic bytes (#906). The portal download
   exception to the API byte-proxy rule is defined in `AT-5` and `CP-19`.
 - `AT-3` Every attachment carries `customer_visible`. Staff uploads default to **not**
   visible; customer uploads default to visible. Completed uploads from hidden form fields
