@@ -6,7 +6,10 @@ import {
   type Request,
   test,
 } from "@playwright/test";
-import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
+import {
+  expectPrivately,
+  fillSensitive,
+} from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   withMfaCsrfApp,
@@ -47,7 +50,8 @@ const weekdayWindows = Object.fromEntries(
 
 async function bodyAt(response: APIResponse, status: number) {
   const text = await response.text();
-  expect(response.status(), text).toBe(status);
+  // A body in the message would print on failure; the status alone is enough.
+  expect(response.status()).toBe(status);
   return (text ? JSON.parse(text) : {}) as JsonRecord;
 }
 
@@ -287,11 +291,18 @@ test("S5 creates managed services from the catalogue and filters them by kind on
       createButton.click(),
     ]);
     const inheritBody = await lastCreateProjectBody(page);
-    expect(inheritBody).toMatchObject({
-      kind: "managed_service",
-      supportLevel: "L1",
-    });
-    expect(inheritBody).not.toHaveProperty("serviceCalendarId");
+    expectPrivately(
+      () =>
+        expect(inheritBody).toMatchObject({
+          kind: "managed_service",
+          supportLevel: "L1",
+        }),
+      "Private assertion failed (toMatchObject).",
+    );
+    expectPrivately(
+      () => expect(inheritBody).not.toHaveProperty("serviceCalendarId"),
+      "Private assertion failed (toHaveProperty).",
+    );
     const inherited = (await bodyAt(inheritResponse, 200)) as { id: string };
     await expect(page).toHaveURL(new RegExp(`/${inherited.id}(?:/|\\?|$)`));
     expect(

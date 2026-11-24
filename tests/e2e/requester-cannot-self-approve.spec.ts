@@ -7,6 +7,7 @@ import {
   test,
   withApprovalRuntime,
 } from "./helpers/approval-runtime";
+import { expectPrivately } from "./helpers/fill-sensitive";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
@@ -30,7 +31,10 @@ test("requester cannot self-approve", async () => {
         },
       );
       const selfRequestBody = await expectStatus(selfRequest, 422);
-      expect(selfRequestBody).toContain("self_approval");
+      expectPrivately(
+        () => expect(selfRequestBody).toContain("self_approval"),
+        "Private assertion failed (toContain).",
+      );
 
       const requested = await postWithCsrf(
         requester,
@@ -51,8 +55,14 @@ test("requester cannot self-approve", async () => {
         { action: "approve" },
       );
       const requesterDecisionBody = await expectStatus(requesterDecision, 403);
-      expect(requesterDecisionBody).toContain("not_named_approver");
-      expect(requesterDecisionBody).toContain("self_approval");
+      expectPrivately(
+        () => expect(requesterDecisionBody).toContain("not_named_approver"),
+        "Private assertion failed (toContain).",
+      );
+      expectPrivately(
+        () => expect(requesterDecisionBody).toContain("self_approval"),
+        "Private assertion failed (toContain).",
+      );
     } finally {
       await requester.dispose();
     }

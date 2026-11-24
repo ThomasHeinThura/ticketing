@@ -113,7 +113,7 @@ async function createProject(page: Page, origin: string, databaseUrl: string) {
     },
   );
   const text = await response.text();
-  expect(response.status(), text).toBe(200);
+  expect(response.status()).toBe(200);
   const id = (JSON.parse(text) as { id: string }).id;
 
   // Team stakeholders are chosen from the roster: put the colleague on it.

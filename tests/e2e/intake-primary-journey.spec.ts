@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { APIRequestContext, Page, Response } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
-import { fillSensitive } from "./helpers/fill-sensitive";
+import { expectPrivately, fillSensitive } from "./helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
@@ -953,7 +953,11 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         new URL(exportHref ?? "", portal).toString(),
       );
       expect(csv.status()).toBe(200);
-      expect(await csv.text()).toContain(ref);
+      const received1 = await csv.text();
+      expectPrivately(
+        () => expect(received1).toContain(ref),
+        "Private assertion failed (toContain).",
+      );
     });
     await runPhase(phaseJournal, "requester-dashboard", async () => {
       const homeResponse = apiResponse(

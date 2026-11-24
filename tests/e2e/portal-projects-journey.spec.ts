@@ -5,7 +5,11 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { APIRequestContext, Page, Response } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
-import { fillSensitive, privateRequest } from "./helpers/fill-sensitive";
+import {
+  expectPrivately,
+  fillSensitive,
+  privateRequest,
+} from "./helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
@@ -378,8 +382,14 @@ async function runJourney(
     const detail = await detailResponse;
     expect(detail.status()).toBe(200);
     const detailText = await detail.text();
-    expect(detailText).not.toContain("INTERNAL NOTE");
-    expect(detailText).not.toContain("margin");
+    expectPrivately(
+      () => expect(detailText).not.toContain("INTERNAL NOTE"),
+      "Private assertion failed (toContain).",
+    );
+    expectPrivately(
+      () => expect(detailText).not.toContain("margin"),
+      "Private assertion failed (toContain).",
+    );
     await expect(
       page.getByRole("heading", { level: 1, name: "Portal rollout" }),
     ).toBeVisible();

@@ -7,6 +7,7 @@ import {
   test,
   withApprovalRuntime,
 } from "./helpers/approval-runtime";
+import { expectPrivately } from "./helpers/fill-sensitive";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
@@ -39,8 +40,14 @@ test("approval responses do not leak the approver email", async () => {
       );
       await expectStatus(listed, 200);
       const body = await listed.text();
-      expect(body).not.toContain(tenant.approver.email);
-      expect(body).toContain(tenant.approver.name);
+      expectPrivately(
+        () => expect(body).not.toContain(tenant.approver.email),
+        "Private assertion failed (toContain).",
+      );
+      expectPrivately(
+        () => expect(body).toContain(tenant.approver.name),
+        "Private assertion failed (toContain).",
+      );
     } finally {
       await requester.dispose();
     }

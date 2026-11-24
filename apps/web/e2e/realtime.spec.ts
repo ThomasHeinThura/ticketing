@@ -1,5 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
-import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
+import {
+  expectPrivately,
+  fillSensitive,
+} from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   totpForUri,
@@ -286,7 +289,11 @@ test("native work-item events invalidate a second authenticated browser session"
         { "if-match": `"${created.version}"` },
       );
       expect(patch.status).toBe(200);
-      expect(patch.body).toMatchObject({ title: updatedTitle, version: 2 });
+      expectPrivately(
+        () =>
+          expect(patch.body).toMatchObject({ title: updatedTitle, version: 2 }),
+        "Private assertion failed (toMatchObject).",
+      );
       const updateRefetchResult = await updateRefetch;
       if ("error" in updateRefetchResult) {
         throw new Error(

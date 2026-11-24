@@ -34,7 +34,7 @@ async function bodyAt(
   status: number,
 ): Promise<JsonRecord> {
   const text = await response.text();
-  expect(response.status(), text).toBe(status);
+  expect(response.status()).toBe(status);
   if (status < 200 || status >= 300 || text.length === 0) return {};
   return JSON.parse(text) as JsonRecord;
 }

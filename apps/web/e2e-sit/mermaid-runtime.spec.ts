@@ -4,6 +4,11 @@ import os from "node:os";
 import path, { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
+import { redactSecretErrorContext } from "../e2e/helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const origin = "https://ticketing.localhost";
 const fixtureKey = "CCY-5";

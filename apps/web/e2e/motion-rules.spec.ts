@@ -771,7 +771,7 @@ test("rule 5: interrupted overlays close within one duration, settling board dro
     body: getComputedStyle(document.body).pointerEvents,
   }));
   expect(pointerEventsWhileSettling.html).not.toBe("none");
-  expect(pointerEventsWhileSettling.body).not.toBe("none");
+  expect(pointerEventsWhileSettling.body === "none").toBe(false);
   await expect(
     page.locator('[data-work-item-key="BRD-1"][data-pending="true"]'),
   ).toHaveCount(1);

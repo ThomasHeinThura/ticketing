@@ -33,7 +33,11 @@ export async function expectNoSeriousAxeViolations(page: Page) {
     const result = await axe.run(document);
     return result.violations
       .filter((v) => v.impact === "serious" || v.impact === "critical")
-      .map(({ id, impact, help, nodes }) => ({ id, impact, help, nodes }));
+      .map(({ id, impact, nodes }) => ({
+        id,
+        impact,
+        targets: nodes.map(({ target }) => target.join(" ")),
+      }));
   });
   expect(violations).toEqual([]);
 }

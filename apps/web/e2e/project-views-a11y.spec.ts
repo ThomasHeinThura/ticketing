@@ -96,7 +96,7 @@ async function seriousOrCriticalViolations(page: Page) {
         violations: Array<{
           id: string;
           impact: string | null;
-          nodes: Array<{ target: string[]; html: string }>;
+          nodes: Array<{ target: string[] }>;
         }>;
       }>;
     };
@@ -112,9 +112,7 @@ async function seriousOrCriticalViolations(page: Page) {
       .map((v) => ({
         id: v.id,
         impact: v.impact,
-        nodes: v.nodes.map(
-          (n) => `${n.target.join(" ")} :: ${n.html.slice(0, 160)}`,
-        ),
+        targets: v.nodes.map((n) => n.target.join(" ")),
       }));
   });
 }

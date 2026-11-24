@@ -32,3 +32,15 @@ export async function expectCleared(
     })
     .toBe(true);
 }
+
+/**
+ * Run an assertion whose received value may be a secret or a raw response
+ * body; a failing expect would print that value, so only `message` surfaces.
+ */
+export function expectPrivately(check: () => void, message: string): void {
+  try {
+    check();
+  } catch {
+    throw new Error(message);
+  }
+}

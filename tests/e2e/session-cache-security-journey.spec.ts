@@ -10,7 +10,11 @@ import type {
 } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
-import { expectCleared, fillSensitive } from "./helpers/fill-sensitive";
+import {
+  expectCleared,
+  expectPrivately,
+  fillSensitive,
+} from "./helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixture,
   withMfaCsrfApp,
@@ -273,7 +277,11 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         { headers: { Origin: origin } },
       );
       expect(session.status()).toBe(200);
-      expect(await session.json()).toBeNull();
+      const received2 = await session.json();
+      expectPrivately(
+        () => expect(received2).toBeNull(),
+        "Private assertion failed (toBeNull).",
+      );
     });
 
     await test.step("expired step-up proof: the approval asks for fresh verification again", async () => {
@@ -353,7 +361,11 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         .click();
       const refusal = await refusedApproval;
       expect(refusal.status()).toBe(403);
-      expect(await refusal.text()).toContain("step_up_expired");
+      const received1 = await refusal.text();
+      expectPrivately(
+        () => expect(received1).toContain("step_up_expired"),
+        "Private assertion failed (toContain).",
+      );
       await adminPage.unroute(approvePattern);
 
       await expect(

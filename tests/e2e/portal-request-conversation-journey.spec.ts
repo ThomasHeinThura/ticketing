@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { APIRequestContext, Page, Response } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
-import { fillSensitive } from "./helpers/fill-sensitive";
+import { expectPrivately, fillSensitive } from "./helpers/fill-sensitive";
 import {
   fixtureOwnershipJournal,
   type MfaCsrfAppFixture,
@@ -372,7 +372,11 @@ async function runJourney(
     await page.getByRole("link", { name: request.key }).first().click();
     const detail = await detailResponse;
     expect(detail.status()).toBe(200);
-    expect(await detail.text()).not.toContain("INTERNAL NOTE");
+    const received1 = await detail.text();
+    expectPrivately(
+      () => expect(received1).not.toContain("INTERNAL NOTE"),
+      "Private assertion failed (toContain).",
+    );
     await expect(page).toHaveURL(new RegExp(`/requests/${request.key}$`, "u"));
     await expect(
       page.getByRole("heading", {

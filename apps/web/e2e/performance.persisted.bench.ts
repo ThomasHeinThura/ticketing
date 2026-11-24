@@ -23,7 +23,9 @@ import { redactSecretErrorContext } from "./helpers/redact-secret-error-context"
 // Deliberately a first read-only slice: passing these two tests is NOT a full G11 pass.
 // No route interception, server, seed, direct DB writes or synthetic session cookies.
 let calibration: Calibration;
-test.afterEach(async (_fixtures, info) => redactSecretErrorContext(info));
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 test.beforeAll(async ({ browser }, info) => {
   assertCalibrationSourcePinned();
   const batches: number[][] = [];

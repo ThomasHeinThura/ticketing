@@ -1,5 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
-import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
+import {
+  expectPrivately,
+  fillSensitive,
+} from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   withMfaCsrfApp,
@@ -176,10 +179,15 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
       { headers: { Origin: origin } },
     );
     expect(afterRejectedImport.status()).toBe(200);
-    expect(await afterRejectedImport.json()).toMatchObject({
-      version: 2,
-      holidays: [{ date: "2026-12-25", name: "Browser proof holiday" }],
-    });
+    const received1 = await afterRejectedImport.json();
+    expectPrivately(
+      () =>
+        expect(received1).toMatchObject({
+          version: 2,
+          holidays: [{ date: "2026-12-25", name: "Browser proof holiday" }],
+        }),
+      "Private assertion failed (toMatchObject).",
+    );
 
     const screenshot = testInfo.outputPath("calendar-import-persisted.png");
     await page.screenshot({ path: screenshot, fullPage: true });

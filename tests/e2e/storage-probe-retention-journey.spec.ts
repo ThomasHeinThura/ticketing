@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
-import { fillSensitive } from "./helpers/fill-sensitive";
+import { expectPrivately, fillSensitive } from "./helpers/fill-sensitive";
 import { withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -142,11 +142,16 @@ test("storage probe retains a diagnostic object on the real filesystem @a11y", a
         expect(
           Boolean(await response.request().headerValue("x-taskdesk-csrf")),
         ).toBe(true);
-        expect(await response.json()).toMatchObject({
-          status: "verified",
-          cleanup: "not_attempted",
-          diagnosticObjectMayRemain: true,
-        });
+        const received1 = await response.json();
+        expectPrivately(
+          () =>
+            expect(received1).toMatchObject({
+              status: "verified",
+              cleanup: "not_attempted",
+              diagnosticObjectMayRemain: true,
+            }),
+          "Private assertion failed (toMatchObject).",
+        );
         const outcome = page
           .getByRole("alert")
           .filter({ hasText: "Storage write and read verified" });

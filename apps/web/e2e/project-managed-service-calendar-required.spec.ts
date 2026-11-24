@@ -100,7 +100,7 @@ async function bodyAt(
   status: number,
 ) {
   const text = await response.text();
-  expect(response.status(), text).toBe(status);
+  expect(response.status()).toBe(status);
   return (text ? JSON.parse(text) : {}) as JsonRecord;
 }
 

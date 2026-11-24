@@ -9,7 +9,10 @@ import {
   type Request,
   test,
 } from "@playwright/test";
-import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
+import {
+  expectPrivately,
+  fillSensitive,
+} from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   totpForUri,
@@ -754,11 +757,16 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       ).toString(),
     );
     expect(capabilities.status()).toBe(200);
-    expect(await capabilities.json()).toMatchObject({
-      updateTasks: false,
-      createPublicComments: true,
-      createInternalComments: true,
-    });
+    const received2 = await capabilities.json();
+    expectPrivately(
+      () =>
+        expect(received2).toMatchObject({
+          updateTasks: false,
+          createPublicComments: true,
+          createInternalComments: true,
+        }),
+      "Private assertion failed (toMatchObject).",
+    );
     await page.goto(itemUrl);
     await expect(
       page.getByRole("textbox", { name: "Title", exact: true }),
@@ -886,7 +894,11 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         },
       );
       expect(response.status()).toBe(400);
-      expect(await response.text()).toContain("body must not exceed");
+      const received1 = await response.text();
+      expectPrivately(
+        () => expect(received1).toContain("body must not exceed"),
+        "Private assertion failed (toContain).",
+      );
     });
 
     await visibility

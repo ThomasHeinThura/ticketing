@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
-import { expectCleared, fillSensitive } from "./helpers/fill-sensitive";
+import {
+  expectCleared,
+  expectPrivately,
+  fillSensitive,
+} from "./helpers/fill-sensitive";
 import { withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -205,13 +209,20 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
         const savedResponse = await saved;
         expect(savedResponse.status()).toBe(200);
         const savedBody = await savedResponse.json();
-        expect(savedBody).toMatchObject({
-          version: 1,
-          config: { connector: "bundled_seaweedfs", bucket: synthetic.bucket },
-          credentialConfigured: true,
-          accessKeyIdConfigured: true,
-          secretAccessKeyConfigured: true,
-        });
+        expectPrivately(
+          () =>
+            expect(savedBody).toMatchObject({
+              version: 1,
+              config: {
+                connector: "bundled_seaweedfs",
+                bucket: synthetic.bucket,
+              },
+              credentialConfigured: true,
+              accessKeyIdConfigured: true,
+              secretAccessKeyConfigured: true,
+            }),
+          "Private assertion failed (toMatchObject).",
+        );
         const savedText = JSON.stringify(savedBody);
         expect(savedText.includes(synthetic.accessKeyId)).toBe(false);
         expect(savedText.includes(synthetic.secretAccessKey)).toBe(false);
@@ -237,10 +248,15 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
           new URL("/api/instance/storage/s3-draft", fixture.origin).toString(),
         );
         expect(getDraft.status()).toBe(200);
-        expect(await getDraft.json()).toMatchObject({
-          version: 1,
-          credentialConfigured: true,
-        });
+        const received2 = await getDraft.json();
+        expectPrivately(
+          () =>
+            expect(received2).toMatchObject({
+              version: 1,
+              credentialConfigured: true,
+            }),
+          "Private assertion failed (toMatchObject).",
+        );
         await page.locator("#s3-draft-step-up-method").click();
         await page.getByRole("option", { name: "Backup code" }).click();
         await fillSensitive(
@@ -259,12 +275,17 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
         await page.keyboard.press("Enter");
         const testResponse = await tested;
         expect(testResponse.status()).toBe(200);
-        expect(await testResponse.json()).toMatchObject({
-          status: "verified",
-          cleanup: "not_attempted",
-          diagnosticObjectMayRemain: true,
-          browserPathVerified: false,
-        });
+        const received1 = await testResponse.json();
+        expectPrivately(
+          () =>
+            expect(received1).toMatchObject({
+              status: "verified",
+              cleanup: "not_attempted",
+              diagnosticObjectMayRemain: true,
+              browserPathVerified: false,
+            }),
+          "Private assertion failed (toMatchObject).",
+        );
         const outcome = page
           .getByRole("alert")
           .filter({ hasText: "Storage write and read verified" });
