@@ -41,6 +41,7 @@ import {
   commitImportChunk,
   insertImportLossRows,
   publishCommittedImport,
+  reconcileImportLossIndex,
   reportImportAuditWriteFailure,
   resumePendingImportAttachments,
   stageImportChunk,
@@ -650,6 +651,7 @@ async function finalizeRun(
     try {
       await options.beforeFinalizeRead?.();
       await resumePendingImportAttachments(runId);
+      await reconcileImportLossIndex(runId);
       await recheckAuthorityUnderSharedLock(runId);
       outcome = await withCreationTransaction(async (tx) => {
         const [locked] = await tx

@@ -111,7 +111,7 @@ import {
   PREREQUISITE_DELETION_ROUTE,
   PROJECT_DELETION_ROUTE,
 } from "./project-deletion-target";
-import { projectServesCustomer } from "./repository";
+import { findCurrentSlugByClaim, projectServesCustomer } from "./repository";
 import {
   customerOrganisationListSchema,
   documentLinkSchema,
@@ -138,6 +138,8 @@ import {
   projectParam,
   projectStateParam,
   reorderProjectsBody,
+  resolveProjectKeyQuery,
+  resolveProjectKeySchema,
   stakeholderParam,
   updateDocumentLinkBody,
   updateMilestoneBody,
@@ -289,6 +291,31 @@ const createProjectRoute = createRoute({
       "PR-9, same-workspace service calendar, or customer organisation validation failed",
     ),
     409: errorResponse("That project slug is already taken"),
+  },
+});
+
+const resolveProjectKeyRoute = createRoute({
+  method: "get",
+  operationId: "resolveProjectKey",
+  path: "/by-key",
+  tags: ["Projects"],
+  summary: "Resolve a project key, including one it was renamed from",
+  description:
+    "Answers the project's current key for a key it holds or once held, so an old project link " +
+    "can redirect after a rename. The caller's project reach applies exactly as for the project " +
+    "list; an unknown key, a key of a project the caller cannot reach and a key of another " +
+    "workspace all answer the same 404.",
+  middleware: [
+    workspaceAccess.fromQuery(),
+    requireWorkspaceCapability("project:read"),
+    requireReachFilteredList,
+  ] as const,
+  request: { query: resolveProjectKeyQuery },
+  responses: {
+    200: jsonResponse("The project's current key", resolveProjectKeySchema),
+    400: errorResponse("Workspace ID could not be determined"),
+    403: errorResponse("No access to the workspace"),
+    404: errorResponse("Project not found or out of reach"),
   },
 });
 
@@ -1106,6 +1133,20 @@ const project = apiRouter<
       })),
       200,
     );
+  })
+  .openapi(resolveProjectKeyRoute, async (c) => {
+    const workspaceId = c.get("workspaceId");
+    const { key } = c.req.valid("query");
+    // One answer for every failure (unknown, renamed-away but out of reach, another workspace's,
+    // deleted), so the route cannot be used to enumerate keys.
+    const notFound = () =>
+      new HTTPException(404, { message: "Project not found" });
+    // Reach is computed before the key is looked up, so every path does the same work.
+    const reachable = await listReachOf(c).reachableProjectIds([workspaceId]);
+    if (key.includes("\u0000")) throw notFound();
+    const found = await findCurrentSlugByClaim(db, workspaceId, key);
+    if (!found || !reachable.includes(found.id)) throw notFound();
+    return c.json({ slug: found.slug }, 200);
   })
   .openapi(listProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");

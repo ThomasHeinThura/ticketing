@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 
 const download = vi.hoisted(() => vi.fn());
-vi.mock("@/fetchers/report", () => ({ downloadReportExport: download }));
+const status = vi.hoisted(() => vi.fn());
+vi.mock("@/fetchers/report", () => ({
+  downloadReportExport: download,
+  getReportExport: status,
+  reportExportDownloadUrl: (id: string) => `/api/report-exports/${id}/download`,
+}));
 
 import { saveReportExport } from "./report-export";
 import { chunkedResponse, fakeFile } from "./test-writable";
@@ -88,21 +93,59 @@ describe("saveReportExport (RP-10)", () => {
     expect(file.closed).toBe(false);
   });
 
-  it("falls back to a Blob download under the response filename only without the picker", async () => {
-    vi.stubGlobal("showSaveFilePicker", undefined);
-    URL.createObjectURL = vi.fn(() => "blob:x");
-    URL.revokeObjectURL = vi.fn();
-    const names: string[] = [];
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
-      this: HTMLAnchorElement,
-    ) {
-      names.push(this.download);
+  describe("without the picker (Firefox, Safari)", () => {
+    function spyClicks() {
+      const links: { href: string; name: string }[] = [];
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+        function (this: HTMLAnchorElement) {
+          links.push({
+            href: this.getAttribute("href") ?? "",
+            name: this.download,
+          });
+        },
+      );
+      return links;
+    }
+
+    it("hands the authenticated URL to the browser, with no fetch of the body and no Blob", async () => {
+      vi.stubGlobal("showSaveFilePicker", undefined);
+      const createObjectURL = vi.fn();
+      URL.createObjectURL = createObjectURL;
+      status.mockResolvedValue({ data: { status: "ready" } });
+      const links = spyClicks();
+      await saveReportExport("e1");
+      expect(links).toEqual([
+        { href: "/api/report-exports/e1/download", name: "" },
+      ]);
+      expect(download).not.toHaveBeenCalled();
+      expect(createObjectURL).not.toHaveBeenCalled();
     });
-    download.mockResolvedValue({
-      filename: "e-2.csv",
-      response: new Response("a"),
+
+    it.each([
+      ["expired", 410],
+      ["failed", 409],
+      ["running", 409],
+    ])(
+      "keeps a %s export an in-app %s error and starts no download",
+      async (value, code) => {
+        vi.stubGlobal("showSaveFilePicker", undefined);
+        status.mockResolvedValue({ data: { status: value } });
+        const links = spyClicks();
+        await expect(saveReportExport("e1")).rejects.toMatchObject({
+          status: code,
+        });
+        expect(links).toEqual([]);
+      },
+    );
+
+    it("keeps a refused status read an in-app error", async () => {
+      vi.stubGlobal("showSaveFilePicker", undefined);
+      status.mockRejectedValue(new HttpError(403, "forbidden"));
+      const links = spyClicks();
+      await expect(saveReportExport("e1")).rejects.toMatchObject({
+        status: 403,
+      });
+      expect(links).toEqual([]);
     });
-    await saveReportExport("e1");
-    expect(names).toEqual(["e-2.csv"]);
   });
 });

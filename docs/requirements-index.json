@@ -7470,8 +7470,15 @@
 			"line": 2760,
 			"summary": "`tests/mcp/injection.test.ts` seeds a work item whose description instructs the",
 			"text": "`tests/mcp/injection.test.ts` seeds a work item whose description instructs the\nmodel to call `assign_work_item` / `transition_work_item` / `bulk_create_work_items`,\ndrives a scripted model through `get_work_item`, and asserts that a read-only key cannot\nperform any write, that a write-enabled key's destructive call returns\n`pending_action_id` rather than acting, and that the `untrusted_content` wrapper is\npresent on every user-authored field.",
-			"verification": "unverified",
-			"evidence": [],
+			"verification": "partial_local_evidence",
+			"evidence": [
+				{
+					"kind": "persisted-api-tests",
+					"path": "tests/api-integration/mcp-injection-journey.test.ts",
+					"result": "Real database and API: a stored injection description is read through get_work_item inside untrusted_content; a read-only key gets the real 403 on every obeyed write; a write key's delete_work_item returns the real pending action with the item intact; the key cannot approve or deny it.",
+					"limit": "Local run on a fresh Testcontainers database; CI and independent review pending. No UI, so no browser journey applies."
+				}
+			],
 			"originalSource": "archive/2026-10-22/docs/03-features/mcp-server.md",
 			"originalLine": 132,
 			"anchor": "mcp-server"

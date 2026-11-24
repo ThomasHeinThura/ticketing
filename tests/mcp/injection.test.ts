@@ -15,8 +15,8 @@
  *   single, idempotency-keyed canonical call, never a bulk or destructive one.
  *
  * Server-side parts of MC-18 (read-only key default, `feature.mcp` 404, MC-7a write
- * ceilings, session-only approval decisions) need the API and a database; they are
- * exercised by the API integration tests, not here.
+ * ceilings, session-only approval decisions) need the API and a database; the stored-injection
+ * journey on the real API is tests/api-integration/mcp-injection-journey.test.ts.
  */
 import { describe, expect, it } from "vitest";
 import { TaskDeskApiError } from "../../packages/mcp/src/taskdesk/client.js";

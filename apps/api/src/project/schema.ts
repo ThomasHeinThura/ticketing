@@ -309,6 +309,13 @@ export const listProjectsQuery = z.object({
     }),
 });
 
+export const resolveProjectKeyQuery = z.object({
+  workspaceId: z.string(),
+  key: z.string().min(1).max(64),
+});
+
+export const resolveProjectKeySchema = z.object({ slug: z.string() });
+
 export const createProjectBody = z.object({
   name: z.string(),
   workspaceId: z.string(),

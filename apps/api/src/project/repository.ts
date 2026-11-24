@@ -86,6 +86,30 @@ export async function hasProjectSlugClaim(executor: Executor, slug: string) {
   return claim !== undefined;
 }
 
+/** The project a key was ever claimed by (current or renamed-away), and its current key. */
+export async function findCurrentSlugByClaim(
+  executor: Executor,
+  workspaceId: string,
+  slug: string,
+) {
+  const [row] = await executor
+    .select({ id: projectTable.id, slug: projectTable.slug })
+    .from(projectSlugClaimTable)
+    .innerJoin(
+      projectTable,
+      eq(projectTable.id, projectSlugClaimTable.projectId),
+    )
+    .where(
+      and(
+        eq(projectSlugClaimTable.slug, slug),
+        eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.deletedAt),
+      ),
+    )
+    .limit(1);
+  return row;
+}
+
 export async function getMaxProjectPosition(
   executor: Executor,
   workspaceId: string,

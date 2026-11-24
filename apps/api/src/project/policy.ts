@@ -230,6 +230,16 @@ export const projectPolicies = {
     reach: "required",
   },
 
+  // Resolve a key the project holds or once held (old project links after a rename). Same gate
+  // and reach as the list (`fromQuery` + `project:read` + the reach-filtered set); every failure
+  // answers one identical 404. Registered ahead of `GET /api/project/{id}` in the router.
+  "GET /api/project/by-key": {
+    capability: "project:read",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
+
   // Reading one project. The scope is the project itself: reach decides whether this identity
   // can see it at all (404 if not), and authority decides whether they may read it (403).
   "GET /api/project/{id}": {

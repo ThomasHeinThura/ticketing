@@ -32,6 +32,9 @@ beforeAll(async () => {
     } else if (request.url === "/missing") {
       response.statusCode = 404;
       response.end("no");
+    } else if (request.url === "/unavailable") {
+      response.statusCode = 503;
+      response.end("later");
     } else if (request.url === "/big") {
       response.end(Buffer.alloc(5000, 1));
     } else if (request.url === "/chunked-big") {
@@ -62,10 +65,14 @@ describe("safeDownload (guarded egress for import attachments)", () => {
   it("never follows redirects and fails on a non-2xx status", async () => {
     expect(
       await safeDownload(`${base}/redirect`, { maxBytes: 100, env: dev }),
-    ).toEqual({ ok: false, code: "failed" });
+    ).toEqual({ ok: false, code: "failed", retryable: false });
     expect(
       await safeDownload(`${base}/missing`, { maxBytes: 100, env: dev }),
-    ).toEqual({ ok: false, code: "failed" });
+    ).toEqual({ ok: false, code: "failed", retryable: false });
+    // 5xx is transient (#896); 4xx is not.
+    expect(
+      await safeDownload(`${base}/unavailable`, { maxBytes: 100, env: dev }),
+    ).toEqual({ ok: false, code: "failed", retryable: true });
   });
 
   it("sends source credentials only to the configured host, and follows only a same-host redirect", async () => {
@@ -91,6 +98,7 @@ describe("safeDownload (guarded egress for import attachments)", () => {
     expect(await text("/same-host-redirect", { auth })).toEqual({
       ok: false,
       code: "failed",
+      retryable: false,
     });
     expect(await text("/same-host-redirect", { auth, maxRedirects: 1 })).toBe(
       "Bearer secret",
@@ -120,7 +128,7 @@ describe("safeDownload (guarded egress for import attachments)", () => {
         timeoutMs: 200,
         env: dev,
       }),
-    ).toEqual({ ok: false, code: "failed" });
+    ).toEqual({ ok: false, code: "failed", retryable: true });
   });
 
   it("stays strict by default even when the process runs with NODE_ENV=development", async () => {
@@ -151,5 +159,22 @@ describe("safeDownload (guarded egress for import attachments)", () => {
         ok: false,
         code: "failed",
       });
+  });
+
+  it("marks a failed DNS lookup retryable and keeps forbidden destinations terminal", async () => {
+    const env = { NODE_ENV: "production" };
+    const resolver = async () => {
+      throw Object.assign(new Error("try again"), { code: "EAI_AGAIN" });
+    };
+    expect(
+      await safeDownload("https://files.example.test/a.png", {
+        maxBytes: 100,
+        env,
+        resolver,
+      }),
+    ).toEqual({ ok: false, code: "failed", retryable: true });
+    expect(
+      await safeDownload("https://127.0.0.1/a.png", { maxBytes: 100, env }),
+    ).toEqual({ ok: false, code: "failed" });
   });
 });
