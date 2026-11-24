@@ -80,6 +80,11 @@ export declare function summariseCalibration(
   runs: number[],
   expectedRuns?: number,
 ): { runs: number[]; medianMs: number; spread: number };
+export declare function describeRawBatches(
+  batches: unknown,
+  state: string,
+): string[];
+
 export declare function resolveJobCalibration(options: {
   batches: number[][];
   state: CalibrationState;

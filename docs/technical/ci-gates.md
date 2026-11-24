@@ -27,7 +27,7 @@ Performance, permission, isolation, safety and security budgets are not waived.
 │ pnpm check:overrides one override source only    │
 │ pnpm check:dockerfile-deps Dockerfile=workspace  │
 │ gitleaks             no secrets in the diff      │
-│ pnpm check:queries   planned — not wired (#580) │
+│ pnpm check:queries   no new direct queries (#580)│
 │ pnpm check:inventory screen counts match rows    │
 │ pnpm check:reviews   phase boundary evidence        │
 │ pnpm check:env       no stray process.env        │

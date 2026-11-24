@@ -323,6 +323,17 @@ function referenceFor(state, reference, sourceSha256, optionsSha256) {
 }
 
 /**
+ * One log line per raw batch, so the evidence survives when resolveJobCalibration throws on
+ * spread or factor (#876). Never throws: malformed input is printed as received.
+ */
+export function describeRawBatches(batches, state) {
+  return (Array.isArray(batches) ? batches : []).map(
+    (runs, index) =>
+      `G11 calibration raw batch ${index + 1} [${state}]: runs (${[].concat(runs).join(", ")})`,
+  );
+}
+
+/**
  * Turns the calibration batches of one throttle state into the job's calibration verdict.
  * mode "calibration-only": R0 unpinned; measured and logged, never gated, factor is 1.
  * mode "calibrated": R0 pinned; every batch is stability-checked, the job median is the median

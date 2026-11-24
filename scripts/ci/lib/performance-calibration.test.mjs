@@ -13,6 +13,7 @@ import {
   calibratedMedianOfThreeWithRetry,
   calibrationOptionsSha256,
   describeHost,
+  describeRawBatches,
   normaliseSample,
   PERFORMANCE_REFERENCE,
   resolveJobCalibration,
@@ -799,4 +800,25 @@ test("host description reads the CPU model from /proc/cpuinfo", () => {
     nproc: 10,
   });
   assert.deepEqual(describeHost({}), { cpuModel: "unavailable", nproc: null });
+});
+
+test("raw batches are describable even when the job calibration throws on spread (#876)", () => {
+  const spiky = [40, 90, 100, 110, 190];
+  const batches = [spiky, spiky, spiky];
+  assert.throws(
+    () =>
+      resolveJobCalibration({
+        batches,
+        state: "unthrottled",
+        reference: pinned(),
+      }),
+    /unstable/,
+  );
+  const lines = describeRawBatches(batches, "unthrottled");
+  assert.equal(lines.length, CALIBRATION_BATCHES);
+  assert.match(
+    lines[0],
+    /raw batch 1 \[unthrottled\]: runs \(40, 90, 100, 110, 190\)/,
+  );
+  assert.deepEqual(describeRawBatches(undefined, "throttled"), []);
 });

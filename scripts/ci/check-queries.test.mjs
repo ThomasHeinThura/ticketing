@@ -3,7 +3,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { API } from "typescript/unstable/sync";
-import { analyzeQueryOwnership, isRepositoryPath } from "./check-queries.mjs";
+import {
+  analyzeQueryOwnership,
+  applyBaseline,
+  baselineKey,
+  isRepositoryPath,
+} from "./check-queries.mjs";
 import { repoRoot } from "./lib/repo.mjs";
 
 const infrastructureFiles = [
@@ -810,4 +815,23 @@ test("the real analyzer honors all exact persistence files and rejects a nearby 
     api.close();
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("baseline freezes known violations and fails new ones", () => {
+  const v = (file, line, msg) => `  ${file}\n      line ${line}: ${msg}`;
+  const known = v("apps/api/src/a.ts", 10, "database operation select");
+  const key = baselineKey(known);
+  assert.equal(key, "apps/api/src/a.ts :: database operation select");
+  // Same violation on a shifted line stays frozen.
+  const shifted = v("apps/api/src/a.ts", 42, "database operation select");
+  assert.deepEqual(applyBaseline([shifted], { [key]: 1 }), {
+    fresh: [],
+    fixed: 0,
+  });
+  // A second copy in the same file, and a new file, are new debt.
+  const other = v("apps/api/src/b.ts", 1, "database operation select");
+  const result = applyBaseline([known, shifted, other], { [key]: 1 });
+  assert.deepEqual(result.fresh, [shifted, other]);
+  // A baselined violation that disappeared is reported as shrinkable.
+  assert.equal(applyBaseline([], { [key]: 2 }).fixed, 2);
 });

@@ -3187,15 +3187,16 @@ a new term, add it here first.
 <a id="coding-standards"></a>
 ## Query ownership contract
 
-Non-query coding, UTC timestamp/raw-Date and performance clauses are maintained in [retained coding standards](retained-constraints.md#coding-standards). Query and transaction boundaries below are not proof that a checker is wired or all queries are currently scoped.
+Non-query coding, UTC timestamp/raw-Date and performance clauses are maintained in [retained coding standards](retained-constraints.md#coding-standards). Query and transaction boundaries below do not prove all queries are currently scoped; `check:queries` enforces location only.
 
 **Repositories own queries.** Controllers, middleware and services never build a query. A
 repository call that can return cross-organisation data receives the resolved identity and
 applies the caller's reach in the statement predicate. An additional workspace or project id
 must be checked against that identity; an id alone is not authoritative scope. Repository
 location alone does not guarantee scoping. The ownership rule and conventions are under
-[Query ownership](#coding-standards-query-ownership-issue-580) below. `check:queries` (issue #580) is planned
-but not currently wired, and will enforce query locations rather than tenant-predicate semantics.
+[Query ownership](#coding-standards-query-ownership-issue-580) below. `check:queries` (issue #580) is wired in CI and enforces query locations rather than
+tenant-predicate semantics. Violations that existed on 24 Nov 2026 are frozen in
+`scripts/ci/check-queries.baseline.json`; only new ones fail, and the file shrinks as areas are migrated.
 
 <a id="coding-standards-query-ownership-issue-580"></a>
 #### Query ownership (issue #580)

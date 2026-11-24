@@ -6,6 +6,7 @@
  * and raw SQL fragments are detected by TypeScript-resolved symbols/types so local renames
  * and aliases do not create exemptions.
  */
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as ts from "typescript/unstable/ast";
@@ -1174,10 +1175,61 @@ export async function runQueryOwnershipCheck({ root = repoRoot } = {}) {
   }
 }
 
+const BASELINE = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "check-queries.baseline.json",
+);
+
+/** Violation key without the line number, so unrelated edits do not shift the baseline. */
+export function baselineKey(violationText) {
+  const [location, detail = ""] = violationText.trim().split("\n");
+  return `${location.trim()} :: ${detail.trim().replace(/^line \d+: /, "")}`;
+}
+
+/**
+ * Split violations into new ones and known debt. The baseline maps key to the count frozen
+ * on 24 Nov 2026 (#580); a key may only shrink, so a second copy of a known violation in
+ * the same file still fails.
+ */
+export function applyBaseline(violations, baseline) {
+  const left = { ...baseline };
+  const fresh = [];
+  for (const text of violations) {
+    const key = baselineKey(text);
+    if (left[key] > 0) left[key] -= 1;
+    else fresh.push(text);
+  }
+  const fixed = Object.values(left).reduce((sum, n) => sum + n, 0);
+  return { fresh, fixed };
+}
+
 if (
   process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   const violations = await runQueryOwnershipCheck();
-  finish({ name: NAME, failures: violations });
+  if (process.argv.includes("--update-baseline")) {
+    const counts = {};
+    for (const text of violations) {
+      const key = baselineKey(text);
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    const sorted = Object.fromEntries(Object.entries(counts).sort());
+    writeFileSync(BASELINE, `${JSON.stringify(sorted, null, "\t")}\n`);
+    process.stdout.write(`${NAME}: baseline written (${violations.length})\n`);
+  } else {
+    const { fresh, fixed } = applyBaseline(
+      violations,
+      JSON.parse(readFileSync(BASELINE, "utf8")),
+    );
+    finish({
+      name: NAME,
+      failures: fresh,
+      warnings: fixed
+        ? [
+            `${fixed} baselined violation(s) no longer occur; run check:queries -- --update-baseline to shrink the debt`,
+          ]
+        : [],
+    });
+  }
 }

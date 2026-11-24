@@ -124,8 +124,8 @@ const manifest = [
   {
     gate: "pnpm check:queries",
     stage: "fast",
-    run: null,
-    why: "the repository.ts convention in docs/04-engineering/coding-standards.md has not been applied to the inherited tree yet, so 'no db.select() outside repository.ts' has no repository layer to be outside of.",
+    run: ["pnpm", "check:queries"],
+    note: "#580 — blocks new query-ownership violations; the existing ones are frozen in scripts/ci/check-queries.baseline.json.",
   },
   {
     gate: "pnpm check:inventory",

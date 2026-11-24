@@ -17,6 +17,7 @@ import {
   type CalibrationSample,
   calibratedMedianOfThreeWithRetry,
   describeHost,
+  describeRawBatches,
   PERFORMANCE_REFERENCE,
   resolveJobCalibration,
 } from "../../../scripts/ci/lib/performance-calibration.mjs";
@@ -143,6 +144,8 @@ test.beforeAll(async ({ browser }) => {
       batches.push(
         await measureCalibrationRuns(browser, state === "throttled"),
       );
+    // Log the raw runs first: resolveJobCalibration throws on spread or factor (#876).
+    for (const line of describeRawBatches(batches, state)) console.log(line);
     const calibration = resolveJobCalibration({ batches, state });
     jobCalibrations[state] = calibration;
     calibration.batches.forEach((batch, index) => {
