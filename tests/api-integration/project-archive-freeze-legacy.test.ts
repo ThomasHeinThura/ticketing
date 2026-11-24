@@ -1612,9 +1612,22 @@ describe("API integration: legacy task writes respect PR-15 project archive free
         }),
       );
 
+      // Wait on the lock state itself, with no deadline: a loaded runner may start the requests
+      // late, and the test timeout is the only bound. A request that settles while the barrier
+      // is held was not serialized by it, so stop waiting and let the assertion fail (#762).
+      let settledEarly = false;
+      for (const operation of operations) {
+        operation.then(
+          () => {
+            settledEarly = true;
+          },
+          () => {
+            settledEarly = true;
+          },
+        );
+      }
       let blockedCount = 0;
-      const deadline = Date.now() + 10_000;
-      while (blockedCount === 0 && Date.now() < deadline) {
+      while (blockedCount < operations.length && !settledEarly) {
         const waiters = await client.query<{
           pid: number;
           blockers: number[];
@@ -1642,14 +1655,14 @@ describe("API integration: legacy task writes respect PR-15 project archive free
           }
         }
         blockedCount = blockedPids.size - 1;
-        if (blockedCount === 0) {
+        if (blockedCount < operations.length) {
           await new Promise((resolve) => setTimeout(resolve, 25));
         }
       }
       expect(
         blockedCount,
-        "a task-creation transaction reached the shared project-row barrier",
-      ).toBeGreaterThan(0);
+        "both task-creation transactions queue behind the shared project-row barrier",
+      ).toBe(operations.length);
 
       await client.query("COMMIT");
       transactionOpen = false;
@@ -1764,9 +1777,21 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       createTransaction = claimAndInsert(createDb, "Concurrent create");
       importTransaction = claimAndInsert(importDb, "Concurrent import");
 
+      // Condition-based wait with no deadline (the test timeout bounds it); a writer that
+      // settles while the barrier is held was not blocked, so stop and fail the assertion (#762).
+      let settledEarly = false;
+      for (const transaction of [createTransaction, importTransaction]) {
+        transaction.then(
+          () => {
+            settledEarly = true;
+          },
+          () => {
+            settledEarly = true;
+          },
+        );
+      }
       let waitingPids: number[] = [];
-      const deadline = Date.now() + 10_000;
-      while (waitingPids.length < writerPids.length && Date.now() < deadline) {
+      while (waitingPids.length < writerPids.length && !settledEarly) {
         const waiting = await barrierClient.query<{ pid: number }>(
           `
             SELECT pid
