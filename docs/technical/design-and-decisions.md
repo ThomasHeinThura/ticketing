@@ -8,6 +8,15 @@ Product decisions and their rationale, original Kaneo design/token/motion contra
 - [Licensing/source boundary](#licensing-and-attribution) · [Risks and owner decisions](#risks)
 - [Precedence and source conflicts](#decision-provenance)
 
+## Phase 4 owner decisions — 24 November 2026
+
+Thomas accepted all 41 recommendations in the [Phase 4 decision record](../archive/reports/phase4-decisions-2026-11-21.md). Each item's recommended option is approved scope; anything beyond it still needs asking. The record covers:
+- workflow changes for #402 and #580;
+- migrations for #181, #398 and #895 (durable pending publication and import checkpoint semantics);
+- the #1200 historical project-key resolver;
+- narrowing AU-9 to work items (#912) and GM-5 to the existing form (#913);
+- the closures listed there.
+
 ## Team deletion confirmation — 16 November 2026
 
 Thomas chose: “Require the team name and update the deletion contract” (#901).
