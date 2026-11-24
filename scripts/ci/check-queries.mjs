@@ -1204,6 +1204,8 @@ export function applyBaseline(violations, baseline) {
 }
 
 /** New violations plus a failure when baseline allowances are unused, so the baseline only shrinks. */
+// shortcut: a PR can raise a count in the same commit that adds the violation; reviewers see the
+// baseline JSON diff. Compare against the merge-base baseline if that ever slips through.
 export function baselineFailures(violations, baseline) {
   const { fresh, fixed } = applyBaseline(violations, baseline);
   return fixed
