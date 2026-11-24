@@ -3795,6 +3795,10 @@ use durable cursors and skip missed cron windows. Browser and deployed acceptanc
 
 `AT-2` now describes what the code does: a presigned PUT that signs the exact `Content-Length` and `Content-Type`, with a size re-check and copy to a new key at `complete`. No `content-length-range` POST policy; no code change.
 
+### 24 Nov 2026 — Thomas: imported placeholders stay stored active (#907)
+
+Imported placeholder people keep `active = true` so the verified `IP-30` claim works. `IM-7` now says what is contractual: no login, no membership, never assignable, claimable only through the verified path. No code change. Denial tests already exist for unverified, inactive and already-claimed claims (`tests/api-integration/identity/placeholder-claim.test.ts`), password and customer-SSO sign-in (`placeholder-auth.test.ts`) and assignability (`work-item-assignable.test.ts`, L3).
+
 ## Historical 8 Nov 2026 owner decisions
 
 > Historical 8 Nov 2026 review record. Where items conflict with 12 Nov 2026 owner decisions in `docs/plan.md` (`D-A..D-P`, including frozen report-only G11 under `D-I` and `After UAT` deferrals), `docs/plan.md` takes precedence.
