@@ -3,9 +3,13 @@
  * number of times inside the runner, reconciling against the persisted run before each retry, so a
  * blip does not force a manual resume. Persistent failures still pause as `chunk_failed`.
  */
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { sql } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
+import { importChunkTable } from "../../../apps/api/src/database/schema-imports";
 import { subscribeToEvent } from "../../../apps/api/src/events";
 import {
   unreadableRecord,
@@ -13,11 +17,15 @@ import {
 } from "../../../apps/api/src/imports/engine/adapter";
 import {
   isTransientImportError,
+  revivePendingPublish,
   runImportRun,
+  runImportRunJob,
   setImportEngineAutoStart,
 } from "../../../apps/api/src/imports/engine/runner";
 import { clearFakeFixtures } from "../../../apps/api/src/imports/engine/test-adapter";
+import { setImportAttachmentDependencies } from "../../../apps/api/src/imports/writer";
 import { createApp } from "../../../apps/api/src/index";
+import { createWorkItem } from "../../../apps/api/src/work-item/controllers/create-work-item";
 import { resetTestDatabase } from "../helpers/database";
 import {
   call,
@@ -503,5 +511,238 @@ describe("transient chunk failures (#895)", () => {
     await runImportRun(run.id);
     expect(created).toHaveLength(20);
     expect(await pendingChunks()).toBe(0);
+  });
+
+  it("a rollback leaves cursor, stats and version exactly as the earlier successful chunk left them", async () => {
+    const { run } = await executed("rollback-state", 30);
+    let before: Awaited<ReturnType<typeof runRow>> | null = null;
+    let calls = 0;
+    let checked = false;
+    const outcome = await runImportRun(run.id, {
+      duringChunk: async () => {
+        calls += 1;
+        if (calls === 2) {
+          before = await runRow(run.id); // chunk 1 committed; chunk 2 writes are in flight
+          throw pgError("57P01");
+        }
+      },
+      beforeRetry: async () => {
+        if (checked) return;
+        checked = true;
+        const after = await runRow(run.id);
+        expect(before).not.toBeNull();
+        expect(after.sourceCursor).toEqual(before?.sourceCursor);
+        expect(after.stats).toEqual(before?.stats);
+        expect(after.version).toBe(before?.version);
+        expect(await itemCount()).toBe(10);
+      },
+    });
+    expect(checked).toBe(true);
+    expect(outcome).toMatchObject({ status: "completed" });
+    expect(await itemCount()).toBe(30);
+  });
+
+  it("an agent create racing a rolled-back chunk keeps work item keys unique", async () => {
+    const { f, run } = await executed("agent-race", 10);
+    let agent: Promise<unknown> | null = null;
+    let calls = 0;
+    const outcome = await runImportRun(run.id, {
+      duringChunk: async () => {
+        calls += 1;
+        if (calls !== 1) return;
+        // Starts while the chunk holds the project's number claims; it can only finish after the
+        // injected failure rolls them back.
+        agent = createWorkItem({
+          projectId: f.project.id,
+          workspaceId: f.workspace.id,
+          typeId: f.type.id,
+          title: "agent item",
+          actorId: f.user.id,
+          actorType: "person",
+        });
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        throw pgError("57P01");
+      },
+    });
+    await agent;
+    expect(outcome).toMatchObject({ status: "completed" });
+    const items = await db.select().from(schema.workItemTable);
+    expect(items).toHaveLength(11);
+    expect(new Set(items.map((i) => i.key)).size).toBe(11);
+  });
+
+  it("revives only the known Date fields; ISO-shaped identifiers stay strings", () => {
+    const iso = "2026-11-24T00:00:00.000Z";
+    const revived = revivePendingPublish({
+      attachmentJobs: [{ sourceId: iso, attachments: [{ sourceId: iso }] }],
+      createdResults: [
+        {
+          created: { key: iso },
+          realtimeEvent: { id: "e", occurredAt: iso },
+          initialEvents: [
+            {
+              event: { occurredAt: iso },
+              payload: {
+                changes: [
+                  { field: "dueDate", from: null, to: iso },
+                  { field: "title", from: iso, to: iso },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+      updateResults: [],
+    });
+    expect(revived.attachmentJobs).toEqual([
+      { sourceId: iso, attachments: [{ sourceId: iso }] },
+    ]);
+    const created = revived.createdResults?.[0];
+    expect(created?.created.key).toBe(iso);
+    expect(created?.realtimeEvent.occurredAt).toBeInstanceOf(Date);
+    expect(created?.initialEvents[0].event.occurredAt).toBeInstanceOf(Date);
+    const [due, title] = created?.initialEvents[0].payload.changes ?? [];
+    expect(due.to).toBeInstanceOf(Date);
+    expect(title).toEqual({ field: "title", from: iso, to: iso });
+  });
+
+  it("an ISO-shaped source and attachment id keep their identity through the stored publish", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "t895-"));
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
+    const original = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+    process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = root;
+    setImportAttachmentDependencies({
+      download: vi.fn(async () => ({
+        ok: true as const,
+        bytes: new Uint8Array([
+          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4, 5, 6, 7,
+          8,
+        ]),
+        contentType: "image/png",
+      })),
+    });
+    try {
+      const iso = "2026-11-24T00:00:00.000Z";
+      const f = await engineFixture();
+      const [record] = makeRecords(f.type.key, 1);
+      setFakeFixture("iso", {
+        records: [
+          {
+            ...(record as NonNullable<typeof record>),
+            sourceId: iso,
+            attachments: [
+              {
+                sourceId: iso,
+                url: "https://files.source.example.test/a.png",
+                filename: "a.png",
+              },
+            ],
+          },
+        ],
+      });
+      const { app } = createApp();
+      const { run, mapping } = await startRun(app, f, "iso");
+      await confirmAll(app, f.key, run.id, mapping.mappingVersion);
+      const dry = await dryRunAndExecuteBody(app, f.key, run.id);
+      await call(
+        app,
+        f.key,
+        `/api/imports/${run.id}/execute`,
+        post(dry.body),
+        202,
+      );
+      expect(await runImportRun(run.id)).toMatchObject({ status: "completed" });
+      expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
+      const external = (await db.select().from(schema.importProvenanceTable))
+        .filter((p) => p.entityType === "attachment")
+        .map((p) => p.externalId);
+      expect(external).toEqual([`issue:${iso}#attachment:${iso}`]);
+    } finally {
+      setImportAttachmentDependencies(null);
+      await rm(root, { recursive: true, force: true });
+      if (original === undefined)
+        // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
+        delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+      else process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = original;
+    }
+  });
+
+  it("a transient failure while selecting or clearing pending events keeps them and recovers", async () => {
+    const { run } = await executed("drain-transient", 20);
+    const created: unknown[] = [];
+    await subscribeToEvent("work_item.created", async (d) => {
+      created.push(d);
+    });
+    const failed = new Set<string>();
+    const outcome = await runImportRun(run.id, {
+      duringDrain: async (stage) => {
+        // Each stage fails once (the first time it is reached with chunk data to handle).
+        if (stage === "clear" && !failed.has("clear")) {
+          failed.add("clear");
+          throw pgError("57P01");
+        }
+        if (
+          stage === "select" &&
+          failed.has("clear") &&
+          !failed.has("select")
+        ) {
+          failed.add("select");
+          throw pgError("57P01");
+        }
+      },
+    });
+    expect(failed).toEqual(new Set(["clear", "select"]));
+    expect(outcome).toMatchObject({ status: "completed" });
+    expect(await itemCount()).toBe(20);
+    // Dispatched but not cleared is republished on the retry (duplicates allowed), never lost.
+    expect(created.length).toBeGreaterThanOrEqual(20);
+    const pending = await db
+      .select({ id: importChunkTable.id })
+      .from(importChunkTable)
+      .where(sql`${importChunkTable.pendingPublish} IS NOT NULL`);
+    expect(pending).toHaveLength(0);
+  });
+
+  it("a worker that lost its lease neither publishes nor clears pending events", async () => {
+    const steal = (runId: string) =>
+      db.execute(
+        sql`UPDATE job_lease SET "owner" = 'other-replica' WHERE "name" = ${`import-run:${runId}`}`,
+      );
+    const pendingCount = async () =>
+      (
+        await db
+          .select({ id: importChunkTable.id })
+          .from(importChunkTable)
+          .where(sql`${importChunkTable.pendingPublish} IS NOT NULL`)
+      ).length;
+
+    // Ownership moves before the drain's dispatch: nothing is published, the chunk stays pending.
+    const first = await executed("stale-publish", 10);
+    const events: unknown[] = [];
+    await subscribeToEvent("work_item.created", async (d) => {
+      events.push(d);
+    });
+    await expect(
+      runImportRunJob(first.run.id, {
+        duringDrain: async (stage) => {
+          if (stage === "select") await steal(first.run.id);
+        },
+      }),
+    ).rejects.toThrow(/reservation is no longer owned/);
+    expect(events).toHaveLength(0);
+    expect(await pendingCount()).toBe(1);
+
+    // Ownership moves after dispatch, before the clear: the stale worker cannot clear it.
+    await resetTestDatabase();
+    clearFakeFixtures();
+    const second = await executed("stale-clear", 10);
+    await expect(
+      runImportRunJob(second.run.id, {
+        duringDrain: async (stage) => {
+          if (stage === "clear") await steal(second.run.id);
+        },
+      }),
+    ).rejects.toThrow(/reservation is no longer owned/);
+    expect(await pendingCount()).toBe(1);
   });
 });

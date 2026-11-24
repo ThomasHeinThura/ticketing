@@ -27,8 +27,11 @@ import {
 import { lockInstanceAdminSerializationShared } from "../../instance/users/repository";
 import {
   assertJobExecutionOwned,
+  currentJobLease,
+  JobExecutionReservationLostError,
   withJobLease,
 } from "../../scheduler/leader-lock";
+import { dbNowUtc } from "../../utils/db-time";
 import { withCreationTransaction } from "../../work-item/create-preparation";
 import {
   type ImportActor,
@@ -165,6 +168,8 @@ export type RunnerOptions = {
   duringFinalize?: (tx: Transaction) => Promise<void>;
   /** Test seam: awaited right after a chunk transaction returned, so a test can fail an "uncertain" commit. */
   afterCommit?: () => Promise<void>;
+  /** Test seam: awaited at the start of each pending-publish drain ("select") and before each chunk's clear. */
+  duringDrain?: (stage: "select" | "clear") => Promise<void>;
   /** Test seam: awaited before each run reload, so a test can fail the reload itself. */
   beforeSnapshot?: () => Promise<void>;
   /** Test seam: awaited after a transient failure's backoff, before the run is reloaded for the retry. */
@@ -201,6 +206,7 @@ export async function runImportRunJob(
     () => runImportRun(runId, options),
     () => ({ status: "idle" as const, chunks: 0 }),
     IMPORT_RUN_LEASE_MS,
+    { enforceOwnership: true },
   );
 }
 
@@ -340,14 +346,60 @@ type ChunkOutcome =
   | { kind: "stopped" }
   | { kind: "advanced"; auditFailure: boolean };
 
-// JSON turns the stored Dates into ISO strings; the publishers call Date methods on them.
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+type PendingPublish = Record<string, unknown> & {
+  createdResults?: Array<Record<string, any>>;
+  updateResults?: Array<Record<string, any>>;
+};
+
+const DATE_FIELDS = new Set(["startDate", "dueDate"]);
+
+/**
+ * JSON turned the stored Dates into ISO strings and the publishers call Date methods on
+ * `occurredAt` (and publish `startDate`/`dueDate` changes as Dates). Revive exactly those fields:
+ * source identifiers and attachment jobs are plain strings that can look like dates and must stay.
+ */
+export function revivePendingPublish(pending: PendingPublish): PendingPublish {
+  const date = (value: unknown) =>
+    typeof value === "string" ? new Date(value) : value;
+  const event = (e: any) =>
+    e && typeof e === "object" ? { ...e, occurredAt: date(e.occurredAt) } : e;
+  const changes = (list: any) =>
+    Array.isArray(list)
+      ? list.map((c) =>
+          DATE_FIELDS.has(c?.field)
+            ? { ...c, from: date(c.from), to: date(c.to) }
+            : c,
+        )
+      : list;
+  return {
+    ...pending,
+    createdResults: pending.createdResults?.map((r) => ({
+      ...r,
+      realtimeEvent: event(r.realtimeEvent),
+      initialEvents: r.initialEvents?.map((i: any) => ({
+        ...i,
+        event: event(i.event),
+        payload: i.payload
+          ? { ...i.payload, changes: changes(i.payload.changes) }
+          : i.payload,
+      })),
+    })),
+    updateResults: pending.updateResults?.map((r) => ({
+      ...r,
+      realtimeEvent: event(r.realtimeEvent),
+      changes: changes(r.changes),
+    })),
+  };
+}
 
 /**
  * Dispatch every chunk's stored publish events in sequence order and clear each only after its
  * dispatch succeeded. A crash between dispatch and clear republishes (duplicates are allowed).
+ * Under a job lease both the dispatch and the clear require still owning it, so a replica that
+ * lost its lease neither publishes older events nor clears a chunk the new owner will drain.
  */
-async function drainPendingPublish(runId: string) {
+async function drainPendingPublish(runId: string, options: RunnerOptions = {}) {
+  await options.duringDrain?.("select");
   const rows = await db
     .select({
       id: importChunkTable.id,
@@ -363,19 +415,26 @@ async function drainPendingPublish(runId: string) {
     .orderBy(asc(importChunkTable.sequence));
   for (const row of rows) {
     await assertJobExecutionOwned();
-    const pending = JSON.parse(JSON.stringify(row.pending), (_key, value) =>
-      typeof value === "string" && ISO_DATE.test(value)
-        ? new Date(value)
-        : value,
-    );
     await publishCommittedImport({
       kind: "committed",
-      ...pending,
+      ...revivePendingPublish(row.pending as PendingPublish),
     } as Parameters<typeof publishCommittedImport>[0]);
-    await db
+    await options.duringDrain?.("clear");
+    const lease = currentJobLease();
+    const cleared = await db
       .update(importChunkTable)
       .set({ pendingPublish: null })
-      .where(eq(importChunkTable.id, row.id));
+      .where(
+        and(
+          eq(importChunkTable.id, row.id),
+          lease
+            ? sql`EXISTS (SELECT 1 FROM job_lease WHERE "name" = ${lease.name} AND "owner" = ${lease.owner} AND "expires_at" > ${dbNowUtc()})`
+            : undefined,
+        ),
+      )
+      .returning({ id: importChunkTable.id });
+    if (lease && cleared.length === 0)
+      throw new JobExecutionReservationLostError();
   }
 }
 
@@ -743,6 +802,10 @@ export async function runImportRun(
     try {
       await options.beforeSnapshot?.();
       snapshot = await loadSnapshot(runId);
+      // Publish events are durable on the chunk row: drain whatever earlier commits (this process's,
+      // a lost response's or a crashed one's) left before advancing, finalizing or pausing again.
+      // A transient failure keeps them stored and the retry drains again.
+      if (snapshot) await drainPendingPublish(runId, options);
     } catch (error) {
       // A connection still unavailable right after a transient failure belongs to the same budget.
       if (!isTransientImportError(error)) throw error;
@@ -755,9 +818,6 @@ export async function runImportRun(
       await options.beforeRetry?.();
       continue;
     }
-    // Publish events are durable on the chunk row: drain whatever earlier commits (this process's,
-    // a lost response's or a crashed one's) left before advancing, finalizing or pausing again.
-    if (snapshot) await drainPendingPublish(runId);
     if (snapshot && unpublished.current) {
       const stored = snapshot.run.sourceCursor;
       // When the commit's response was lost, the persisted cursor tells whether it landed.
@@ -877,7 +937,6 @@ export async function runImportRun(
     retries = 0;
     unpublished.current = null;
     if (outcome.kind === "stopped") return { status: "idle", chunks };
-    await drainPendingPublish(run.id);
     await reportImportAuditWriteFailure(outcome.auditFailure);
     chunks += 1;
   }
