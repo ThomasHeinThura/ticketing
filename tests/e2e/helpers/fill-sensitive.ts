@@ -1,6 +1,14 @@
 import { isDeepStrictEqual } from "node:util";
 
-/** Keep Playwright's rejected fill call log from including generated credentials. */
+/**
+ * Keep Playwright's rejected fill call log from including generated credentials.
+ *
+ * shortcut: Playwright fill step titles carry the value. They reach no CI artifact
+ * because every config pins the "list" reporter with traces off (guard-enforced),
+ * but a local --reporter=html/json run or a trace would show them, including SIT
+ * admin credentials used by apps/web/e2e-sit. Upgrade to value-free secret entry
+ * if a step-recording reporter or trace is ever needed. Owner acceptance pending on #709.
+ */
 export async function fillSensitive(
   locator: { fill(value: string): Promise<void> },
   value: string,

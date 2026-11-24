@@ -147,6 +147,94 @@ describe("files Playwright collects for every config", () => {
       /\b(?:trace|video|screenshot)\s*:\s*(?:"(?!off")[^"]*"|'[^']*'|\{)/u,
     );
   });
+
+  // Step titles of a recording reporter carry fill values, so only "list" may be used.
+  // A config without its own reporter must inherit one by spreading another config.
+  it.each(configs.map((path) => [relative(repoRoot, path), path] as const))(
+    "%s pins the list reporter",
+    (_name, path) => {
+      const text = readFileSync(path, "utf8");
+      const found = [...text.matchAll(/\breporter\s*:\s*([^\n]*)/gu)];
+      const ok =
+        found.length > 0
+          ? found.every((m) =>
+              /^(?:"list"|\[\["list"\]\]),?\s*$/u.test(m[1] ?? ""),
+            )
+          : /\.\.\.base\b/u.test(text);
+      // Any non-"off" value in a config (spec files may pass screenshot options).
+      const loose = /\b(?:trace|video|screenshot)\s*:(?!\s*\\?"off\\?")/u.test(
+        text,
+      );
+      // Boolean, so a failure does not print the source.
+      expect(ok && !loose).toBe(true);
+    },
+  );
+});
+
+// Upload paths named in workflow text; a block list or a single value after `path:`.
+function uploadPaths(yaml: string): string[] {
+  const lines = yaml.split("\n");
+  const out: string[] = [];
+  lines.forEach((line, i) => {
+    if (!/uses:\s*actions\/upload-artifact@/u.test(line)) return;
+    const indent =
+      (line.match(/^\s*/u)?.[0].length ?? 0) - (/^\s*-/u.test(line) ? 2 : 0);
+    for (let j = i + 1; j < lines.length; j++) {
+      const l = lines[j] ?? "";
+      if (/^\s*-\s/u.test(l) && (l.match(/^\s*/u)?.[0].length ?? 0) <= indent)
+        break;
+      const m = /^\s*path:\s*(.*)$/u.exec(l);
+      if (!m) continue;
+      if (m[1] && !/^[|>]/u.test(m[1])) out.push(m[1].trim());
+      else
+        for (let k = j + 1; /^\s+\S/u.test(lines[k] ?? ""); k++)
+          out.push((lines[k] ?? "").trim());
+      break;
+    }
+  });
+  return out;
+}
+
+const uploadAllowed = /^apps\/web\/test-results\/(?:[\w-]+\/[\w-]+\.json)?$/u;
+function badUpload(path: string): boolean {
+  return (
+    /playwright-report/u.test(path) ||
+    (/test-results/u.test(path) && !uploadAllowed.test(path))
+  );
+}
+
+describe("workflow artifact uploads", () => {
+  const workflows = readdirSync(resolve(repoRoot, ".github/workflows"))
+    .filter((name) => name.endsWith(".yml"))
+    .map((name) => resolve(repoRoot, ".github/workflows", name));
+
+  it.each(workflows.map((path) => [relative(repoRoot, path), path] as const))(
+    "%s uploads no Playwright report or raw test-results",
+    (_name, path) => {
+      const offending = uploadPaths(readFileSync(path, "utf8")).some(badUpload);
+      expect(offending).toBe(false);
+    },
+  );
+
+  it("flags a report path, so the check is not vacuous", () => {
+    const yaml = [
+      "      - uses: actions/upload-artifact@abc",
+      "        with:",
+      "          name: x",
+      "          path: |",
+      "            apps/web/playwright-report/",
+    ].join("\n");
+    expect(uploadPaths(yaml).some(badUpload)).toBe(true);
+    expect(badUpload("apps/web/test-results/other/trace.zip")).toBe(true);
+    expect(badUpload("apps/web/test-results/")).toBe(false);
+  });
+
+  it("sees the real upload paths", () => {
+    const all = workflows.flatMap((path) =>
+      uploadPaths(readFileSync(path, "utf8")),
+    );
+    expect(all).toContain("apps/web/test-results/");
+  });
 });
 
 // A failed expect prints its received value, so a secret must never be the
