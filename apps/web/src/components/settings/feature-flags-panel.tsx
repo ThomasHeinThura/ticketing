@@ -29,13 +29,21 @@ import {
 } from "@/fetchers/feature-flags";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
+import type { HistoryTarget } from "@/query-client/settings-history-key";
 
 /**
  * The feature switches of one level (`ST-1`, `ST-2`, `ST-4`, `ST-5`). Instance administrators
  * set the value and the lock; a workspace or project either inherits the value or overrides
  * it, and the panel says which. Each toggle is a change that takes effect immediately.
  */
-export function FeatureFlagsPanel({ target }: { target: FeatureLevel }) {
+export function FeatureFlagsPanel({
+  target,
+  history,
+}: {
+  target: FeatureLevel;
+  /** The History these switches write to, refreshed on save; the instance level has none. */
+  history?: HistoryTarget;
+}) {
   const { t } = useTranslation("featureFlags");
   const queryClient = useQueryClient();
   const queryKey = ["feature-flags", target] as const;
@@ -46,6 +54,7 @@ export function FeatureFlagsPanel({ target }: { target: FeatureLevel }) {
   });
   const save = useMutation({
     mutationFn: (change: FeatureChange) => patchFeatures(target, [change]),
+    meta: { audits: { targets: () => (history ? [history] : []) } },
     onSuccess: (features) => {
       queryClient.setQueryData(queryKey, features);
       // The effective values every screen reads: the workspace's (navigation, Knowledge base,

@@ -18,7 +18,10 @@ const session = vi.hoisted(() => ({
   id: "s1",
   check: vi.fn(),
 }));
-vi.mock("@/fetchers/settings/settings-history", () => ({
+vi.mock("@/fetchers/settings/settings-history", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/fetchers/settings/settings-history")
+  >()),
   getSettingsHistory: read,
 }));
 vi.mock("@/fetchers/time-tracking", () => ({ getTimeSettings: vi.fn() }));

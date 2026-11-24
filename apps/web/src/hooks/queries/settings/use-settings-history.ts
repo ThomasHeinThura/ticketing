@@ -6,6 +6,7 @@ import {
 } from "@/fetchers/settings/personal-history";
 import {
   getSettingsHistory,
+  historyResponseType,
   type SettingsHistory,
 } from "@/fetchers/settings/settings-history";
 import { getTimeSettings } from "@/fetchers/time-tracking";
@@ -106,7 +107,7 @@ async function readTarget(
       throw new HttpError(404, "Workspace unavailable");
     if (
       scope.kind === "project" &&
-      (history.entityType !== target.type ||
+      (history.entityType !== historyResponseType(target.type) ||
         history.entityId !== target.id ||
         history.workspaceId !== scope.workspaceId ||
         history.projectId !== scope.projectId)

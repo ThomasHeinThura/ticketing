@@ -572,6 +572,7 @@ function settingsHistoryCurrentReach(
     return sql`false`;
   if (
     input.entityType === "project" ||
+    input.entityType === "project_features" ||
     input.entityType === "project_label" ||
     input.entityType === "state" ||
     input.entityType === "budget" ||
@@ -624,6 +625,7 @@ function settingsHistoryCurrentReach(
     );
     if (
       input.entityType === "project" ||
+      input.entityType === "project_features" ||
       input.entityType === "project_estimates"
     )
       return liveProject;
@@ -752,7 +754,10 @@ function settingsHistoryCurrentReach(
         ),
       ),
   );
-  if (input.entityType === "workspace")
+  if (
+    input.entityType === "workspace" ||
+    input.entityType === "workspace_features"
+  )
     return and(
       workspaceReach,
       input.entityId === input.workspaceId ? sql`true` : sql`false`,
@@ -843,6 +848,7 @@ function settingsHistoryFilter(input: SettingsHistoryInput, tx: Executor) {
   const instancePlugin = INSTANCE_PLUGIN_TARGETS.has(input.entityType);
   const projectBound =
     input.entityType === "project" ||
+    input.entityType === "project_features" ||
     input.entityType === "project_label" ||
     input.entityType === "state" ||
     input.entityType === "budget" ||
@@ -900,7 +906,11 @@ function settingsHistoryFilter(input: SettingsHistoryInput, tx: Executor) {
                     : input.entityType === "workspace_label" ||
                         input.entityType === "project_label"
                       ? "label"
-                      : input.entityType,
+                      : input.entityType === "workspace_features"
+                        ? "workspace"
+                        : input.entityType === "project_features"
+                          ? "project"
+                          : input.entityType,
     ),
     input.entityType === "project_estimates"
       ? undefined

@@ -76,7 +76,13 @@ const all = readdirSync(I18N_DIR)
   .map((file) => file.replace(".json", ""));
 const nonEnglish = all.filter((locale) => locale !== "en-US");
 const english = read("en-US");
-const NAMESPACES = ["common", "settings", "workItems", "godModeSettings"];
+const NAMESPACES = [
+  "common",
+  "settings",
+  "workItems",
+  "godModeSettings",
+  "featureFlags",
+];
 
 /** The same word is the natural translation, so equality with English is legitimate here. */
 const sameAsEnglish = new Set([
@@ -233,7 +239,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
       expect(Object.keys(settings).sort()).toEqual(
         Object.keys(expected).sort(),
       );
-      expect(Object.keys(settings)).toHaveLength(74);
+      expect(Object.keys(settings)).toHaveLength(75);
       for (const key of Object.keys(expected)) {
         expect(at(source, `settings.history.actions.${key}`)).not.toBe("");
         // `bulk_performed` already had a work-item label ("Bulk change"); the settings panel owns its own.
@@ -585,6 +591,37 @@ describe("workspace, project and time activity History labels", () => {
       });
       open(locale);
       expect(await screen.findByText(labels)).toBeTruthy();
+    },
+  );
+
+  it.each(["en-US", "de-DE"] as const)(
+    "%s names the changed feature switch, not just a generic marker",
+    async (locale) => {
+      const own = read(locale);
+      const name = at(own, "featureFlags.flags.feature.estimates.name");
+      await renderHistory(locale, "workspace", "x1", {
+        lastChanged: { actor: person, at: when },
+        rows: [
+          {
+            at: when,
+            actor: person,
+            action: "feature_flag.changed",
+            changedFields: [
+              "featureFlag:feature.estimates",
+              "featureFlag:bogus",
+            ],
+          },
+        ],
+      });
+      await screen.findByRole("button", {
+        name: at(own, "settings.history.title"),
+      });
+      open(locale);
+      expect(
+        await screen.findByText(
+          `${name}, ${at(own, "settings.history.fields.featureFlag")}`,
+        ),
+      ).toBeTruthy();
     },
   );
 

@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   query: { isError: false, error: null as unknown },
   invalidateQueries: vi.fn(),
   setQueryData: vi.fn(),
+  meta: undefined as undefined | { audits: { targets: () => unknown[] } },
 }));
 
 vi.mock("react-i18next", () => ({
@@ -58,19 +59,24 @@ vi.mock("@tanstack/react-query", () => ({
   useMutation: ({
     mutationFn,
     onSuccess,
+    meta,
   }: {
     mutationFn: (value: unknown) => Promise<unknown>;
     onSuccess?: (data: unknown) => void;
-  }) => ({
-    isPending: false,
-    isError: mocks.error !== null,
-    error: mocks.error,
-    mutate: (value: unknown) =>
-      void mutationFn(value).then(
-        (data) => onSuccess?.(data),
-        () => {},
-      ),
-  }),
+    meta?: { audits: { targets: () => unknown[] } };
+  }) => {
+    mocks.meta = meta;
+    return {
+      isPending: false,
+      isError: mocks.error !== null,
+      error: mocks.error,
+      mutate: (value: unknown) =>
+        void mutationFn(value).then(
+          (data) => onSuccess?.(data),
+          () => {},
+        ),
+    };
+  },
 }));
 
 import { FeatureFlagsPanel } from "./feature-flags-panel";
@@ -127,6 +133,26 @@ describe("FeatureFlagsPanel", () => {
       });
     },
   );
+
+  it("refreshes the open History of its level, and none at the instance level", () => {
+    mocks.rows = [];
+    const history = {
+      kind: "entity",
+      type: "workspace_features",
+      id: "workspace-1",
+      scope: { kind: "workspace", workspaceId: "workspace-1" },
+    } as const;
+    render(
+      <FeatureFlagsPanel
+        target={{ level: "workspace", workspaceId: "workspace-1" }}
+        history={history}
+      />,
+    );
+    expect(mocks.meta?.audits.targets()).toEqual([history]);
+    cleanup();
+    render(<FeatureFlagsPanel target={{ level: "instance" }} />);
+    expect(mocks.meta?.audits.targets()).toEqual([]);
+  });
 
   it("does not refresh the effective feature reads when a change fails", async () => {
     mocks.rows = [row({ key: "feature.knowledge_base", version: 2 })];

@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   canManageWorkspaceSettings: false,
   checking: false,
   panel: vi.fn(),
+  history: vi.fn(),
   getFeatures: vi.fn(async () => []),
 }));
 
@@ -42,6 +43,12 @@ vi.mock("@/components/settings/feature-flags-panel", () => ({
   },
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
+vi.mock("@/components/settings/settings-history", () => ({
+  SettingsHistory: (props: { target: unknown }) => {
+    mocks.history(props.target);
+    return <div data-testid="settings-history" />;
+  },
+}));
 
 import { Route } from "./features";
 
@@ -96,12 +103,21 @@ describe("workspace features settings", () => {
     ).toHaveFocus();
   });
 
-  it("renders the workspace panel for a caller who can manage settings", () => {
+  it("renders the workspace panel for a caller who can manage settings", async () => {
     mocks.canManageWorkspaceSettings = true;
     renderPage();
     expect(screen.getByTestId("feature-flags-panel")).toBeTruthy();
+    const history = {
+      kind: "entity",
+      type: "workspace_features",
+      id: "ws-1",
+      scope: { kind: "workspace", workspaceId: "ws-1" },
+    };
     expect(mocks.panel).toHaveBeenCalledWith({
       target: { level: "workspace", workspaceId: "ws-1" },
+      history,
     });
+    expect(await screen.findByTestId("settings-history")).toBeTruthy();
+    expect(mocks.history).toHaveBeenCalledWith(history);
   });
 });

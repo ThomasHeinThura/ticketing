@@ -1,5 +1,5 @@
 import { z } from "../openapi";
-import { HISTORY_ENTITY_TYPES } from "./history-actions";
+import { HISTORY_RESPONSE_TYPES } from "./history-actions";
 
 /** One audit row as the API returns it (`data-model.md` §11's columns, ids only —
  * the writer already guarantees no secret, body, header, email or name is stored). */
@@ -33,7 +33,7 @@ export const auditEntityHistorySchema = z.object({
 
 const entitySettingsHistoryResponseSchema = z
   .object({
-    entityType: z.enum(HISTORY_ENTITY_TYPES),
+    entityType: z.enum(HISTORY_RESPONSE_TYPES),
     entityId: z.string(),
     workspaceId: z.string().nullable(),
     projectId: z.string().nullable(),
