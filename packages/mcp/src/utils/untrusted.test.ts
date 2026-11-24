@@ -27,12 +27,12 @@ describe("wrapUntrusted", () => {
 
   it("keeps a 15-letter project key usable as a key and a slug (#1199)", () => {
     const out = wrapUntrusted({
-      key: "ABCDEFGHIJKLMNO-1234",
-      slug: "ABCDEFGHIJKLMNO",
+      key: "PROJECTPROJECTS-1234",
+      slug: "PROJECTPROJECTS",
     });
     expect(out).toEqual({
-      key: "ABCDEFGHIJKLMNO-1234",
-      slug: "ABCDEFGHIJKLMNO",
+      key: "PROJECTPROJECTS-1234",
+      slug: "PROJECTPROJECTS",
     });
   });
 
