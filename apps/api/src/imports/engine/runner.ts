@@ -15,12 +15,13 @@
  * exactly as it did when it had to wait for the chunk's lock. Any loss pauses the run (fail closed).
  * The runner never falls back to a system actor.
  */
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNotNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../../database";
 import type { Transaction } from "../../database/executor";
 import {
   type ImportPausedReason,
+  importChunkTable,
   importLossTable,
 } from "../../database/schema-imports";
 import { lockInstanceAdminSerializationShared } from "../../instance/users/repository";
@@ -82,6 +83,65 @@ class EngineStop extends Error {
   }
 }
 
+/** Retries after the first failure of a chunk or finalize; the next failure pauses as `chunk_failed`. */
+const TRANSIENT_RETRIES = 3;
+const TRANSIENT_BACKOFF_MS = 100;
+const TRANSIENT_NODE_CODES = new Set([
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "EPIPE",
+  "ETIMEDOUT",
+]);
+// 57P01-03 admin/crash shutdown, 53300 too many connections, 53400 config limit, 08xxx connection class.
+const TRANSIENT_PG_CODES = new Set([
+  "57P01",
+  "57P02",
+  "57P03",
+  "53300",
+  "53400",
+]);
+
+const BROKEN_CLIENT_MESSAGE =
+  /connection terminated|connection ended|not queryable|client was closed/i;
+
+/**
+ * A database or connection failure that a fresh attempt can clear. Validation, authority and mapping
+ * errors (`EngineStop`, `HTTPException`) carry no such code, so they are never retried.
+ */
+export function isTransientImportError(error: unknown): boolean {
+  const chain: { code?: unknown; message?: unknown; cause?: unknown }[] = [];
+  for (
+    let nested: unknown = error;
+    chain.length < 5 && nested && typeof nested === "object";
+    nested = (nested as { cause?: unknown }).cause
+  )
+    chain.push(nested as (typeof chain)[number]);
+  // The driver's code decides. Drizzle's query wrapper puts the (imported) query parameters in its
+  // message, so message text is never trusted when any error in the chain has a code.
+  const coded = chain.find((e) => typeof e.code === "string");
+  if (coded) {
+    const code = coded.code as string;
+    return (
+      TRANSIENT_PG_CODES.has(code) ||
+      code.startsWith("08") ||
+      TRANSIENT_NODE_CODES.has(code)
+    );
+  }
+  // After a connection failure Drizzle's rollback fails and node-postgres throws its own code-less
+  // error in place of the original one.
+  return chain.some(
+    (e) =>
+      typeof e.message === "string" &&
+      !e.message.startsWith("Failed query") &&
+      BROKEN_CLIENT_MESSAGE.test(e.message),
+  );
+}
+
+const backoff = (attempt: number) =>
+  new Promise((resolve) =>
+    setTimeout(resolve, TRANSIENT_BACKOFF_MS * 2 ** attempt),
+  );
+
 let autoStart = true;
 /** Tests drive `runImportRun` directly; production leaves the post-execute kick on. */
 export function setImportEngineAutoStart(enabled: boolean) {
@@ -99,7 +159,19 @@ export type RunnerOptions = {
    * Test seam: awaited inside the chunk transaction after its writes, before it commits, so a test
    * can change an administrator while a chunk is genuinely in flight (and prove it is not blocked).
    */
-  duringChunk?: () => Promise<void>;
+  duringChunk?: (tx: Transaction) => Promise<void>;
+  /** Test seam: awaited at the start of each finalize attempt, just before the attachment recovery read. */
+  beforeFinalizeRead?: () => Promise<void>;
+  /** Test seam: awaited inside the finalize transaction before it completes the run. */
+  duringFinalize?: (tx: Transaction) => Promise<void>;
+  /** Test seam: awaited right after a chunk transaction returned, so a test can fail an "uncertain" commit. */
+  afterCommit?: () => Promise<void>;
+  /** Test seam: awaited at the start of each pending-publish drain ("select") and before each chunk's clear. */
+  duringDrain?: (stage: "select" | "clear", chunkId?: string) => Promise<void>;
+  /** Test seam: awaited before each run reload, so a test can fail the reload itself. */
+  beforeSnapshot?: () => Promise<void>;
+  /** Test seam: awaited after a transient failure's backoff, before the run is reloaded for the retry. */
+  beforeRetry?: () => Promise<void>;
 };
 
 export type RunnerOutcome = {
@@ -269,11 +341,100 @@ async function recheckAuthorityUnderSharedLock(runId: string) {
 
 type ChunkOutcome =
   | { kind: "stopped" }
-  | {
-      kind: "advanced";
-      commit: Awaited<ReturnType<typeof commitImportChunk>> | null;
-      auditFailure: boolean;
-    };
+  | { kind: "advanced"; auditFailure: boolean };
+
+type PendingPublish = Record<string, unknown> & {
+  createdResults?: Array<Record<string, any>>;
+  updateResults?: Array<Record<string, any>>;
+};
+
+const DATE_FIELDS = new Set(["startDate", "dueDate"]);
+
+/**
+ * JSON turned the stored Dates into ISO strings and the publishers call Date methods on
+ * `occurredAt` (and publish `startDate`/`dueDate` changes as Dates). Revive exactly those fields:
+ * source identifiers and attachment jobs are plain strings that can look like dates and must stay.
+ */
+export function revivePendingPublish(pending: PendingPublish): PendingPublish {
+  const date = (value: unknown) =>
+    typeof value === "string" ? new Date(value) : value;
+  const event = (e: any) =>
+    e && typeof e === "object" ? { ...e, occurredAt: date(e.occurredAt) } : e;
+  const changes = (list: any) =>
+    Array.isArray(list)
+      ? list.map((c) =>
+          DATE_FIELDS.has(c?.field)
+            ? { ...c, from: date(c.from), to: date(c.to) }
+            : c,
+        )
+      : list;
+  return {
+    ...pending,
+    createdResults: pending.createdResults?.map((r) => ({
+      ...r,
+      realtimeEvent: event(r.realtimeEvent),
+      initialEvents: r.initialEvents?.map((i: any) => ({
+        ...i,
+        event: event(i.event),
+        payload: i.payload
+          ? { ...i.payload, changes: changes(i.payload.changes) }
+          : i.payload,
+      })),
+    })),
+    updateResults: pending.updateResults?.map((r) => ({
+      ...r,
+      realtimeEvent: event(r.realtimeEvent),
+      changes: changes(r.changes),
+    })),
+  };
+}
+
+/**
+ * Dispatch every chunk's stored publish events in sequence order and clear each only after its
+ * dispatch succeeded. A crash between dispatch and clear republishes (duplicates are allowed). The
+ * clear is a compare-and-clear against the stored payload as read: a payload rewritten since is
+ * kept, and a concurrent drain of the same chunk only republishes.
+ */
+export async function drainPendingPublish(
+  runId: string,
+  options: RunnerOptions = {},
+) {
+  await options.duringDrain?.("select");
+  const rows = await db
+    .select({
+      id: importChunkTable.id,
+      pending: importChunkTable.pendingPublish,
+    })
+    .from(importChunkTable)
+    .where(
+      and(
+        eq(importChunkTable.importRunId, runId),
+        isNotNull(importChunkTable.pendingPublish),
+      ),
+    )
+    .orderBy(asc(importChunkTable.sequence));
+  for (const row of rows) {
+    // The original stored value, before any revival, is what the clear compares against.
+    const stored = JSON.stringify(row.pending);
+    await publishCommittedImport(
+      {
+        kind: "committed",
+        ...revivePendingPublish(row.pending as PendingPublish),
+      } as Parameters<typeof publishCommittedImport>[0],
+      { alertKey: row.id },
+    );
+    await options.duringDrain?.("clear", row.id);
+    await db
+      .update(importChunkTable)
+      .set({ pendingPublish: null })
+      .where(
+        and(
+          eq(importChunkTable.id, row.id),
+          sql`${importChunkTable.pendingPublish} = ${stored}::jsonb`,
+        ),
+      );
+  }
+}
 
 async function chunkTransaction(
   tx: Transaction,
@@ -283,7 +444,7 @@ async function chunkTransaction(
     page: SourcePage;
     resolved: ResolvedRecord[];
     needsApproval: boolean;
-    duringChunk?: (() => Promise<void>) | undefined;
+    duringChunk?: ((tx: Transaction) => Promise<void>) | undefined;
   },
 ): Promise<ChunkOutcome> {
   const [locked] = await tx
@@ -371,6 +532,19 @@ async function chunkTransaction(
     });
     if (commit.kind !== "committed")
       throw new HTTPException(409, { message: "Import chunk not committed" });
+    if (!staged.chunkRowId) throw new Error("Import chunk row missing");
+    // Durable publication: the events are stored with the commit and cleared only after dispatch.
+    await tx
+      .update(importChunkTable)
+      .set({
+        pendingPublish: {
+          createdResults: commit.createdResults,
+          updateResults: commit.updateResults,
+          attachmentJobs: commit.attachmentJobs ?? [],
+          auditFailure: commit.auditFailure === true,
+        },
+      })
+      .where(eq(importChunkTable.id, staged.chunkRowId));
     // Losses the writer recorded for this chunk's members (comments, relations, custom fields...).
     if (commit.writerLosses?.length)
       await insertImportLossRows(
@@ -422,7 +596,7 @@ async function chunkTransaction(
       .values(lossRows.slice(offset, offset + 500))
       .onConflictDoNothing();
 
-  await input.duringChunk?.();
+  await input.duringChunk?.(tx);
 
   // Advance the cursor and engine-level rejects in the same transaction as the commit. The run stays
   // `running` when the source is exhausted: `finalizeRun` closes it (attachments, deferred links,
@@ -450,7 +624,7 @@ async function chunkTransaction(
       updatedAt: new Date(),
     })
     .where(eq(RUN.id, run.id));
-  return { kind: "advanced", commit, auditFailure: false };
+  return { kind: "advanced", auditFailure: false };
 }
 
 type FinalizeOutcome =
@@ -464,94 +638,110 @@ type FinalizeOutcome =
  * what never arrived as a loss, (3) mark records missing from this full enumeration stale, and (4)
  * complete the run.
  */
-async function finalizeRun(runId: string): Promise<RunnerOutcome | "done"> {
-  await resumePendingImportAttachments(runId);
-  await reconcileImportLossIndex(runId);
+async function finalizeRun(
+  runId: string,
+  options: RunnerOptions = {},
+): Promise<RunnerOutcome | "done"> {
   let paused: ImportPausedReason | null = null;
   let outcome: FinalizeOutcome | null = null;
-  try {
-    await recheckAuthorityUnderSharedLock(runId);
-    outcome = await withCreationTransaction(async (tx) => {
-      const [locked] = await tx
-        .select()
-        .from(RUN)
-        .where(eq(RUN.id, runId))
-        .for("update")
-        .limit(1);
-      const run = asEngineRun(locked);
-      if (
-        run.state !== "running" ||
-        run.enginePhase !== "executing" ||
-        !run.sourceCursor?.exhausted
-      )
-        return { kind: "stopped" as const };
-      const mapping = await loadMapping(tx, run, "share");
-      const bound = bindingFailure(run, mapping.version);
-      if (bound) throw new EngineStop(bound);
-      const actor = await assertAuthority(tx, run);
-      const writer = await createImportWriterContext(tx, run);
-      for (let pass = 0; pass < 500; pass += 1) {
-        const step = await resolveDeferredImportLinks(writer, {
-          finalize: true,
+  // Every step is idempotent and the transaction re-reads the run: a retry after an uncertain commit
+  // finds the run completed and returns `stopped`.
+  for (let attempt = 0; ; attempt += 1) {
+    paused = null;
+    try {
+      await options.beforeFinalizeRead?.();
+      await resumePendingImportAttachments(runId);
+      await reconcileImportLossIndex(runId);
+      await recheckAuthorityUnderSharedLock(runId);
+      outcome = await withCreationTransaction(async (tx) => {
+        const [locked] = await tx
+          .select()
+          .from(RUN)
+          .where(eq(RUN.id, runId))
+          .for("update")
+          .limit(1);
+        const run = asEngineRun(locked);
+        if (
+          run.state !== "running" ||
+          run.enginePhase !== "executing" ||
+          !run.sourceCursor?.exhausted
+        )
+          return { kind: "stopped" as const };
+        const mapping = await loadMapping(tx, run, "share");
+        const bound = bindingFailure(run, mapping.version);
+        if (bound) throw new EngineStop(bound);
+        const actor = await assertAuthority(tx, run);
+        const writer = await createImportWriterContext(tx, run);
+        for (let pass = 0; pass < 500; pass += 1) {
+          const step = await resolveDeferredImportLinks(writer, {
+            finalize: true,
+          });
+          if (step.processed === 0) break;
+        }
+        await options.duringFinalize?.(tx);
+        if (writer.losses.length)
+          await insertImportLossRows(
+            tx,
+            {
+              workspaceId: run.workspaceId,
+              importRunId: run.id,
+              importChunkId: null,
+            },
+            writer.losses,
+          );
+        // Reached only after the cursor is exhausted: the source was enumerated in full.
+        await markMissingImportSourcesStale(tx, {
+          workspaceId: run.workspaceId,
+          pluginId: run.pluginId,
+          sourceRef: run.sourceRef,
+          currentRunId: run.id,
         });
-        if (step.processed === 0) break;
-      }
-      if (writer.losses.length)
-        await insertImportLossRows(
-          tx,
-          {
-            workspaceId: run.workspaceId,
-            importRunId: run.id,
-            importChunkId: null,
+        const stats = run.stats;
+        await tx
+          .update(RUN)
+          .set({
+            state: "completed",
+            enginePhase: "completed",
+            version: run.version + 1,
+            updatedAt: new Date(),
+          })
+          .where(eq(RUN.id, run.id));
+        const auditFailure = await appendImportAudit(tx, {
+          actorId: actor.userId,
+          actorType: actor.actorType,
+          apiKeyId: actor.apiKeyId,
+          workspaceId: run.workspaceId,
+          projectId: run.projectId,
+          action: "import.run",
+          entityType: "import_run",
+          entityId: run.id,
+          before: null,
+          after: {
+            operation: "completed",
+            runId: run.id,
+            counts: {
+              created: stats.created ?? 0,
+              updated: stats.updated ?? 0,
+              skipped: stats.skipped ?? 0,
+              rejected: stats.rejected ?? 0,
+              processed: stats.processed ?? 0,
+            },
           },
-          writer.losses,
-        );
-      // Reached only after the cursor is exhausted: the source was enumerated in full.
-      await markMissingImportSourcesStale(tx, {
-        workspaceId: run.workspaceId,
-        pluginId: run.pluginId,
-        sourceRef: run.sourceRef,
-        currentRunId: run.id,
+        });
+        return { kind: "completed" as const, auditFailure };
       });
-      const stats = run.stats;
-      await tx
-        .update(RUN)
-        .set({
-          state: "completed",
-          enginePhase: "completed",
-          version: run.version + 1,
-          updatedAt: new Date(),
-        })
-        .where(eq(RUN.id, run.id));
-      const auditFailure = await appendImportAudit(tx, {
-        actorId: actor.userId,
-        actorType: actor.actorType,
-        apiKeyId: actor.apiKeyId,
-        workspaceId: run.workspaceId,
-        projectId: run.projectId,
-        action: "import.run",
-        entityType: "import_run",
-        entityId: run.id,
-        before: null,
-        after: {
-          operation: "completed",
-          runId: run.id,
-          counts: {
-            created: stats.created ?? 0,
-            updated: stats.updated ?? 0,
-            skipped: stats.skipped ?? 0,
-            rejected: stats.rejected ?? 0,
-            processed: stats.processed ?? 0,
-          },
-        },
-      });
-      return { kind: "completed" as const, auditFailure };
-    });
-  } catch (error) {
-    if (error instanceof EngineStop) paused = error.reason;
-    else if (error instanceof HTTPException && error.status === 409)
-      paused = "conflict";
-    else paused = "chunk_failed";
+      await options.afterCommit?.();
+    } catch (error) {
+      if (error instanceof EngineStop) paused = error.reason;
+      else if (error instanceof HTTPException && error.status === 409)
+        paused = "conflict";
+      else if (isTransientImportError(error) && attempt < TRANSIENT_RETRIES) {
+        await backoff(attempt);
+        await options.beforeRetry?.();
+        continue;
+      } else paused = "chunk_failed";
+    }
+    break;
   }
   if (paused) {
     const [row] = await db.select().from(RUN).where(eq(RUN.id, runId)).limit(1);
@@ -566,6 +756,31 @@ async function finalizeRun(runId: string): Promise<RunnerOutcome | "done"> {
   return "done";
 }
 
+/** One read-only view of the run, its connection, mapping, actor and resolve context. */
+async function loadSnapshot(runId: string) {
+  return db.transaction(async (tx) => {
+    const [row] = await tx.select().from(RUN).where(eq(RUN.id, runId)).limit(1);
+    if (!row?.projectId || !row.sourceConnectionId) return null;
+    const run = asEngineRun(row);
+    if (run.state !== "running" || run.enginePhase !== "executing")
+      return { run, inactive: true as const };
+    const connection = await loadConnection(
+      tx,
+      run.workspaceId,
+      run.sourceConnectionId,
+    );
+    const mapping = await loadMapping(tx, run, "share");
+    return {
+      run,
+      inactive: false as const,
+      connection,
+      mapping,
+      actor: await loadRunActor(tx, run),
+      context: await loadResolveContext(tx, run, mapping.entries),
+    };
+  });
+}
+
 /** Core loop (lease-free so tests can drive it). Safe to call repeatedly: it resumes from the cursor. */
 export async function runImportRun(
   runId: string,
@@ -573,33 +788,53 @@ export async function runImportRun(
 ): Promise<RunnerOutcome> {
   const capabilities = options.capabilities ?? WRITER_V2_CAPABILITIES;
   let chunks = 0;
+  let retries = 0;
+  // Set when the budget is spent but the last attempt may have committed: reload once, then decide.
+  let reconcileOnly = false;
+  // The last chunk attempt's target cursor, to tell after a lost commit response whether it landed.
+  const unpublished: { current: { nextCursor: string | null } | null } = {
+    current: null,
+  };
   for (;;) {
     await assertJobExecutionOwned();
-    const snapshot = await db.transaction(async (tx) => {
-      const [row] = await tx
-        .select()
-        .from(RUN)
-        .where(eq(RUN.id, runId))
-        .limit(1);
-      if (!row?.projectId || !row.sourceConnectionId) return null;
-      const run = asEngineRun(row);
-      if (run.state !== "running" || run.enginePhase !== "executing")
-        return { run, inactive: true as const };
-      const connection = await loadConnection(
-        tx,
-        run.workspaceId,
-        run.sourceConnectionId,
-      );
-      const mapping = await loadMapping(tx, run, "share");
-      return {
-        run,
-        inactive: false as const,
-        connection,
-        mapping,
-        actor: await loadRunActor(tx, run),
-        context: await loadResolveContext(tx, run, mapping.entries),
-      };
-    });
+    let snapshot: Awaited<ReturnType<typeof loadSnapshot>>;
+    try {
+      await options.beforeSnapshot?.();
+      snapshot = await loadSnapshot(runId);
+      // Publish events are durable on the chunk row: drain whatever earlier commits (this process's,
+      // a lost response's or a crashed one's) left before advancing, finalizing or pausing again.
+      // A transient failure keeps them stored and the retry drains again.
+      if (snapshot) await drainPendingPublish(runId, options);
+    } catch (error) {
+      // A connection still unavailable right after a transient failure belongs to the same budget.
+      if (!isTransientImportError(error)) throw error;
+      if (retries >= TRANSIENT_RETRIES) {
+        await pauseRun(runId, "chunk_failed", null);
+        return { status: "paused", chunks, pausedReason: "chunk_failed" };
+      }
+      await backoff(retries);
+      retries += 1;
+      await options.beforeRetry?.();
+      continue;
+    }
+    if (snapshot && unpublished.current) {
+      const stored = snapshot.run.sourceCursor;
+      // When the commit's response was lost, the persisted cursor tells whether it landed.
+      if (
+        stored?.cursor === unpublished.current.nextCursor &&
+        stored.exhausted === (unpublished.current.nextCursor === null)
+      ) {
+        chunks += 1;
+        retries = 0; // reconciliation confirmed progress: fresh budget for the next chunk
+      }
+      unpublished.current = null;
+      if (reconcileOnly && retries >= TRANSIENT_RETRIES && !snapshot.inactive) {
+        // The cursor did not advance: the last attempt rolled back, so the bound applies.
+        await pauseRun(runId, "chunk_failed", snapshot.actor);
+        return { status: "paused", chunks, pausedReason: "chunk_failed" };
+      }
+      reconcileOnly = false;
+    }
     if (!snapshot) return { status: "idle", chunks };
     if (snapshot.inactive && snapshot.run.state === "completed")
       return { status: "completed", chunks };
@@ -628,7 +863,7 @@ export async function runImportRun(
     const bound = bindingFailure(run, mapping.version);
     if (bound) return pause(bound);
     if (cursor.exhausted) {
-      const finalized = await finalizeRun(run.id);
+      const finalized = await finalizeRun(run.id, options);
       if (finalized !== "done") return { ...finalized, chunks };
       return { status: "completed", chunks };
     }
@@ -662,24 +897,45 @@ export async function runImportRun(
     let outcome: ChunkOutcome;
     try {
       await recheckAuthorityUnderSharedLock(run.id);
-      outcome = await withCreationTransaction((tx) =>
-        chunkTransaction(tx, {
+      outcome = await withCreationTransaction(async (tx) => {
+        unpublished.current = null;
+        const done = await chunkTransaction(tx, {
           runId: run.id,
           cursor: cursor.cursor,
           page,
           resolved,
           needsApproval,
           duringChunk: options.duringChunk,
-        }),
-      );
+        });
+        if (done.kind === "advanced")
+          unpublished.current = { nextCursor: page.nextCursor };
+        return done;
+      });
+      await options.afterCommit?.();
     } catch (error) {
       if (error instanceof EngineStop) return pause(error.reason);
       if (error instanceof HTTPException && error.status === 409)
         return pause("conflict");
+      if (isTransientImportError(error) && retries < TRANSIENT_RETRIES) {
+        // Reloading the run at the top of the loop is the reconciliation: a paused or cancelled run,
+        // lost authority or reach, or a cursor that already advanced (the commit did succeed) is
+        // seen there, and the chunk's compare-and-set on the cursor refuses a double write.
+        await backoff(retries);
+        retries += 1;
+        await options.beforeRetry?.();
+        continue;
+      }
+      if (isTransientImportError(error) && unpublished.current) {
+        // Budget spent, yet this attempt's commit may have landed with its response lost: reconcile
+        // against the persisted cursor before pausing, or its events would never be published.
+        reconcileOnly = true;
+        continue;
+      }
       return pause("chunk_failed");
     }
+    retries = 0;
+    unpublished.current = null;
     if (outcome.kind === "stopped") return { status: "idle", chunks };
-    if (outcome.commit) await publishCommittedImport(outcome.commit);
     await reportImportAuditWriteFailure(outcome.auditFailure);
     chunks += 1;
   }

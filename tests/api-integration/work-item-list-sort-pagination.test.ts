@@ -432,7 +432,7 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
     if (!organisation) throw new Error("organisation insert failed");
     const [person] = await db
       .insert(schema.personTable)
-      .values({ organisationId: organisation.id, side: "agent" })
+      .values({ organisationId: organisation.id, side: "staff" })
       .returning();
     if (!person) throw new Error("person insert failed");
 
@@ -990,7 +990,7 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
         .values({
           userId: foreignUserId,
           organisationId: organisation.id,
-          side: "agent",
+          side: "staff",
         })
         .returning();
       if (!foreignPerson) throw new Error("person insert failed");
@@ -1041,7 +1041,7 @@ describe("API integration: work item list sort/pagination/filters (#310)", () =>
         .values({
           userId: memberUserId,
           organisationId: organisation.id,
-          side: "agent",
+          side: "staff",
         })
         .returning();
       if (!memberPerson) throw new Error("person insert failed");

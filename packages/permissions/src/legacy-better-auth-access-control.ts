@@ -31,6 +31,10 @@
  * `0071_workspace_role_apikey_permission_task_to_work_item.sql` is the one-time backfill that
  * does that for both columns; only freshly-seeded rows (created after this rename shipped)
  * get the new key from these objects directly.
+ *
+ * **`task` is no longer a supported key (#398).** Migration `0228_drop_legacy_task_permission_key.sql`
+ * folds any remaining `task` into `work_item` (only where `work_item` is missing) and removes
+ * `task` from every `workspace_role` and `apikey` row. Nothing reads or writes it any more.
  */
 
 import { createAccessControl } from "better-auth/plugins/access";

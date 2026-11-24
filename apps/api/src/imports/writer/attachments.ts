@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import {
   EXTENSION_MIME_TYPES,
@@ -482,34 +482,31 @@ export async function settleChunkAttachments(
     tx: Transaction,
     accepted: readonly ImportLoss[],
   ) => Promise<unknown>,
-) {
-  if (!settled.length && !losses.length && !retried.length) return;
-  await db.transaction(async (tx) => {
+): Promise<ImportLoss[]> {
+  if (!settled.length && !losses.length && !retried.length) return [];
+  return db.transaction(async (tx) => {
     const [chunk] = await tx
       .select({ report: schema.importChunkTable.report })
       .from(schema.importChunkTable)
       .where(eq(schema.importChunkTable.id, chunkRowId))
       .for("update")
       .limit(1);
-    if (!chunk) return;
+    if (!chunk) return [];
     const done = new Set(settled.map(importAttachmentJobKey));
     const again = new Map(
       retried.map((job) => [importAttachmentJobKey(job), job]),
     );
-    const pending = Array.isArray(chunk.report.pendingAttachments)
+    const ledger = Array.isArray(chunk.report.pendingAttachments)
       ? (chunk.report.pendingAttachments as ImportAttachmentJob[])
-          .filter((job) => !done.has(importAttachmentJobKey(job)))
-          .map((job) => again.get(importAttachmentJobKey(job)) ?? job)
       : [];
-    // A slower overlapping replay must not count a job another pass already settled.
-    const live = new Set(
-      (Array.isArray(chunk.report.pendingAttachments)
-        ? (chunk.report.pendingAttachments as ImportAttachmentJob[])
-        : []
-      ).map(importAttachmentJobKey),
-    );
-    const fresh = losses.filter((loss) =>
-      live.has(
+    const stillPending = new Set(ledger.map(importAttachmentJobKey));
+    const pending = ledger
+      .filter((job) => !done.has(importAttachmentJobKey(job)))
+      .map((job) => again.get(importAttachmentJobKey(job)) ?? job);
+    // Under the chunk lock, a loss counts only for a job still in the ledger: a replay or a second
+    // worker that lost the race must not count a job that already settled.
+    const accepted = losses.filter((loss) =>
+      stillPending.has(
         importAttachmentJobKey({
           sourceType: loss.sourceType,
           sourceId: loss.sourceId,
@@ -518,7 +515,7 @@ export async function settleChunkAttachments(
       ),
     );
     const { pendingAttachments: _previous, ...rest } = chunk.report;
-    const merged = mergeLossesIntoReport(rest, fresh);
+    const merged = mergeLossesIntoReport(rest, accepted);
     await tx
       .update(schema.importChunkTable)
       .set({
@@ -528,8 +525,35 @@ export async function settleChunkAttachments(
       })
       .where(eq(schema.importChunkTable.id, chunkRowId));
     // Only the losses accepted under the chunk lock are indexed, so the index never outruns the report.
-    await indexLosses?.(tx, fresh);
+    await indexLosses?.(tx, accepted);
+    return accepted;
   });
+}
+
+/** Keys of the planned attachments each chunk still has in its pending ledger (no lock). */
+export async function pendingAttachmentKeysByChunk(
+  chunkRowIds: readonly string[],
+): Promise<Map<string, Set<string>>> {
+  const rows = chunkRowIds.length
+    ? await db
+        .select({
+          id: schema.importChunkTable.id,
+          report: schema.importChunkTable.report,
+        })
+        .from(schema.importChunkTable)
+        .where(inArray(schema.importChunkTable.id, [...chunkRowIds]))
+    : [];
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      new Set(
+        (Array.isArray(row.report.pendingAttachments)
+          ? (row.report.pendingAttachments as ImportAttachmentJob[])
+          : []
+        ).map(importAttachmentJobKey),
+      ),
+    ]),
+  );
 }
 
 /** Planned attachments of a run that were committed but not yet stored or reported (crash recovery). */

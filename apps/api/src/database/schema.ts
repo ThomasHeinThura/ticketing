@@ -2243,6 +2243,13 @@ export const organisationTable = pgTable(
     uniqueIndex("organisation_is_internal_unique")
       .on(table.isInternal)
       .where(sql.raw("(is_internal = true)")),
+    // #181 S5: closed vocabulary (data-model.md: `private`|`organisation`).
+    check(
+      "organisation_default_customer_visibility_check",
+      sql.raw(
+        "default_customer_visibility = ANY (ARRAY['private'::text, 'organisation'::text])",
+      ),
+    ),
   ],
 );
 
@@ -2462,6 +2469,11 @@ export const personTable = pgTable(
     uniqueIndex("person_user_unique")
       .on(table.userId)
       .where(sql.raw("(user_id IS NOT NULL)")),
+    // #181 S5: closed vocabulary (data-model.md: `staff`|`customer`).
+    check(
+      "person_side_check",
+      sql.raw("side = ANY (ARRAY['staff'::text, 'customer'::text])"),
+    ),
   ],
 );
 
@@ -3084,6 +3096,16 @@ export const roleTable = pgTable(
       sql.raw("COALESCE(workspace_id, ''::text)"),
       sql.raw("key"),
     ),
+    // #181 S3: target of `membership_role_scope_fk`, so a membership's scope must equal its
+    // role's scope.
+    unique("role_id_scope_unique").on(table.id, table.scope),
+    // #181 S5: closed vocabulary (data-model.md §2).
+    check(
+      "role_scope_check",
+      sql.raw(
+        "scope = ANY (ARRAY['instance'::text, 'organisation'::text, 'workspace'::text, 'project'::text])",
+      ),
+    ),
   ],
 );
 
@@ -3140,6 +3162,22 @@ export const membershipTable = pgTable(
       table.scopeId,
     ),
     index("membership_scope_scopeId_idx").on(table.scope, table.scopeId),
+    // #181 S3: a membership's scope must equal its role's scope. Kept beside the plain
+    // `role_id` FK above (same RESTRICT/CASCADE rules).
+    foreignKey({
+      name: "membership_role_scope_fk",
+      columns: [table.roleId, table.scope],
+      foreignColumns: [roleTable.id, roleTable.scope],
+    })
+      .onDelete("restrict")
+      .onUpdate("cascade"),
+    // #181 S5: closed vocabulary (data-model.md §2).
+    check(
+      "membership_scope_check",
+      sql.raw(
+        "scope = ANY (ARRAY['instance'::text, 'organisation'::text, 'workspace'::text, 'project'::text])",
+      ),
+    ),
   ],
 );
 
