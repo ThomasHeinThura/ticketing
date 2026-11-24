@@ -247,7 +247,7 @@ async function setupWorkItem(
     },
   );
   const projectText = await projectResponse.text();
-  expect(projectResponse.status(), projectText).toBe(200);
+  expect(projectResponse.status(), "unexpected status").toBe(200);
   const project = JSON.parse(projectText) as { id: string };
   expect(project.id).toBeTruthy();
 
@@ -262,7 +262,7 @@ async function setupWorkItem(
     },
   );
   const itemText = await itemResponse.text();
-  expect(itemResponse.status(), itemText).toBe(200);
+  expect(itemResponse.status(), "unexpected status").toBe(200);
   const item = JSON.parse(itemText) as { id: string; key: string };
   expect(item.id).toBeTruthy();
   expect(item.key).toBeTruthy();
@@ -471,7 +471,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       await title.fill("Inline edited work item");
       await title.press("Tab");
       const response = await titleSaved;
-      expect(response.status(), await response.text()).toBe(200);
+      expect(response.status(), "unexpected status").toBe(200);
       expect(response.request().headers()["if-match"]).toMatch(/^"\d+"$/);
       const description = page.getByRole("region", {
         name: "Description",
@@ -508,7 +508,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
           },
         },
       );
-      expect(response.status(), await response.text()).toBe(200);
+      expect(response.status(), "unexpected status").toBe(200);
       await page.reload();
       const trigger = page.getByRole("button", { name: "Labels", exact: true });
       await expect(trigger).toBeEnabled();
@@ -557,7 +557,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         .getByRole("button", { name: "Create Label", exact: true })
         .click();
       const response = await created;
-      expect(response.status(), await response.text()).toBe(200);
+      expect(response.status(), "unexpected status").toBe(200);
       await expect(dialog).not.toBeVisible();
       await page.reload();
       await expect(
@@ -1209,7 +1209,7 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
       await test.step("CA19 phase: validate canned-response API create", async () => {
         console.info("CA19 phase begin: validate canned-response API create");
         const createdText = created.text;
-        expect(created.status, createdText).toBe(200);
+        expect(created.status, "unexpected status").toBe(200);
         const result = JSON.parse(createdText) as { id: string; body: unknown };
         expect(result.id).toBeTruthy();
         expect(JSON.stringify(result.body)).toContain("{{work_item.key}}");
@@ -1297,7 +1297,7 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
             data: { dueDate: "2026-10-25T00:00:00.000Z" },
           },
         );
-        expect(changedDueDate.status(), await changedDueDate.text()).toBe(200);
+        expect(changedDueDate.status(), "unexpected status").toBe(200);
         // Kaneo's picker popover: a trigger button opening a list of option buttons.
         const responseSelect = page.getByRole("button", {
           name: "Canned responses",

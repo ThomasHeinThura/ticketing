@@ -1,4 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // Issue #697: react-hook-form's reset(loadedValues) can leave registered inputs
 // blank under the React Compiler. Each settings form below loads its persisted

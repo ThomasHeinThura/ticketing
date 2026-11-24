@@ -5,6 +5,11 @@ import {
   installIdentityAdminFixture,
   newIdentityFixture,
 } from "./helpers/identity-admin-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 for (const width of [375, 820, 1440])
   for (const theme of ["light", "dark"] as const) {

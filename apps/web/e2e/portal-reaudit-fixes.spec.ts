@@ -3,6 +3,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { seriousOrCriticalViolations } from "./helpers/axe";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // UAT re-audit (3 Nov 2026) fixes, checked in the built portal (`dist/portal`, from
 // `pnpm build`) on a portal origin with fixture API reads: who a team-raised request is for,

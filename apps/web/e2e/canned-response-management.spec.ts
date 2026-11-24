@@ -4,6 +4,11 @@ import {
   makeWorkItem,
   WORK_ITEM_KEY,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const PATH = "/dashboard/settings/workspace/canned-responses";
 test("workspace settings creates, edits and deletes reusable replies with URL-addressed dialogs", async ({

@@ -15,6 +15,11 @@ import {
   WORK_ITEM_KEY,
 } from "./helpers/g11-performance-fixture";
 import { mountBuiltPortal, PORTAL_ORIGIN } from "./helpers/portal-dist-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 /**
  * E-8 (`docs/plan.md` section 6): browser verification of motion rules 1, 3, 5 and 9.

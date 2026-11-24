@@ -9,6 +9,11 @@ import {
   PROJECT as project,
 } from "./helpers/g11-performance-fixture";
 import { installProjectOverviewFixture } from "./helpers/project-overview-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // UAT re-audit (3 Nov 2026) on the project screens, against the mocked API at the network
 // edge: the project tab strip at tablet and desktop widths, not-found Project URLs, the board

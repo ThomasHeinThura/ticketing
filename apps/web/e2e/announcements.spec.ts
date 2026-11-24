@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { expect, type Page, test } from "@playwright/test";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 /**
  * D7 announcements, staff side, against the mocked API: create a draft addressed to one

@@ -252,7 +252,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       { headers: { Origin: origin } },
     );
     const typesText = await typesResponse.text();
-    expect(typesResponse.status(), typesText).toBe(200);
+    expect(typesResponse.status(), "unexpected status").toBe(200);
     const types = JSON.parse(typesText) as Array<{ id: string }>;
     const workItemType = types[0];
     expect(workItemType?.id).toBeTruthy();

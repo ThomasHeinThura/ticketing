@@ -139,7 +139,7 @@ async function createProject(page: Page, origin: string, databaseUrl: string) {
       data: { personId: colleague.personId, roleKey: "project-member" },
     },
   );
-  expect(added.status(), await added.text()).toBe(200);
+  expect(added.status(), "unexpected status").toBe(200);
   return { slug, id };
 }
 

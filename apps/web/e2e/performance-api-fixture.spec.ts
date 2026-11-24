@@ -1,5 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 import { createVersionedTaskFixture } from "./helpers/versioned-task-fixture";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const TASK_ID = "legacy-task-1";
 const PROJECT_ID = "project-g11";

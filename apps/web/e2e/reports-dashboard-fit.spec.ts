@@ -2,7 +2,12 @@ import { expect, type Page, test } from "@playwright/test";
 import { seriousOrCriticalViolations } from "./helpers/axe";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
 import { mountBuiltPortal, PORTAL_ORIGIN } from "./helpers/portal-dist-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 import { installReportsFitFixture } from "./helpers/reports-fit-fixture";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // Thomas, 3 Nov: every report and dashboard chart fits its container at every width; wide
 // content scrolls inside its own frame, never the page; labels and captions are never cut off.

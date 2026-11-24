@@ -3,6 +3,11 @@ import {
   installPerformanceApiFixture,
   makeWorkItem,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 /**
  * GHSA-238p-pmpm-9mq7: KaTeX (bundled by Mermaid for `$$…$$` labels) must not inherit

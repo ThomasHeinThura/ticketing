@@ -3,6 +3,11 @@ import {
   installPerformanceApiFixture,
   makeWorkItem,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 async function fixture(page: Page) {
   await installPerformanceApiFixture(page);

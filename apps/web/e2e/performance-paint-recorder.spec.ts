@@ -3,6 +3,11 @@ import {
   installLastItemPaintRecorderInDocument,
   type LastItemPaintRecorderOptions,
 } from "./helpers/last-item-paint-recorder";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const LIST_OPTIONS: LastItemPaintRecorderOptions = {
   kind: "list",

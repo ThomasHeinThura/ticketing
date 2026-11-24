@@ -6,6 +6,11 @@ import {
 } from "./helpers/g11-performance-fixture";
 import { mountBuiltPortal, PORTAL_ORIGIN } from "./helpers/portal-dist-fixture";
 import { installProjectOverviewFixture } from "./helpers/project-overview-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // Audit A-22 (portal KB at tablet), A-23 (backlog header at phone) and A-24 (portal orientation
 // Alert at phone): each screen fits its viewport with nothing cut off and no sideways scroll, and

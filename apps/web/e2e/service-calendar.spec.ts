@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { expect, type Page, test } from "@playwright/test";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const uiRequire = createRequire(
   new URL("../../../packages/ui/package.json", import.meta.url),

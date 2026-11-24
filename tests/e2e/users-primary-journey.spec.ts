@@ -75,7 +75,7 @@ async function seedCustomerPasswordProvider(fixture: MfaCsrfAppFixtureSetup) {
 
 async function statusText(response: APIResponse, status: number) {
   const body = await response.text();
-  expect(response.status(), body).toBe(status);
+  expect(response.status(), "unexpected status").toBe(status);
   return body;
 }
 
@@ -91,7 +91,7 @@ async function postWithCsrf(
     { headers: { Origin: origin } },
   );
   const tokenBody = await tokenResponse.text();
-  expect(tokenResponse.status(), tokenBody).toBe(200);
+  expect(tokenResponse.status(), "unexpected status").toBe(200);
   const { token } = JSON.parse(tokenBody) as { token?: string };
   expect(token).toBeTruthy();
   return context.post(new URL(path, origin).toString(), {

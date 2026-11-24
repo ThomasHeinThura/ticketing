@@ -7,6 +7,11 @@ import {
   newIdentityFixture,
   TENANT_ID,
 } from "./helpers/identity-admin-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 

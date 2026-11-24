@@ -1,5 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 async function installTimeSettings(page: Page) {
   await installPerformanceApiFixture(page);

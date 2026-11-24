@@ -1,4 +1,9 @@
 import { expect, type Page, type Route, test } from "@playwright/test";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // Issue #716 (PR-9): the engagement controls on project settings General. The API is
 // mocked at the network edge, with a stateful project so persistence is observable.

@@ -1,5 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 /** The tabular rows live in the table layout; `layout=list` is Kaneo's grouped list. */
 const WORK_TABLE_PATH = "/agent/projects/WLP/work?layout=table";

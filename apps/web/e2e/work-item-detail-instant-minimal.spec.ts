@@ -8,6 +8,11 @@ import {
   PROJECT_ID,
   WORK_ITEM_KEY,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const saving = english.workItems.journey.saving;
 const refusal = (key: "transitionForbidden" | "assignmentConflict") =>

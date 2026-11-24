@@ -4,6 +4,11 @@ import {
   installPerformanceApiFixture,
   WORKSPACE_ID,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const baseView = {
   workspaceId: WORKSPACE_ID,
