@@ -444,6 +444,11 @@ describe("IP-30 imported placeholder claims", () => {
         )
         .limit(1);
       if (!ownerRole) throw new Error("canonical owner role fixture missing");
+      // #181: the database now refuses this row, so plant it past the trigger. The claim
+      // code's own refusal stays as defence in depth.
+      await db.execute(
+        sql`ALTER TABLE membership DISABLE TRIGGER membership_reject_placeholder`,
+      );
       const [membership] = await db
         .insert(schema.membershipTable)
         .values({
@@ -453,7 +458,12 @@ describe("IP-30 imported placeholder claims", () => {
           roleId: ownerRole.id,
           seesAll: true,
         })
-        .returning();
+        .returning()
+        .finally(() =>
+          db.execute(
+            sql`ALTER TABLE membership ENABLE TRIGGER membership_reject_placeholder`,
+          ),
+        );
       if (!membership)
         throw new Error("placeholder membership fixture missing");
       if (authorityKind === "grant") {

@@ -616,12 +616,12 @@ describe("#180 workspace delete with role-referencing rows", () => {
 });
 
 describe("#180 round 2 -- predicates that only the scope/mapping paths reach", () => {
-  async function globalRole() {
+  async function globalRole(scope: "workspace" | "project" = "workspace") {
     return requireRow(
       await db
         .insert(schema.roleTable)
         .values({
-          scope: "workspace",
+          scope,
           workspaceId: null,
           key: `global-${randomUUID()}`,
           name: "Global built-in",
@@ -678,7 +678,7 @@ describe("#180 round 2 -- predicates that only the scope/mapping paths reach", (
       await createWorkspaceViaRoute("GlobalP");
     const other = await createWorkspaceMember({ role: "owner" });
     const personId = await personIdFor(owner.user.id);
-    const role = await globalRole();
+    const role = await globalRole("project");
     const { project } = await createProjectFixture({ workspaceId });
     const { project: otherProject } = await createProjectFixture({
       workspaceId: other.workspace.id,
@@ -911,7 +911,7 @@ describe("#734 account erasure and IdP-provisioned members", () => {
       await db
         .insert(schema.roleTable)
         .values({
-          scope: "workspace",
+          scope: "project",
           workspaceId: null,
           key: `global-${randomUUID()}`,
           name: "Global built-in",
@@ -1381,7 +1381,21 @@ describe("#734 account erasure and IdP-provisioned members", () => {
     const { owner, wsRole: _unused } = await soleLegacyMemberWorkspace();
     const other = await createWorkspaceMember({ role: "owner" });
     const otherPerson = await personIdFor(other.user.id);
-    const otherRole = await createRole(other.workspace.id, "workspace");
+    // S3 (#181): an organisation-scoped membership needs an organisation-scoped role.
+    const otherRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "organisation",
+          workspaceId: null,
+          key: `org-${randomUUID()}`,
+          name: "Org lookalike",
+          rank: 1,
+          capabilities: [],
+        })
+        .returning(),
+      "organisation role",
+    );
     const lookalike = requireRow(
       await db
         .insert(schema.membershipTable)
