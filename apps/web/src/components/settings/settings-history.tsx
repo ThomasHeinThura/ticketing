@@ -30,6 +30,8 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     description: "settings:history.fields.description",
     defaultSlaPolicyId: "settings:history.fields.defaultSlaPolicy",
     defaultServiceCalendarId: "settings:history.fields.defaultServiceCalendar",
+    // One marker for a feature-switch change, never which switch.
+    featureFlag: "settings:history.fields.featureFlag",
   },
   project: {
     name: "settings:history.fields.name",
@@ -51,6 +53,7 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     stateSetMode: "settings:history.fields.stateSetMode",
     position: "settings:history.fields.position",
     isDefault: "settings:history.fields.isDefault",
+    featureFlag: "settings:history.fields.featureFlag",
   },
   // The six `portal.method` markers the API projects for the local sign-in switches.
   instance_auth_methods: {

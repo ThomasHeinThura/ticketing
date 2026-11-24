@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import type { Capability, ResolvedIdentity } from "@taskdesk/permissions";
-import { can, reaches } from "@taskdesk/permissions";
+import { can, isFeatureFlag, reaches } from "@taskdesk/permissions";
 import { and, eq, exists, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
@@ -58,6 +58,7 @@ import {
 import { apiKeyScopeSatisfies } from "../utils/require-api-key-permission-scope";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { writeAuditRead } from "./controllers/audit-read-common";
+import { HISTORY_ALIAS_OF, type HistoryResponseType } from "./history-actions";
 import {
   listSettingsHistoryActorNames,
   listSettingsHistoryRows,
@@ -152,6 +153,8 @@ const HISTORY_FIELDS: Readonly<Record<string, ReadonlySet<string>>> = {
   "canned_response.deleted": new Set(["name", "body", "visibilityDefault"]),
   "state_template.created": new Set(["created", "enabled"]),
   "state_template.updated": new Set(["name", "group", "enabled"]),
+  // The one marker; which flag changed is never echoed, only that a feature switch did.
+  "feature_flag.changed": new Set(["featureFlag"]),
 };
 
 /** A self read exposes only the closed setting names, even for old or malformed audit rows. */
@@ -220,7 +223,12 @@ export function entityHistoryRow(
             !isDeepStrictEqual(before[field], after[field]),
         )
       : [];
-  if (row.action === "automation.updated")
+  if (row.action === "feature_flag.changed")
+    fields =
+      typeof after?.feature === "string" && isFeatureFlag(after.feature)
+        ? ["featureFlag"]
+        : [];
+  else if (row.action === "automation.updated")
     fields = changedSnapshotFields([
       "name",
       "enabled",
@@ -972,9 +980,13 @@ export async function settingsHistoryScope(c: Context, next: Next) {
       )),
       auditEntityId: row.personId,
     };
-  } else if (type !== "project" && type !== "project_label") {
+  } else if (
+    type !== "project" &&
+    type !== "project_label" &&
+    type !== "project_features"
+  ) {
     const [row] =
-      type === "workspace"
+      type === "workspace" || type === "workspace_features"
         ? await db
             .select({ workspaceId: schema.workspaceTable.id })
             .from(schema.workspaceTable)
@@ -1085,7 +1097,7 @@ export async function settingsHistoryScope(c: Context, next: Next) {
     if (
       !can(
         identity,
-        type === "workspace"
+        type === "workspace" || type === "workspace_features"
           ? "workspace:manage_settings"
           : type === "canned_response"
             ? "workspace:manage_settings"
@@ -1198,6 +1210,12 @@ export async function settingsHistoryScope(c: Context, next: Next) {
   await next();
 }
 
+function historyResponseType(type: SettingsHistoryEntityType) {
+  return type in HISTORY_ALIAS_OF
+    ? HISTORY_ALIAS_OF[type as keyof typeof HISTORY_ALIAS_OF]
+    : (type as HistoryResponseType);
+}
+
 export async function readSettingsHistory(c: Context) {
   const scope = c.get("settingsHistoryScope") as HistoryScope | undefined;
   const identity = c.get("settingsHistoryIdentity") as
@@ -1224,7 +1242,7 @@ export async function readSettingsHistory(c: Context) {
   );
   await writeAuditRead(c, { workspaceId: scope.workspaceId });
   return {
-    entityType: scope.type,
+    entityType: historyResponseType(scope.type),
     entityId: scope.id,
     workspaceId: scope.workspaceId,
     projectId: scope.projectId ?? null,

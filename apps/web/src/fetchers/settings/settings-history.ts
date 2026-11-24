@@ -4,10 +4,11 @@ import { z } from "zod";
 import { HttpError } from "@/lib/http-error";
 
 export type SettingsHistory = InferResponseType<typeof client.audit.$get, 200>;
-export type SettingsHistoryTarget = Exclude<
-  SettingsHistory["entityType"],
-  "user_preference"
->;
+export type SettingsHistoryTarget =
+  | Exclude<SettingsHistory["entityType"], "user_preference">
+  // Selector-only: the response reports the workspace or project they edit.
+  | "workspace_features"
+  | "project_features";
 export type SettingsHistoryScope =
   | { scope: "instance" }
   | { scope: "workspace"; workspaceId: string };

@@ -54,6 +54,8 @@ export const settingsHistoryQuery = z.object({
     "import_source_connection",
     "terminology_override",
     "project_estimates",
+    "workspace_features",
+    "project_features",
     "service_api_key",
   ]),
   entity_id: z

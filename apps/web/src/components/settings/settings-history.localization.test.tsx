@@ -233,7 +233,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
       expect(Object.keys(settings).sort()).toEqual(
         Object.keys(expected).sort(),
       );
-      expect(Object.keys(settings)).toHaveLength(74);
+      expect(Object.keys(settings)).toHaveLength(75);
       for (const key of Object.keys(expected)) {
         expect(at(source, `settings.history.actions.${key}`)).not.toBe("");
         // `bulk_performed` already had a work-item label ("Bulk change"); the settings panel owns its own.

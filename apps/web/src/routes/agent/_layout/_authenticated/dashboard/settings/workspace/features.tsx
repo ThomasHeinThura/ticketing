@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { NoAccessPage } from "@/components/common/page-states";
 import PageTitle from "@/components/page-title";
@@ -12,10 +13,24 @@ import {
 import { SettingsAccessPage } from "@/components/settings/settings-access-page";
 import { type FeatureLevel, getFeatures } from "@/fetchers/feature-flags";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import type { HistoryTarget } from "@/query-client/settings-history-key";
+
+const SettingsHistory = lazy(() =>
+  import("@/components/settings/settings-history").then((m) => ({
+    default: m.SettingsHistory,
+  })),
+);
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/settings/workspace/features",
 )({ component: WorkspaceFeatures });
+
+const history = (workspaceId: string): HistoryTarget => ({
+  kind: "entity",
+  type: "workspace_features",
+  id: workspaceId,
+  scope: { kind: "workspace", workspaceId },
+});
 
 function WorkspaceFeatures() {
   const { t } = useTranslation();
@@ -58,9 +73,15 @@ function WorkspaceFeatures() {
         {/* `GET /api/workspaces/{id}/features` needs `workspace:manage_settings`. */}
         <SettingsAccessGate access={access}>
           {workspace ? (
-            <FeatureFlagsPanel
-              target={{ level: "workspace", workspaceId: workspace.id }}
-            />
+            <>
+              <Suspense fallback={null}>
+                <SettingsHistory target={history(workspace.id)} />
+              </Suspense>
+              <FeatureFlagsPanel
+                target={{ level: "workspace", workspaceId: workspace.id }}
+                history={history(workspace.id)}
+              />
+            </>
           ) : null}
         </SettingsAccessGate>
       </div>
