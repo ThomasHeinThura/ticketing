@@ -23,12 +23,20 @@ export default function useProjectByKey(projectKey: string, enabled = true) {
       resolveProjectKey({ workspaceId: workspace?.id ?? "", key: projectKey }),
     enabled: missed && Boolean(projectKey),
     retry: false,
-    staleTime: 60_000,
+    // A cached answer whose target is no longer live is stale: ask again instead of redirecting on it.
+    staleTime: (query) =>
+      query.state.data &&
+      !projects?.some((candidate) => candidate.slug === query.state.data)
+        ? 0
+        : 60_000,
   });
+  const targetLive = projects?.some(
+    (candidate) => candidate.slug === currentKey,
+  );
   return {
     project,
-    // Used only while the key misses, so renaming a project back never loops.
-    currentKey: missed ? (currentKey ?? undefined) : undefined,
+    // Used only while the key misses and its target is live, so a rename chain never loops on stale answers.
+    currentKey: missed && targetLive ? (currentKey ?? undefined) : undefined,
     workspaceId: project?.workspaceId ?? workspace?.id ?? "",
     isLoading:
       loadingWorkspace || (enabled && Boolean(workspace) && loadingProjects),
