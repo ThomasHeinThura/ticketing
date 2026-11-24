@@ -676,8 +676,11 @@ function visibleH2HeadingName(raw, survived, lineStart, lineEnd) {
 export function sections(markdown) {
   // CommonMark block context the `##` scan must respect (#226 F1): fenced code is not a
   // heading, `## X` indented 1-3 spaces is, and `X` over `---` is a setext h2.
-  // shortcut: setext only for a single-line, comment-free paragraph; upgrade if a real
-  // body needs a multi-line setext title.
+  // shortcut: not full CommonMark. Unhandled: multi-line setext titles, a setext title
+  // with a comment, a comment in a fence info string, fence markers inside an HTML
+  // block, a code-span `<!--`. Bodies come from collaborators, so a miss is a wrong
+  // gate result, not an exploit; swap in a CommonMark parser (needs a dependency
+  // approval) if a real PR body trips one.
   const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
   const SETEXT_UNDERLINE = /^ {0,3}-+\s*$/;
   const NOT_PARAGRAPH =

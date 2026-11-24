@@ -844,8 +844,10 @@ describe("sections", () => {
   // <a title="<!--">link</a>. GitHub rendered the opener as visible text or code in all
   // five (and the indented-code one), and BOTH h2 headings stayed visible. No shape hides
   // anything from a human. The scanner still reads the opener as a comment, so
-  // sections() drops "testing notes" and folds its text into "screens opened": the
-  // required-section check then fails closed. Not exploitable; no parser needed.
+  // sections() drops the next heading and folds its text into the section above. That
+  // usually fails closed, but not always: a code-span `<!--` can hide a duplicate
+  // heading the reader still sees (Terra review, 25 Nov). Not a security boundary: PR
+  // bodies come from repo collaborators and the gate checks template completeness.
   // Issue #226 F1: block context, as GitHub renders it.
   it("ignores a ## line inside a fenced code block", () => {
     for (const fence of ["```", "~~~", "````"]) {
