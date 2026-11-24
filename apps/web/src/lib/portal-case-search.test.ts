@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { portalRouteBuilders } from "./portal-route-builders";
 import {
   parsePortalCaseFilterSearch,
   parsePortalHomeSearch,
   parsePortalRequestsSearch,
-  routes,
 } from "./routes";
 
 function query(href: string) {
@@ -12,7 +12,7 @@ function query(href: string) {
 
 describe("S4b portal case search", () => {
   it("round-trips every case filter through the request list URL", () => {
-    const href = routes.portalRequests.build({
+    const href = portalRouteBuilders.portalRequests.build({
       scope: "all",
       status: "in_progress,received",
       priority: "urgent,low",
@@ -55,13 +55,13 @@ describe("S4b portal case search", () => {
     expect(parsePortalCaseFilterSearch({ q: "x".repeat(300) }).q).toHaveLength(
       200,
     );
-    expect(routes.portalRequests.build({ view: "backlog" })).toBe(
+    expect(portalRouteBuilders.portalRequests.build({ view: "backlog" })).toBe(
       "/requests?view=backlog",
     );
   });
 
   it("registers only scope, status and severity on the dashboard", () => {
-    const href = routes.portalHome.build({
+    const href = portalRouteBuilders.portalHome.build({
       scope: "all",
       status: "need_more_info",
       priority: "high",
@@ -82,6 +82,6 @@ describe("S4b portal case search", () => {
       priority: "high",
       project: "ACME",
     });
-    expect(routes.portalHome.build()).toBe("/");
+    expect(portalRouteBuilders.portalHome.build()).toBe("/");
   });
 });

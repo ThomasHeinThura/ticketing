@@ -1,5 +1,4 @@
 import { godModeRedirectPath } from "./god-mode-paths";
-import { portalRouteBuilders } from "./portal-route-builders";
 import { kbQuery, kbText } from "./portal-route-search";
 
 export {
@@ -1368,7 +1367,6 @@ export const routes = {
     path: "/agent/service-management/announcements" as const,
     build: () => "/agent/service-management/announcements",
   },
-  ...portalRouteBuilders,
 
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {

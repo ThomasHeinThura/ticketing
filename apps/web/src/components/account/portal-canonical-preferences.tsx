@@ -35,7 +35,7 @@ import {
 } from "@/fetchers/notification-preferences/portal-canonical-preference";
 import { usePortalTranslation } from "@/lib/i18n/portal-translation";
 import { consumeNotificationPreferenceHandoffAttempted } from "@/lib/notification-preference-handoff";
-import { routes } from "@/lib/routes";
+import { portalRouteBuilders } from "@/lib/portal-route-builders";
 import { QuietHoursForm } from "./quiet-hours-preference";
 
 const PREFERENCE_CARDS = [
@@ -120,7 +120,7 @@ export function PortalCanonicalPreferencesPage({
       <p className="text-sm text-muted-foreground">
         <Link
           className="underline underline-offset-4"
-          to={routes.portalRequests.path}
+          to={portalRouteBuilders.portalRequests.path}
         >
           {t("portal:account.notifications.requestsLink")}
         </Link>

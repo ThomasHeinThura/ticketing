@@ -25,7 +25,7 @@ import {
   sendPortalKbFeedback,
 } from "@/fetchers/kb/portal";
 import { HttpError } from "@/lib/http-error";
-import { routes } from "@/lib/routes";
+import { portalRouteBuilders } from "@/lib/portal-route-builders";
 import { KbArticleContent, KbTableOfContents } from "../kb-article-content";
 
 /** KB-17: "Was this helpful?", a yes or no with an optional comment. Never required. */
@@ -168,7 +168,7 @@ export function PortalKbArticleView({
             <Button
               className="mt-2 w-fit"
               variant="outline"
-              render={<Link to={routes.portalKb.path} />}
+              render={<Link to={portalRouteBuilders.portalKb.path} />}
             >
               {t("kb:portal.backToKb")}
             </Button>
@@ -183,7 +183,7 @@ export function PortalKbArticleView({
       <Button
         variant="ghost"
         className="w-fit"
-        render={<Link to={routes.portalKb.path} />}
+        render={<Link to={portalRouteBuilders.portalKb.path} />}
       >
         ← {t("kb:portal.backToKb")}
       </Button>
@@ -206,7 +206,7 @@ export function PortalKbArticleView({
               <li key={entry.id}>
                 <Link
                   className="underline-offset-4 hover:underline"
-                  to={routes.portalKbArticle.path}
+                  to={portalRouteBuilders.portalKbArticle.path}
                   params={{ id: entry.id }}
                 >
                   {entry.title}

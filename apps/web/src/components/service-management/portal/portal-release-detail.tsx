@@ -18,7 +18,7 @@ import { useTranslation } from "react-i18next";
 import { getPortalRelease } from "@/fetchers/portal/releases";
 import { formatDateMedium } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
-import { routes } from "@/lib/routes";
+import { portalRouteBuilders } from "@/lib/portal-route-builders";
 
 /** Plain-text rendering keeps customer publication independent of trusted HTML. */
 export function PortalReleaseDetail({
@@ -61,7 +61,7 @@ export function PortalReleaseDetail({
         <Button
           variant="ghost"
           className="w-fit"
-          render={<Link to={routes.portalReleases.path} />}
+          render={<Link to={portalRouteBuilders.portalReleases.path} />}
         >
           {t("portal:releases.backToList")}
         </Button>
@@ -82,7 +82,7 @@ export function PortalReleaseDetail({
       <Button
         variant="ghost"
         className="w-fit"
-        render={<Link to={routes.portalReleases.path} />}
+        render={<Link to={portalRouteBuilders.portalReleases.path} />}
       >
         {t("portal:releases.backToList")}
       </Button>

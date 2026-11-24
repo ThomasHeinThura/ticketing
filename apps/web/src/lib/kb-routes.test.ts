@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { portalRouteBuilders } from "./portal-route-builders";
 import {
   parseKbArticleSearch,
   parseKbEditorSearch,
@@ -46,12 +47,14 @@ describe("knowledge base URL state", () => {
   });
 
   it("serves the portal knowledge base from the host root, never under /portal", () => {
-    expect(routes.portalKb.build({ q: "reset", category: "c1" })).toBe(
-      "/kb?q=reset&category=c1",
+    expect(
+      portalRouteBuilders.portalKb.build({ q: "reset", category: "c1" }),
+    ).toBe("/kb?q=reset&category=c1");
+    expect(portalRouteBuilders.portalKb.build()).toBe("/kb");
+    expect(portalRouteBuilders.portalKbArticle.build({ id: "a1" })).toBe(
+      "/kb/a1",
     );
-    expect(routes.portalKb.build()).toBe("/kb");
-    expect(routes.portalKbArticle.build({ id: "a1" })).toBe("/kb/a1");
-    expect(routes.portalKb.path.startsWith("/portal")).toBe(false);
+    expect(portalRouteBuilders.portalKb.path.startsWith("/portal")).toBe(false);
     expect(parsePortalKbSearch({ q: "x".repeat(500) })).toEqual({});
     expect(parsePortalKbSearch({ q: "a\u0000b" })).toEqual({});
   });

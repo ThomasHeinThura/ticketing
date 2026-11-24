@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
 import { generatedRouteMetadata } from "./generated-route-metadata";
+import { portalRouteBuilders } from "./portal-route-builders";
 import { projectViewRoutes } from "./project-view-routes";
 import {
   buildGeneratedRouteUrl,
@@ -437,22 +438,22 @@ describe("G5 route metadata", () => {
       routes.agentProjectsIndex.path,
     );
     expect(generatedRouteMetadata.portal).toContain(
-      routes.portalLegacySettings.path,
+      portalRouteBuilders.portalLegacySettings.path,
     );
     expect(generatedRouteMetadata.portal).toContain(
-      routes.portalLegacyKnowledgeBase.path,
+      portalRouteBuilders.portalLegacyKnowledgeBase.path,
     );
   });
 
   it("round-trips the portal root URL through its route helper", () => {
     const url = new URL(
-      routes.portalHome.build(),
+      portalRouteBuilders.portalHome.build(),
       "https://portal.example.test",
     );
-    expect(routes.portalHome.parse(url.pathname)).toBe(
-      routes.portalHome.build(),
+    expect(portalRouteBuilders.portalHome.parse(url.pathname)).toBe(
+      portalRouteBuilders.portalHome.build(),
     );
-    expect(routes.portalHome.parse("/unmatched")).toBeUndefined();
+    expect(portalRouteBuilders.portalHome.parse("/unmatched")).toBeUndefined();
   });
 
   it("builds and parses every generated agent and portal route template", () => {
@@ -590,18 +591,18 @@ describe("canonical intake URLs", () => {
   });
 
   it("round-trips catalogue search and selected type through its URL", () => {
-    const url = routes.portalCatalogue.build({
+    const url = portalRouteBuilders.portalCatalogue.build({
       q: "hardware help",
       key: "printer",
     });
     const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
     const parsed = parsePortalCatalogueSearch(search);
     expect(parsed).toEqual({ q: "hardware help", key: "printer" });
-    expect(routes.portalCatalogue.build(parsed)).toBe(url);
+    expect(portalRouteBuilders.portalCatalogue.build(parsed)).toBe(url);
   });
 
   it("round-trips sign-in stage and factor choice without placing credentials in the URL", () => {
-    const url = routes.portalSignIn.build({
+    const url = portalRouteBuilders.portalSignIn.build({
       stage: "factor",
       factor: "backup",
     });
@@ -610,14 +611,14 @@ describe("canonical intake URLs", () => {
       stage: "factor",
       factor: "backup",
     });
-    expect(routes.portalSignIn.build(parsePortalSignInSearch(search))).toBe(
-      url,
-    );
+    expect(
+      portalRouteBuilders.portalSignIn.build(parsePortalSignInSearch(search)),
+    ).toBe(url);
     expect(url).not.toMatch(/@|password|code/iu);
   });
 
   it("keeps a same-origin return path through sign-in and drops anything else", () => {
-    const url = routes.portalSignIn.build({
+    const url = portalRouteBuilders.portalSignIn.build({
       stage: "email",
       redirect: "/requests/HELP-6?tab=activity",
     });
@@ -627,9 +628,9 @@ describe("canonical intake URLs", () => {
       factor: "totp",
       redirect: "/requests/HELP-6?tab=activity",
     });
-    expect(routes.portalSignIn.build(parsePortalSignInSearch(search))).toBe(
-      url,
-    );
+    expect(
+      portalRouteBuilders.portalSignIn.build(parsePortalSignInSearch(search)),
+    ).toBe(url);
     expect(safePortalRedirect("/account#preference_token=signed")).toBe(
       "/account",
     );
@@ -709,11 +710,13 @@ describe("canonical intake URLs", () => {
   });
 
   it("preserves in-progress whitespace in catalogue search URLs", () => {
-    const url = routes.portalCatalogue.build({ q: "printer " });
+    const url = portalRouteBuilders.portalCatalogue.build({ q: "printer " });
     const search = Object.fromEntries(new URLSearchParams(url.split("?")[1]));
     expect(parsePortalCatalogueSearch(search)).toEqual({ q: "printer " });
     expect(
-      routes.portalCatalogue.build(parsePortalCatalogueSearch(search)),
+      portalRouteBuilders.portalCatalogue.build(
+        parsePortalCatalogueSearch(search),
+      ),
     ).toBe(url);
   });
 });

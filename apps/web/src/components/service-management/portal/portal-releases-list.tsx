@@ -20,7 +20,7 @@ import { useTranslation } from "react-i18next";
 import { PortalAnnouncementsTabs } from "@/components/portal/announcements/portal-announcements-tabs";
 import { getPortalReleases } from "@/fetchers/portal/releases";
 import { formatDateMedium } from "@/lib/format";
-import { routes } from "@/lib/routes";
+import { portalRouteBuilders } from "@/lib/portal-route-builders";
 
 /** Customer release notes, sourced only from persisted published snapshots. */
 export function PortalReleasesList({
@@ -93,7 +93,7 @@ export function PortalReleasesList({
                 <CardTitle>
                   <Link
                     className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    to={routes.portalRelease.path}
+                    to={portalRouteBuilders.portalRelease.path}
                     params={{ id: release.id }}
                   >
                     {release.name}
