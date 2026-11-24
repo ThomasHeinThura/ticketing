@@ -1803,7 +1803,7 @@ describe("identity connection administration", () => {
       .values({
         userId: ssoUser.id,
         organisationId: person.organisationId,
-        side: "agent",
+        side: "staff",
       })
       .returning();
     if (!ssoPerson) throw new Error("SSO fixture person was not created");

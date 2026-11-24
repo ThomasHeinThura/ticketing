@@ -6,6 +6,8 @@ import {
   purgeNotificationAndOutboxRetention,
   purgeReadNotifications,
 } from "../notification/retention";
+import { dbNowUtc } from "../utils/db-time";
+import { openHoldOver, peopleOfUsers } from "../utils/legal-hold-scope";
 import { withJobLease } from "./leader-lock";
 import {
   purgeExpiredOutboxReservations,
@@ -16,6 +18,7 @@ import {
   purgeSoftDeletedRows,
   type SoftDeletePurgeOutcome,
 } from "./soft-delete-purge";
+import { fenceLegalHolds } from "./soft-delete-purge.repository";
 
 /**
  * `session-cleanup` — `docs/01-architecture/background-jobs.md`.
@@ -24,19 +27,16 @@ import {
  * their window — **the soft-delete purge skips any row whose organisation or person is
  * under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts."
  *
- * Expired sessions, notification reservations, preference handoffs, idempotency keys, read
- * notifications (`NO-17`), 30-day terminal `notification_delivery` rows, empty terminal
+ * Expired sessions, invitations, notification reservations, preference handoffs, idempotency
+ * keys, read notifications (`NO-17`), 30-day terminal `notification_delivery` rows, empty terminal
  * `notification_digest` groups, unreferenced terminal `outbox` envelopes (`P-20`, #198, batched
  * in child-before-parent order and legal-hold aware), and soft-deleted work items/projects past
  * their 30-day window (`soft-delete-purge.ts`, hold-aware through the workspace/project
  * organisation and the attached people) are purged here. Still absent, each for a concrete
  * reason:
  *
- * - **Soft-deleted organisations** — an organisation purge cascades through every workspace and
- *   is not specified beyond `organisation.purge_after`; it is not attempted.
- * - **Invitations** — the predicate is not obvious from the schema alone (an expired row
- *   that was already accepted is not a candidate), so it wants its own reading of
- *   `IP-*` rather than a guess here.
+ * - **Soft-deleted organisations** — purged by the instance jobs, hold-aware
+ *   (`instance/organisation-purge.ts`), not by this job.
  * - **Idempotency keys** — purged here once past `expires_at` (`deleteExpiredIdempotencyKeys`).
  * - **Soft-deleted comments** — not purged by this job yet (review-p0 F20 gap).
  *
@@ -89,6 +89,36 @@ const NO_SOFT_DELETE_WORK: SoftDeletePurgeOutcome = {
  */
 export async function deleteExpiredSessions(): Promise<number> {
   return purgeExpiredSessions();
+}
+
+/**
+ * Physically removes invitations that expired without being accepted or canceled (status
+ * `pending`, no `accepted_at`). Accepted and canceled rows are never touched: they are the
+ * record of what happened. `expires_at` is a UTC wall clock in `timestamp without time zone`,
+ * so it is compared with `dbNowUtc()` like `session.expires_at`. Hold-aware: a row stays
+ * until the hold lifts when its inviter's person, that person's organisation, the customer
+ * organisation or the workspace's organisation is under an open `legal_hold`. Child rows cascade.
+ */
+export async function deleteExpiredInvitations(): Promise<number> {
+  return db.transaction(async (tx) => {
+    // Same fence the other hold-aware purges take: a hold committing mid-delete is seen.
+    await fenceLegalHolds(tx);
+    const result = await tx.execute(sql`
+      DELETE FROM "invitation" i
+      WHERE i."expires_at" <= ${dbNowUtc()}
+        AND i."status" = 'pending'
+        AND i."accepted_at" IS NULL
+        AND NOT ${openHoldOver(
+          peopleOfUsers(sql`SELECT i."inviter_id"`),
+          sql`
+            SELECT i."organisation_id"
+            UNION ALL
+            SELECT w."organisation_id" FROM "workspace" w WHERE w."id" = i."workspace_id"
+          `,
+        )}
+    `);
+    return result.rowCount ?? 0;
+  });
 }
 
 /**
@@ -150,6 +180,7 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
   const startedAt = Date.now();
   // Counted in the structured run line only, so the `SessionCleanupOutcome` shape is unchanged.
   let idempotencyKeysDeleted = 0;
+  let invitationsDeleted = 0;
   let requestRateCountersDeleted = 0;
   let mcpToolReportsDeleted = 0;
   let notificationDeliveriesPurged = 0;
@@ -170,6 +201,11 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
         // reported degraded and the next daily run retries.
         let readNotificationsPurged = 0;
         let retentionFailed = false;
+        try {
+          invitationsDeleted = await deleteExpiredInvitations();
+        } catch {
+          retentionFailed = true;
+        }
         try {
           requestRateCountersDeleted = await purgeExpiredRequestRateCounters();
         } catch {
@@ -226,6 +262,7 @@ export async function runSessionCleanup(): Promise<SessionCleanupOutcome> {
         notificationDigestsPurged +
         outboxEventsPurged +
         idempotencyKeysDeleted +
+        invitationsDeleted +
         requestRateCountersDeleted +
         mcpToolReportsDeleted +
         outcome.softDelete.projectsPurged +

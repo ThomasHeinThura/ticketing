@@ -425,7 +425,7 @@ describe("#4 -- the chosen FK behaviours actually hold", () => {
     const [role] = await db
       .insert(schema.roleTable)
       .values({
-        scope: "instance",
+        scope: "organisation",
         key: "member",
         name: "Member",
         rank: 1,
@@ -483,7 +483,7 @@ describe("#4 -- the chosen FK behaviours actually hold", () => {
     const [role] = await db
       .insert(schema.roleTable)
       .values({
-        scope: "instance",
+        scope: "organisation",
         key: "referenced",
         name: "Referenced",
         rank: 1,
