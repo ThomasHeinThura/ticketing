@@ -279,6 +279,68 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
       expect(await deleteExpiredInvitations()).toBe(1);
       expect((await invitationIds()).has(held.id)).toBe(false);
     });
+
+    it("keeps an expired invitation whose inviter's person or customer organisation is held", async () => {
+      const member = await createWorkspaceMember();
+      const org = await makeOrganisation("inviter");
+      const person = await makePerson(member.user.id, org.id);
+      const byPerson = await makeInvitation(member, "by-person");
+      const hold = await placeHold("person", person.id, member.user.id);
+      expect(await deleteExpiredInvitations()).toBe(0);
+      await db
+        .update(schema.legalHoldTable)
+        .set({ liftedAt: new Date(), liftedBy: member.user.id })
+        .where(eq(schema.legalHoldTable.id, hold.id));
+
+      // Customer invitation: its organisation differs from its workspace's.
+      const customerOrg = await makeOrganisation("customer");
+      const customer = await makeInvitation(member, "customer", {
+        scope: "customer",
+        organisationId: customerOrg.id,
+      });
+      const orgHold = await placeHold(
+        "organisation",
+        customerOrg.id,
+        member.user.id,
+      );
+      expect(await deleteExpiredInvitations()).toBe(1);
+      const kept = await invitationIds();
+      expect(kept.has(byPerson.id)).toBe(false);
+      expect(kept.has(customer.id)).toBe(true);
+
+      await db
+        .update(schema.legalHoldTable)
+        .set({ liftedAt: new Date(), liftedBy: member.user.id })
+        .where(eq(schema.legalHoldTable.id, orgHold.id));
+      expect(await deleteExpiredInvitations()).toBe(1);
+      expect((await invitationIds()).has(customer.id)).toBe(false);
+    });
+
+    it("waits for a hold being placed concurrently and then keeps the invitation", async () => {
+      const member = await createWorkspaceMember();
+      const invitation = await makeInvitation(member, "racing");
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const placing = db.transaction(async (tx) => {
+        await tx.insert(schema.legalHoldTable).values({
+          scope: "organisation",
+          scopeId: member.workspace.organisationId,
+          placedBy: member.user.id,
+          reason: "integration test hold",
+        });
+        await gate;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const deleting = deleteExpiredInvitations();
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      release();
+      await placing;
+
+      expect(await deleting).toBe(0);
+      expect((await invitationIds()).has(invitation.id)).toBe(true);
+    });
   });
 
   describe("expired notification reservation cleanup", () => {

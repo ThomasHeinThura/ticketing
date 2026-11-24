@@ -3,7 +3,9 @@
 --
 -- `task` was renamed to `work_item` in #392. 0071 copied `task` into `work_item` and KEPT
 -- `task` so pods from before #392 could keep reading it during a rolling deploy. That window
--- is closed: only signed images by digest are deployed, none of them from before #392. This
+-- is closed: only signed images by digest are deployed, none of them from before #392.
+-- Owner confirmation (24 Nov 2026, "Take all recommendations" on #398): no pre-#392 build will
+-- be redeployed; SIT and UAT have run only post-#392 signed images since October. This
 -- folds any `task` still stored into `work_item` and removes `task` from every
 -- `workspace_role.permission` and `apikey.permissions` value. FORWARD-ONLY: a pre-#392 build
 -- could no longer read these rows, so take a backup before running it.

@@ -7,6 +7,7 @@ import {
   purgeReadNotifications,
 } from "../notification/retention";
 import { dbNowUtc } from "../utils/db-time";
+import { openHoldOver, peopleOfUsers } from "../utils/legal-hold-scope";
 import { withJobLease } from "./leader-lock";
 import {
   purgeExpiredOutboxReservations,
@@ -17,6 +18,7 @@ import {
   purgeSoftDeletedRows,
   type SoftDeletePurgeOutcome,
 } from "./soft-delete-purge";
+import { fenceLegalHolds } from "./soft-delete-purge.repository";
 
 /**
  * `session-cleanup` — `docs/01-architecture/background-jobs.md`.
@@ -93,28 +95,30 @@ export async function deleteExpiredSessions(): Promise<number> {
  * Physically removes invitations that expired without being accepted or canceled (status
  * `pending`, no `accepted_at`). Accepted and canceled rows are never touched: they are the
  * record of what happened. `expires_at` is a UTC wall clock in `timestamp without time zone`,
- * so it is compared with `dbNowUtc()` like `session.expires_at`. Hold-aware: a row whose
- * organisation (the customer organisation, else the workspace's) is under an open
- * organisation `legal_hold` stays until the hold lifts. Child rows cascade.
+ * so it is compared with `dbNowUtc()` like `session.expires_at`. Hold-aware: a row stays
+ * until the hold lifts when its inviter's person, that person's organisation, the customer
+ * organisation or the workspace's organisation is under an open `legal_hold`. Child rows cascade.
  */
 export async function deleteExpiredInvitations(): Promise<number> {
-  const result = await db.execute(sql`
-    DELETE FROM "invitation" i
-    WHERE i."expires_at" <= ${dbNowUtc()}
-      AND i."status" = 'pending'
-      AND i."accepted_at" IS NULL
-      AND NOT EXISTS (
-        SELECT 1
-        FROM "legal_hold" lh
-        WHERE lh."lifted_at" IS NULL
-          AND lh."scope" = 'organisation'
-          AND lh."scope_id" = COALESCE(
-            i."organisation_id",
-            (SELECT w."organisation_id" FROM "workspace" w WHERE w."id" = i."workspace_id")
-          )
-      )
-  `);
-  return result.rowCount ?? 0;
+  return db.transaction(async (tx) => {
+    // Same fence the other hold-aware purges take: a hold committing mid-delete is seen.
+    await fenceLegalHolds(tx);
+    const result = await tx.execute(sql`
+      DELETE FROM "invitation" i
+      WHERE i."expires_at" <= ${dbNowUtc()}
+        AND i."status" = 'pending'
+        AND i."accepted_at" IS NULL
+        AND NOT ${openHoldOver(
+          peopleOfUsers(sql`SELECT i."inviter_id"`),
+          sql`
+            SELECT i."organisation_id"
+            UNION ALL
+            SELECT w."organisation_id" FROM "workspace" w WHERE w."id" = i."workspace_id"
+          `,
+        )}
+    `);
+    return result.rowCount ?? 0;
+  });
 }
 
 /**

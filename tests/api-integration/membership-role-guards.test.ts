@@ -141,6 +141,41 @@ describe("#181 membership and role guards", () => {
     expect(error.code).toBe("23514");
   });
 
+  it("S6: an unclaimed claim cannot be added or reopened for a person holding a membership", async () => {
+    await run(insertMembership("scim1", "workspace"));
+    const added = await failure(
+      sql`INSERT INTO import_placeholder_claim (person_id, import_run_id, normalized_email) VALUES ('scim1', 'run1', 's@example.test')`,
+    );
+    expect(added.code).toBe("23514");
+    await run(insertMembership("staff1", "workspace"));
+    await run(
+      sql`INSERT INTO import_placeholder_claim (person_id, import_run_id, normalized_email, claimed_at) VALUES ('staff1', 'run1', 'c@example.test', now())`,
+    );
+    const reopened = await failure(
+      sql`UPDATE import_placeholder_claim SET claimed_at = NULL WHERE person_id = 'staff1'`,
+    );
+    expect(reopened.code).toBe("23514");
+  });
+
+  it("S6: a concurrent membership and unclaimed claim cannot both commit", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const membership = db.transaction(async (tx) => {
+      await tx.execute(insertMembership("scim1", "workspace"));
+      await gate;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const claim = failure(
+      sql`INSERT INTO import_placeholder_claim (person_id, import_run_id, normalized_email) VALUES ('scim1', 'run1', 's@example.test')`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    release();
+    await membership;
+    expect((await claim).code).toBe("23514");
+  });
+
   it("preflight: refuses loudly and names the bad row", async () => {
     const source = await readFile(
       resolve(

@@ -1,6 +1,6 @@
 -- Issue #181 -- database backstops for membership and role integrity (S3, S5, S6).
 --
--- Forward-only and additive: it adds constraints and two triggers, and changes no row. A
+-- Forward-only and additive: it adds constraints and three triggers, and changes no row. A
 -- preflight runs first and RAISES (naming the check and sample ids) if any existing row
 -- would violate a new guard, so the migration never half-applies and never edits data.
 -- Nothing is auto-repaired: a violating row is a tenant-isolation question for a person.
@@ -10,7 +10,8 @@
 --       organisation.default_customer_visibility.
 --   S6  an import-created placeholder person (an unclaimed `import_placeholder_claim` row) can
 --       never hold a membership, and a person who holds one can never be turned into a
---       placeholder. Deliberately NOT every `is_placeholder` row: a SCIM-provisioned person
+--       placeholder. Three triggers (membership, person, claim ledger) serialise on one
+--       per-person advisory lock, so no write order or concurrent pair can reach the state. Deliberately NOT every `is_placeholder` row: a SCIM-provisioned person
 --       who has not signed in yet is also `is_placeholder` and legitimately receives
 --       group-mapped memberships (data-model.md: only import placeholders cannot hold one).
 --   S7  membership.scope_id stays polymorphic; documented in data-model.md, not enforced here.
@@ -48,6 +49,7 @@ ALTER TABLE "role" ADD CONSTRAINT "role_id_scope_unique" UNIQUE("id","scope");--
 ALTER TABLE "membership" ADD CONSTRAINT "membership_role_scope_fk" FOREIGN KEY ("role_id","scope") REFERENCES "public"."role"("id","scope") ON DELETE restrict ON UPDATE cascade;--> statement-breakpoint
 CREATE FUNCTION "membership_reject_placeholder"() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext('placeholder_membership:' || NEW."person_id"));
   IF EXISTS (SELECT 1 FROM "import_placeholder_claim" WHERE "person_id" = NEW."person_id" AND "claimed_at" IS NULL) THEN
     RAISE EXCEPTION 'an import placeholder person cannot hold a membership (person %)', NEW."person_id"
       USING ERRCODE = 'check_violation';
@@ -57,10 +59,21 @@ END $$;--> statement-breakpoint
 CREATE TRIGGER "membership_reject_placeholder" BEFORE INSERT OR UPDATE OF "person_id" ON "membership" FOR EACH ROW EXECUTE FUNCTION "membership_reject_placeholder"();--> statement-breakpoint
 CREATE FUNCTION "person_reject_placeholder_with_membership"() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext('placeholder_membership:' || NEW."id"));
   IF NEW."is_placeholder" AND EXISTS (SELECT 1 FROM "membership" WHERE "person_id" = NEW."id") THEN
     RAISE EXCEPTION 'a person who holds a membership cannot become a placeholder (person %)', NEW."id"
       USING ERRCODE = 'check_violation';
   END IF;
   RETURN NEW;
 END $$;--> statement-breakpoint
-CREATE TRIGGER "person_reject_placeholder_with_membership" BEFORE UPDATE OF "is_placeholder" ON "person" FOR EACH ROW EXECUTE FUNCTION "person_reject_placeholder_with_membership"();
+CREATE TRIGGER "person_reject_placeholder_with_membership" BEFORE UPDATE OF "is_placeholder" ON "person" FOR EACH ROW EXECUTE FUNCTION "person_reject_placeholder_with_membership"();--> statement-breakpoint
+CREATE FUNCTION "claim_reject_placeholder_with_membership"() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext('placeholder_membership:' || NEW."person_id"));
+  IF NEW."claimed_at" IS NULL AND EXISTS (SELECT 1 FROM "membership" WHERE "person_id" = NEW."person_id") THEN
+    RAISE EXCEPTION 'a person who holds a membership cannot have an unclaimed import placeholder claim (person %)', NEW."person_id"
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END $$;--> statement-breakpoint
+CREATE TRIGGER "claim_reject_placeholder_with_membership" BEFORE INSERT OR UPDATE OF "person_id", "claimed_at" ON "import_placeholder_claim" FOR EACH ROW EXECUTE FUNCTION "claim_reject_placeholder_with_membership"();
