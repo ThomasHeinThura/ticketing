@@ -26,9 +26,10 @@ import {
   setImportEngineAutoStart,
 } from "../../../apps/api/src/imports/engine/runner";
 import { clearFakeFixtures } from "../../../apps/api/src/imports/engine/test-adapter";
+import { drainImportAttachmentJobs } from "../../../apps/api/src/imports/service";
+import type { ImportAttachmentJob } from "../../../apps/api/src/imports/writer";
 import { setImportAttachmentDependencies } from "../../../apps/api/src/imports/writer";
 import { createApp } from "../../../apps/api/src/index";
-import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../../apps/api/src/instance/observability/audit-failure-notifier";
 import { createWorkItem } from "../../../apps/api/src/work-item/controllers/create-work-item";
 import { resetTestDatabase } from "../helpers/database";
 import {
@@ -733,7 +734,11 @@ describe("transient chunk failures (#895)", () => {
         .where(sql`${importChunkTable.pendingPublish} IS NOT NULL`);
 
     /** Runs a one-chunk import whose pending-publish clear always fails: dispatched, never cleared. */
-    async function leavePending(id: string, withAttachment: boolean) {
+    async function leavePending(
+      id: string,
+      withAttachment: boolean,
+      failAt: "clear" | "select" = "clear",
+    ) {
       const f = await engineFixture();
       const [record] = makeRecords(f.type.key, 1);
       setFakeFixture(id, {
@@ -765,13 +770,19 @@ describe("transient chunk failures (#895)", () => {
         post(dry.body),
         202,
       );
+      let selects = 0;
       const outcome = await runImportRun(run.id, {
         duringDrain: async (stage) => {
-          if (stage === "clear") throw pgError("57P01");
+          if (stage === "select") selects += 1;
+          // "select" fails only from the second drain on, i.e. once the chunk has committed.
+          if (stage === failAt && (stage === "clear" || selects >= 2))
+            throw pgError("57P01");
         },
       });
       expect(outcome).toMatchObject({ pausedReason: "chunk_failed" });
-      expect(await pendingRows()).toHaveLength(1);
+      expect(
+        (await pendingRows()).filter((c) => c.importRunId === run.id),
+      ).toHaveLength(1);
       return { f, run };
     }
 
@@ -798,6 +809,52 @@ describe("transient chunk failures (#895)", () => {
       expect(events.length).toBeGreaterThanOrEqual(1);
       expect(events.length).toBeLessThanOrEqual(2);
       expect(await pendingRows()).toHaveLength(0);
+    });
+
+    it("a drain that failed after another settled the attachment adds no false loss", async () => {
+      // Never dispatched, so the chunk's pending-attachment ledger is intact.
+      const { run } = await leavePending("racing-attachments", true, "select");
+      const [chunk] = await pendingRows();
+      const jobs =
+        (
+          chunk?.pendingPublish as
+            | { attachmentJobs: ImportAttachmentJob[] }
+            | null
+            | undefined
+        )?.attachmentJobs ?? [];
+      expect(jobs).toHaveLength(1);
+
+      let entered = 0;
+      let bothIn!: () => void;
+      const bothEntered = new Promise<void>((resolve) => {
+        bothIn = resolve;
+      });
+      let firstSettled!: () => void;
+      const aSettled = new Promise<void>((resolve) => {
+        firstSettled = resolve;
+      });
+      setImportAttachmentDependencies({
+        download: vi.fn(async () => {
+          entered += 1;
+          const mine = entered;
+          if (entered === 2) bothIn();
+          await bothEntered; // both drains have read the pending job
+          if (mine === 1)
+            return { ok: true as const, bytes: PNG, contentType: "image/png" };
+          await aSettled; // the other drain has stored and settled it by now
+          return { ok: false as const, code: "failed" as const };
+        }),
+      });
+      const first = drainImportAttachmentJobs(jobs).then(firstSettled);
+      const second = drainImportAttachmentJobs(jobs);
+      await Promise.all([first, second]);
+      expect(entered).toBe(2);
+      expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
+      expect((await chunkReport()).lossCounts?.attachment_download_failed).toBe(
+        undefined,
+      );
+      expect(await lossRows()).toHaveLength(0);
+      expect(run.id).toBeTruthy();
     });
 
     it("a payload rewritten between the read and the clear stays stored", async () => {
@@ -853,32 +910,72 @@ describe("transient chunk failures (#895)", () => {
       expect(await lossRows()).toHaveLength(0);
     });
 
-    it("a replayed audit-failure alert is raised once per admin", async () => {
-      await engineFixture();
+    it("replaying a stored chunk raises each audit-failure alert once per admin, per chunk", async () => {
       const alerts = async () =>
         (await db.select().from(schema.notificationTable)).filter(
           (n) => n.type === "audit_write_failed",
         );
-      await notifyCurrentInstanceAdminsOfAuditFailure(
-        "mutation",
-        new Date(),
-        "chunk-1:chunk",
-      );
-      const first = (await alerts()).length;
-      expect(first).toBeGreaterThan(0);
-      await notifyCurrentInstanceAdminsOfAuditFailure(
-        "mutation",
-        new Date(),
-        "chunk-1:chunk",
-      );
-      expect(await alerts()).toHaveLength(first);
-      // A different write still alerts; an un-keyed call keeps its old behaviour.
-      await notifyCurrentInstanceAdminsOfAuditFailure(
-        "mutation",
-        new Date(),
-        "chunk-2:chunk",
-      );
-      expect(await alerts()).toHaveLength(first * 2);
+      const byEvent = async () => {
+        const counts = new Map<string, number>();
+        for (const n of await alerts())
+          counts.set(n.eventId ?? "", (counts.get(n.eventId ?? "") ?? 0) + 1);
+        return counts;
+      };
+      // Two runs, each with one stored chunk that has not been dispatched.
+      const a = await leavePending("alerts-a", false, "select");
+      const b = await leavePending("alerts-b", false, "select");
+      const payload = {
+        createdResults: [],
+        attachmentJobs: [],
+        auditFailure: true, // the chunk's own audit write failed
+        updateResults: [
+          {
+            updated: { id: "wi-1" },
+            changes: [],
+            auditFailed: true, // and so did one update's
+            actorId: "actor",
+            actorType: "person",
+          },
+        ],
+      };
+      const chunkOf = async (runId: string) =>
+        (
+          await db
+            .select()
+            .from(importChunkTable)
+            .where(eq(importChunkTable.importRunId, runId))
+        )[0] as NonNullable<Awaited<ReturnType<typeof pendingRows>>[number]>;
+      const store = async (runId: string) =>
+        db
+          .update(importChunkTable)
+          .set({ pendingPublish: payload })
+          .where(eq(importChunkTable.id, (await chunkOf(runId)).id));
+
+      await store(a.run.id);
+      await drainPendingPublish(a.run.id);
+      const idA = (await chunkOf(a.run.id)).id;
+      const afterFirst = await byEvent();
+      const admins = afterFirst.get(`audit-failure:${idA}:chunk`) ?? 0;
+      expect(admins).toBeGreaterThan(0);
+      expect([...afterFirst.keys()].sort()).toEqual([
+        `audit-failure:${idA}:chunk`,
+        `audit-failure:${idA}:update:wi-1`,
+      ]);
+      expect(afterFirst.get(`audit-failure:${idA}:update:wi-1`)).toBe(admins);
+
+      // The same chunk replayed (its clear was lost): nothing new.
+      await store(a.run.id);
+      await drainPendingPublish(a.run.id);
+      expect(await byEvent()).toEqual(afterFirst);
+
+      // Another chunk is a different write and alerts again.
+      await store(b.run.id);
+      await drainPendingPublish(b.run.id);
+      const idB = (await chunkOf(b.run.id)).id;
+      const afterB = await byEvent();
+      expect(afterB.get(`audit-failure:${idB}:chunk`)).toBe(admins);
+      expect(afterB.get(`audit-failure:${idB}:update:wi-1`)).toBe(admins);
+      expect(afterB.get(`audit-failure:${idA}:chunk`)).toBe(admins);
     });
   });
 });
