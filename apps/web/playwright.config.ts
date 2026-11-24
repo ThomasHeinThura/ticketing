@@ -18,8 +18,6 @@ export default defineConfig({
     reducedMotion: "reduce",
     // Off centrally: failing runs must not upload page content (#709).
     trace: "off",
-    video: "off",
-    screenshot: "off",
     ...devices["Desktop Chrome"],
   },
   webServer: {

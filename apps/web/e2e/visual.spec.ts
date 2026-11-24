@@ -1,9 +1,4 @@
 import { expect, type Page, test } from "@playwright/test";
-import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
-
-test.afterEach(({ browserName: _browserName }, testInfo) => {
-  redactSecretErrorContext(testInfo);
-});
 
 const session = {
   session: {

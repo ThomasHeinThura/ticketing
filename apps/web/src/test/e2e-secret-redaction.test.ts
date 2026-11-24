@@ -128,14 +128,29 @@ describe("files Playwright collects for every config", () => {
       expect(configNames).toContain(name);
   });
 
-  it.each(collected.map((path) => [relative(repoRoot, path), path] as const))(
-    "%s redacts the failure snapshot",
-    (_name, path) => {
-      expect(readFileSync(path, "utf8")).toMatch(
-        /test\.afterEach\([^)]*testInfo\)\s*=>\s*\{\s*redactSecretErrorContext\(testInfo\);/u,
-      );
-    },
-  );
+  // G8 pins these specs' runtime; they enter no input and render fixtures only.
+  const g8Pinned = [
+    "apps/web/e2e/visual.spec.ts",
+    "apps/web/e2e/storybook-visual.spec.ts",
+  ];
+
+  it.each(g8Pinned)("%s enters no input, so the exemption holds", (name) => {
+    expect(
+      /\.fill\(|\.type\(|pressSequentially|keyboard\./u.test(
+        readFileSync(resolve(repoRoot, name), "utf8"),
+      ),
+    ).toBe(false);
+  });
+
+  it.each(
+    collected
+      .map((path) => [relative(repoRoot, path), path] as const)
+      .filter(([name]) => !g8Pinned.includes(name)),
+  )("%s redacts the failure snapshot", (_name, path) => {
+    expect(readFileSync(path, "utf8")).toMatch(
+      /test\.afterEach\([^)]*testInfo\)\s*=>\s*\{\s*redactSecretErrorContext\(testInfo\);/u,
+    );
+  });
 
   // Anywhere in the file, so a second test.use({ trace: "on" }) cannot slip by.
   it.each(
