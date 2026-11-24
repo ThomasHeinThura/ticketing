@@ -1563,7 +1563,9 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     }
   });
 
-  it("serializes concurrent task creations before claiming project task numbers", async () => {
+  it("serializes concurrent task creations before claiming project task numbers", async ({
+    signal,
+  }) => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
@@ -1613,7 +1615,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       );
 
       // Wait on the lock state itself, with no deadline: a loaded runner may start the requests
-      // late, and the test timeout is the only bound. A request that settles while the barrier
+      // late, and the test timeout aborts the signal and ends the loop. A request that settles while the barrier
       // is held was not serialized by it, so stop waiting and let the assertion fail (#762).
       let settledEarly = false;
       for (const operation of operations) {
@@ -1627,7 +1629,11 @@ describe("API integration: legacy task writes respect PR-15 project archive free
         );
       }
       let blockedCount = 0;
-      while (blockedCount < operations.length && !settledEarly) {
+      while (
+        blockedCount < operations.length &&
+        !settledEarly &&
+        !signal.aborted
+      ) {
         const waiters = await client.query<{
           pid: number;
           blockers: number[];
@@ -1690,7 +1696,9 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     }
   });
 
-  it("uses exclusive liveness locks for simultaneous helper-level task-number claims", async () => {
+  it("uses exclusive liveness locks for simultaneous helper-level task-number claims", async ({
+    signal,
+  }) => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
@@ -1777,7 +1785,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       createTransaction = claimAndInsert(createDb, "Concurrent create");
       importTransaction = claimAndInsert(importDb, "Concurrent import");
 
-      // Condition-based wait with no deadline (the test timeout bounds it); a writer that
+      // Condition-based wait with no deadline (the test timeout aborts the signal and ends it); a writer that
       // settles while the barrier is held was not blocked, so stop and fail the assertion (#762).
       let settledEarly = false;
       for (const transaction of [createTransaction, importTransaction]) {
@@ -1791,7 +1799,11 @@ describe("API integration: legacy task writes respect PR-15 project archive free
         );
       }
       let waitingPids: number[] = [];
-      while (waitingPids.length < writerPids.length && !settledEarly) {
+      while (
+        waitingPids.length < writerPids.length &&
+        !settledEarly &&
+        !signal.aborted
+      ) {
         const waiting = await barrierClient.query<{ pid: number }>(
           `
             SELECT pid
