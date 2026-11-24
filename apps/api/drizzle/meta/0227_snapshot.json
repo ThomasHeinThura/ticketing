@@ -1,5 +1,5 @@
 {
-	"id": "5cbf81d3-4133-4e68-a5ca-d8afe5776047",
+	"id": "71c2175c-4268-4da7-a063-2a0c9ae165c4",
 	"prevId": "cded9135-06e2-47cf-9200-9a1594c53ead",
 	"version": "7",
 	"dialect": "postgresql",
@@ -6335,12 +6335,26 @@
 					"columnsTo": ["id"],
 					"onDelete": "restrict",
 					"onUpdate": "cascade"
+				},
+				"membership_role_scope_fk": {
+					"name": "membership_role_scope_fk",
+					"tableFrom": "membership",
+					"tableTo": "role",
+					"columnsFrom": ["role_id", "scope"],
+					"columnsTo": ["id", "scope"],
+					"onDelete": "restrict",
+					"onUpdate": "cascade"
 				}
 			},
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"policies": {},
-			"checkConstraints": {},
+			"checkConstraints": {
+				"membership_scope_check": {
+					"name": "membership_scope_check",
+					"value": "scope = ANY (ARRAY['instance'::text, 'organisation'::text, 'workspace'::text, 'project'::text])"
+				}
+			},
 			"isRLSEnabled": false
 		},
 		"public.milestone": {
@@ -8025,6 +8039,10 @@
 				"organisation_deletion_generation_safe": {
 					"name": "organisation_deletion_generation_safe",
 					"value": "deletion_generation >= 0 AND deletion_generation <= 9007199254740991"
+				},
+				"organisation_default_customer_visibility_check": {
+					"name": "organisation_default_customer_visibility_check",
+					"value": "default_customer_visibility = ANY (ARRAY['private'::text, 'organisation'::text])"
 				}
 			},
 			"isRLSEnabled": false
@@ -8908,7 +8926,12 @@
 			"compositePrimaryKeys": {},
 			"uniqueConstraints": {},
 			"policies": {},
-			"checkConstraints": {},
+			"checkConstraints": {
+				"person_side_check": {
+					"name": "person_side_check",
+					"value": "side = ANY (ARRAY['staff'::text, 'customer'::text])"
+				}
+			},
 			"isRLSEnabled": false
 		},
 		"public.prerequisite": {
@@ -10738,9 +10761,20 @@
 				}
 			},
 			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
+			"uniqueConstraints": {
+				"role_id_scope_unique": {
+					"name": "role_id_scope_unique",
+					"nullsNotDistinct": false,
+					"columns": ["id", "scope"]
+				}
+			},
 			"policies": {},
-			"checkConstraints": {},
+			"checkConstraints": {
+				"role_scope_check": {
+					"name": "role_scope_check",
+					"value": "scope = ANY (ARRAY['instance'::text, 'organisation'::text, 'workspace'::text, 'project'::text])"
+				}
+			},
 			"isRLSEnabled": false
 		},
 		"public.satisfaction_rating": {
@@ -25832,12 +25866,6 @@
 				"source_cursor": {
 					"name": "source_cursor",
 					"type": "text",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"pending_publish": {
-					"name": "pending_publish",
-					"type": "jsonb",
 					"primaryKey": false,
 					"notNull": false
 				},

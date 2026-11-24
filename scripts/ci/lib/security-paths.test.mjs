@@ -41,6 +41,8 @@ const MUST_REQUIRE_REVIEW = [
   "scripts/ci/check-env.mjs",
   "scripts/ci/lib/diff.mjs",
   "scripts/ci/lib/security-paths.mjs",
+  // the drizzle config pulls schema files outside the covered folders (#139)
+  "apps/api/drizzle.config.ts",
   "scripts/lib/local-certificate.sh",
   "scripts/ci/env-baseline.json",
   "scripts/ci/redocly.yaml",

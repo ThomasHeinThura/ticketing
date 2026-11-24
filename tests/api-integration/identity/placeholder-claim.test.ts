@@ -444,16 +444,28 @@ describe("IP-30 imported placeholder claims", () => {
         )
         .limit(1);
       if (!ownerRole) throw new Error("canonical owner role fixture missing");
-      const [membership] = await db
-        .insert(schema.membershipTable)
-        .values({
-          personId: data.placeholder.id,
-          scope: "workspace",
-          scopeId: data.workspace.id,
-          roleId: ownerRole.id,
-          seesAll: true,
-        })
-        .returning();
+      // #181: the database now refuses this row, so plant it past the trigger. The claim
+      // code's own refusal stays as defence in depth. DDL is transactional, so the trigger is
+      // never left disabled for other tests, even if this fails.
+      const [membership] = await db.transaction(async (tx) => {
+        await tx.execute(
+          sql`ALTER TABLE membership DISABLE TRIGGER membership_reject_placeholder`,
+        );
+        const inserted = await tx
+          .insert(schema.membershipTable)
+          .values({
+            personId: data.placeholder.id,
+            scope: "workspace",
+            scopeId: data.workspace.id,
+            roleId: ownerRole.id,
+            seesAll: true,
+          })
+          .returning();
+        await tx.execute(
+          sql`ALTER TABLE membership ENABLE TRIGGER membership_reject_placeholder`,
+        );
+        return inserted;
+      });
       if (!membership)
         throw new Error("placeholder membership fixture missing");
       if (authorityKind === "grant") {
