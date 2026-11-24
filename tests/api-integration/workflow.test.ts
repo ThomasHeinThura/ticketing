@@ -7,7 +7,7 @@
  * `approval` table (#36) for full `requires_approval`/`requires_cab` semantics.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -510,12 +510,16 @@ describe("API integration: workflow persistence", () => {
       })
       .returning();
     if (!wrongScopeRole) throw new Error("Expected malformed role fixture");
-    await db.insert(schema.membershipTable).values({
-      personId: person.id,
-      scope: "project",
-      scopeId: project.project.id,
-      roleId: wrongScopeRole.id,
-      seesAll: false,
+    // Legacy bad data: #181's role-scope FK now refuses this row, so plant it with FK triggers off.
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL session_replication_role = replica`);
+      await tx.insert(schema.membershipTable).values({
+        personId: person.id,
+        scope: "project",
+        scopeId: project.project.id,
+        roleId: wrongScopeRole.id,
+        seesAll: false,
+      });
     });
     const versionResponse = await createWorkflowVersion(workflow.id, {
       transitions: [

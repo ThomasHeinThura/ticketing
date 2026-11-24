@@ -116,7 +116,7 @@ async function makePerson(options: { userId?: string | null }) {
     .values({
       userId: options.userId ?? null,
       organisationId: organisation.id,
-      side: "agent",
+      side: "staff",
     })
     .returning();
   if (!person) throw new Error("person insert failed");

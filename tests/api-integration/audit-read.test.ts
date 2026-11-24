@@ -588,11 +588,15 @@ describe("GET /api/workspaces/{workspaceId}/audit — project reach (#344, AU-10
         .returning(),
       "cross-scope project membership role",
     );
-    await db.insert(schema.membershipTable).values({
-      personId,
-      scope: "project",
-      scopeId: crossScope.id,
-      roleId: crossScopeRole.id,
+    // Legacy bad data: #181's role-scope FK now refuses this row, so plant it with FK triggers off.
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL session_replication_role = replica`);
+      await tx.insert(schema.membershipTable).values({
+        personId,
+        scope: "project",
+        scopeId: crossScope.id,
+        roleId: crossScopeRole.id,
+      });
     });
 
     const malformedDefinitionRole = requireRow(
