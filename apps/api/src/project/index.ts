@@ -1141,11 +1141,11 @@ const project = apiRouter<
     // deleted), so the route cannot be used to enumerate keys.
     const notFound = () =>
       new HTTPException(404, { message: "Project not found" });
+    // Reach is computed before the key is looked up, so every path does the same work.
+    const reachable = await listReachOf(c).reachableProjectIds([workspaceId]);
     if (key.includes("\u0000")) throw notFound();
     const found = await findCurrentSlugByClaim(db, workspaceId, key);
-    if (!found) throw notFound();
-    const reachable = await listReachOf(c).reachableProjectIds([workspaceId]);
-    if (!reachable.includes(found.id)) throw notFound();
+    if (!found || !reachable.includes(found.id)) throw notFound();
     return c.json({ slug: found.slug }, 200);
   })
   .openapi(listProjectsRoute, async (c) => {
