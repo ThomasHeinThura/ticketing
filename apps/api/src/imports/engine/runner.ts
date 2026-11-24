@@ -27,11 +27,8 @@ import {
 import { lockInstanceAdminSerializationShared } from "../../instance/users/repository";
 import {
   assertJobExecutionOwned,
-  currentJobLease,
-  JobExecutionReservationLostError,
   withJobLease,
 } from "../../scheduler/leader-lock";
-import { dbNowUtc } from "../../utils/db-time";
 import { withCreationTransaction } from "../../work-item/create-preparation";
 import {
   type ImportActor,
@@ -169,7 +166,7 @@ export type RunnerOptions = {
   /** Test seam: awaited right after a chunk transaction returned, so a test can fail an "uncertain" commit. */
   afterCommit?: () => Promise<void>;
   /** Test seam: awaited at the start of each pending-publish drain ("select") and before each chunk's clear. */
-  duringDrain?: (stage: "select" | "clear") => Promise<void>;
+  duringDrain?: (stage: "select" | "clear", chunkId?: string) => Promise<void>;
   /** Test seam: awaited before each run reload, so a test can fail the reload itself. */
   beforeSnapshot?: () => Promise<void>;
   /** Test seam: awaited after a transient failure's backoff, before the run is reloaded for the retry. */
@@ -206,7 +203,6 @@ export async function runImportRunJob(
     () => runImportRun(runId, options),
     () => ({ status: "idle" as const, chunks: 0 }),
     IMPORT_RUN_LEASE_MS,
-    { enforceOwnership: true },
   );
 }
 
@@ -394,11 +390,14 @@ export function revivePendingPublish(pending: PendingPublish): PendingPublish {
 
 /**
  * Dispatch every chunk's stored publish events in sequence order and clear each only after its
- * dispatch succeeded. A crash between dispatch and clear republishes (duplicates are allowed).
- * Under a job lease both the dispatch and the clear require still owning it, so a replica that
- * lost its lease neither publishes older events nor clears a chunk the new owner will drain.
+ * dispatch succeeded. A crash between dispatch and clear republishes (duplicates are allowed). The
+ * clear is a compare-and-clear against the stored payload as read: a payload rewritten since is
+ * kept, and a concurrent drain of the same chunk only republishes.
  */
-async function drainPendingPublish(runId: string, options: RunnerOptions = {}) {
+export async function drainPendingPublish(
+  runId: string,
+  options: RunnerOptions = {},
+) {
   await options.duringDrain?.("select");
   const rows = await db
     .select({
@@ -414,27 +413,25 @@ async function drainPendingPublish(runId: string, options: RunnerOptions = {}) {
     )
     .orderBy(asc(importChunkTable.sequence));
   for (const row of rows) {
-    await assertJobExecutionOwned();
-    await publishCommittedImport({
-      kind: "committed",
-      ...revivePendingPublish(row.pending as PendingPublish),
-    } as Parameters<typeof publishCommittedImport>[0]);
-    await options.duringDrain?.("clear");
-    const lease = currentJobLease();
-    const cleared = await db
+    // The original stored value, before any revival, is what the clear compares against.
+    const stored = JSON.stringify(row.pending);
+    await publishCommittedImport(
+      {
+        kind: "committed",
+        ...revivePendingPublish(row.pending as PendingPublish),
+      } as Parameters<typeof publishCommittedImport>[0],
+      { alertKey: row.id },
+    );
+    await options.duringDrain?.("clear", row.id);
+    await db
       .update(importChunkTable)
       .set({ pendingPublish: null })
       .where(
         and(
           eq(importChunkTable.id, row.id),
-          lease
-            ? sql`EXISTS (SELECT 1 FROM job_lease WHERE "name" = ${lease.name} AND "owner" = ${lease.owner} AND "expires_at" > ${dbNowUtc()})`
-            : undefined,
+          sql`${importChunkTable.pendingPublish} = ${stored}::jsonb`,
         ),
-      )
-      .returning({ id: importChunkTable.id });
-    if (lease && cleared.length === 0)
-      throw new JobExecutionReservationLostError();
+      );
   }
 }
 

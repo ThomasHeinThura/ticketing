@@ -34,14 +34,6 @@ export function withJobExecutionReservation<T>(
   return executionContext.run(reservation, run);
 }
 
-/** The lease the current execution holds, for work that must be conditional on still owning it. */
-export function currentJobLease(): { name: string; owner: string } | null {
-  const reservation = executionContext.getStore();
-  return reservation?.leaseOwner
-    ? { name: reservation.jobName, owner: reservation.leaseOwner }
-    : null;
-}
-
 /** Check at a handler's next safe work boundary; this cannot cancel an in-flight SQL call. */
 export async function assertJobExecutionOwned(): Promise<void> {
   const reservation = executionContext.getStore();
@@ -87,7 +79,6 @@ export async function withJobLease<T>(
   run: () => Promise<T>,
   whenHeldElsewhere: () => T,
   leaseMs: number = DEFAULT_LEASE_MS,
-  options: { enforceOwnership?: boolean } = {},
 ): Promise<T> {
   const ttl = `${leaseMs} milliseconds`;
 
@@ -107,19 +98,9 @@ export async function withJobLease<T>(
 
   if (isJobLease) current.onLeaseClaimed?.(INSTANCE_ID);
   try {
-    // Without a surrounding job reservation (a run started directly by a route) the lease is not
-    // checked at all unless the caller opts in, which makes `assertJobExecutionOwned` real for it.
     const reservation = current
       ? { ...current, jobName: name, leaseOwner: INSTANCE_ID }
-      : options.enforceOwnership
-        ? {
-            jobName: name,
-            runId: name,
-            runnerId: INSTANCE_ID,
-            leaseOwner: INSTANCE_ID,
-            assertRunOwned: async () => true,
-          }
-        : undefined;
+      : undefined;
     if (!reservation) return await run();
     return await withJobExecutionReservation(reservation, async () => {
       await assertJobExecutionOwned();

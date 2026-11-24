@@ -6,25 +6,29 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
-import { importChunkTable } from "../../../apps/api/src/database/schema-imports";
+import {
+  importChunkTable,
+  importLossTable,
+} from "../../../apps/api/src/database/schema-imports";
 import { subscribeToEvent } from "../../../apps/api/src/events";
 import {
   unreadableRecord,
   unregisterImportAdapter,
 } from "../../../apps/api/src/imports/engine/adapter";
 import {
+  drainPendingPublish,
   isTransientImportError,
   revivePendingPublish,
   runImportRun,
-  runImportRunJob,
   setImportEngineAutoStart,
 } from "../../../apps/api/src/imports/engine/runner";
 import { clearFakeFixtures } from "../../../apps/api/src/imports/engine/test-adapter";
 import { setImportAttachmentDependencies } from "../../../apps/api/src/imports/writer";
 import { createApp } from "../../../apps/api/src/index";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../../apps/api/src/instance/observability/audit-failure-notifier";
 import { createWorkItem } from "../../../apps/api/src/work-item/controllers/create-work-item";
 import { resetTestDatabase } from "../helpers/database";
 import {
@@ -703,46 +707,178 @@ describe("transient chunk failures (#895)", () => {
     expect(pending).toHaveLength(0);
   });
 
-  it("a worker that lost its lease neither publishes nor clears pending events", async () => {
-    const steal = (runId: string) =>
-      db.execute(
-        sql`UPDATE job_lease SET "owner" = 'other-replica' WHERE "name" = ${`import-run:${runId}`}`,
-      );
-    const pendingCount = async () =>
-      (
-        await db
-          .select({ id: importChunkTable.id })
-          .from(importChunkTable)
-          .where(sql`${importChunkTable.pendingPublish} IS NOT NULL`)
-      ).length;
-
-    // Ownership moves before the drain's dispatch: nothing is published, the chunk stays pending.
-    const first = await executed("stale-publish", 10);
-    const events: unknown[] = [];
-    await subscribeToEvent("work_item.created", async (d) => {
-      events.push(d);
+  describe("durable publish replay", () => {
+    const PNG = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4, 5, 6, 7, 8,
+    ]);
+    let root: string;
+    // biome-ignore lint/suspicious/noUndeclaredEnvVars: the test sets this environment value for itself.
+    const originalRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+    beforeEach(async () => {
+      root = await mkdtemp(path.join(tmpdir(), "t895r-"));
+      process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = root;
     });
-    await expect(
-      runImportRunJob(first.run.id, {
-        duringDrain: async (stage) => {
-          if (stage === "select") await steal(first.run.id);
-        },
-      }),
-    ).rejects.toThrow(/reservation is no longer owned/);
-    expect(events).toHaveLength(0);
-    expect(await pendingCount()).toBe(1);
+    afterEach(async () => {
+      setImportAttachmentDependencies(null);
+      await rm(root, { recursive: true, force: true });
+      if (originalRoot === undefined)
+        delete process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
+      else process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = originalRoot;
+    });
 
-    // Ownership moves after dispatch, before the clear: the stale worker cannot clear it.
-    await resetTestDatabase();
-    clearFakeFixtures();
-    const second = await executed("stale-clear", 10);
-    await expect(
-      runImportRunJob(second.run.id, {
+    const pendingRows = () =>
+      db
+        .select()
+        .from(importChunkTable)
+        .where(sql`${importChunkTable.pendingPublish} IS NOT NULL`);
+
+    /** Runs a one-chunk import whose pending-publish clear always fails: dispatched, never cleared. */
+    async function leavePending(id: string, withAttachment: boolean) {
+      const f = await engineFixture();
+      const [record] = makeRecords(f.type.key, 1);
+      setFakeFixture(id, {
+        records: [
+          {
+            ...(record as NonNullable<typeof record>),
+            ...(withAttachment
+              ? {
+                  attachments: [
+                    {
+                      sourceId: "a1",
+                      url: "https://files.source.example.test/a.png",
+                      filename: "a.png",
+                    },
+                  ],
+                }
+              : {}),
+          },
+        ],
+      });
+      const { app } = createApp();
+      const { run, mapping } = await startRun(app, f, id);
+      await confirmAll(app, f.key, run.id, mapping.mappingVersion);
+      const dry = await dryRunAndExecuteBody(app, f.key, run.id);
+      await call(
+        app,
+        f.key,
+        `/api/imports/${run.id}/execute`,
+        post(dry.body),
+        202,
+      );
+      const outcome = await runImportRun(run.id, {
         duringDrain: async (stage) => {
-          if (stage === "clear") await steal(second.run.id);
+          if (stage === "clear") throw pgError("57P01");
         },
-      }),
-    ).rejects.toThrow(/reservation is no longer owned/);
-    expect(await pendingCount()).toBe(1);
+      });
+      expect(outcome).toMatchObject({ pausedReason: "chunk_failed" });
+      expect(await pendingRows()).toHaveLength(1);
+      return { f, run };
+    }
+
+    const chunkReport = async () =>
+      (await db.select().from(importChunkTable))[0]?.report as Record<
+        string,
+        any
+      >;
+    const lossRows = async () =>
+      (await db.select().from(importLossTable)).filter(
+        (l) => l.code === "attachment_download_failed",
+      );
+
+    it("two concurrent drains of one chunk lose no clear and only duplicate events", async () => {
+      const { run } = await leavePending("two-drains", false);
+      const events: unknown[] = [];
+      await subscribeToEvent("work_item.created", async (d) => {
+        events.push(d);
+      });
+      await Promise.all([
+        drainPendingPublish(run.id),
+        drainPendingPublish(run.id),
+      ]);
+      expect(events.length).toBeGreaterThanOrEqual(1);
+      expect(events.length).toBeLessThanOrEqual(2);
+      expect(await pendingRows()).toHaveLength(0);
+    });
+
+    it("a payload rewritten between the read and the clear stays stored", async () => {
+      const { run } = await leavePending("rewritten", false);
+      const replacement = {
+        createdResults: [],
+        updateResults: [],
+        attachmentJobs: [],
+        auditFailure: false,
+        marker: "newer",
+      };
+      await drainPendingPublish(run.id, {
+        duringDrain: async (stage, chunkId) => {
+          if (stage === "clear")
+            await db
+              .update(importChunkTable)
+              .set({ pendingPublish: replacement })
+              .where(eq(importChunkTable.id, chunkId as string));
+        },
+      });
+      const rows = await pendingRows();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.pendingPublish).toEqual(replacement);
+    });
+
+    it("an attachment that keeps failing across replays is counted once", async () => {
+      setImportAttachmentDependencies({
+        download: vi.fn(async () => ({
+          ok: false as const,
+          code: "failed" as const,
+        })),
+      });
+      await leavePending("fail-once", true); // four dispatches, four replays of the same job
+      expect((await chunkReport()).lossCounts?.attachment_download_failed).toBe(
+        1,
+      );
+      expect(await lossRows()).toHaveLength(1);
+    });
+
+    it("a replay after the attachment succeeded adds no loss and does not download again", async () => {
+      const download = vi.fn(async () => ({
+        ok: true as const,
+        bytes: PNG,
+        contentType: "image/png",
+      }));
+      setImportAttachmentDependencies({ download });
+      await leavePending("succeeded", true);
+      expect(download).toHaveBeenCalledTimes(1);
+      expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
+      expect((await chunkReport()).lossCounts?.attachment_download_failed).toBe(
+        undefined,
+      );
+      expect(await lossRows()).toHaveLength(0);
+    });
+
+    it("a replayed audit-failure alert is raised once per admin", async () => {
+      await engineFixture();
+      const alerts = async () =>
+        (await db.select().from(schema.notificationTable)).filter(
+          (n) => n.type === "audit_write_failed",
+        );
+      await notifyCurrentInstanceAdminsOfAuditFailure(
+        "mutation",
+        new Date(),
+        "chunk-1:chunk",
+      );
+      const first = (await alerts()).length;
+      expect(first).toBeGreaterThan(0);
+      await notifyCurrentInstanceAdminsOfAuditFailure(
+        "mutation",
+        new Date(),
+        "chunk-1:chunk",
+      );
+      expect(await alerts()).toHaveLength(first);
+      // A different write still alerts; an un-keyed call keeps its old behaviour.
+      await notifyCurrentInstanceAdminsOfAuditFailure(
+        "mutation",
+        new Date(),
+        "chunk-2:chunk",
+      );
+      expect(await alerts()).toHaveLength(first * 2);
+    });
   });
 });

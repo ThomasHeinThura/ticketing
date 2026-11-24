@@ -206,9 +206,17 @@ export async function updateImportedWorkItemInTransaction(
 
 export async function publishImportedWorkItemUpdate(
   result: ImportUpdateResult,
+  alertKey?: string,
 ) {
-  if (result.auditFailed)
-    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  if (result.auditFailed) {
+    if (alertKey)
+      await notifyCurrentInstanceAdminsOfAuditFailure(
+        "mutation",
+        new Date(),
+        alertKey,
+      );
+    else await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  }
   if (!result.changes.length) return;
   await publishEvent("work_item.updated", {
     workItemId: result.updated.id,

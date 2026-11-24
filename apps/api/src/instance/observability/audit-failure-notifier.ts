@@ -28,16 +28,23 @@ export async function isCurrentInstanceAdmin(
 /**
  * AU-14 durable alert. Each retry is an independent transaction after the caller's audit
  * savepoint has rolled back. Notifications carry only the finite operation and timestamp.
+ * A `dedupeKey` (a stable id of the failing write, e.g. an import chunk) makes a replay of the same
+ * alert a no-op per admin: it is stored as the event id of the existing
+ * `notification_event_person_unique` index.
  */
 export async function notifyCurrentInstanceAdminsOfAuditFailure(
   operation: AuditFailureOperation,
   occurredAt = new Date(),
+  dedupeKey?: string,
 ): Promise<void> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       await db.transaction(async (tx) => {
         const admins = await tx
-          .selectDistinct({ userId: schema.userTable.id })
+          .selectDistinct({
+            userId: schema.userTable.id,
+            personId: schema.personTable.id,
+          })
           .from(schema.userTable)
           .innerJoin(
             schema.personTable,
@@ -49,19 +56,25 @@ export async function notifyCurrentInstanceAdminsOfAuditFailure(
           )
           .where(eq(schema.userTable.role, "admin"));
         if (admins.length === 0) return;
-        await tx.insert(schema.notificationTable).values(
-          admins.map(({ userId }) => ({
-            userId,
-            title: "An audit write failed",
-            content: `An audit write failed during ${operation}.`,
-            type: "audit_write_failed",
-            eventData: { operation, occurredAt: occurredAt.toISOString() },
-            resourceId: "singleton",
-            resourceType: "instance",
-            createdAt: occurredAt,
-            updatedAt: occurredAt,
-          })),
-        );
+        await tx
+          .insert(schema.notificationTable)
+          .values(
+            admins.map(({ userId, personId }) => ({
+              userId,
+              ...(dedupeKey
+                ? { personId, eventId: `audit-failure:${dedupeKey}` }
+                : {}),
+              title: "An audit write failed",
+              content: `An audit write failed during ${operation}.`,
+              type: "audit_write_failed",
+              eventData: { operation, occurredAt: occurredAt.toISOString() },
+              resourceId: "singleton",
+              resourceType: "instance",
+              createdAt: occurredAt,
+              updatedAt: occurredAt,
+            })),
+          )
+          .onConflictDoNothing();
       });
       return;
     } catch {
