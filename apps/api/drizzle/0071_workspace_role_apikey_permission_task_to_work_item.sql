@@ -5,8 +5,6 @@
 -- during the rolling deployment so neither version loses existing permissions. A later
 -- contract migration may remove `task` only after old binaries are no longer serving and
 -- the rollback window has ended.
--- That contract migration is 0228_drop_legacy_task_permission_key.sql: `task` is no longer
--- a supported key.
 --
 -- The pre-upgrade `task` value is authoritative if both keys already exist: it is what the
 -- previous code enforced. Copy it to `work_item` but retain `task` for old replicas. Replays
