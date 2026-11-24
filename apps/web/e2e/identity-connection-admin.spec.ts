@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
+  expectCleared,
+  fillSensitive,
+} from "../../../tests/e2e/helpers/fill-sensitive";
+import {
   CLIENT_ID,
   enterVerification,
   expectNoSeriousAxeViolations,
@@ -7,6 +11,11 @@ import {
   newIdentityFixture,
   TENANT_ID,
 } from "./helpers/identity-admin-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
@@ -90,7 +99,7 @@ test("editing a connection proves the exact change, sends only changed fields an
       body: request,
     },
   ]);
-  await expect(page.getByLabel("Authenticator code").first()).toHaveValue("");
+  await expectCleared(page.getByLabel("Authenticator code").first(), expect);
   // The stored secret is never rendered and the URL carries no form state.
   expect(page.url()).toBe(
     `http://127.0.0.1:${new URL(page.url()).port}${LIST}/conn-staff`,
@@ -248,7 +257,10 @@ test("creating a connection is disabled-by-default, staff-only and bound to the 
   await page.getByLabel("Connection name").fill("New staff connection");
   await page.getByLabel("Entra tenant ID").fill(TENANT_ID);
   await page.getByLabel("Application (client) ID").fill(CLIENT_ID);
-  await page.getByLabel("Client secret").fill("fake-secret-placeholder");
+  await fillSensitive(
+    page.getByLabel("Client secret"),
+    "fake-secret-placeholder",
+  );
   await page.getByLabel("Required Entra app role").fill("TaskDesk.User");
   await page.getByLabel("Maximum role rank").fill("10");
   await enterVerification(page);
@@ -268,7 +280,11 @@ test("creating a connection is disabled-by-default, staff-only and bound to the 
     portalScope: "agent",
     organisationId: null,
   });
-  expect(fixture.mutations[0]?.body).toEqual(challenge.request);
+  // Boolean compare: the body holds the submitted client secret.
+  expect(
+    JSON.stringify(fixture.mutations[0]?.body) ===
+      JSON.stringify(challenge.request),
+  ).toBe(true);
 });
 
 test("a session without the instance-admin signal never sees the create form or reads identity data", async ({

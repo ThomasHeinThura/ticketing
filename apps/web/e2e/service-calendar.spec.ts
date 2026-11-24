@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { expect, type Page, test } from "@playwright/test";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const uiRequire = createRequire(
   new URL("../../../packages/ui/package.json", import.meta.url),
@@ -97,7 +102,7 @@ async function expectNoSeriousAxeViolations(page: Page) {
           id: string;
           impact: string | null;
           help: string;
-          nodes: Array<{ target: string[]; failureSummary?: string }>;
+          nodes: Array<{ target: string[] }>;
         }>;
       }>;
     };
@@ -108,7 +113,11 @@ async function expectNoSeriousAxeViolations(page: Page) {
         (violation) =>
           violation.impact === "serious" || violation.impact === "critical",
       )
-      .map(({ id, impact, help, nodes }) => ({ id, impact, help, nodes }));
+      .map(({ id, impact, nodes }) => ({
+        id,
+        impact,
+        targets: nodes.map(({ target }) => target.join(" ")),
+      }));
   });
   expect(seriousOrCriticalViolations).toEqual([]);
 }

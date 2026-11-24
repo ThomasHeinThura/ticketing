@@ -6,6 +6,11 @@ import {
   WORK_ITEM_KEY,
   WORKSPACE_ID,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const STATES = [
   { id: "state-backlog", name: "Backlog", group: "backlog" },

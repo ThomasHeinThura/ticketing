@@ -10,6 +10,11 @@ import {
   test,
 } from "@playwright/test";
 import {
+  expectPrivately,
+  fillSensitive,
+  matchesPartial,
+} from "../../../tests/e2e/helpers/fill-sensitive";
+import {
   navigateToSetup,
   totpForUri,
   withMfaCsrfApp,
@@ -72,7 +77,10 @@ async function createAdminWorkspace(
   });
   await test.step("Setup diagnostic: sign-up password field entry", async () => {
     console.info("Setup diagnostic begin: sign-up password field entry");
-    await page.locator('input[autocomplete="new-password"]').fill(password);
+    await fillSensitive(
+      page.locator('input[autocomplete="new-password"]'),
+      password,
+    );
     console.info("Setup diagnostic completed: sign-up password field entry");
   });
   const signUpListener =
@@ -164,7 +172,10 @@ async function signInThroughUi(
   });
   await test.step("Setup diagnostic: sign-in password field entry", async () => {
     console.info("Setup diagnostic begin: sign-in password field entry");
-    await page.locator('input[autocomplete="current-password"]').fill(password);
+    await fillSensitive(
+      page.locator('input[autocomplete="current-password"]'),
+      password,
+    );
     console.info("Setup diagnostic completed: sign-in password field entry");
   });
   await test.step("Setup diagnostic: sign-in button click", async () => {
@@ -175,7 +186,10 @@ async function signInThroughUi(
   if (provisioningUri) {
     await test.step("Setup diagnostic: complete authenticator challenge", async () => {
       await expect(page).toHaveURL(/\/auth\/two-factor(?:\?|$)/);
-      await page.locator("#factor-code").fill(totpForUri(provisioningUri));
+      await fillSensitive(
+        page.locator("#factor-code"),
+        totpForUri(provisioningUri),
+      );
       await page.getByRole("button", { name: "Verify and sign in" }).click();
     });
   }
@@ -247,7 +261,7 @@ async function setupWorkItem(
     },
   );
   const projectText = await projectResponse.text();
-  expect(projectResponse.status(), projectText).toBe(200);
+  expect(projectResponse.status(), "unexpected status").toBe(200);
   const project = JSON.parse(projectText) as { id: string };
   expect(project.id).toBeTruthy();
 
@@ -262,7 +276,7 @@ async function setupWorkItem(
     },
   );
   const itemText = await itemResponse.text();
-  expect(itemResponse.status(), itemText).toBe(200);
+  expect(itemResponse.status(), "unexpected status").toBe(200);
   const item = JSON.parse(itemText) as { id: string; key: string };
   expect(item.id).toBeTruthy();
   expect(item.key).toBeTruthy();
@@ -471,7 +485,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       await title.fill("Inline edited work item");
       await title.press("Tab");
       const response = await titleSaved;
-      expect(response.status(), await response.text()).toBe(200);
+      expect(response.status(), "unexpected status").toBe(200);
       expect(response.request().headers()["if-match"]).toMatch(/^"\d+"$/);
       const description = page.getByRole("region", {
         name: "Description",
@@ -508,7 +522,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
           },
         },
       );
-      expect(response.status(), await response.text()).toBe(200);
+      expect(response.status(), "unexpected status").toBe(200);
       await page.reload();
       const trigger = page.getByRole("button", { name: "Labels", exact: true });
       await expect(trigger).toBeEnabled();
@@ -557,7 +571,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         .getByRole("button", { name: "Create Label", exact: true })
         .click();
       const response = await created;
-      expect(response.status(), await response.text()).toBe(200);
+      expect(response.status(), "unexpected status").toBe(200);
       await expect(dialog).not.toBeVisible();
       await page.reload();
       await expect(
@@ -744,11 +758,15 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       ).toString(),
     );
     expect(capabilities.status()).toBe(200);
-    expect(await capabilities.json()).toMatchObject({
-      updateTasks: false,
-      createPublicComments: true,
-      createInternalComments: true,
-    });
+    const received2 = await capabilities.json();
+    expectPrivately(
+      matchesPartial(received2, {
+        updateTasks: false,
+        createPublicComments: true,
+        createInternalComments: true,
+      }),
+      "Private check failed.",
+    );
     await page.goto(itemUrl);
     await expect(
       page.getByRole("textbox", { name: "Title", exact: true }),
@@ -876,7 +894,11 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         },
       );
       expect(response.status()).toBe(400);
-      expect(await response.text()).toContain("body must not exceed");
+      const received1 = await response.text();
+      expectPrivately(
+        received1.includes("body must not exceed"),
+        "Private check failed.",
+      );
     });
 
     await visibility
@@ -1209,7 +1231,7 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
       await test.step("CA19 phase: validate canned-response API create", async () => {
         console.info("CA19 phase begin: validate canned-response API create");
         const createdText = created.text;
-        expect(created.status, createdText).toBe(200);
+        expect(created.status, "unexpected status").toBe(200);
         const result = JSON.parse(createdText) as { id: string; body: unknown };
         expect(result.id).toBeTruthy();
         expect(JSON.stringify(result.body)).toContain("{{work_item.key}}");
@@ -1297,7 +1319,7 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
             data: { dueDate: "2026-10-25T00:00:00.000Z" },
           },
         );
-        expect(changedDueDate.status(), await changedDueDate.text()).toBe(200);
+        expect(changedDueDate.status(), "unexpected status").toBe(200);
         // Kaneo's picker popover: a trigger button opening a list of option buttons.
         const responseSelect = page.getByRole("button", {
           name: "Canned responses",

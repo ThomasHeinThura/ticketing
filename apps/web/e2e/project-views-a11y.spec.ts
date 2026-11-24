@@ -8,6 +8,11 @@ import {
   WORKSPACE_ID,
 } from "./helpers/g11-performance-fixture";
 import { installProjectOverviewFixture } from "./helpers/project-overview-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const uiRequire = createRequire(
   new URL("../../../packages/ui/package.json", import.meta.url),
@@ -91,7 +96,7 @@ async function seriousOrCriticalViolations(page: Page) {
         violations: Array<{
           id: string;
           impact: string | null;
-          nodes: Array<{ target: string[]; html: string }>;
+          nodes: Array<{ target: string[] }>;
         }>;
       }>;
     };
@@ -107,9 +112,7 @@ async function seriousOrCriticalViolations(page: Page) {
       .map((v) => ({
         id: v.id,
         impact: v.impact,
-        nodes: v.nodes.map(
-          (n) => `${n.target.join(" ")} :: ${n.html.slice(0, 160)}`,
-        ),
+        targets: v.nodes.map((n) => n.target.join(" ")),
       }));
   });
 }

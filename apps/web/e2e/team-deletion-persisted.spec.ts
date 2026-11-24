@@ -11,6 +11,7 @@ import {
   test,
 } from "@playwright/test";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixtureSetup,
   navigateToSetup,
@@ -688,9 +689,10 @@ test("team deletion requires its exact name in the shared dialog and refuses dir
             .getByLabel("Full name")
             .fill("Team Deletion Journey Admin");
           await page.getByLabel("Email").fill(email);
-          await page
-            .locator('input[autocomplete="new-password"]')
-            .fill(password);
+          await fillSensitive(
+            page.locator('input[autocomplete="new-password"]'),
+            password,
+          );
           await page.getByRole("button", { name: "Create account" }).click();
           await enrollFirstAdmin(page, origin, password);
           const workspaceId = await createFirstWorkspace(

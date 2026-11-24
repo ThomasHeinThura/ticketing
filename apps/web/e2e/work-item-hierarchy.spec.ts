@@ -1,6 +1,11 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { seriousOrCriticalViolations } from "./helpers/axe";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const node = (number: number, extra = {}) => ({
   id: `item-${number}`,

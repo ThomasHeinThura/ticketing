@@ -4,6 +4,11 @@ import {
   installIdentityAdminFixture,
   newIdentityFixture,
 } from "./helpers/identity-admin-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 type ProbeStatus = "verified" | "read_failed" | "timed_out";
 

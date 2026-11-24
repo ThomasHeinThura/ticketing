@@ -4,6 +4,11 @@ import {
   installPerformanceApiFixture,
   WORK_LIST_PATH,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const SEARCH_ROUTE = "**/api/work-items/search";
 /** `layout=list` is Kaneo's grouped list; rows, columns and headers are the table layout. */

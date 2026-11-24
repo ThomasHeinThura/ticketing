@@ -1,5 +1,6 @@
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   withMfaCsrfApp,
@@ -89,9 +90,10 @@ test("project key creation and rename respect role, viewport, theme and host", a
             .getByLabel("Full name")
             .fill("Disposable Matrix Setup");
           await bootstrap.getByLabel("Email").fill(email);
-          await bootstrap
-            .locator('input[autocomplete="new-password"]')
-            .fill(password);
+          await fillSensitive(
+            bootstrap.locator('input[autocomplete="new-password"]'),
+            password,
+          );
           await bootstrap
             .getByRole("button", { name: "Create account" })
             .click();

@@ -4,6 +4,11 @@ import {
   installPerformanceApiFixture,
   WORK_LIST_PATH,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test("direct work-list visit requests its route chunks once the entry has run, before the session resolves", async ({
   page,

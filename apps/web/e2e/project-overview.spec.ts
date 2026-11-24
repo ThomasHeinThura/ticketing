@@ -5,6 +5,11 @@ import {
   PROJECT as project,
 } from "./helpers/g11-performance-fixture";
 import { installProjectOverviewFixture } from "./helpers/project-overview-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // S3/S3b: a project opens on its Overview; /work and every old project link keep working.
 // The API is mocked at the network edge (the G11 fixture plus a stateful Overview fixture).

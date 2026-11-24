@@ -10,6 +10,7 @@ import {
   type Request,
   test,
 } from "@playwright/test";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   withMfaCsrfApp,
@@ -99,7 +100,7 @@ async function bodyAt(
   status: number,
 ) {
   const text = await response.text();
-  expect(response.status(), text).toBe(status);
+  expect(response.status()).toBe(status);
   return (text ? JSON.parse(text) : {}) as JsonRecord;
 }
 
@@ -178,7 +179,10 @@ test("asks for a service calendar when none resolves, and creates with the chose
     await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill("Disposable Calendar Admin");
     await page.getByLabel("Email").fill(email);
-    await page.locator('input[autocomplete="new-password"]').fill(password);
+    await fillSensitive(
+      page.locator('input[autocomplete="new-password"]'),
+      password,
+    );
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
     const workspaceId = await createFirstWorkspace(

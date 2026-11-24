@@ -116,7 +116,7 @@ test("first administrator completes authenticator enrollment in the browser", as
             ].find((value) => !forbidden.has(value));
             if (!invalid)
               throw new Error("Could not choose an invalid test code.");
-            await code.fill(invalid);
+            await fillSensitive(code, invalid);
             await code.focus();
             await page.keyboard.press("Tab");
             await expect(verify).toBeFocused();

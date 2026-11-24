@@ -16,7 +16,7 @@
     "test:coverage": "pnpm --filter @taskdesk/domain test:coverage",
     "test:contract": "node ./scripts/ci/test-contract.mjs",
     "test:seed": "pnpm --filter @taskdesk/api exec vitest run --config vitest.seed.config.ts",
-    "test:e2e": "pnpm --filter @taskdesk/web test:e2e",
+    "test:e2e": "node tests/e2e/helpers/redact-canary.test.mjs && pnpm --filter @taskdesk/web test:e2e",
     "test:e2e:approvals": "pnpm exec tsc --noEmit -p tests/e2e/tsconfig.approvals.json && pnpm --filter @taskdesk/api build && pnpm --filter @taskdesk/web build && pnpm --filter @taskdesk/web exec playwright test --config ../../tests/e2e/playwright.approvals.config.ts",
     "test:visual": "pnpm check:visual-scope && pnpm --filter @taskdesk/web test:visual",
     "test:perf": "pnpm --filter @taskdesk/web test:perf",

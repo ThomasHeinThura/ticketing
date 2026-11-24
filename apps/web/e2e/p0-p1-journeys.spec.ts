@@ -5,6 +5,11 @@ import {
   PROJECT_ID,
 } from "./helpers/g11-performance-fixture";
 import { installProjectOverviewFixture } from "./helpers/project-overview-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
   test.beforeEach(async ({ page }) => {

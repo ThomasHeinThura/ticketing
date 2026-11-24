@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import type { APIRequestContext, Page, Route } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
+import { fillSensitive } from "./helpers/fill-sensitive";
 import {
   fixtureOwnershipJournal,
   type MfaCsrfAppFixture,
@@ -97,7 +98,10 @@ async function signIn(page: Page, origin: string, person: PortalPerson) {
   await page.goto(new URL("/sign-in", origin).toString());
   await page.getByLabel("Email").fill(person.email);
   await page.getByRole("button", { name: /^sign in$/i }).click();
-  await page.getByLabel("Password", { exact: true }).fill(person.password);
+  await fillSensitive(
+    page.getByLabel("Password", { exact: true }),
+    person.password,
+  );
   const signedIn = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/auth/sign-in/email" &&
@@ -118,7 +122,7 @@ async function setupStaff(page: Page, fixture: MfaCsrfAppFixture) {
   await page.goto(new URL("/auth/sign-up", fixture.origin).toString());
   await page.getByLabel("Full name").fill("Disposable upload agent");
   await page.getByLabel("Email").fill(fixture.email);
-  await page.locator('input[name="password"]').fill(fixture.password);
+  await fillSensitive(page.locator('input[name="password"]'), fixture.password);
   const signup = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/auth/sign-up/email" &&

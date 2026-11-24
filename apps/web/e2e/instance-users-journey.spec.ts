@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   totpForUri,
@@ -51,7 +52,10 @@ async function createAdminWorkspace(
   await navigateToSetup(page, setupUrl);
   await page.getByLabel("Full name").fill("Disposable Users Administrator");
   await page.getByLabel("Email").fill(email);
-  await page.locator('input[autocomplete="new-password"]').fill(password);
+  await fillSensitive(
+    page.locator('input[autocomplete="new-password"]'),
+    password,
+  );
   const signUpPromise = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/auth/sign-up/email" &&
@@ -83,10 +87,16 @@ async function signInWithTotp(
   expect(signOut.status()).toBe(200);
   await page.goto(new URL("/auth/sign-in", origin).toString());
   await page.getByLabel("Email").fill(email);
-  await page.locator('input[autocomplete="current-password"]').fill(password);
+  await fillSensitive(
+    page.locator('input[autocomplete="current-password"]'),
+    password,
+  );
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/auth\/two-factor(?:\?|$)/u);
-  await page.locator("#factor-code").fill(totpForUri(provisioningUri));
+  await fillSensitive(
+    page.locator("#factor-code"),
+    totpForUri(provisioningUri),
+  );
   await page.getByRole("button", { name: "Verify and sign in" }).click();
   await expect(page).toHaveURL(/\/(?:dashboard|agent)(?:\/|\?|$)/u);
 }
@@ -394,7 +404,7 @@ test("real Users UI binds delayed proof and approval to its current route intent
       const grantDialog = page.getByRole("dialog");
       await expect(grantDialog).toContainText(users.staleGrant.email);
       await selectBackupCode(page, "#step-up-method");
-      await page.locator("#step-up-code").fill(backupCodes[0] ?? "");
+      await fillSensitive(page.locator("#step-up-code"), backupCodes[0] ?? "");
 
       const delayedGrantProof = holdNextRealStepUpResponse(page);
       try {
@@ -568,9 +578,10 @@ test("real Users UI binds delayed proof and approval to its current route intent
         .locator("#confirm-current-email")
         .fill(users.deactivation.email);
       await selectBackupCode(page, "#pending-action-step-up-method");
-      await page
-        .locator("#pending-action-step-up-secret")
-        .fill(backupCodes[1] ?? "");
+      await fillSensitive(
+        page.locator("#pending-action-step-up-secret"),
+        backupCodes[1] ?? "",
+      );
 
       const delayedApprovalProof = holdNextRealStepUpResponse(page);
       try {
@@ -601,9 +612,10 @@ test("real Users UI binds delayed proof and approval to its current route intent
         .locator("#confirm-current-email")
         .fill(users.deactivation.email);
       await selectBackupCode(page, "#pending-action-step-up-method");
-      await page
-        .locator("#pending-action-step-up-secret")
-        .fill(backupCodes[2] ?? "");
+      await fillSensitive(
+        page.locator("#pending-action-step-up-secret"),
+        backupCodes[2] ?? "",
+      );
       const approvalResponse = page.waitForResponse(
         (response) =>
           new URL(response.url()).pathname ===

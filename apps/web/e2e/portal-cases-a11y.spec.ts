@@ -3,6 +3,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { seriousOrCriticalViolations } from "./helpers/axe";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // S4b (G4): the portal Dashboard (`/`) and the cases list (`/requests`) — KPI cards, the
 // cases table, the scope toggle, filter popovers and paging — must pass axe in light and

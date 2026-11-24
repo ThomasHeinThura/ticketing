@@ -5,7 +5,11 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { APIRequestContext, Page, Response } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
-import { fillSensitive, privateRequest } from "./helpers/fill-sensitive";
+import {
+  expectPrivately,
+  fillSensitive,
+  privateRequest,
+} from "./helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
@@ -231,7 +235,10 @@ async function signInThroughPortal(
   await page.goto(new URL("/sign-in", portalOrigin).toString());
   await page.getByLabel("Email").fill(person.email);
   await page.getByRole("button", { name: /^sign in$/i }).click();
-  await page.getByLabel("Password", { exact: true }).fill(person.password);
+  await fillSensitive(
+    page.getByLabel("Password", { exact: true }),
+    person.password,
+  );
   const responsePromise = apiResponse(page, "POST", "/api/auth/sign-in/email");
   await page.getByRole("button", { name: /^sign in$/i }).click();
   expect((await responsePromise).status()).toBe(200);
@@ -375,8 +382,11 @@ async function runJourney(
     const detail = await detailResponse;
     expect(detail.status()).toBe(200);
     const detailText = await detail.text();
-    expect(detailText).not.toContain("INTERNAL NOTE");
-    expect(detailText).not.toContain("margin");
+    expectPrivately(
+      !detailText.includes("INTERNAL NOTE"),
+      "Private check failed.",
+    );
+    expectPrivately(!detailText.includes("margin"), "Private check failed.");
     await expect(
       page.getByRole("heading", { level: 1, name: "Portal rollout" }),
     ).toBeVisible();

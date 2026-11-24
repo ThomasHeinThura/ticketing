@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   totpForUri,
@@ -26,7 +27,10 @@ async function createAdminWorkspace(
   await navigateToSetup(page, setupUrl);
   await page.getByLabel("Full name").fill("Disposable MFA Admin");
   await page.getByLabel("Email").fill(email);
-  await page.locator('input[autocomplete="new-password"]').fill(password);
+  await fillSensitive(
+    page.locator('input[autocomplete="new-password"]'),
+    password,
+  );
   const signUpResponsePromise = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === "/api/auth/sign-up/email" &&
@@ -105,17 +109,19 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       const signInAndCompleteChallenge = async (factor: "totp" | "backup") => {
         await page.goto(new URL("/auth/sign-in", origin).toString());
         await page.getByLabel("Email").fill(email);
-        await page
-          .locator('input[autocomplete="current-password"]')
-          .fill(password);
+        await fillSensitive(
+          page.locator('input[autocomplete="current-password"]'),
+          password,
+        );
         await page.getByRole("button", { name: "Sign in" }).click();
         await expect(page).toHaveURL(/\/auth\/two-factor(?:\?|$)/);
         if (factor === "backup") {
           await page.getByRole("button", { name: "Use a backup code" }).click();
         }
-        await page
-          .locator("#factor-code")
-          .fill(factor === "totp" ? totpForUri(provisioningUri) : backupCode);
+        await fillSensitive(
+          page.locator("#factor-code"),
+          factor === "totp" ? totpForUri(provisioningUri) : backupCode,
+        );
         await page.getByRole("button", { name: "Verify and sign in" }).click();
         await expect(page).toHaveURL(/\/(?:dashboard|agent)(?:\/|\?|$)/);
       };

@@ -1,4 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
@@ -281,7 +287,7 @@ test("God Mode users directory supports filters and audited account actions", as
   });
 
   await page.getByRole("button", { name: "Grant instance admin" }).click();
-  await page.getByLabel("Authenticator code").fill("123456");
+  await fillSensitive(page.getByLabel("Authenticator code"), "123456");
   await page
     .getByRole("button", { name: "Grant instance administrator" })
     .click();
@@ -294,7 +300,7 @@ test("God Mode users directory supports filters and audited account actions", as
   await page
     .getByLabel("Identity verification note")
     .fill("Verified by support call");
-  await page.getByLabel("Authenticator code").fill("123456");
+  await fillSensitive(page.getByLabel("Authenticator code"), "123456");
   await page
     .getByRole("button", { name: "Reset authenticator factor" })
     .click();
@@ -335,7 +341,7 @@ test("God Mode users directory supports filters and audited account actions", as
     expiryPicker.getByRole("combobox", { name: "Minute" }),
   ).toHaveText("00");
   await expiryPicker.getByRole("button", { name: "Save", exact: true }).click();
-  await page.getByLabel("Authenticator code").fill("123456");
+  await fillSensitive(page.getByLabel("Authenticator code"), "123456");
   await page.getByRole("button", { name: "Suspend account" }).last().click();
   await expect(page.getByText("Suspended", { exact: true })).toBeVisible();
   await expect(page.getByRole("status")).toContainText("Account suspended");
@@ -377,7 +383,7 @@ test("God Mode users directory supports filters and audited account actions", as
   await page
     .getByLabel("Type the exact current email")
     .fill("old@example.test");
-  await page.getByLabel("Authenticator code").fill("123456");
+  await fillSensitive(page.getByLabel("Authenticator code"), "123456");
   await expect(
     page.getByRole("button", { name: "Approve and deactivate" }),
   ).toBeDisabled();

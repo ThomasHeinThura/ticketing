@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { APIRequestContext, Page, Response } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
+import { expectPrivately, fillSensitive } from "./helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixture,
   type MfaCsrfAppFixtureSetup,
@@ -243,7 +244,10 @@ async function signInThroughPortal(
   await page.getByLabel("Email").fill(person.email);
   await page.getByRole("button", { name: /^sign in$/i }).click();
   // The portal password field has id="portal-password" and no name attribute.
-  await page.getByLabel("Password", { exact: true }).fill(person.password);
+  await fillSensitive(
+    page.getByLabel("Password", { exact: true }),
+    person.password,
+  );
   const responsePromise = apiResponse(page, "POST", "/api/auth/sign-in/email");
   await page.getByRole("button", { name: /^sign in$/i }).click();
   expect((await responsePromise).status()).toBe(200);
@@ -408,7 +412,7 @@ async function signUpStaff(
   await page.goto(new URL("/auth/sign-up", origin).toString());
   await page.getByLabel("Full name").fill("Intake primary administrator");
   await page.getByLabel("Email").fill(fixture.email);
-  await page.locator('input[name="password"]').fill(fixture.password);
+  await fillSensitive(page.locator('input[name="password"]'), fixture.password);
   const responsePromise = apiResponse(page, "POST", "/api/auth/sign-up/email");
   await page.getByRole("button", { name: /^create account$/i }).click();
   expect((await responsePromise).status()).toBe(200);
@@ -949,7 +953,8 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
         new URL(exportHref ?? "", portal).toString(),
       );
       expect(csv.status()).toBe(200);
-      expect(await csv.text()).toContain(ref);
+      const received1 = await csv.text();
+      expectPrivately(received1.includes(ref), "Private check failed.");
     });
     await runPhase(phaseJournal, "requester-dashboard", async () => {
       const homeResponse = apiResponse(
