@@ -77,7 +77,8 @@ whether it is an epic, and which custom fields apply.
   `project.last_work_item_number` incremented in the same transaction. Never reused, even
   after deletion.
 - `WI-3` Title is required, 1–500 characters. Everything else is optional unless a custom
-  field is marked required for that type.
+  field is marked required for that type. An initial priority on create requires
+  `work_item:set_priority`, as on edit.
 - `WI-4` Initial state is the project's own default state (`state.is_default`) — `state`
   carries this directly; `project_state` does not exist, its job folded into the
   project-scoped `state` row itself ([data model](data-model.md) §3,

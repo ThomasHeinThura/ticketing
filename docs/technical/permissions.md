@@ -36,7 +36,7 @@ Project reordering returns and updates only projects the caller reaches. Unreach
 | | `work_item:assign` | `work_item:read` | Assign to anyone on the roster |
 | | `work_item:transition` | `work_item:read` | Change state, subject to workflow legality |
 | | `work_item:rank` | `work_item:read` | Re-order within a state or backlog |
-| | `work_item:set_priority` | `work_item:escalate_priority` | Set priority up or down |
+| | `work_item:set_priority` | `work_item:escalate_priority` | Set priority up or down, including the initial priority on create |
 | | `work_item:escalate_priority` | `work_item:read` | Raise priority only — the customer capability |
 | | `work_item:export` | `work_item:read` | Export a view or list to CSV/XLSX |
 | **Comments** | `comment:create` | `work_item:read` | Comment publicly |
