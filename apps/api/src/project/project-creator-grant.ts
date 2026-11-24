@@ -96,9 +96,11 @@ export async function grantProjectCreatorLead(
     workspaceId: string;
     projectId: string;
     person: { id: string; organisationId: string };
+    /** The API key that created the project, recorded in the audit row. */
+    apiKeyId?: string;
   },
 ): Promise<"granted" | "skipped_sees_all" | "skipped_no_role" | "existing"> {
-  const { workspaceId, projectId, person } = input;
+  const { workspaceId, projectId, person, apiKeyId } = input;
 
   if (await creatorHasWorkspaceSeesAll(tx, person.id, workspaceId)) {
     return "skipped_sees_all";
@@ -141,6 +143,7 @@ export async function grantProjectCreatorLead(
       scopeId: projectId,
       role: PROJECT_LEAD_ROLE_KEY,
       granted: true,
+      ...(apiKeyId ? { apiKeyId } : {}),
     },
   });
   return "granted";

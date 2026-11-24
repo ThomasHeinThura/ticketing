@@ -13,6 +13,7 @@ import { enqueueOutboxEvent, eventScope } from "../../events/outbox";
 import { isCurrentInstanceAdmin } from "../../instance/observability/audit-failure-notifier";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { seedProjectStates } from "../../utils/seed-project-states";
+import { workspaceMemberRoles } from "../../utils/workspace-member-roles";
 import { inheritedServiceCalendarId } from "../inherited-calendar";
 import {
   grantProjectCreatorLead,
@@ -242,6 +243,12 @@ async function createProjectRow(
     // lock order). Absent for a user with no provisioned staff person: `created_by` then
     // stays NULL and no grant is possible.
     const creator = await lockCreatorPerson(tx, creatorUserId);
+    // #746: removal revokes the creator's grants under this person lock, so a creator
+    // removed before we got the lock must not receive a fresh one.
+    if (
+      (await workspaceMemberRoles(tx, workspaceId, creatorUserId)).length === 0
+    )
+      throw new HTTPException(403, { message: "Insufficient permissions" });
 
     // New projects go to the bottom of the workspace's ordering.
     const maxPosition = await getMaxProjectPosition(tx, workspaceId);
@@ -293,6 +300,7 @@ async function createProjectRow(
           workspaceId,
           projectId: createdProject.id,
           person: creator,
+          apiKeyId,
         });
       }
 
