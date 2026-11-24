@@ -478,6 +478,7 @@ export async function settleChunkAttachments(
   settled: readonly ImportAttachmentJob[],
   losses: readonly ImportLoss[],
   retried: readonly ImportAttachmentJob[] = [],
+  indexLosses?: (tx: Transaction) => Promise<unknown>,
 ) {
   if (!settled.length && !losses.length && !retried.length) return;
   await db.transaction(async (tx) => {
@@ -507,6 +508,7 @@ export async function settleChunkAttachments(
           : merged,
       })
       .where(eq(schema.importChunkTable.id, chunkRowId));
+    await indexLosses?.(tx);
   });
 }
 

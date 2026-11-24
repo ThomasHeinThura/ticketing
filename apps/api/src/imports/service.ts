@@ -1669,8 +1669,9 @@ export async function publishCommittedImport(
   const drained = await drainImportAttachmentJobs(jobs, options);
   // A run driven through the records route never reaches the engine's finalize step, so finish
   // the bounded retries here: a transient failure ends as a stored attachment or one loss.
-  if (drained.retrying)
-    for (const runId of new Set(jobs.map((job) => job.runId)))
+  // A replayed committed chunk carries no jobs, so a crash that left its ledger pending resumes here.
+  if (!jobs.length || drained.retrying)
+    for (const runId of new Set([result.runId, ...jobs.map((j) => j.runId)]))
       await resumePendingImportAttachments(runId, options);
 }
 
@@ -1771,25 +1772,27 @@ export async function drainImportAttachmentJobs(
     const chunkJobs = jobs.filter((job) => job.chunkRowId === chunkRowId);
     const keys = new Set(chunkJobs.map(importAttachmentJobKey));
     const chunkLosses = losses.filter((loss) => keys.has(lossKey(loss)));
+    const first = chunkJobs[0];
+    // The loss index is written in the same transaction that settles the ledger, so a failed index
+    // write leaves the jobs pending and a replay recovers them.
     await settleChunkAttachments(
       chunkRowId,
       chunkJobs.filter((job) => !retryKeys.has(importAttachmentJobKey(job))),
       chunkLosses,
       retrying.filter((job) => job.chunkRowId === chunkRowId),
+      first && chunkLosses.length
+        ? (tx) =>
+            insertImportLossRows(
+              tx,
+              {
+                workspaceId: first.workspaceId,
+                importRunId: first.runId,
+                importChunkId: chunkRowId,
+              },
+              chunkLosses,
+            )
+        : undefined,
     );
-    const first = chunkJobs[0];
-    if (first && chunkLosses.length)
-      // The chunk report above already holds every loss durably; the per-run table is the index the
-      // wizard reads, so a failure here must not fail the import. finalizeRun re-inserts any gap.
-      await insertImportLossRows(
-        db,
-        {
-          workspaceId: first.workspaceId,
-          importRunId: first.runId,
-          importChunkId: chunkRowId,
-        },
-        chunkLosses,
-      ).catch(() => undefined);
   }
   return { written, losses, retrying: retrying.length };
 }

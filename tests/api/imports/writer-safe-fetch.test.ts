@@ -160,4 +160,21 @@ describe("safeDownload (guarded egress for import attachments)", () => {
         code: "failed",
       });
   });
+
+  it("marks a failed DNS lookup retryable and keeps forbidden destinations terminal", async () => {
+    const env = { NODE_ENV: "production" };
+    const resolver = async () => {
+      throw Object.assign(new Error("try again"), { code: "EAI_AGAIN" });
+    };
+    expect(
+      await safeDownload("https://files.example.test/a.png", {
+        maxBytes: 100,
+        env,
+        resolver,
+      }),
+    ).toEqual({ ok: false, code: "failed", retryable: true });
+    expect(
+      await safeDownload("https://127.0.0.1/a.png", { maxBytes: 100, env }),
+    ).toEqual({ ok: false, code: "failed" });
+  });
 });

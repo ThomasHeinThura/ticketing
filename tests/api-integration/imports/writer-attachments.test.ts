@@ -23,8 +23,10 @@ import {
   commitChunk,
   createRun,
   getReport,
+  idempotentJson,
   previewChunk,
   record,
+  request,
   writerFixture,
 } from "./writer-fixture";
 
@@ -541,6 +543,56 @@ describe("import writer: transient attachment failures (#896)", () => {
     expect((await chunkOf(app, f, run.id)).lossCounts).toEqual({
       attachment_download_failed: 1,
     });
+  });
+
+  it("finishes pending attachments when the committed chunk is replayed through the route after a crash", async () => {
+    const download = vi.fn(async () => ({
+      ok: true as const,
+      bytes: PNG,
+      contentType: "image/png",
+    }));
+    const f = await writerFixture();
+    const { app } = createApp();
+    setImportAttachmentDependencies({ download });
+    const run = await createRun(app, f, "att-replay");
+    const records = [
+      attachmentRecord(f, "RP-1", [
+        { sourceId: "a", url: URL_OK, filename: "diagram.png" },
+      ]),
+    ];
+    const preview = await previewChunk(app, f, run.id, "c1", records);
+    await db.transaction((tx) =>
+      commitImportChunk(tx, {
+        actor: {
+          userId: f.user.id,
+          actorType: "api_key",
+          apiKeyId: f.fullKey.id,
+          apiKey: { id: f.fullKey.id },
+          impersonatedBy: null,
+        },
+        runId: run.id,
+        chunkId: "c1",
+        expectedVersion: preview.runVersion,
+        previewDigest: preview.previewDigest,
+        records: records as never,
+      }),
+    ); // the process dies here: nothing drained
+    expect(await db.select().from(schema.attachmentTable)).toHaveLength(0);
+    // the client's retry of the same chunk
+    const replay = await request(
+      app,
+      f.fullKey.key,
+      `/api/imports/${run.id}/records`,
+      idempotentJson("POST", {
+        chunkId: "c1",
+        expectedVersion: preview.runVersion,
+        records,
+        previewDigest: preview.previewDigest,
+      }),
+    );
+    expect(replay.status, await replay.clone().text()).toBe(200);
+    expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
+    expect(download).toHaveBeenCalledTimes(1);
   });
 
   it("reconciles a loss-index write that failed after the chunk report was saved", async () => {

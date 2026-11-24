@@ -125,7 +125,7 @@ export function request(
   return app.request(configured.input, configured.init);
 }
 
-function idempotentJson(method: string, body: unknown) {
+export function idempotentJson(method: string, body: unknown) {
   return {
     method,
     headers: { ...jsonHeaders, "Idempotency-Key": randomUUID() },

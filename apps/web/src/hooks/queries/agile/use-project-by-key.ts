@@ -27,7 +27,8 @@ export default function useProjectByKey(projectKey: string, enabled = true) {
   });
   return {
     project,
-    currentKey: currentKey ?? undefined,
+    // Used only while the key misses, so renaming a project back never loops.
+    currentKey: missed ? (currentKey ?? undefined) : undefined,
     workspaceId: project?.workspaceId ?? workspace?.id ?? "",
     isLoading:
       loadingWorkspace || (enabled && Boolean(workspace) && loadingProjects),

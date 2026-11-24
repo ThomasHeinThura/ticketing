@@ -98,9 +98,11 @@ async function downloadOnce(
     parsed = parseWebhookUrl(rawUrl, env);
     await resolvePermittedAddresses(parsed.url.hostname, resolver, relaxed);
   } catch (error) {
-    if (error instanceof WebhookDestinationError)
-      return { ok: false, code: "failed" };
-    return { ok: false, code: "failed" };
+    // A DNS failure may be temporary; invalid URLs and forbidden destinations stay terminal.
+    return error instanceof WebhookDestinationError &&
+      error.code === "unresolvable"
+      ? { ok: false, code: "failed", retryable: true }
+      : { ok: false, code: "failed" };
   }
   const transport = parsed.secure ? https : http;
   return new Promise<SafeDownloadResult | { redirect: string }>((resolve) => {
