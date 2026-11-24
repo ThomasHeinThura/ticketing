@@ -67,6 +67,15 @@ export const INSTANCE_ONLY_FEATURES: ReadonlySet<FeatureFlag> = new Set([
   "feature.mcp",
 ]);
 
+/**
+ * #897: a project override of these flags can only turn them off. SLA policy and calendar
+ * management are workspace-gated, so a project-on override while the workspace resolves off
+ * is ignored rather than running an SLA nobody can manage.
+ */
+export const WORKSPACE_GATED_FEATURES: ReadonlySet<FeatureFlag> = new Set([
+  "feature.sla",
+]);
+
 export function isFeatureFlag(value: string): value is FeatureFlag {
   return (FEATURE_FLAGS as readonly string[]).includes(value);
 }
@@ -92,6 +101,12 @@ export function resolveFeatureFlag(input: {
       : { enabled: FEATURE_FLAG_DEFAULTS[input.feature], source: "default" };
   }
   if (input.project !== null && input.project !== undefined) {
+    if (
+      input.project &&
+      WORKSPACE_GATED_FEATURES.has(input.feature) &&
+      !resolveFeatureFlag({ ...input, project: null }).enabled
+    )
+      return resolveFeatureFlag({ ...input, project: null });
     return { enabled: input.project, source: "project" };
   }
   if (input.workspace !== null && input.workspace !== undefined) {

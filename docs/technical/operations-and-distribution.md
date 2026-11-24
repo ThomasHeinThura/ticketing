@@ -399,7 +399,7 @@ rule for destructive changes are in
 `dist/cli.js` is a second esbuild entry from `apps/api/src/cli.ts`, sharing the API's
 modules. Commands are in the [runbook](#runbook). Because it needs the database URL and
 the encryption key, it runs **inside the container** (`docker compose exec taskdesk node
-dist/cli.js …`), never against the database from elsewhere.
+/app/apps/api/dist/cli.js …`), never against the database from elsewhere.
 
 <a id="container-image-native-dependencies"></a>
 ### Native dependencies
@@ -1555,19 +1555,22 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 Requires database access. Every step is audited.
 
 ```bash
-dc exec taskdesk node dist/cli.js grant-instance-admin you@example.com
+dc exec taskdesk node /app/apps/api/dist/cli.js grant-instance-admin you@example.com
 ```
 
 The CLI is a build target of the image (`apps/api/src/cli.ts` → `dist/cli.js`,
-[container-image.md](#container-image)). Every command writes an audit row with
-`actor_type = 'system'` and the invoking OS user. Commands:
+[container-image.md](#container-image)). `grant-instance-admin` writes an `audit_log` row
+(`auth.instance_admin_break_glass`) with `actor_type = 'system'`, no actor id and the invoking
+OS user, and sends the in-app security alert to every administrator and the target. It uses
+the same eligibility, serialization and step-up-free write as the God Mode grant-admin route
+(one shared function). It does not email administrators yet. Commands:
 
 | Command | Does |
 | --- | --- |
 | `grant-instance-admin <email>` | Break-glass: grants `instance:admin` to an existing person |
-| `disable-auth-plugin <id>` | Disables an identity provider and bumps `config_version` so every replica reloads ([auth runtime reconfiguration](safety-and-runtime.md#auth-runtime-reconfiguration)) |
-| `verify-backup <file>` | `pg_restore --list` plus a decrypt check of one plugin secret against the current key |
-| `rekey-status` | Progress of `secrets-rekey`: rows on the new `key_id` vs total |
+| `disable-auth-plugin <id>` | **Not built yet.** Will disable an identity provider and bump `config_version` ([auth runtime reconfiguration](safety-and-runtime.md#auth-runtime-reconfiguration)) |
+| `verify-backup <file>` | **Not built yet.** Will run `pg_restore --list` plus a decrypt check of one plugin secret against the current key |
+| `rekey-status` | **Not built yet.** Will show the progress of `secrets-rekey`: rows on the new `key_id` vs total |
 
 The command writes an `audit_log` row recording that break-glass was used. If it appears in
 the audit log and nobody knows why, treat it as an incident.

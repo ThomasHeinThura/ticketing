@@ -1641,7 +1641,9 @@ ignored once `setup_completed_at` is set.
 If every administrator is locked out, recovery is the CLI (`grant-instance-admin`,
 [runbook](operations-and-distribution.md#runbook)), which must be run **inside the container**, writes
 an audit row with `actor_type = 'system'`, and emails every existing administrator that it
-was used. Break-glass is loud by design.
+was used. Break-glass is loud by design. **Known gap (#230):** the CLI does not send this email
+yet; it only writes the audit row. Locked-out administrators cannot read in-app alerts, so the
+email stays a requirement.
 
 <a id="auth-and-identity-p4-god-mode-users--selected-implementation-contracts"></a>
 #### P4 God Mode Users — selected implementation contracts
@@ -1817,7 +1819,7 @@ never values.
 
 If a reload leaves administrators locked out despite the rules above (a provider that
 passed `test()` but rejects real logins), `auth.password` is still enabled by construction,
-and the CLI (`node dist/cli.js disable-auth-plugin <id>`, [runbook](operations-and-distribution.md#runbook))
+and the CLI (`node /app/apps/api/dist/cli.js disable-auth-plugin <id>`, [runbook](operations-and-distribution.md#runbook))
 flips a row and bumps `config_version`, which the poll picks up within 10 s.
 
 <a id="auth-runtime-reconfiguration-required-reload-and-origin-cases"></a>

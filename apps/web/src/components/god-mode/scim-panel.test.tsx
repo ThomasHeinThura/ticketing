@@ -117,7 +117,7 @@ describe("ScimPanel states", () => {
     expect(
       screen.getByText("SCIM is disabled", { selector: "p" }),
     ).toBeInTheDocument();
-    // Test builds have no VITE_API_URL, so the API origin falls back to the dev default.
+    // The base URL comes from the server (#770), not from the browser origin.
     expect(
       screen.getByText("http://localhost:1337/scim/v2"),
     ).toBeInTheDocument();
@@ -321,14 +321,20 @@ describe("SCIM bearer token", () => {
     expect(screen.queryByText(/revoked and SCIM was disabled/u)).toBeNull();
   });
 
-  it("reports a revoke with no token (422) as a rejected no-op", async () => {
-    mocks.revoke.mockRejectedValue(
-      new IdentityAdminError(422, "x", "Token operation unavailable", null),
-    );
+  it("shows the token status and offers no revoke while no token exists (#770)", async () => {
+    mocks.getScim.mockResolvedValue({
+      ...scimSettings,
+      data: { ...scimSettings.data, tokenStatus: { present: false } },
+    });
     await renderPanel();
-    await enterCode();
-    fireEvent.click(screen.getByRole("button", { name: "Revoke token" }));
-    await screen.findByText(/rejected as invalid, unchanged/u);
+    expect(screen.getByText("No bearer token is issued.")).toBeTruthy();
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Revoke token",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
   });
 
   it("never lets the bearer reach any cache, the URL, history state or web storage", async () => {

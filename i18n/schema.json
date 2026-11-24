@@ -26605,6 +26605,12 @@
 								"description": {
 									"type": "string"
 								},
+								"statusPresent": {
+									"type": "string"
+								},
+								"statusNone": {
+									"type": "string"
+								},
 								"rotate": {
 									"type": "string"
 								},
@@ -26636,6 +26642,8 @@
 							"required": [
 								"title",
 								"description",
+								"statusPresent",
+								"statusNone",
 								"rotate",
 								"revoke",
 								"issuedTitle",

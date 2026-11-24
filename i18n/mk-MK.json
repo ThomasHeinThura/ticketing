@@ -5911,6 +5911,8 @@
 				"copied": "Copied",
 				"copy": "Copy token",
 				"description": "Issue or rotate the token your identity provider uses, or revoke it. Either change invalidates the previous token at once and disables SCIM until you enable it again.",
+				"statusPresent": "Издаден е токен на носител.",
+				"statusNone": "Не е издаден токен на носител.",
 				"dismiss": "I have stored the token",
 				"issuedLabel": "New bearer token",
 				"issuedTitle": "New token — copy it now",

@@ -539,6 +539,7 @@ export async function getScimSettingsRow(connectionId: string) {
         lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy,
         attributeMapping: schema.scimConnectionTable.attributeMapping,
         matchAttributes: schema.scimConnectionTable.matchAttributes,
+        tokenPresent: sql<boolean>`${schema.scimConnectionTable.tokenHash} IS NOT NULL`,
       })
       .from(schema.identityConnectionTable)
       .innerJoin(

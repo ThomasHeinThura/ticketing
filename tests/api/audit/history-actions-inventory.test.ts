@@ -26,6 +26,8 @@ const NOT_SETTINGS_HISTORY: Record<string, string> = {
   "audit.exported": "audit log read, export or purge, not a settings change",
   "audit.purged": "audit log read, export or purge, not a settings change",
   "audit.read": "audit log read, export or purge, not a settings change",
+  "auth.instance_admin_break_glass":
+    "authentication or session security event, not a settings change",
   "auth.instance_admin_granted":
     "authentication or session security event, not a settings change",
   "auth.mfa_reset":

@@ -62,6 +62,8 @@ export const scimSettings: ScimAdminSettings = {
       jobTitle: "title",
       locale: "preferredLanguage",
     },
+    tokenStatus: { present: true },
+    scimBaseUrl: "http://localhost:1337/scim/v2",
     mappings: [
       {
         id: "map-1",

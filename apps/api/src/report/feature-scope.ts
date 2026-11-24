@@ -16,8 +16,8 @@ const PROJECT_LEVEL_FEATURES = new Set(["feature.sla"]);
  * - `"off"`: the feature is on nowhere in the workspace, so the report is refused (409).
  * - `string[]`: the projects whose rows the report may count; every query is restricted to them.
  *
- * `feature.sla` is on for the workspace when its workspace value is on OR any of its projects
- * has an override that turns it on; the rows then come only from projects where it resolves on.
+ * `feature.sla` needs the workspace value on (#897: a project override cannot turn it on while
+ * the workspace is off); the rows then come only from projects where it resolves on.
  */
 export async function reportFeatureScope(
   feature: string | undefined,
@@ -29,6 +29,8 @@ export async function reportFeatureScope(
     return (await workspaceFeatureEnabled(workspaceId, feature, executor))
       ? null
       : "off";
+  if (!(await flagOnForWorkspace("feature.sla", workspaceId, executor)))
+    return "off";
   const candidates = await selectRows<{ id: string }>(
     sql`SELECT id FROM project WHERE workspace_id = ${workspaceId} AND deleted_at IS NULL`,
     executor,
@@ -38,10 +40,5 @@ export async function reportFeatureScope(
     candidates.map((row) => row.id),
     executor,
   );
-  if (
-    on.size === 0 &&
-    !(await flagOnForWorkspace("feature.sla", workspaceId, executor))
-  )
-    return "off";
   return [...on];
 }

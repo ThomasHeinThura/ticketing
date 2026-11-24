@@ -337,12 +337,19 @@ describe("feature flag enforcement (P4R1-M2)", () => {
       });
     expect((await panel(pinned.key)).status).toBe(404);
 
-    // Workspace off, project on: the project keeps its SLA.
+    // Workspace off, project on (#897): the project override is ignored, so no SLA runs.
     await setInstanceFlag("feature.sla", false);
     await setProject(true);
-    const onItem = await w.createItem("Created in a project with SLA on");
-    expect(onItem.slaPolicyVersionId).toBe(w.version.id);
-    expect((await loadWorkItemRowSla(db, [onItem])).size).toBe(1);
-    expect((await panel(onItem.key)).status).toBe(200);
+    const onItem = await w.createItem("Created while the workspace SLA is off");
+    expect(onItem.slaPolicyVersionId).toBeNull();
+    expect((await loadWorkItemRowSla(db, [pinned])).size).toBe(0);
+    expect(await scanWorkItemSla(pinned.id)).toBe(0);
+    expect((await panel(onItem.key)).status).toBe(404);
+
+    // Workspace on, project on: the project runs its SLA.
+    await setInstanceFlag("feature.sla", true);
+    const bothOn = await w.createItem("Created with both flags on");
+    expect(bothOn.slaPolicyVersionId).toBe(w.version.id);
+    expect((await panel(bothOn.key)).status).toBe(200);
   });
 });

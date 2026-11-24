@@ -26,6 +26,13 @@ click-confirmation entry in the confirmation table and aligns it with ST-8. TM-7
 permissions, target-change checks and audit history remain. Existing click requests must
 be cancelled and re-requested; stored pending actions are not rewritten.
 
+## Project SLA needs the workspace flag — 24 November 2026
+
+Thomas chose option A (#897): a project-level `feature.sla` override can only turn SLA off.
+While the workspace resolves `feature.sla` off, a project-on override is ignored by the
+scanner, work-item creation, badges, the portal and reports, matching the settings screens
+that already hide SLA policy and calendar management. No permission change.
+
 <a id="0001-kaneo-as-foundation"></a>
 ## 0001 — kaneo as the foundation, taken once, not forked
 
@@ -1886,8 +1893,8 @@ evidence.
 - An OIDC-group grant names its external identity, connection, and exactly one OIDC mapping.
 - A SCIM-group grant names its external identity, connection, and exactly one SCIM mapping.
 - External grants have no direct-grant fields and force `sees_all=false`. A source CHECK
-  enforces this exact discriminator shape. `system_backfill` is available only to the
-  forward migration, never to an API request.
+  enforces this exact discriminator shape. `system_backfill` is written only by
+  migrations 0123/0124 and the owner/admin reach sync (decision log 2026-10-14), never by an API request.
 - The writer validates current person and parent lifecycle, connection, mapping, person side,
   role scope, actual resource-owning organisation, forbidden capabilities, and `max_role_rank`
   using the shared [IP-22 source-validity invariant and parent-first total lock/retry protocol](feature-contracts-p3.md#identity-provisioning).
@@ -1959,7 +1966,7 @@ membership id. Each decision repeats `rowDigest` and lists the complete grant se
 `membership_grant` discriminator fields, a private `evidenceReferences` list and a non-empty
 `rationale`. Evidence references point to the operator's durable source material and are
 never copied into application logs. A human decision may select only
-`direct_origin: admin`; `system_backfill` remains migration-only. Its validator rejects
+`direct_origin: admin`; `system_backfill` is never a human choice (written only by migrations 0123/0124 and the reach sync, decision log 2026-10-14). Its validator rejects
 missing, duplicate, unknown, stale, empty, or malformed decisions. This validates the
 record's completeness and shape, not the truth of the cited owner evidence. Before use, the
 cut-over runner must verify the approver is a current instance admin, validate every source

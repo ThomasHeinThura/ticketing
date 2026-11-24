@@ -2878,6 +2878,31 @@ describe("SCIM administration API", () => {
     expect(JSON.stringify(safeSettings)).not.toContain("test-client-secret");
     expect(JSON.stringify(safeSettings)).not.toContain("tokenPrefix");
     expect(JSON.stringify(safeSettings)).not.toContain("tokenHash");
+    // #770: token presence and the server-provided base URL, never the token itself.
+    expect(safeSettings.data).toMatchObject({
+      tokenStatus: { present: false },
+    });
+    expect(String(safeSettings.data.scimBaseUrl)).toMatch(
+      /^https?:\/\/.+\/scim\/v2$/u,
+    );
+    await db
+      .update(schema.scimConnectionTable)
+      .set({ tokenHash: Buffer.alloc(32, 1), tokenPrefix: "abcdefgh" })
+      .where(
+        eq(schema.scimConnectionTable.identityConnectionId, CONNECTION_ID),
+      );
+    const withToken = (await (
+      await app.request(
+        `/api/instance/identity-connections/${CONNECTION_ID}/scim`,
+      )
+    ).json()) as { data: Record<string, unknown> };
+    expect(withToken.data).toMatchObject({ tokenStatus: { present: true } });
+    await db
+      .update(schema.scimConnectionTable)
+      .set({ tokenHash: null, tokenPrefix: null })
+      .where(
+        eq(schema.scimConnectionTable.identityConnectionId, CONNECTION_ID),
+      );
 
     const targetId = "scim-options-target";
     await db.insert(schema.workspaceTable).values({
