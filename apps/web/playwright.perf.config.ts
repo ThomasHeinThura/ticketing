@@ -10,13 +10,8 @@ export default defineConfig({
   timeout: 180_000,
   use: {
     baseURL: "http://127.0.0.1:4178",
-    trace: {
-      mode: "retain-on-failure",
-      snapshots: false,
-      screenshots: true,
-      sources: true,
-      attachments: true,
-    },
+    // Traces keep fill arguments; the sign-in bench fills a password.
+    trace: "off",
     ...devices["Desktop Chrome"],
   },
   webServer: {

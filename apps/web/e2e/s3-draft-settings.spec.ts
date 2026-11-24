@@ -148,10 +148,14 @@ for (const width of [375, 820, 1440])
         page.getByText("Draft saved", { exact: true }),
       ).toBeVisible();
       expect(writes).toHaveLength(2);
-      expect((writes[1] as { credentials: unknown }).credentials).toEqual({
-        accessKeyId: "AKIAEXAMPLE",
-        secretAccessKey: "example-secret",
-      });
+      // Boolean compare: a mismatch would print the submitted secret.
+      expect(
+        JSON.stringify((writes[1] as { credentials: unknown }).credentials) ===
+          JSON.stringify({
+            accessKeyId: "AKIAEXAMPLE",
+            secretAccessKey: "example-secret",
+          }),
+      ).toBe(true);
       await testInfo.attach(`s3-draft-${width}-${theme}`, {
         body: await page.screenshot({ fullPage: true }),
         contentType: "image/png",

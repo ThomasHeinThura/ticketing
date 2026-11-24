@@ -280,7 +280,11 @@ test("creating a connection is disabled-by-default, staff-only and bound to the 
     portalScope: "agent",
     organisationId: null,
   });
-  expect(fixture.mutations[0]?.body).toEqual(challenge.request);
+  // Boolean compare: the body holds the submitted client secret.
+  expect(
+    JSON.stringify(fixture.mutations[0]?.body) ===
+      JSON.stringify(challenge.request),
+  ).toBe(true);
 });
 
 test("a session without the instance-admin signal never sees the create form or reads identity data", async ({

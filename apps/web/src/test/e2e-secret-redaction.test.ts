@@ -10,6 +10,7 @@ const webRoot = resolve(repoRoot, "apps/web");
 const configs = [
   resolve(webRoot, "playwright.config.ts"),
   resolve(repoRoot, "tests/e2e/playwright.approvals.config.ts"),
+  resolve(webRoot, "playwright.perf.config.ts"),
 ];
 
 type ListedSuite = { file?: string; suites?: ListedSuite[] };
@@ -87,6 +88,30 @@ describe("files Playwright collects for the default and approvals configs", () =
       /\b(trace|video|screenshot)\s*:(?!\s*"off")/u,
     );
   });
+});
+
+// A failed expect prints its received value, so a secret must never be the
+// argument of expect() or compared with a value-printing matcher.
+describe("secret assertions in e2e sources", () => {
+  const sources = ["apps/web/e2e", "tests/e2e"].flatMap((dir) =>
+    (readdirSync(resolve(repoRoot, dir), { recursive: true }) as string[])
+      .filter((name) => name.endsWith(".ts"))
+      .map((name) => resolve(repoRoot, dir, name)),
+  );
+
+  it.each(sources.map((path) => [relative(repoRoot, path), path] as const))(
+    "%s never asserts a secret value with a value-printing matcher",
+    (_name, path) => {
+      const text = readFileSync(path, "utf8");
+      const offending = [
+        /toContain\(\s*[\w.]*secretAccessKey/u,
+        /\.credentials\)\.toEqual\(/u,
+        /\.toEqual\(challenge\.request\)/u,
+      ].some((pattern) => pattern.test(text));
+      // Boolean, so a failure does not print the source either.
+      expect(offending).toBe(false);
+    },
+  );
 });
 
 // A rejected raw fill puts its argument in Playwright's call log.

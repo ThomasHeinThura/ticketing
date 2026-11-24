@@ -212,12 +212,9 @@ test("bundled S3 draft saves and probes a disposable SeaweedFS through real step
           accessKeyIdConfigured: true,
           secretAccessKeyConfigured: true,
         });
-        expect(JSON.stringify(savedBody).includes(synthetic.accessKeyId)).toBe(
-          false,
-        );
-        expect(JSON.stringify(savedBody)).not.toContain(
-          synthetic.secretAccessKey,
-        );
+        const savedText = JSON.stringify(savedBody);
+        expect(savedText.includes(synthetic.accessKeyId)).toBe(false);
+        expect(savedText.includes(synthetic.secretAccessKey)).toBe(false);
         await expect(page.getByText("Draft saved")).toBeVisible();
         await page.reload();
         await expect(page.locator("#s3-bucket")).toHaveValue(synthetic.bucket);

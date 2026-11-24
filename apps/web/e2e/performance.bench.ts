@@ -36,6 +36,7 @@ import {
 } from "./helpers/g11-performance-fixture";
 import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
 import { attachPerformanceNetworkCapture } from "./helpers/performance-network-summary";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 type BudgetMetric = {
   name: string;
@@ -118,6 +119,11 @@ function readCpuinfo() {
 const jobCalibrations: Partial<
   Record<"throttled" | "unthrottled", Calibration>
 > = {};
+
+// Uses the worker-scoped browser so no extra context is created per test.
+test.afterEach(({ browser: _browser }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test.beforeAll(async ({ browser }) => {
   const host = describeHost({
