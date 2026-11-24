@@ -1,10 +1,25 @@
 import { evaluateAssigneeEligibility } from "@taskdesk/domain";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, type SQL } from "drizzle-orm";
 import type db from "../database";
 import { membershipTable, personTable, projectTable } from "../database/schema";
 import { loadProjectAncestorIds } from "../project/hierarchy.repository";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * #359: the roster rule shared by the picker (`list-assignable-people.ts`) and the write
+ * below, so they cannot disagree. A placeholder can never be assigned and customer-side
+ * people hold only organisation memberships, but no constraint enforces either; `active`
+ * stays with the callers so the write keeps its distinct `not_active` reason.
+ */
+export function rosterWhere(projectIds: string[]): SQL {
+  return and(
+    eq(membershipTable.scope, "project"),
+    inArray(membershipTable.scopeId, projectIds),
+    eq(personTable.side, "staff"),
+    eq(personTable.isPlaceholder, false),
+  ) as SQL;
+}
 
 /**
  * `AS-5`'s own eligibility rule (project roster, active), shared between the direct
@@ -40,8 +55,7 @@ export async function resolveAssigneeEligibility(
     .innerJoin(personTable, eq(personTable.id, membershipTable.personId))
     .where(
       and(
-        eq(membershipTable.scope, "project"),
-        inArray(membershipTable.scopeId, [projectId, ...ancestorIds]),
+        rosterWhere([projectId, ...ancestorIds]),
         eq(membershipTable.personId, personId),
       ),
     )

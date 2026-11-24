@@ -19,6 +19,7 @@ import {
   workItemTable,
 } from "../../database/schema";
 import { loadProjectAncestorIds } from "../../project/hierarchy.repository";
+import { rosterWhere } from "../assignee-eligibility";
 
 /**
  * `GET /api/projects/{projectId}/assignable` (`docs/03-features/assignment.md` § API) --
@@ -42,9 +43,7 @@ import { loadProjectAncestorIds } from "../../project/hierarchy.repository";
  * The roster predicate (`membership(scope = 'project', scope_id = project)` + an active
  * person) is intentionally the SAME shape `assign-work-item.ts` enforces on the write, so
  * the picker and the write cannot disagree about who is assignable. The Opus review of
- * PR #353 (S3) asks for exactly that; #359 tracks factoring the pair into one helper
- * (the write route lives on an unmerged branch, so the shared extraction lands when they
- * meet).
+ * PR #353 (S3) asks for exactly that; #359 factored the pair into `rosterWhere`.
  *
  * Open work: `AS-...` -- "Open means the assigned work item's mapped
  * `state_template.group not in ('completed', 'cancelled')`", resolved through
@@ -144,15 +143,8 @@ export async function listAssignablePeople({
     .leftJoin(userTable, eq(userTable.id, personTable.userId))
     .where(
       and(
-        eq(membershipTable.scope, "project"),
-        inArray(membershipTable.scopeId, [projectId, ...ancestorIds]),
+        rosterWhere([projectId, ...ancestorIds]),
         eq(personTable.active, true),
-        // Review L3: the two rules `data-model.md` states but no constraint enforces --
-        // a placeholder can never be assigned, and customer-side people hold only
-        // organisation-scoped memberships. Stated here so a future writer that breaks
-        // either rule cannot leak such a person into the picker.
-        eq(personTable.side, "staff"),
-        eq(personTable.isPlaceholder, false),
       ),
     );
 
