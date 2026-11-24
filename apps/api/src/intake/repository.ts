@@ -1307,23 +1307,25 @@ async function convertSubmissionInTransaction(
       project.id,
       effectiveDefaultAssigneeId,
     );
+    // #359: the roster rule already refuses customer-side people; the side lookup only keeps
+    // the recorded reason `not_staff` (retained P2 contract) instead of `not_a_project_member`.
     const [person] = eligibility.eligible
-      ? await tx
+      ? []
+      : await tx
           .select({ side: schema.personTable.side })
           .from(schema.personTable)
           .where(eq(schema.personTable.id, effectiveDefaultAssigneeId))
-          .limit(1)
-      : [];
-    if (eligibility.eligible && person?.side === "staff")
-      eligibleAssigneeId = effectiveDefaultAssigneeId;
+          .limit(1);
+    if (eligibility.eligible) eligibleAssigneeId = effectiveDefaultAssigneeId;
     else
       assigneeSkipped = {
         id: effectiveDefaultAssigneeId,
-        reason: eligibility.eligible
-          ? "not_staff"
-          : eligibility.reason === "not_active"
+        reason:
+          eligibility.reason === "not_active"
             ? "inactive"
-            : "not_a_project_member",
+            : person && person.side !== "staff"
+              ? "not_staff"
+              : "not_a_project_member",
       };
   }
   const number = await claimWorkItemNumber(project.id, tx);
