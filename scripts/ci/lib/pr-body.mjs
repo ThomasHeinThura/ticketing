@@ -674,6 +674,22 @@ function visibleH2HeadingName(raw, survived, lineStart, lineEnd) {
  * @returns {Map<string, { heading: string, raw: string, text: string }>} keyed by normalised heading
  */
 export function sections(markdown) {
+  // CommonMark block context the `##` scan must respect (#226 F1): fenced code is not a
+  // heading, `## X` indented 1-3 spaces is, and `X` over `---` is a setext h2.
+  // shortcut: not full CommonMark. Unhandled: multi-line setext titles, a setext title
+  // with a comment or right after a thematic break, a comment in a fence info string or
+  // inside a fence, fence markers or `##` lines inside an HTML block, a code-span `<!--`.
+  // Each can make the check pass or fail wrongly; the author fixes it by editing the
+  // body. Bodies come from collaborators, so this is a wrong gate result, not an exploit;
+  // swap in a CommonMark parser (needs a dependency approval) if real bodies trip one.
+  const FENCE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
+  const SETEXT_UNDERLINE = /^ {0,3}-+\s*$/;
+  const NOT_PARAGRAPH =
+    /^(?: {4}|\t)|^ {0,3}(?:[-+*]|\d+[.)])(?:\s|$)|^ {0,3}[#>|<`~]/;
+  let fence = null;
+  let para = null; // previous line, when it was a one-line paragraph still in `buffer`
+  let boundary = true; // previous line was blank, a heading or a fence
+
   const found = new Map();
   const survived = survivedRawIndices(markdown);
   const lines = markdown.split("\n");
@@ -706,15 +722,64 @@ export function sections(markdown) {
     const lineStart = offset;
     const lineEnd = offset + line.length;
     offset = lineEnd + 1; // account for the "\n" this split() consumed
+    const visible = isRawSpanVisible(survived, lineStart, lineEnd);
 
-    const name = visibleH2HeadingName(markdown, survived, lineStart, lineEnd);
+    const open = visible ? FENCE.exec(line) : null;
+    if (fence) {
+      if (
+        open &&
+        open[1][0] === fence[0] &&
+        open[1].length >= fence.length &&
+        !open[2].trim()
+      ) {
+        fence = null;
+        boundary = true;
+      }
+      buffer.push(line);
+      continue;
+    }
+    if (open && !(open[1][0] === "`" && open[2].includes("`"))) {
+      fence = open[1];
+      para = null;
+      boundary = true;
+      buffer.push(line);
+      continue;
+    }
+
+    const indent = /^ {0,3}/.exec(line)[0].length;
+    let name = visibleH2HeadingName(
+      markdown,
+      survived,
+      lineStart + indent,
+      lineEnd,
+    );
+    if (
+      name === null &&
+      para !== null &&
+      visible &&
+      SETEXT_UNDERLINE.test(line)
+    ) {
+      name = para.trim();
+      buffer.pop(); // the title line was already buffered as body text
+    }
     if (name !== null) {
       flush();
       heading = name;
       buffer = [];
+      para = null;
+      boundary = true;
       continue;
     }
     buffer.push(line);
+    para =
+      boundary &&
+      visible &&
+      line.trim() &&
+      !NOT_PARAGRAPH.test(line) &&
+      !/<!--|-->/.test(line)
+        ? line
+        : null;
+    boundary = !line.trim();
   }
   flush();
 

@@ -837,6 +837,61 @@ describe("sections", () => {
     assert.match(found.get("checklists").raw, /### Backend change/);
   });
 
+  // Issue #477, checked against GitHub's renderer on 25 Nov 2026 (POST /markdown, mode
+  // markdown). Body: "## Screens opened", a blank line, the shape, then "## Testing
+  // notes", "<!-- x -->", "prose". Shapes: code span `<!--`; mid-line "some text <!--
+  // more" ... "x --> prose"; fenced ``` <!-- ```; escaped \<!--; attribute
+  // <a title="<!--">link</a>. GitHub rendered the opener as visible text or code in all
+  // five (and the indented-code one), and BOTH h2 headings stayed visible. No shape hides
+  // anything from a human. The scanner still reads the opener as a comment, so
+  // sections() drops the next heading and folds its text into the section above. That
+  // usually fails closed, but not always: a code-span `<!--` can hide a duplicate
+  // heading the reader still sees (Terra review, 25 Nov). Not a security boundary: PR
+  // bodies come from repo collaborators and the gate checks template completeness.
+  // Issue #226 F1: block context, as GitHub renders it.
+  it("ignores a ## line inside a fenced code block", () => {
+    for (const fence of ["```", "~~~", "````"]) {
+      const found = sections(
+        ["## Task", "", fence, "## Task", fence, "", "after", ""].join("\n"),
+      );
+      assert.deepEqual([...found.keys()], ["task"]);
+      assert.equal(found.get("task").content.includes("after"), true);
+    }
+  });
+
+  it("resumes heading detection after the fence closes, not on a shorter fence", () => {
+    const found = sections(
+      ["## A", "````", "```", "## B", "````", "## C", ""].join("\n"),
+    );
+    assert.deepEqual([...found.keys()], ["a", "c"]);
+  });
+
+  it("treats a ## indented 1-3 spaces as a heading and 4 as code", () => {
+    assert.throws(
+      () => sections("## Task\nx\n   ## Task\ny"),
+      DuplicateSectionError,
+    );
+    assert.deepEqual(
+      [...sections("## Task\nx\n    ## Task\ny").keys()],
+      ["task"],
+    );
+  });
+
+  it("treats a one-line paragraph over --- as a setext ## heading", () => {
+    assert.throws(
+      () => sections("## Task\nx\n\nTask\n---\ny"),
+      DuplicateSectionError,
+    );
+    const found = sections("## Task\nx\n\nOther\n---\ny\n");
+    assert.deepEqual([...found.keys()], ["task", "other"]);
+    assert.equal(found.get("task").content, "x");
+  });
+
+  it("does not read a list item or a lone --- rule as a setext heading", () => {
+    const found = sections("## Task\n- item\n---\n\ntext\n\n---\nmore\n");
+    assert.deepEqual([...found.keys()], ["task"]);
+  });
+
   it("still recognises a heading with a harmless trailing comment", () => {
     const found = sections(
       ["## Task <!-- delete if not applicable -->", "content", ""].join("\n"),
