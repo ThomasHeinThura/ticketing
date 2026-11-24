@@ -1550,6 +1550,34 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 ---
 
 <a id="runbook-break-glass-all-administrators-locked-out"></a>
+### Release an unused project slug claim
+
+`project_slug_claim` rows are permanent by design ([data model](data-model.md)), so a
+squatted slug stays taken after its project is renamed or deleted. Release a claim only
+when **no work-item key was ever issued** under it. A burned key (`{slug}-{n}` in
+`work_item_key_claim`) means the slug must stay claimed: freeing it would let a new
+project inherit that key range. Requires database access; take a backup first.
+
+1. Confirm no live project holds the slug: `select id from project where slug = 'ABC';`
+   must return no rows.
+2. Confirm no key was burned. Project keys are 2-15 uppercase letters (`PR-13`), so the
+   `LIKE` pattern is safe; refuse to continue if the slug has any other character.
+   `select 1 from work_item_key_claim where key like 'ABC-%';` must return no rows.
+3. Back up the database (see [Backup and restore](#backup-and-restore)).
+4. Release the claim in one statement; the predicate repeats the check atomically:
+
+```sql
+begin;
+delete from project_slug_claim
+where slug = 'ABC'
+  and not exists (select 1 from project where slug = 'ABC')
+  and not exists (select 1 from work_item_key_claim where key like 'ABC-%');
+-- expect DELETE 1; roll back on DELETE 0
+commit;
+```
+
+5. Record the release (slug, operator, date, ticket) in the operator log.
+
 ### Break-glass: all administrators locked out
 
 Requires database access. Every step is audited.
