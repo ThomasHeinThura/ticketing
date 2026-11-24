@@ -7,8 +7,8 @@ import {
   analyzeQueryOwnership,
   applyBaseline,
   baselineFailures,
-  baselinePath,
   baselineKey,
+  baselinePath,
   isRepositoryPath,
 } from "./check-queries.mjs";
 import { repoRoot } from "./lib/repo.mjs";
