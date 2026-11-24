@@ -10,7 +10,7 @@ Product decisions and their rationale, original Kaneo design/token/motion contra
 
 ## Phase 4 owner decisions — 24 November 2026
 
-Thomas accepted all 41 recommendations in the [Phase 4 decision record](../archive/reports/phase4-decisions-2026-11-21.md). Each item's recommended option is approved scope; anything beyond it still needs asking. CI time limits (24 Nov): `e2e` goes to 60 minutes and `unit + component` to 35, because both ran near their old 45- and 25-minute limits. The record covers:
+Thomas accepted all 41 recommendations in the [Phase 4 decision record](../archive/reports/phase4-decisions-2026-11-21.md). Each item's recommended option is approved scope; anything beyond it still needs asking. CI time limits (24 Nov): `e2e` goes to 60 minutes, `unit + component` to 35 and `static` to 30, because they ran near their old limits (45, 25 and 20). The record covers:
 - workflow changes for #402 and #580;
 - migrations for #181, #398 and #895 (durable pending publication and import checkpoint semantics);
 - the #1200 historical project-key resolver;
