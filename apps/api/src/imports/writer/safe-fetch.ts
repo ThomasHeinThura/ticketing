@@ -14,7 +14,12 @@ import {
 
 export type SafeDownloadResult =
   | { ok: true; bytes: Uint8Array; contentType: string | null }
-  | { ok: false; code: "failed" | "too_large" };
+  | {
+      ok: false;
+      code: "failed" | "too_large";
+      /** Transient (network error, timeout, 5xx, 429): worth another attempt. */
+      retryable?: boolean;
+    };
 
 /**
  * Source credentials for a download, supplied at download time by the adapter (never stored with the
@@ -140,7 +145,12 @@ async function downloadOnce(
         }
         if (status < 200 || status >= 300) {
           response.resume();
-          finish({ ok: false, code: "failed" }); // includes any 3xx: redirects are never followed
+          // includes any 3xx: redirects are never followed
+          finish({
+            ok: false,
+            code: "failed",
+            retryable: status >= 500 || status === 429,
+          });
           request.destroy();
           return;
         }
@@ -167,8 +177,12 @@ async function downloadOnce(
             contentType: typeof type === "string" ? type : null,
           });
         });
-        response.on("error", () => finish({ ok: false, code: "failed" }));
-        response.on("aborted", () => finish({ ok: false, code: "failed" }));
+        response.on("error", () =>
+          finish({ ok: false, code: "failed", retryable: true }),
+        );
+        response.on("aborted", () =>
+          finish({ ok: false, code: "failed", retryable: true }),
+        );
       },
     );
     request.on("socket", (socket) => {
@@ -181,9 +195,11 @@ async function downloadOnce(
           request.destroy(new Error("connected_to_forbidden_address"));
       });
     });
-    request.on("error", () => finish({ ok: false, code: "failed" }));
+    request.on("error", () =>
+      finish({ ok: false, code: "failed", retryable: true }),
+    );
     const deadline = setTimeout(() => {
-      finish({ ok: false, code: "failed" });
+      finish({ ok: false, code: "failed", retryable: true });
       request.destroy();
     }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
     request.end();

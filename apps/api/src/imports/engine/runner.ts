@@ -40,6 +40,7 @@ import {
   commitImportChunk,
   insertImportLossRows,
   publishCommittedImport,
+  reconcileImportLossIndex,
   reportImportAuditWriteFailure,
   resumePendingImportAttachments,
   stageImportChunk,
@@ -465,6 +466,7 @@ type FinalizeOutcome =
  */
 async function finalizeRun(runId: string): Promise<RunnerOutcome | "done"> {
   await resumePendingImportAttachments(runId);
+  await reconcileImportLossIndex(runId);
   let paused: ImportPausedReason | null = null;
   let outcome: FinalizeOutcome | null = null;
   try {

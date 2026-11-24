@@ -5,9 +5,11 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
+import { importLossTable } from "../../../apps/api/src/database/schema-imports";
 import {
   commitImportChunk,
   drainImportAttachmentJobs,
+  reconcileImportLossIndex,
   resumePendingImportAttachments,
 } from "../../../apps/api/src/imports/service";
 import {
@@ -378,6 +380,7 @@ describe("import writer: attachments (IM-4, download failure edge case)", () => 
       attachment: { sourceId: "a", url: URL_OK, filename: "diagram.png" },
       uploaderPersonId: null,
       attachmentOrganisationId: null,
+      attempts: 2, // this pass is the last allowed attempt, so the failure is reported
     });
     const failed = await drainImportAttachmentJobs([job("whatever")]);
     expect(failed.losses).toEqual([
@@ -462,5 +465,95 @@ describe("import writer: attachments (IM-4, download failure edge case)", () => 
     // resuming again is a no-op
     expect((await resumePendingImportAttachments(run.id)).written).toBe(0);
     expect(download).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("import writer: transient attachment failures (#896)", () => {
+  const transient = {
+    ok: false as const,
+    code: "failed" as const,
+    retryable: true,
+  };
+  const terminal = { ok: false as const, code: "failed" as const };
+  const lossRows = () => db.select().from(importLossTable);
+  const chunkOf = async (
+    app: ReturnType<typeof createApp>["app"],
+    f: Awaited<ReturnType<typeof writerFixture>>,
+    runId: string,
+  ) => (await getReport(app, f, runId)).chunks[0] as Record<string, unknown>;
+
+  async function commitOne(
+    download: NonNullable<
+      Parameters<typeof setImportAttachmentDependencies>[0]
+    >["download"],
+    name: string,
+  ) {
+    const f = await writerFixture();
+    const { app } = createApp();
+    setImportAttachmentDependencies({ download });
+    const run = await createRun(app, f, name);
+    await commitChunk(app, f, run.id, "c1", [
+      attachmentRecord(f, "T-1", [
+        { sourceId: "a", url: URL_OK, filename: "diagram.png" },
+      ]),
+    ]);
+    return { f, app, run };
+  }
+
+  it("retries a transient failure and ends as a written attachment with no loss", async () => {
+    let calls = 0;
+    const download = vi.fn(async () =>
+      ++calls === 1
+        ? transient
+        : { ok: true as const, bytes: PNG, contentType: "image/png" },
+    );
+    const { f, app, run } = await commitOne(download, "att-retry");
+    expect(await db.select().from(schema.attachmentTable)).toHaveLength(0);
+    expect(await chunkOf(app, f, run.id)).toMatchObject({
+      pendingAttachments: 1,
+    });
+    expect((await resumePendingImportAttachments(run.id)).written).toBe(1);
+    expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
+    const chunk = await chunkOf(app, f, run.id);
+    expect(chunk.pendingAttachments).toBeUndefined();
+    expect(chunk.lossCounts ?? {}).toEqual({});
+    expect(await lossRows()).toHaveLength(0);
+    // a replay finds nothing pending and creates no second copy
+    expect((await resumePendingImportAttachments(run.id)).written).toBe(0);
+    expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
+    expect(download).toHaveBeenCalledTimes(2);
+  });
+
+  it("turns exhausted retries into exactly one terminal loss", async () => {
+    const download = vi.fn(async () => transient);
+    const { f, app, run } = await commitOne(download, "att-exhaust");
+    await resumePendingImportAttachments(run.id);
+    expect(download).toHaveBeenCalledTimes(3);
+    const chunk = await chunkOf(app, f, run.id);
+    expect(chunk.pendingAttachments).toBeUndefined();
+    expect(chunk.lossCounts).toEqual({ attachment_download_failed: 1 });
+    expect(await lossRows()).toHaveLength(1);
+    await resumePendingImportAttachments(run.id);
+    expect(download).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not retry a terminal failure", async () => {
+    const download = vi.fn(async () => terminal);
+    const { f, app, run } = await commitOne(download, "att-terminal");
+    expect(download).toHaveBeenCalledTimes(1);
+    expect((await chunkOf(app, f, run.id)).lossCounts).toEqual({
+      attachment_download_failed: 1,
+    });
+  });
+
+  it("reconciles a loss-index write that failed after the chunk report was saved", async () => {
+    const download = vi.fn(async () => terminal);
+    const { run } = await commitOne(download, "att-reconcile");
+    expect(await lossRows()).toHaveLength(1);
+    await db.delete(importLossTable); // the index insert "failed"
+    await reconcileImportLossIndex(run.id);
+    expect(await lossRows()).toHaveLength(1);
+    await reconcileImportLossIndex(run.id); // idempotent
+    expect(await lossRows()).toHaveLength(1);
   });
 });

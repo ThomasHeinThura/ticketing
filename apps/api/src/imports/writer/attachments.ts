@@ -43,6 +43,7 @@ import {
 const FALLBACK_MAX_BYTES = 25 * 1024 * 1024;
 const FALLBACK_MAX_PER_ITEM = 100;
 const SNIFF_BYTES = 512;
+const ITEM_GONE = "work item no longer available";
 
 /** Network and storage seams. Production uses the guarded download and the storage driver. */
 export type ImportAttachmentDependencies = {
@@ -95,7 +96,12 @@ export type ImportAttachmentJob = {
   uploaderPersonId: string | null;
   /** `attachment.organisation_id`: null for an internal workspace (same rule as the presign route). */
   attachmentOrganisationId: string | null;
+  /** Transient failures so far; the job stays in the pending ledger until `MAX_ATTACHMENT_ATTEMPTS`. */
+  attempts?: number;
 };
+
+/** Fixed limit (owner decision, #896): a transient failure is tried this many times, then reported. */
+export const MAX_ATTACHMENT_ATTEMPTS = 3;
 
 function extensionOf(filename: string) {
   return getFileExtension(filename).toLowerCase();
@@ -212,6 +218,8 @@ export type ImportAttachmentOutcome = {
   written: number;
   skipped: number;
   losses: ImportLoss[];
+  /** Jobs that failed in a way worth retrying, with the loss to report once attempts run out. */
+  retry: { job: ImportAttachmentJob; loss: ImportLoss }[];
 };
 
 /**
@@ -229,6 +237,7 @@ export async function processImportAttachmentJobs(
     written: 0,
     skipped: 0,
     losses: [],
+    retry: [],
   };
   if (!jobs.length) return outcome;
   const [settings] = await getAttachmentSettings(db);
@@ -246,6 +255,7 @@ export async function processImportAttachmentJobs(
         entitySourceId: job.attachment.sourceId,
         sourceUrl: job.attachment.url,
       });
+    else if ("retry" in result) outcome.retry.push({ job, loss: result.retry });
     else outcome.losses.push(result);
   }
   return outcome;
@@ -255,7 +265,9 @@ async function processOne(
   job: ImportAttachmentJob,
   maxBytes: number,
   auth: ImportAttachmentAuth | null,
-): Promise<"written" | "duplicate" | "conflict" | ImportLoss> {
+): Promise<
+  "written" | "duplicate" | "conflict" | ImportLoss | { retry: ImportLoss }
+> {
   const { attachment } = job;
   const loss = (code: ImportLoss["code"]): ImportLoss => ({
     code,
@@ -267,13 +279,19 @@ async function processOne(
   });
   const downloaded = await dependencies
     .download(attachment.url, { maxBytes, auth })
-    .catch((): SafeDownloadResult => ({ ok: false, code: "failed" }));
-  if (!downloaded.ok)
-    return loss(
-      downloaded.code === "too_large"
-        ? "attachment_too_large"
-        : "attachment_download_failed",
+    .catch(
+      (): SafeDownloadResult => ({
+        ok: false,
+        code: "failed",
+        retryable: true,
+      }),
     );
+  if (!downloaded.ok) {
+    if (downloaded.code === "too_large") return loss("attachment_too_large");
+    return downloaded.retryable
+      ? { retry: loss("attachment_download_failed") }
+      : loss("attachment_download_failed");
+  }
   const bytes = downloaded.bytes;
   if (bytes.byteLength > maxBytes) return loss("attachment_too_large");
   const extension = extensionOf(attachment.filename);
@@ -311,7 +329,7 @@ async function processOne(
   try {
     await dependencies.put(objectKey, bytes, mime, maxBytes);
   } catch {
-    return loss("attachment_storage_unavailable");
+    return { retry: loss("attachment_storage_unavailable") };
   }
   try {
     const result = await db.transaction(async (tx) =>
@@ -332,7 +350,13 @@ async function processOne(
     if (error instanceof HTTPException && error.status === 429) {
       return loss("attachment_limit_reached");
     }
-    return loss("attachment_storage_unavailable");
+    // An item that vanished or a request refused stays terminal; any other (database) error is retried.
+    if (
+      error instanceof HTTPException ||
+      (error instanceof Error && error.message === ITEM_GONE)
+    )
+      return loss("attachment_storage_unavailable");
+    return { retry: loss("attachment_storage_unavailable") };
   }
 }
 
@@ -360,7 +384,7 @@ async function insertAttachment(
     )
     .for("share")
     .limit(1);
-  if (!item) throw new Error("work item no longer available");
+  if (!item) throw new Error(ITEM_GONE);
   const now = new Date();
   const created = readSourceTime(attachment.createdAt, now, now);
   const ctx: ImportWriterContext = {
@@ -453,8 +477,9 @@ export async function settleChunkAttachments(
   chunkRowId: string,
   settled: readonly ImportAttachmentJob[],
   losses: readonly ImportLoss[],
+  retried: readonly ImportAttachmentJob[] = [],
 ) {
-  if (!settled.length && !losses.length) return;
+  if (!settled.length && !losses.length && !retried.length) return;
   await db.transaction(async (tx) => {
     const [chunk] = await tx
       .select({ report: schema.importChunkTable.report })
@@ -464,10 +489,13 @@ export async function settleChunkAttachments(
       .limit(1);
     if (!chunk) return;
     const done = new Set(settled.map(importAttachmentJobKey));
+    const again = new Map(
+      retried.map((job) => [importAttachmentJobKey(job), job]),
+    );
     const pending = Array.isArray(chunk.report.pendingAttachments)
-      ? (chunk.report.pendingAttachments as ImportAttachmentJob[]).filter(
-          (job) => !done.has(importAttachmentJobKey(job)),
-        )
+      ? (chunk.report.pendingAttachments as ImportAttachmentJob[])
+          .filter((job) => !done.has(importAttachmentJobKey(job)))
+          .map((job) => again.get(importAttachmentJobKey(job)) ?? job)
       : [];
     const { pendingAttachments: _previous, ...rest } = chunk.report;
     const merged = mergeLossesIntoReport(rest, losses);
