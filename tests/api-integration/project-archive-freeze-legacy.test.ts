@@ -1615,7 +1615,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       );
 
       // Wait on the lock state itself, with no deadline: a loaded runner may start the requests
-      // late, and the test timeout aborts the signal and ends the loop. A request that settles while the barrier
+      // late, and stopWaiting ends the loop just before the test timeout. A request that settles while the barrier
       // is held was not serialized by it, so stop waiting and let the assertion fail (#762).
       let settledEarly = false;
       for (const operation of operations) {
@@ -1628,11 +1628,17 @@ describe("API integration: legacy task writes respect PR-15 project archive free
           },
         );
       }
+      // Stop 10 s before the 60 s test timeout so the finally block's rollback and closes
+      // finish before Vitest moves on and the next test resets the database.
+      const stopWaiting = AbortSignal.any([
+        signal,
+        AbortSignal.timeout(50_000),
+      ]);
       let blockedCount = 0;
       while (
         blockedCount < operations.length &&
         !settledEarly &&
-        !signal.aborted
+        !stopWaiting.aborted
       ) {
         const waiters = await client.query<{
           pid: number;
@@ -1785,7 +1791,7 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       createTransaction = claimAndInsert(createDb, "Concurrent create");
       importTransaction = claimAndInsert(importDb, "Concurrent import");
 
-      // Condition-based wait with no deadline (the test timeout aborts the signal and ends it); a writer that
+      // Condition-based wait bounded only by stopWaiting below; a writer that
       // settles while the barrier is held was not blocked, so stop and fail the assertion (#762).
       let settledEarly = false;
       for (const transaction of [createTransaction, importTransaction]) {
@@ -1798,11 +1804,16 @@ describe("API integration: legacy task writes respect PR-15 project archive free
           },
         );
       }
+      // Stop before the test timeout so cleanup finishes before the next test resets the database.
+      const stopWaiting = AbortSignal.any([
+        signal,
+        AbortSignal.timeout(50_000),
+      ]);
       let waitingPids: number[] = [];
       while (
         waitingPids.length < writerPids.length &&
         !settledEarly &&
-        !signal.aborted
+        !stopWaiting.aborted
       ) {
         const waiting = await barrierClient.query<{ pid: number }>(
           `
