@@ -954,12 +954,11 @@ plugin kind", which would have produced six registries with one member each.
    settings screen for renameable nouns ([ADR 0012](design-and-decisions.md#0012-terminology-overlay)).
    Whichever mechanism fits, the rule is the same one stated at the top of this document:
    *if it varies between deployments, it is configured, never compiled in.*
-3. **Configuration generated from a schema, not a bespoke form.** A Zod config schema
-   drives a plugin's God Mode form (`GM-5` in [God Mode](feature-contracts-p4.md#god-mode));
-   the same idea applies to a workflow's transition editor or a custom report's builder —
-   the *editing surface* is generated from the *shape* of the thing being edited, so a new
-   instance of the pattern (a new plugin, a new workflow, a new report) never requires new
-   bespoke UI work.
+3. **Configuration generated from a schema where it fits.** The SMTP plugin's God Mode
+   form is generated from its Zod config schema (`GM-5` in [God Mode](feature-contracts-p4.md#god-mode));
+   storage, identity and observability keep their own screens. The plugin catalog is fixed,
+   so a new plugin needs its own screen unless it adopts the schema-generated form. The same
+   idea may apply to a workflow's transition editor or a custom report's builder.
 4. **A feature flag to switch it off**, independent of whether it is configured. See
    [Feature toggles](#plugin-architecture-feature-toggles) below.
 5. **A validate/test affordance where "wrong" is otherwise silent.** A plugin's

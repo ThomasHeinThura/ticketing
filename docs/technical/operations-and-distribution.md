@@ -1549,7 +1549,6 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 
 ---
 
-<a id="runbook-break-glass-all-administrators-locked-out"></a>
 ### Release an unused project slug claim
 
 `project_slug_claim` rows are permanent by design ([data model](data-model.md)), so a
@@ -1564,7 +1563,11 @@ project inherit that key range. Requires database access; take a backup first.
    `LIKE` pattern is safe; refuse to continue if the slug has any other character.
    `select 1 from work_item_key_claim where key like 'ABC-%';` must return no rows.
 3. Back up the database (see [Backup and restore](#backup-and-restore)).
-4. Release the claim in one statement; the predicate repeats the check atomically:
+4. Stop project writes (scale the API to zero or enable maintenance mode) before the
+   checks and keep them stopped until the commit: a concurrent rename could otherwise
+   reclaim the old slug between the checks and the delete and leave the live project
+   without its permanent claim. Resume writes after the commit.
+5. Release the claim in one statement; the predicate repeats the check atomically:
 
 ```sql
 begin;
@@ -1576,8 +1579,9 @@ where slug = 'ABC'
 commit;
 ```
 
-5. Record the release (slug, operator, date, ticket) in the operator log.
+6. Record the release (slug, operator, date, ticket) in the operator log.
 
+<a id="runbook-break-glass-all-administrators-locked-out"></a>
 ### Break-glass: all administrators locked out
 
 Requires database access. Every step is audited.

@@ -4106,13 +4106,13 @@ Generated, never derived from the user's filename:
 Uploads go **direct to storage** via a presigned PUT. The API never proxies file bytes.
 
 ```
-1. POST /api/attachments/presign
-     { workItemId, filename, mimeType, size }
+1. POST /api/work-items/{key}/attachments/presign
+     { filename, mimeType, size }
    → policy check, quota check, allowlist check
    → creates attachment row (state = pending)
-   → returns { attachmentId, url, fields, expiresIn: 300 }
+   → returns { attachmentId, uploadUrl, uploadHeaders }
 
-2. Browser POSTs the file directly to storage.
+2. Browser PUTs the file to uploadUrl with uploadHeaders.
 
 3. POST /api/attachments/{id}/complete
    → server stats the object: exists? size matches? 
