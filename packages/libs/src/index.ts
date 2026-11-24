@@ -11,15 +11,3 @@ export {
   windowId,
 } from "./hono";
 export { HttpError } from "./http-error";
-export type {
-  ScimAdministrationDto,
-  ScimAdministrationRequest,
-} from "./identity-provisioning";
-export {
-  createScimTokenChallenge,
-  getScimAdministration,
-  patchScimAdministration,
-  proveScimTokenOperation,
-  revokeScimToken,
-  rotateScimToken,
-} from "./identity-provisioning";

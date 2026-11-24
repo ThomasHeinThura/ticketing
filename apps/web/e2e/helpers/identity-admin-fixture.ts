@@ -111,6 +111,8 @@ export type ScimState = {
   lifecyclePolicy: "end_memberships" | "keep_memberships";
   matchAttributes: string[];
   attributeMapping: Record<string, string | number>;
+  tokenStatus: { present: boolean };
+  scimBaseUrl: string;
   mappings: Array<{
     id: string;
     externalGroupId: string;
@@ -189,6 +191,8 @@ export function newIdentityFixture(): IdentityAdminFixture {
         jobTitle: "title",
         locale: "preferredLanguage",
       },
+      tokenStatus: { present: true },
+      scimBaseUrl: "https://ticketing.localhost/scim/v2",
       mappings: [
         {
           id: "mapping-1",

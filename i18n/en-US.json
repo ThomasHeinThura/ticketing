@@ -6449,6 +6449,8 @@
 			"token": {
 				"title": "Bearer token",
 				"description": "Issue or rotate the token your identity provider uses, or revoke it. Either change invalidates the previous token at once and disables SCIM until you enable it again.",
+				"statusPresent": "A bearer token is issued.",
+				"statusNone": "No bearer token is issued.",
 				"rotate": "Issue or rotate token",
 				"revoke": "Revoke token",
 				"issuedTitle": "New token — copy it now",

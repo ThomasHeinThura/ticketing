@@ -86999,6 +86999,21 @@
                           ],
                           "additionalProperties": false
                         },
+                        "tokenStatus": {
+                          "type": "object",
+                          "properties": {
+                            "present": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "present"
+                          ]
+                        },
+                        "scimBaseUrl": {
+                          "type": "string",
+                          "format": "uri"
+                        },
                         "mappings": {
                           "type": "array",
                           "items": {
@@ -87051,6 +87066,8 @@
                         "lifecyclePolicy",
                         "matchAttributes",
                         "attributeMapping",
+                        "tokenStatus",
+                        "scimBaseUrl",
                         "mappings"
                       ]
                     },
@@ -87468,6 +87485,21 @@
                           ],
                           "additionalProperties": false
                         },
+                        "tokenStatus": {
+                          "type": "object",
+                          "properties": {
+                            "present": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "present"
+                          ]
+                        },
+                        "scimBaseUrl": {
+                          "type": "string",
+                          "format": "uri"
+                        },
                         "mappings": {
                           "type": "array",
                           "items": {
@@ -87520,6 +87552,8 @@
                         "lifecyclePolicy",
                         "matchAttributes",
                         "attributeMapping",
+                        "tokenStatus",
+                        "scimBaseUrl",
                         "mappings"
                       ]
                     },

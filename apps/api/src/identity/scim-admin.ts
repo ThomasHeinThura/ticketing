@@ -35,6 +35,7 @@ import {
 } from "../pending-action/workspace-access-invalidation";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
+import { requirePublicAppOrigin } from "../utils/request-origin";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { scimMappingOptionsRoute as mappingOptionsRoute } from "./mapping-options-route";
 import {
@@ -138,6 +139,9 @@ const safeResponseSchema = z.object({
     lifecyclePolicy: z.enum(["end_memberships", "keep_memberships"]),
     matchAttributes: z.array(matchAttributeSchema).min(2),
     attributeMapping: profileMappingSchema,
+    // #770: whether a bearer token exists (never the token) and the URL a provider calls.
+    tokenStatus: z.object({ present: z.boolean() }),
+    scimBaseUrl: z.string().url(),
     mappings: z.array(
       z.object({
         id: z.string(),
@@ -157,7 +161,7 @@ function error(status: number, message: string) {
   return { type: "about:blank", title: message, status };
 }
 
-async function readSafeSettings(connectionId: string) {
+async function readSafeSettings(connectionId: string, publicOrigin: string) {
   const [row] = await getScimSettingsRow(connectionId);
   if (!row) return null;
   const allowedResources = canonicalAllowedResources(row.allowedResources);
@@ -185,6 +189,9 @@ async function readSafeSettings(connectionId: string) {
       lifecyclePolicy: row.lifecyclePolicy,
       attributeMapping: row.attributeMapping ?? DEFAULT_SCIM_PROFILE_MAPPING,
       matchAttributes: matchAttributes.value,
+      tokenStatus: { present: row.tokenPresent },
+      // IP-11: one endpoint family on the agent origin.
+      scimBaseUrl: `${publicOrigin}/scim/v2`,
       mappings: resolvedMappings,
     },
     configVersion: row.configVersion,
@@ -345,7 +352,10 @@ const routes = apiRouter()
     );
     setShadowLegacyAuthorization(c, "allowed");
     const { id } = c.req.valid("param");
-    const response = await readSafeSettings(id);
+    const response = await readSafeSettings(
+      id,
+      requirePublicAppOrigin(c.get("appPublicOrigin")),
+    );
     if (!response) return c.json(error(404, "Not found"), 404);
     c.header("Cache-Control", "no-store");
     return c.json(response, 200);
@@ -765,7 +775,10 @@ const routes = apiRouter()
       await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
     }
     c.header("Cache-Control", "no-store");
-    const response = await readSafeSettings(id);
+    const response = await readSafeSettings(
+      id,
+      requirePublicAppOrigin(c.get("appPublicOrigin")),
+    );
     if (!response) return c.json(error(404, "Not found"), 404);
     return c.json(response, 200);
   })
