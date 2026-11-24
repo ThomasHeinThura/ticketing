@@ -85,8 +85,8 @@ const FALLBACK_ALLOWED_EXTENSIONS = [
 /**
  * `POST /api/work-items/{key}/attachments/presign` (`attachments.md` AT-1, AT-2, AT-4, AT-14).
  * Validates against the God Mode-configurable limits, inserts a `pending` row, and
- * mints a presigned direct-PUT -- the bytes themselves never pass through this
- * process.
+ * mints an upload URL: an S3 presigned PUT, or the API's token-bound filesystem PUT.
+ * The bytes never pass through this handler.
  */
 export async function presignAttachment(input: PresignAttachmentInput) {
   const {

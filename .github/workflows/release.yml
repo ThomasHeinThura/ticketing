@@ -268,6 +268,9 @@ jobs:
           exit-code: '1'
           cache: false
           skip-setup-trivy: true
+        env:
+          # #402: an end-of-life base image fails the scan like a fixable HIGH finding.
+          TRIVY_EXIT_ON_EOL: '1'
 
       - name: Scan arm64 image — HIGH and CRITICAL with a fix available block publication
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -280,6 +283,9 @@ jobs:
           exit-code: '1'
           cache: false
           skip-setup-trivy: true
+        env:
+          # #402: an end-of-life base image fails the scan like a fixable HIGH finding.
+          TRIVY_EXIT_ON_EOL: '1'
 
       - name: Generate CycloneDX SBOM for amd64
         uses: anchore/sbom-action@d8a2c0130026bf585de5c176ab8f7ce62d75bf04 # v0.20.7

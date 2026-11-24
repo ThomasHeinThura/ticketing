@@ -1023,8 +1023,7 @@ Import runs and their history. See [import strategy](#pending-06-data-importimpo
 - `GM-4` Every plugin with a meaningful test implements one, and the UI surfaces the real
   error rather than a generic failure. An administrator must be able to distinguish
   "wrong password" from "cannot reach host".
-- `GM-5` Settings forms are generated from each plugin's Zod schema, so a new plugin
-  arrives with its administration UI already built.
+- `GM-5` The supported plugin catalog is fixed; nothing registers plugins at runtime. The SMTP form is generated from its Zod schema; storage, identity and observability keep their own screens. Every catalog entry has a valid config path (owner decision 24 Nov 2026, #913).
 - `GM-6` Destructive actions are **pending actions**
   ([pending-actions.md](#pending-01-architecturepending-actions)): the request returns `202`,
   the server chooses the confirmation level, and for God Mode targets — organisations,

@@ -410,6 +410,14 @@ export function getDatabasePool(): Pool {
     pool.on("error", (error) => {
       console.error("Database pool: idle client error", error);
     });
+    // The pool's listener covers idle clients only. A socket failure on a CHECKED-OUT client emits
+    // "error" on the client itself; with no listener that is an unhandled exception that crashes the
+    // process before an in-flight query's rejection can be retried. The query still rejects normally.
+    pool.on("connect", (client) => {
+      client.on("error", (error) => {
+        console.error("Database pool: client error", error);
+      });
+    });
   }
 
   return pool;

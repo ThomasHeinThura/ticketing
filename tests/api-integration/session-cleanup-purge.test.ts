@@ -16,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { withJobLease } from "../../apps/api/src/scheduler/leader-lock";
 import {
+  deleteExpiredInvitations,
   deleteExpiredNotificationReservations,
   deleteExpiredSessions,
   runSessionCleanup,
@@ -203,6 +204,142 @@ describe("API integration: session-cleanup's expired-session purge and legal hol
 
       expect(await deleteExpiredSessions()).toBe(1);
       expect(await deleteExpiredSessions()).toBe(0);
+    });
+  });
+
+  describe("expired invitation purge (#198)", () => {
+    async function makeInvitation(
+      member: Awaited<ReturnType<typeof createWorkspaceMember>>,
+      label: string,
+      overrides: Partial<typeof schema.invitationTable.$inferInsert> = {},
+    ) {
+      return requireRow(
+        await db
+          .insert(schema.invitationTable)
+          .values({
+            workspaceId: member.workspace.id,
+            email: `${label}@example.test`,
+            inviterId: member.user.id,
+            status: "pending",
+            expiresAt: new Date(Date.now() - HOUR_MS),
+            ...overrides,
+          })
+          .returning(),
+        "makeInvitation",
+      );
+    }
+
+    async function invitationIds() {
+      const rows = await db
+        .select({ id: schema.invitationTable.id })
+        .from(schema.invitationTable);
+      return new Set(rows.map((row) => row.id));
+    }
+
+    it("deletes only expired invitations that were neither accepted nor canceled", async () => {
+      const member = await createWorkspaceMember();
+      const expired = await makeInvitation(member, "expired");
+      const live = await makeInvitation(member, "live", {
+        expiresAt: new Date(Date.now() + HOUR_MS),
+      });
+      const accepted = await makeInvitation(member, "accepted", {
+        status: "accepted",
+        acceptedAt: new Date(),
+      });
+      const canceled = await makeInvitation(member, "canceled", {
+        status: "canceled",
+      });
+
+      expect(await deleteExpiredInvitations()).toBe(1);
+
+      const remaining = await invitationIds();
+      expect(remaining.has(expired.id)).toBe(false);
+      for (const kept of [live, accepted, canceled]) {
+        expect(remaining.has(kept.id)).toBe(true);
+      }
+    });
+
+    it("keeps an expired invitation while its organisation is under an open hold", async () => {
+      const member = await createWorkspaceMember();
+      const held = await makeInvitation(member, "held");
+      const hold = await placeHold(
+        "organisation",
+        member.workspace.organisationId,
+        member.user.id,
+      );
+
+      expect(await deleteExpiredInvitations()).toBe(0);
+      expect((await invitationIds()).has(held.id)).toBe(true);
+
+      await db
+        .update(schema.legalHoldTable)
+        .set({ liftedAt: new Date(), liftedBy: member.user.id })
+        .where(eq(schema.legalHoldTable.id, hold.id));
+
+      expect(await deleteExpiredInvitations()).toBe(1);
+      expect((await invitationIds()).has(held.id)).toBe(false);
+    });
+
+    it("keeps an expired invitation whose inviter's person or customer organisation is held", async () => {
+      const member = await createWorkspaceMember();
+      const org = await makeOrganisation("inviter");
+      const person = await makePerson(member.user.id, org.id);
+      const byPerson = await makeInvitation(member, "by-person");
+      const hold = await placeHold("person", person.id, member.user.id);
+      expect(await deleteExpiredInvitations()).toBe(0);
+      await db
+        .update(schema.legalHoldTable)
+        .set({ liftedAt: new Date(), liftedBy: member.user.id })
+        .where(eq(schema.legalHoldTable.id, hold.id));
+
+      // Customer invitation: its organisation differs from its workspace's.
+      const customerOrg = await makeOrganisation("customer");
+      const customer = await makeInvitation(member, "customer", {
+        scope: "customer",
+        organisationId: customerOrg.id,
+      });
+      const orgHold = await placeHold(
+        "organisation",
+        customerOrg.id,
+        member.user.id,
+      );
+      expect(await deleteExpiredInvitations()).toBe(1);
+      const kept = await invitationIds();
+      expect(kept.has(byPerson.id)).toBe(false);
+      expect(kept.has(customer.id)).toBe(true);
+
+      await db
+        .update(schema.legalHoldTable)
+        .set({ liftedAt: new Date(), liftedBy: member.user.id })
+        .where(eq(schema.legalHoldTable.id, orgHold.id));
+      expect(await deleteExpiredInvitations()).toBe(1);
+      expect((await invitationIds()).has(customer.id)).toBe(false);
+    });
+
+    it("waits for a hold being placed concurrently and then keeps the invitation", async () => {
+      const member = await createWorkspaceMember();
+      const invitation = await makeInvitation(member, "racing");
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const placing = db.transaction(async (tx) => {
+        await tx.insert(schema.legalHoldTable).values({
+          scope: "organisation",
+          scopeId: member.workspace.organisationId,
+          placedBy: member.user.id,
+          reason: "integration test hold",
+        });
+        await gate;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const deleting = deleteExpiredInvitations();
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      release();
+      await placing;
+
+      expect(await deleting).toBe(0);
+      expect((await invitationIds()).has(invitation.id)).toBe(true);
     });
   });
 

@@ -27,7 +27,7 @@ Performance, permission, isolation, safety and security budgets are not waived.
 │ pnpm check:overrides one override source only    │
 │ pnpm check:dockerfile-deps Dockerfile=workspace  │
 │ gitleaks             no secrets in the diff      │
-│ pnpm check:queries   planned — not wired (#580) │
+│ pnpm check:queries   no new direct queries (#580)│
 │ pnpm check:inventory screen counts match rows    │
 │ pnpm check:reviews   phase boundary evidence        │
 │ pnpm check:env       no stray process.env        │
@@ -96,6 +96,7 @@ apps/api/src/**/controllers/**       apps/api/drizzle/*.sql
 apps/api/src/policy-registry.ts      apps/api/src/database/**
 packages/mcp/src/auth/**             scripts/deploy.sh
 packages/domain/src/identity/**      apps/api/src/permissions/**
+apps/api/drizzle.config.ts
 
 apps/api/src/middleware/**           (path does not exist yet)
 apps/api/src/webhooks/**             (path does not exist yet, P4)

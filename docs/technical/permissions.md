@@ -90,6 +90,8 @@ Project reordering returns and updates only projects the caller reaches. Unreach
 | | `webhook:manage` | | Webhooks, secret rotation, redelivery |
 | **Automations** | `automation:manage` | | Rules at project scope (workspace scope also needs `workspace:manage_settings`) |
 
+An initial priority on work item create needs `work_item:set_priority`, as on edit (#348).
+
 ## Built-in roles
 
 | Key | Rank | Intent | Capabilities |

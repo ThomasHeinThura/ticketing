@@ -32,6 +32,7 @@ import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
 import { deleteThroughApprovalAsCookie } from "./helpers/pending-deletion";
 import { projectKey } from "./helpers/project-key";
+import { makeApiKey } from "./helpers/reach-world";
 import { upsertWorkspaceRoleRows } from "./helpers/workspace-role-rows";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
@@ -355,6 +356,68 @@ describe("a project's creator holds a project-lead membership", () => {
         granted: true,
       },
     });
+  });
+
+  it("records the API key in the creator-grant audit row (#746)", async () => {
+    const world = await newWorld();
+    const manager = await addManager(world);
+    const raw = await makeApiKey(manager.user.id, { project: ["create"] });
+    const [key] = await db.select().from(schema.apikeyTable);
+    const response = await world.app.request("/api/project", {
+      method: "POST",
+      headers: { "x-api-key": raw, "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: world.workspaceId,
+        name: "P",
+        icon: "Folder",
+        slug: projectKey(),
+      }),
+    });
+    expect(response.status).toBe(200);
+    const projectId = ((await response.json()) as { id: string }).id;
+    const grantAudit = (await auditRows(projectId)).filter(
+      (row) =>
+        (row.after as { source?: string } | null)?.source ===
+        PROJECT_CREATOR_ORIGIN,
+    );
+    expect(grantAudit).toHaveLength(1);
+    expect(grantAudit[0]?.after).toMatchObject({ apiKeyId: key?.id });
+  });
+
+  it("refuses a creator removed from the workspace before the grant is written (#746)", async () => {
+    const world = await newWorld();
+    const manager = await addManager(world);
+    await db
+      .delete(schema.workspaceUserTable)
+      .where(eq(schema.workspaceUserTable.userId, manager.user.id));
+    const slug = `rm-${randomUUID().slice(0, 8)}`;
+    await expect(
+      createProjectCtrl(
+        world.workspaceId,
+        "P",
+        "Folder",
+        slug,
+        {
+          kind: "project",
+          supportLevel: null,
+          serviceCalendarId: null,
+          organisationId: null,
+        },
+        manager.user.id,
+      ),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(
+      await db
+        .select()
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.slug, slug)),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.membershipGrantTable)
+        .where(eq(schema.membershipGrantTable.scope, "project")),
+    ).toHaveLength(0);
   });
 
   it("a member is refused (403) on project creation and receives no creator grant (#708)", async () => {

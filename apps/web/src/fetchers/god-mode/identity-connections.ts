@@ -131,6 +131,8 @@ export type ScimAdminSettings = {
     lifecyclePolicy: "end_memberships" | "keep_memberships";
     matchAttributes: ScimMatchAttribute[];
     attributeMapping: ScimProfileMapping;
+    tokenStatus: { present: boolean };
+    scimBaseUrl: string;
     mappings: ScimGroupMapping[];
   };
   configVersion: number;

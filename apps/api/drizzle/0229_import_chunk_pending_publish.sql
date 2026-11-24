@@ -1,0 +1,1 @@
+ALTER TABLE "import_chunk" ADD COLUMN "pending_publish" jsonb;

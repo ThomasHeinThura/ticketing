@@ -18,7 +18,7 @@ import {
   calibratedMedianOfThreeWithRetry,
   describeHost,
   PERFORMANCE_REFERENCE,
-  resolveJobCalibration,
+  resolveJobCalibrationLogged,
 } from "../../../scripts/ci/lib/performance-calibration.mjs";
 import {
   BOARD_ITEM_COUNT,
@@ -143,7 +143,7 @@ test.beforeAll(async ({ browser }) => {
       batches.push(
         await measureCalibrationRuns(browser, state === "throttled"),
       );
-    const calibration = resolveJobCalibration({ batches, state });
+    const calibration = resolveJobCalibrationLogged({ batches, state });
     jobCalibrations[state] = calibration;
     calibration.batches.forEach((batch, index) => {
       console.log(

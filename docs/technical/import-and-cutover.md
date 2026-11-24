@@ -66,8 +66,10 @@ authenticated API a person would use.
 - `IM-6` **Preserve authorship and timestamps** where the source provides them. An import
   that stamps everything with today's date and the importer's name destroys the history it
   was supposed to save.
-- `IM-7` **Users are matched by email**, and unmatched users become inactive placeholder
-  records rather than being dropped. Comments by departed staff still say who wrote them.
+- `IM-7` **Users are matched by email**, and unmatched users become placeholder person
+  records rather than being dropped: no login, no membership, never assignable, and
+  claimable only through the verified `IP-30` path. Placeholder rows are stored active so
+  that claim proof works. Comments by departed staff still say who wrote them.
 
 <a id="import-strategy-the-pipeline"></a>
 ### The pipeline
@@ -202,7 +204,7 @@ path ([mcp-server.md](feature-contracts-p4.md#mcp-server)); an agent-driven impo
 | Same source imported twice | Mapping rows cause updates, not duplicates |
 | Source record deleted after import | Target retained; the provenance link is marked stale |
 | Circular parent references in the source | Detected; the cycle is broken and reported |
-| Comment author not in the directory | Inactive placeholder person created, authorship preserved |
+| Comment author not in the directory | Placeholder person created (no login, no membership, never assignable), authorship preserved |
 | Attachment download fails | Item imported, attachment reported as missing with the source URL |
 | Source has more states than the target | Mapping is required; the import will not start until every state is mapped |
 | 100,000 items | Chunked at 500; hours; resumable; progress visible |
@@ -253,7 +255,7 @@ Organisation → Workspace → Project → Work item
 
 | Rule | |
 | --- | --- |
-| **People** | Matched by email, case-insensitive. Unmatched become inactive placeholders — never dropped, never collapsed into "unknown" |
+| **People** | Matched by email, case-insensitive. Unmatched become placeholders (no login, never assignable) — never dropped, never collapsed into "unknown" |
 | **Timestamps** | Preserved. `created_at`, `updated_at`, `resolved_at` come from the source |
 | **Authorship** | Preserved on comments and activity |
 | **Provenance** | Every record gets an `external_link` row: system, id, URL |
@@ -604,7 +606,7 @@ After import:
 - Required: Relations resolve
 - Required: Activity shows history, not just a creation event
 - Required: The provenance link opens the original in Azure DevOps
-- Required: Placeholder users are marked inactive and are not assignable
+- Required: Placeholder users have no login or membership and are not assignable
 
 <a id="azure-devops-related"></a>
 ### Related
@@ -783,7 +785,7 @@ either drop or get wrong.
 - **Idempotency ledger and provenance are distinct.** The maintained [data model](data-model.md) names `import_record_link` as the row-level ledger, formerly `import_mapping`; `import_mapping_profile` stores the operator-edited mapping. `external_link` holds source-system/id/URL provenance for entities. Preserve all three meanings rather than merging the ledger with the mapping profile or losing source links.
 - **MCP tool-name reconciliation:** IM-12 retains the original `create_import_mapping` label. The strategy API and maintained [MCP tools](feature-contracts-p4.md#mcp-server-api) specify `create_import_link` / `get_import_link` through `/api/imports/{id}/links`. Resolve compatibility explicitly; this migration does not register an extra tool, route or permission. Agent-driven runs use the same persisted run, ledger, audit and bulk API as structured runs.
 - **ADO Resolved mapping:** the field table proposes `started`; the ADO explanation discusses `completed` versus `started`. These are proposals requiring the operator's explicit per-process mapping, never permission for the importer to guess. Show affected counts and preserve the selected mapping in repeat runs.
-- **Chunks and checkpoints:** the general example uses chunks of 500; ADO specifies 200 work items and separately chunked revisions. These source-specific limits are retained. IM-3 guarantees resumption from the last committed chunk; the four sources do not specify the persisted checkpoint shape, cursor ownership or stale-source reconciliation semantics. Those details need an explicit contract before claiming reliable recovery.
+- **Chunks and checkpoints:** the general example uses chunks of 500; ADO specifies 200 work items and separately chunked revisions. These source-specific limits are retained. IM-3 guarantees resumption from the last committed chunk. The checkpoint is `import_run.source_cursor` (`cursor`, `exhausted`), advanced in the same transaction as the chunk's writes, stats and loss rows, so a rolled-back chunk leaves it unchanged. The run owns the cursor; adapters only read a page from it. The runner persists a committed chunk's publish events in `import_chunk.pending_publish` (nullable, written in the chunk transaction) and clears them only after a successful dispatch, under the job lease. It drains them on start, resume and reconcile before it advances or finalizes, so a pause or crash does not lose them. A crash after dispatch but before the clear republishes them: delivery is at least once. Stale-source reconciliation semantics remain open.
 - **Whole-run rollback and cutover:** these four sources specify chunk commits, pause/resume, source-read-only access, idempotent re-runs, count/loss reconciliation and source spot-checking. They do not define a whole-run undo API, an atomic cross-system cutover, source freeze/delta capture, rollback window, deletion of imported target data or restoration of overwritten target values. Do not infer those guarantees from resumability, a successful dry run or backup availability. Define the cutover/recovery contract before a real migration; use the maintained backup/restore contract when available and report the current gap honestly.
 
 ## Reference coverage

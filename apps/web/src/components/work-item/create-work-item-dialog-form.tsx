@@ -131,6 +131,7 @@ export default function CreateWorkItemDialogForm({
   const selectedType = types?.find((type) => type.id === typeId);
   const canUpdate = permission.canUpdateTasks();
   const canAssign = permission.canAssignTasks();
+  const canSetPriority = permission.canSetPriorityTasks();
   const canAttach =
     permission.canCreateAttachments?.() === true &&
     !permission.isCheckingPermissions;
@@ -189,7 +190,8 @@ export default function CreateWorkItemDialogForm({
     typeId: typeId ?? "",
     title: title.trim(),
     description: description.trim() ? descriptionDocument : undefined,
-    priority: priority === NO_PRIORITY ? undefined : priority,
+    priority:
+      priority === NO_PRIORITY || !canSetPriority ? undefined : priority,
     startDate: startDate ? dayToIso(startDate, null) : undefined,
     dueDate: dueDate ? dayToIso(dueDate, null) : undefined,
     assigneeId: assigneeId || undefined,
@@ -556,7 +558,7 @@ export default function CreateWorkItemDialogForm({
                       ? "bg-accent/30 text-foreground"
                       : "text-muted-foreground",
                   )}
-                  disabled={locked}
+                  disabled={locked || !canSetPriority}
                   data-testid="create-work-item-priority-trigger"
                 >
                   {getPriorityIcon(priority)}

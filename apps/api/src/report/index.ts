@@ -1026,7 +1026,7 @@ router
         entry.enabled,
       ]),
     );
-    // `feature.sla` counts as available when any project switches it on (feature-scope.ts).
+    // `feature.sla` counts as available when the workspace has it on (feature-scope.ts).
     const slaOn =
       (await reportFeatureScope("feature.sla", workspaceId)) !== "off";
     return c.json(

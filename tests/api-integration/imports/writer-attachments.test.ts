@@ -2,12 +2,14 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
+import { importLossTable } from "../../../apps/api/src/database/schema-imports";
 import {
   commitImportChunk,
   drainImportAttachmentJobs,
+  reconcileImportLossIndex,
   resumePendingImportAttachments,
 } from "../../../apps/api/src/imports/service";
 import {
@@ -15,14 +17,17 @@ import {
   markMissingImportSourcesStale,
   setImportAttachmentDependencies,
 } from "../../../apps/api/src/imports/writer";
+import { listPendingImportAttachmentJobs } from "../../../apps/api/src/imports/writer/attachments";
 import { createApp } from "../../../apps/api/src/index";
 import { resetTestDatabase } from "../helpers/database";
 import {
   commitChunk,
   createRun,
   getReport,
+  idempotentJson,
   previewChunk,
   record,
+  request,
   writerFixture,
 } from "./writer-fixture";
 
@@ -378,6 +383,7 @@ describe("import writer: attachments (IM-4, download failure edge case)", () => 
       attachment: { sourceId: "a", url: URL_OK, filename: "diagram.png" },
       uploaderPersonId: null,
       attachmentOrganisationId: null,
+      attempts: 2, // this pass is the last allowed attempt, so the failure is reported
     });
     const failed = await drainImportAttachmentJobs([job("whatever")]);
     expect(failed.losses).toEqual([
@@ -462,5 +468,265 @@ describe("import writer: attachments (IM-4, download failure edge case)", () => 
     // resuming again is a no-op
     expect((await resumePendingImportAttachments(run.id)).written).toBe(0);
     expect(download).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("import writer: transient attachment failures (#896)", () => {
+  const transient = {
+    ok: false as const,
+    code: "failed" as const,
+    retryable: true,
+  };
+  const terminal = { ok: false as const, code: "failed" as const };
+  const lossRows = () => db.select().from(importLossTable);
+  const chunkOf = async (
+    app: ReturnType<typeof createApp>["app"],
+    f: Awaited<ReturnType<typeof writerFixture>>,
+    runId: string,
+  ) => (await getReport(app, f, runId)).chunks[0] as Record<string, unknown>;
+
+  async function commitOne(
+    download: NonNullable<
+      Parameters<typeof setImportAttachmentDependencies>[0]
+    >["download"],
+    name: string,
+  ) {
+    const f = await writerFixture();
+    const { app } = createApp();
+    setImportAttachmentDependencies({ download });
+    const run = await createRun(app, f, name);
+    await commitChunk(app, f, run.id, "c1", [
+      attachmentRecord(f, "T-1", [
+        { sourceId: "a", url: URL_OK, filename: "diagram.png" },
+      ]),
+    ]);
+    return { f, app, run };
+  }
+
+  it("retries a transient failure within the records route and ends as a written attachment with no loss", async () => {
+    let calls = 0;
+    const download = vi.fn(async () =>
+      ++calls === 1
+        ? transient
+        : { ok: true as const, bytes: PNG, contentType: "image/png" },
+    );
+    // Only the route runs: no manual resume, no engine finalize.
+    const { f, app, run } = await commitOne(download, "att-retry");
+    expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
+    const chunk = await chunkOf(app, f, run.id);
+    expect(chunk.pendingAttachments).toBeUndefined();
+    expect(chunk.lossCounts ?? {}).toEqual({});
+    expect(await lossRows()).toHaveLength(0);
+    expect(download).toHaveBeenCalledTimes(2);
+    // a replay finds nothing pending and creates no second copy
+    expect((await resumePendingImportAttachments(run.id)).written).toBe(0);
+    expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
+    expect(download).toHaveBeenCalledTimes(2);
+  });
+
+  it("turns exhausted retries into exactly one terminal loss, never left pending", async () => {
+    const download = vi.fn(async () => transient);
+    const { f, app, run } = await commitOne(download, "att-exhaust");
+    expect(download).toHaveBeenCalledTimes(3);
+    const chunk = await chunkOf(app, f, run.id);
+    expect(chunk.pendingAttachments).toBeUndefined();
+    expect(chunk.lossCounts).toEqual({ attachment_download_failed: 1 });
+    expect(await lossRows()).toHaveLength(1);
+    await resumePendingImportAttachments(run.id);
+    expect(download).toHaveBeenCalledTimes(3);
+    expect(await lossRows()).toHaveLength(1);
+  });
+
+  it("does not retry a terminal failure", async () => {
+    const download = vi.fn(async () => terminal);
+    const { f, app, run } = await commitOne(download, "att-terminal");
+    expect(download).toHaveBeenCalledTimes(1);
+    expect((await chunkOf(app, f, run.id)).lossCounts).toEqual({
+      attachment_download_failed: 1,
+    });
+  });
+
+  it("finishes pending attachments when the committed chunk is replayed through the route after a crash", async () => {
+    const download = vi.fn(async () => ({
+      ok: true as const,
+      bytes: PNG,
+      contentType: "image/png",
+    }));
+    const f = await writerFixture();
+    const { app } = createApp();
+    setImportAttachmentDependencies({ download });
+    const run = await createRun(app, f, "att-replay");
+    const records = [
+      attachmentRecord(f, "RP-1", [
+        { sourceId: "a", url: URL_OK, filename: "diagram.png" },
+      ]),
+    ];
+    const preview = await previewChunk(app, f, run.id, "c1", records);
+    await db.transaction((tx) =>
+      commitImportChunk(tx, {
+        actor: {
+          userId: f.user.id,
+          actorType: "api_key",
+          apiKeyId: f.fullKey.id,
+          apiKey: { id: f.fullKey.id },
+          impersonatedBy: null,
+        },
+        runId: run.id,
+        chunkId: "c1",
+        expectedVersion: preview.runVersion,
+        previewDigest: preview.previewDigest,
+        records: records as never,
+      }),
+    ); // the process dies here: nothing drained
+    expect(await db.select().from(schema.attachmentTable)).toHaveLength(0);
+    // the client's retry of the same chunk
+    const replay = await request(
+      app,
+      f.fullKey.key,
+      `/api/imports/${run.id}/records`,
+      idempotentJson("POST", {
+        chunkId: "c1",
+        expectedVersion: preview.runVersion,
+        records,
+        previewDigest: preview.previewDigest,
+      }),
+    );
+    expect(replay.status, await replay.clone().text()).toBe(200);
+    expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
+    expect(download).toHaveBeenCalledTimes(1);
+  });
+
+  it("reconciles a loss-index write that failed after the chunk report was saved", async () => {
+    const download = vi.fn(async () => terminal);
+    const { run } = await commitOne(download, "att-reconcile");
+    expect(await lossRows()).toHaveLength(1);
+    await db.delete(importLossTable); // the index insert "failed"
+    await reconcileImportLossIndex(run.id);
+    expect(await lossRows()).toHaveLength(1);
+    await reconcileImportLossIndex(run.id); // idempotent
+    expect(await lossRows()).toHaveLength(1);
+  });
+
+  async function commitWithoutDrain(
+    app: ReturnType<typeof createApp>["app"],
+    f: Awaited<ReturnType<typeof writerFixture>>,
+    name: string,
+  ) {
+    const run = await createRun(app, f, name);
+    const records = [
+      attachmentRecord(f, "OV-1", [
+        { sourceId: "a", url: URL_OK, filename: "diagram.png" },
+      ]),
+    ];
+    const preview = await previewChunk(app, f, run.id, "c1", records);
+    await db.transaction((tx) =>
+      commitImportChunk(tx, {
+        actor: {
+          userId: f.user.id,
+          actorType: "api_key",
+          apiKeyId: f.fullKey.id,
+          apiKey: { id: f.fullKey.id },
+          impersonatedBy: null,
+        },
+        runId: run.id,
+        chunkId: "c1",
+        expectedVersion: preview.runVersion,
+        previewDigest: preview.previewDigest,
+        records: records as never,
+      }),
+    ); // the process dies here: nothing drained
+    return { run, records, preview };
+  }
+
+  it("counts a loss once when an overlapping replay settles a job another pass already settled", async () => {
+    const download = vi.fn(async () => terminal);
+    const f = await writerFixture();
+    const { app } = createApp();
+    setImportAttachmentDependencies({ download });
+    const { run } = await commitWithoutDrain(app, f, "att-overlap");
+    const jobs = await listPendingImportAttachmentJobs(run.id);
+    expect(jobs).toHaveLength(1);
+    await drainImportAttachmentJobs(jobs); // both passes read the same pending job
+    await drainImportAttachmentJobs(jobs); // the slower one settles after the first
+    expect((await chunkOf(app, f, run.id)).lossCounts).toEqual({
+      attachment_download_failed: 1,
+    });
+    expect(await lossRows()).toHaveLength(1);
+  });
+
+  it("indexes no loss when an overlapping replay stored the attachment before the slower one failed", async () => {
+    const stored = { ok: true as const, bytes: PNG, contentType: "image/png" };
+    const f = await writerFixture();
+    const { app } = createApp();
+    const { run } = await commitWithoutDrain(app, f, "att-overlap-stored");
+    const jobs = await listPendingImportAttachmentJobs(run.id);
+    expect(jobs).toHaveLength(1);
+    let slow = true;
+    setImportAttachmentDependencies({
+      download: async () => {
+        if (!slow) return stored;
+        slow = false; // the faster pass stores the attachment while this one is still downloading
+        await drainImportAttachmentJobs(jobs);
+        return terminal;
+      },
+    });
+    await drainImportAttachmentJobs(jobs);
+    expect(await listPendingImportAttachmentJobs(run.id)).toHaveLength(0);
+    expect((await chunkOf(app, f, run.id)).lossCounts ?? {}).toEqual({});
+    expect(await lossRows()).toHaveLength(0);
+  });
+
+  it("rolls settlement back when the loss-index insert fails, even with the report full, and a replay recovers", async () => {
+    const download = vi.fn(async () => terminal);
+    const f = await writerFixture();
+    const { app } = createApp();
+    setImportAttachmentDependencies({ download });
+    const { run, records, preview } = await commitWithoutDrain(
+      app,
+      f,
+      "att-atomic",
+    );
+    const filler = Array.from({ length: 1000 }, (_, i) => ({
+      code: "attachment_download_failed",
+      sourceType: "external_issue",
+      sourceId: `FULL-${i}`,
+      entity: "attachment",
+      entitySourceId: "x",
+    }));
+    const [chunk] = await db.select().from(schema.importChunkTable);
+    await db
+      .update(schema.importChunkTable)
+      .set({ report: { ...chunk?.report, losses: filler } })
+      .where(eq(schema.importChunkTable.id, chunk?.id ?? ""));
+    await db.execute(sql`create function fail_loss_index() returns trigger
+      language plpgsql as $$ begin raise exception 'loss index down'; end $$`);
+    await db.execute(
+      sql`create trigger fail_loss_index before insert on import_loss
+        for each row execute function fail_loss_index()`,
+    );
+    try {
+      await expect(resumePendingImportAttachments(run.id)).rejects.toThrow();
+    } finally {
+      await db.execute(sql`drop trigger fail_loss_index on import_loss`);
+      await db.execute(sql`drop function fail_loss_index()`);
+    }
+    // nothing was cleared: the job is still pending and no loss was counted
+    expect(await listPendingImportAttachmentJobs(run.id)).toHaveLength(1);
+    expect(await lossRows()).toHaveLength(0);
+    expect((await chunkOf(app, f, run.id)).lossCounts ?? {}).toEqual({});
+    const replay = await request(
+      app,
+      f.fullKey.key,
+      `/api/imports/${run.id}/records`,
+      idempotentJson("POST", {
+        chunkId: "c1",
+        expectedVersion: preview.runVersion,
+        records,
+        previewDigest: preview.previewDigest,
+      }),
+    );
+    expect(replay.status, await replay.clone().text()).toBe(200);
+    expect(await listPendingImportAttachmentJobs(run.id)).toHaveLength(0);
+    expect(await lossRows()).toHaveLength(1);
   });
 });

@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   canCreate: true,
   canUpdate: true,
   canAssign: true,
+  canSetPriority: true,
   canManageLabels: false,
   canAttach: true,
   uploadAttachment: vi.fn(),
@@ -80,6 +81,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     canCreateTasks: () => mocks.canCreate,
     canUpdateTasks: () => mocks.canUpdate,
     canAssignTasks: () => mocks.canAssign,
+    canSetPriorityTasks: () => mocks.canSetPriority,
     canManageLabels: () => mocks.canManageLabels,
     canCreateAttachments: () => mocks.canAttach,
   }),
@@ -240,6 +242,7 @@ beforeEach(() => {
   mocks.canCreate = true;
   mocks.canUpdate = true;
   mocks.canAssign = true;
+  mocks.canSetPriority = true;
   mocks.canManageLabels = false;
   mocks.canAttach = true;
   mocks.uploadAttachment.mockReset();
@@ -643,6 +646,14 @@ describe("CreateWorkItemDialog", () => {
       typeId: "type-1",
       title: "Bug: crash on save",
     });
+  });
+
+  it("disables the priority control without set-priority permission (#348)", async () => {
+    mocks.canSetPriority = false;
+    renderDialog();
+    expect(
+      screen.getByTestId("create-work-item-priority-trigger"),
+    ).toBeDisabled();
   });
 
   it("keeps submit disabled until both a title and a type are chosen", async () => {

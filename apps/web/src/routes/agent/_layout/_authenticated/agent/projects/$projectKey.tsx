@@ -10,6 +10,10 @@ import { resolveRouteProject } from "@/lib/route-project-prefetch";
 const ProjectOverviewPage = lazy(
   () => import("@/components/project/overview/project-overview-page"),
 );
+// #1200 old-key redirect: off the first paint for the same reason.
+const ProjectKeyRedirect = lazy(
+  () => import("@/components/project/project-key-redirect"),
+);
 
 function startOverviewReads(
   context: {
@@ -62,15 +66,24 @@ function ProjectRootRoute() {
   const location = useLocation();
   const encodedBase = `/agent/projects/${encodeURIComponent(projectKey)}`;
   const rawBase = `/agent/projects/${projectKey}`;
-  if (
-    ![encodedBase, `${encodedBase}/`, rawBase, `${rawBase}/`].includes(
-      location.pathname,
-    )
-  )
-    return <Outlet />;
+  const isOverview = [
+    encodedBase,
+    `${encodedBase}/`,
+    rawBase,
+    `${rawBase}/`,
+  ].includes(location.pathname);
   return (
-    <Suspense fallback={<PageLoading />}>
-      <ProjectOverviewPage projectKey={projectKey} prefetched />
-    </Suspense>
+    <>
+      <Suspense fallback={null}>
+        <ProjectKeyRedirect projectKey={projectKey} />
+      </Suspense>
+      {isOverview ? (
+        <Suspense fallback={<PageLoading />}>
+          <ProjectOverviewPage projectKey={projectKey} prefetched />
+        </Suspense>
+      ) : (
+        <Outlet />
+      )}
+    </>
   );
 }

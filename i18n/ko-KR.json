@@ -5890,6 +5890,8 @@
 				"copied": "Copied",
 				"copy": "Copy token",
 				"description": "Issue or rotate the token your identity provider uses, or revoke it. Either change invalidates the previous token at once and disables SCIM until you enable it again.",
+				"statusPresent": "베어러 토큰이 발급되었습니다.",
+				"statusNone": "발급된 베어러 토큰이 없습니다.",
 				"dismiss": "I have stored the token",
 				"issuedLabel": "New bearer token",
 				"issuedTitle": "New token — copy it now",

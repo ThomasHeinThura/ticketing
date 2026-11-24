@@ -30,6 +30,7 @@ async function fixture(
     "work_item:create",
     "work_item:update",
     "work_item:assign",
+    "work_item:set_priority",
   ],
 ) {
   const actor = await createWorkspaceMember({ role: "member" });
@@ -229,6 +230,16 @@ describe("atomic canonical creation with initial fields", () => {
     }
     expect((await f.create()).status).toBe(200);
   });
+  it("requires work_item:set_priority for initial priority (#348)", async () => {
+    const f = await fixture(["project:read", "work_item:create"]);
+    expect((await f.create({ priority: "high" })).status).toBe(403);
+    await expectNoCreate(f.project.id);
+    expect((await f.create()).status).toBe(200);
+    await grantProjectRole(f.user.id, f.project.id, ["work_item:set_priority"]);
+    const allowed = await f.create({ priority: "high" });
+    expect(allowed.status).toBe(200);
+    expect(await allowed.json()).toMatchObject({ priority: "high" });
+  });
   it("allows self assignment through scoped update, and requires scoped assign for another roster member", async () => {
     const f = await fixture([
       "project:read",
@@ -270,6 +281,20 @@ describe("atomic canonical creation with initial fields", () => {
       },
     );
     expect(response.status).toBe(403);
+    await expectNoCreate(f.project.id);
+    const noPriority = await f.app.request(
+      `/api/projects/${f.project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "x-api-key": raw, "content-type": "application/json" },
+        body: JSON.stringify({
+          typeId: f.type.id,
+          title: "Scoped key priority",
+          priority: "high",
+        }),
+      },
+    );
+    expect(noPriority.status).toBe(403);
     await expectNoCreate(f.project.id);
     const wide = await makeApiKey(f.user.id, {
       work_item: ["create", "update", "assign"],

@@ -1641,7 +1641,9 @@ ignored once `setup_completed_at` is set.
 If every administrator is locked out, recovery is the CLI (`grant-instance-admin`,
 [runbook](operations-and-distribution.md#runbook)), which must be run **inside the container**, writes
 an audit row with `actor_type = 'system'`, and emails every existing administrator that it
-was used. Break-glass is loud by design.
+was used. Break-glass is loud by design. **Known gap (#230):** the CLI does not send this email
+yet; it only writes the audit row. Locked-out administrators cannot read in-app alerts, so the
+email stays a requirement.
 
 <a id="auth-and-identity-p4-god-mode-users--selected-implementation-contracts"></a>
 #### P4 God Mode Users — selected implementation contracts
@@ -1817,7 +1819,7 @@ never values.
 
 If a reload leaves administrators locked out despite the rules above (a provider that
 passed `test()` but rejects real logins), `auth.password` is still enabled by construction,
-and the CLI (`node dist/cli.js disable-auth-plugin <id>`, [runbook](operations-and-distribution.md#runbook))
+and the CLI (`node /app/apps/api/dist/cli.js disable-auth-plugin <id>`, [runbook](operations-and-distribution.md#runbook))
 flips a row and bumps `config_version`, which the poll picks up within 10 s.
 
 <a id="auth-runtime-reconfiguration-required-reload-and-origin-cases"></a>
@@ -3766,7 +3768,7 @@ session happened.
 | Injection | Drizzle parameterises everything. No string-built SQL, no exceptions. Filter grammar whitelists fields and compiles to parameters |
 | Filter as an oracle | Filterable fields carry their own read capability; the filter is evaluated **after** identity scoping; `meta.total` counts only rows in reach |
 | XSS | React escapes by default. Rich text is a Tiptap **JSON document, never raw HTML**; sanitised against an allowlist on write **and** normalised on render; importers write through the same domain-layer sanitiser as the API. `dangerouslySetInnerHTML` is banned by lint |
-| Uploads | Extension and MIME allowlist, magic-byte sniff at `complete`, size cap; presigned POST pins key, `content-length-range` and content type; served from a separate origin with `Content-Disposition: attachment`; only `state = 'ready'` rows are served. No malware scanner — accepted residual risk; a future `storage.antivirus` plugin is reserved, not built ([roadmap.md](../roadmap.md)) |
+| Uploads | Extension and MIME allowlist, magic-byte sniff at `complete`, size cap; S3 presigned PUT pins key, exact `Content-Length` and `Content-Type`, while the filesystem driver's API upload token pins the key and a size ceiling only; both re-check size and copy to a new key at `complete`; served from a separate origin with `Content-Disposition: attachment`; only `state = 'ready'` rows are served. No malware scanner — accepted residual risk; a future `storage.antivirus` plugin is reserved, not built ([roadmap.md](../roadmap.md)) |
 | SSRF / egress | **One HTTP client for every outbound call** — webhooks, OIDC discovery, SMTP, S3/Azure endpoints, AI providers, OTLP, Sentry, marketplace APIs, and plugin `test()` — resolves and checks the target against private, link-local and metadata ranges (`169.254.169.254`, `fd00:ec2::254`) before connecting and again at connect time; never follows redirects to a new host. The **egress allowlist** is stated once, here, and cited from `WH-12`: in production it is a God Mode-configurable, **default-empty**, per-host list whose every edit is an elevated, audited change, and it may be used **only** by `ai.*` plugins reaching a self-hosted model on a private address; `notify.*`, `webhook` and `import.*` may never target private, link-local or metadata ranges in production, and no God Mode entry can make them. Thomas approved one laptop-only exception (26 Oct): the fixed Mailpit capture profile requires `TASKDESK_LOCAL_MAILPIT_CAPTURE=true`, both canonical local HTTPS origins, and exactly `mailpit:1025` without authentication or TLS. It cannot select another private target and is unavailable at public origins, including when the flag is set. Ordinary SMTP protections remain mandatory. A separate development allowlist relaxes the HTTPS requirement and exists **only** when `NODE_ENV=development`. The bundled object store (`http://seaweedfs:8333` only) keeps the same checks with its own rule in every environment: it may resolve only to 10/8, 172.16/12, 192.168/16 or fc00::/7, never loopback, link-local, metadata, unspecified, multicast or public space. A webhook whose response body is slow after headers arrived ends at the deadline with the received status and a truncated body; a caller-set response cap (`maxResponseBytes`, used by the S3 probe) fails instead. Plugin `test()` is rate-limited and **audited even when nothing is saved** |
 | Path traversal | Object keys are generated, never derived from user filenames |
 | Mass assignment | Zod schemas are strict; unknown keys rejected, not stripped |
@@ -4103,19 +4105,20 @@ Generated, never derived from the user's filename:
 <a id="storage-and-attachments-upload-flow"></a>
 ### Upload flow
 
-Uploads go **direct to storage** via a presigned POST. The API never proxies file bytes.
+With the S3 driver, uploads go **direct to storage** via a presigned PUT; the API reads only the first bytes of the stored object at completion to check its type. With the default filesystem driver, the API receives the upload.
 
 ```
-1. POST /api/attachments/presign
-     { workItemId, filename, mimeType, size }
+1. POST /api/work-items/{key}/attachments/presign
+     { filename, mimeType, size }
    → policy check, quota check, allowlist check
    → creates attachment row (state = pending)
-   → returns { attachmentId, url, fields, expiresIn: 300 }
+   → returns { attachmentId, uploadUrl, uploadHeaders }
 
-2. Browser POSTs the file directly to storage.
+2. Browser PUTs the file to uploadUrl with uploadHeaders.
 
 3. POST /api/attachments/{id}/complete
-   → server stats the object: exists? size matches? 
+   → server copies the object to its final key, then checks the copy:
+     exists? S3: size matches the signed size; filesystem: size within the limit
    → sniffs magic bytes against the declared MIME type
    → state = ready, emits activity + websocket event
 ```

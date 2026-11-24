@@ -584,6 +584,8 @@ export async function installPerformanceApiFixture(
         createTasks: true,
         deleteTasks: true,
         assignTasks: true,
+        // work_item:set_priority is strict (#348); a lead-like role holds it.
+        setPriorityTasks: true,
         createLabels: false,
         updateLabels: false,
         deleteLabels: false,

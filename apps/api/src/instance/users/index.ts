@@ -36,19 +36,19 @@ import {
   type UserDirectoryFilters,
 } from "./directory";
 import {
+  applyInstanceAdminGrant,
+  lockEligibleGrantTarget,
+} from "./grant-instance-admin";
+import {
   assertAdminRemovalAllowed,
   getActiveStaffPerson,
   getDirectoryUser,
   getPersonStatus,
-  listAdminIds,
   listDirectoryUsers,
   lockActiveAgentSession,
   lockActiveStaffPerson,
   lockAdminUser,
-  lockGrantTarget,
-  lockGrantTargetPeople,
   lockInstanceAdminSerialization,
-  lockSetupCompletion,
   lockUserForMutation,
   lockUserId,
 } from "./repository";
@@ -686,27 +686,7 @@ const routes = apiRouter()
       outcome = await db.transaction(async (tx) => {
         const currentFactor = await loadLocalFactorState(c.get("userId"), tx);
         if (currentFactor.personId !== factor.personId) return "denied";
-        await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
-        const [setup] = await lockSetupCompletion(tx);
-        if (!setup?.completedAt)
-          throw new HTTPException(409, {
-            message: "Instance setup is incomplete",
-          });
-        // Same parent-first order as deactivation approval (person rows before user
-        // rows), under the shared 2026 serialization, so the two cannot deadlock.
-        const people = await lockGrantTargetPeople(tx, id);
-        const [target] = await lockGrantTarget(tx, id);
-        if (!target)
-          throw new HTTPException(404, { message: "User not found" });
-        if (
-          target.anonymous ||
-          target.banned ||
-          people.length !== 1 ||
-          people[0]?.side !== "staff" ||
-          people[0]?.active !== true
-        ) {
-          throw new HTTPException(409, { message: "Target is not eligible" });
-        }
+        const target = await lockEligibleGrantTarget(tx, id);
         const [actor] = await lockAdminUser(tx, c.get("userId"));
         const actorPerson = actor
           ? await lockActiveStaffPerson(tx, factor.personId, actor.id)
@@ -742,32 +722,7 @@ const routes = apiRouter()
           operation: "instance_admin_grant",
           traceId: c.req.header("x-request-id"),
         });
-        const result =
-          target.role === "admin"
-            ? ("already_admin" as const)
-            : ("granted" as const);
-        if (result === "granted")
-          await tx
-            .update(schema.userTable)
-            .set({ role: "admin" })
-            .where(eq(schema.userTable.id, id));
-        const admins = await listAdminIds(tx);
-        const recipients = [...new Set([...admins.map((row) => row.id), id])];
-        await tx.insert(schema.notificationTable).values(
-          recipients.map((userId) => ({
-            userId,
-            type: "security_alert",
-            title: "Instance administrator authority changed",
-            content:
-              "An instance administrator grant operation was recorded. Review the instance audit log if you did not expect this change.",
-            eventData:
-              userId === id
-                ? { kind: "instance_admin_granted" }
-                : { kind: "instance_admin_granted", userId: id },
-            resourceId: "singleton",
-            resourceType: "instance",
-          })),
-        );
+        const result = await applyInstanceAdminGrant(tx, target);
         await appendAuditLog(tx, {
           action: "auth.instance_admin_granted",
           actorId: c.get("userId"),

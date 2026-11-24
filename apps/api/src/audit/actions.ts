@@ -33,6 +33,7 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "auth.user_unsuspended",
   "auth.sessions_revoked",
   "auth.instance_admin_granted",
+  "auth.instance_admin_break_glass",
   "auth.step_up_issued",
   "auth.step_up_consumed",
   "auth.step_up_denied",

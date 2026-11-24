@@ -23,6 +23,7 @@ import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal
 import {
   lockPersonsInOrder,
   reconcileWorkspaceAdminReach,
+  syncWorkspaceAdminReach,
 } from "../../apps/api/src/workspace/workspace-admin-reach";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
@@ -863,7 +864,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       ]);
       // idempotent
       expect(await reconcileWorkspaceAdminReach()).toEqual({
-        visited: 0,
+        visited: 2,
         failed: 0,
       });
     });
@@ -885,6 +886,140 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       await seedDefaultWorkspaceRoles();
       await reconcileWorkspaceAdminReach();
       expect(await canReadProject(world, admin)).toBe(200);
+    });
+  });
+
+  describe("#737: inactive people and stale system_backfill grants", () => {
+    const backfillGrants = async (userId: string, workspaceId: string) =>
+      (await reachRows(userId, workspaceId)).grants.filter(
+        (g) => g.directOrigin === "system_backfill" && g.revokedAt === null,
+      );
+
+    it("never grants an inactive owner/admin through sync or reconcile", async () => {
+      const world = await newWorld();
+      const userId = `inactive-${randomUUID()}`;
+      await db.insert(schema.userTable).values({
+        id: userId,
+        name: "Inactive",
+        email: `${userId}@example.com`,
+        emailVerified: true,
+      });
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: world.workspaceId,
+        userId,
+        role: "owner",
+        joinedAt: new Date(),
+      });
+      await ensureStaffPersonForUser(userId);
+      await db
+        .update(schema.personTable)
+        .set({ active: false })
+        .where(eq(schema.personTable.userId, userId));
+      await reconcileWorkspaceAdminReach();
+      await db.transaction((tx) =>
+        syncWorkspaceAdminReach(tx, world.workspaceId, userId),
+      );
+      expect(await backfillGrants(userId, world.workspaceId)).toHaveLength(0);
+    });
+
+    it("revokes a grant when its holder is deactivated, with an audit row", async () => {
+      const world = await newWorld();
+      const admin = await addMember(world, "admin");
+      expect(
+        await backfillGrants(admin.user.id, world.workspaceId),
+      ).toHaveLength(1);
+      await db
+        .update(schema.personTable)
+        .set({ active: false })
+        .where(eq(schema.personTable.userId, admin.user.id));
+      await reconcileWorkspaceAdminReach();
+      expect(
+        await backfillGrants(admin.user.id, world.workspaceId),
+      ).toHaveLength(0);
+    });
+
+    it("reconcile revokes a stale system_backfill grant on a demoted member and audits it", async () => {
+      const world = await newWorld();
+      const admin = await addMember(world, "admin");
+      // Demote behind the writers' back, as old data would look.
+      await db
+        .update(schema.workspaceUserTable)
+        .set({ role: "member" })
+        .where(eq(schema.workspaceUserTable.userId, admin.user.id));
+      expect(
+        await backfillGrants(admin.user.id, world.workspaceId),
+      ).toHaveLength(1);
+      await reconcileWorkspaceAdminReach();
+      expect(
+        await backfillGrants(admin.user.id, world.workspaceId),
+      ).toHaveLength(0);
+      const audit = await db
+        .select({ action: schema.auditLogTable.action })
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, await personIdOf(admin.user.id)),
+            eq(schema.auditLogTable.action, "membership.changed"),
+          ),
+        );
+      expect(audit).toHaveLength(1);
+      expect(await reconcileWorkspaceAdminReach()).toEqual({
+        visited: 1,
+        failed: 0,
+      });
+    });
+
+    it("reconcile revokes a system_backfill grant whose legacy membership is duplicated", async () => {
+      const world = await newWorld();
+      expect(
+        await backfillGrants(world.owner.user.id, world.workspaceId),
+      ).toHaveLength(1);
+      // The owner row survives, so only sync (not a role filter) can see the ambiguity.
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: world.workspaceId,
+        userId: world.owner.user.id,
+        role: "member",
+        joinedAt: new Date(),
+      });
+      await reconcileWorkspaceAdminReach();
+      expect(
+        await backfillGrants(world.owner.user.id, world.workspaceId),
+      ).toHaveLength(0);
+    });
+
+    it("reconcile leaves an admin-made grant on a non-admin untouched", async () => {
+      const world = await newWorld();
+      const member = await addMember(world, "member");
+      const personId = await personIdOf(member.user.id);
+      const ownerPersonId = await personIdOf(world.owner.user.id);
+      const [role] = await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "workspace",
+          workspaceId: world.workspaceId,
+          key: `explicit-${randomUUID().slice(0, 8)}`,
+          name: "Explicit",
+          rank: 5,
+          capabilities: [],
+        })
+        .returning();
+      if (!role) throw new Error("role");
+      await db.insert(schema.membershipGrantTable).values({
+        personId,
+        scope: "workspace",
+        scopeId: world.workspaceId,
+        roleId: role.id,
+        sourceKind: "direct",
+        directOrigin: "admin",
+        grantedByPersonId: ownerPersonId,
+        seesAll: false,
+      });
+      await reconcileWorkspaceAdminReach();
+      expect(
+        (await reachRows(member.user.id, world.workspaceId)).grants,
+      ).toEqual([
+        expect.objectContaining({ directOrigin: "admin", revokedAt: null }),
+      ]);
     });
   });
 
@@ -1104,7 +1239,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       }
       const logged = errors.mock.calls.map((c) => String(c[0]));
       errors.mockRestore();
-      expect(result).toEqual({ visited: 2, failed: 1 });
+      expect(result).toEqual({ visited: 3, failed: 1 });
       expect(logged).toHaveLength(1);
       expect(logged[0]).toContain(world.workspaceId);
       expect(logged[0]).toContain(badPersonId);
@@ -1117,7 +1252,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       expect(counts).toEqual([0, 1]);
       // The failed member is picked up by the next boot.
       expect(await reconcileWorkspaceAdminReach()).toEqual({
-        visited: 1,
+        visited: 3,
         failed: 0,
       });
     });

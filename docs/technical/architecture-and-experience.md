@@ -387,7 +387,7 @@ and are pruned** — see [ui-extraction-plan.md](ui-boundaries.md#retained-extra
 | `workflow-rule` | `apps/api/src` | Keep | [automations.md](feature-contracts-p4.md#automations); `feature.automations` off until aligned |
 | `time-entry` | `apps/api/src` | Keep | [time-and-cost.md](feature-contracts-p5.md#time-and-cost); `feature.time_tracking` |
 | `public-project` (anonymous public boards) | api + web | **Remove at fork** (decided 2026-09-05 — a flag is a runtime toggle, not a deletion; an unauthenticated read surface does not ship dormant) | Not a router — a checklist: the inline route at `apps/api/src/index.ts:226`; `project/schema.ts`; `project/response.ts`; `project/controllers/update-project.ts`; `mcp/tools.ts`; **`utils/authorize-asset-access.ts:23` — the anonymous attachment-read branch**; web `components/public-project/`, `routes/public-project.$projectId.tsx`, its fetchers, hooks and four tests; and a **two-phase drop** of `project.is_public` (`database/schema.ts:328`) per [migrations.md](design-and-decisions.md#migrations). The flag name `feature.public_boards` stays **reserved** for a future spec'd re-implementation with its own security review |
-| `GET /invitation/public/:id` (`index.ts:240`) | `apps/api/src` | **Keep**, as policy kind 4 (`public`) | The only other unauthenticated route in kaneo's `index.ts`. Rate-limited in the anonymous class, constant-shape 404 for an unknown or expired id, no email address and no member list. The invitee has to see what they are accepting; the id is a ≥128-bit token ([rbac.md](permissions.md)) |
+| `GET /invitation/public/:id` (`index.ts:240`) | `apps/api/src` | **Keep**, as policy kind 4 (`public`) | The only other unauthenticated route in kaneo's `index.ts`. Rate-limited in the anonymous class, constant-shape 404 for an unknown id. It returns the invitee email, workspace name and inviter name (also when expired, so the page can say who to ask) and no member list. The invitee has to see what they are accepting; the id is a cuid2 held only by the link recipient (#257) |
 | better-auth `anonymous()` guest sign-in + `DEMO_MODE` | `apps/api/src/auth.ts:278`, `utils/get-settings.ts` | **Remove at fork** | Enabled by default upstream (opt-**out** via `DISABLE_GUEST_ACCESS`), with `hasGuestAccess` / `isDemoMode` shipped to the client and anonymous users exempted from the registration limits. Same reasoning as public boards. The `emailDomainName: "kaneo.app"` literal goes with it. `no-anonymous-plugin.test.ts` reads the constructed config |
 | better-auth `deviceAuthorization()` and `bearer()` | `auth.ts:545`, `:535` | **Remove at fork** | Two authentication surfaces no v2 spec mentions; `DEVICE_AUTH_CLIENT_IDS` and `tests/api-integration/device-authorization.test.ts` go with them. Either returns only with a spec and a security review |
 | better-auth `organization()` plugin | `auth.ts:315` | **Remove at fork** — replaced | It *is* kaneo's workspace model. Its `/organization/*` routes are unmounted and gone; TaskDesk's `invitation`, `workspace_role` and team tables replace it ([data-model.md](data-model.md), [multi-tenancy.md](safety-and-runtime.md#multi-tenancy)) |
@@ -574,7 +574,7 @@ work-item/
 │                     (multi-tenancy.md; `forIdentity(identity)` is the accepted illustration/convention).
 │                     Any additional workspace/project id is checked against that identity and applied
 │                     in the statement predicate. No universal wrapper type is claimed; see coding-standards.md.
-│                     check:queries is planned, not wired.
+│                     check:queries blocks new violations; existing ones are baselined (#580).
 ├── controllers/
 │   ├── create-work-item.ts
 │   ├── update-work-item.ts
@@ -954,12 +954,11 @@ plugin kind", which would have produced six registries with one member each.
    settings screen for renameable nouns ([ADR 0012](design-and-decisions.md#0012-terminology-overlay)).
    Whichever mechanism fits, the rule is the same one stated at the top of this document:
    *if it varies between deployments, it is configured, never compiled in.*
-3. **Configuration generated from a schema, not a bespoke form.** A Zod config schema
-   drives a plugin's God Mode form (`GM-5` in [God Mode](feature-contracts-p4.md#god-mode));
-   the same idea applies to a workflow's transition editor or a custom report's builder —
-   the *editing surface* is generated from the *shape* of the thing being edited, so a new
-   instance of the pattern (a new plugin, a new workflow, a new report) never requires new
-   bespoke UI work.
+3. **Configuration generated from a schema where it fits.** The SMTP plugin's God Mode
+   form is generated from its Zod config schema (`GM-5` in [God Mode](feature-contracts-p4.md#god-mode));
+   storage, identity and observability keep their own screens. The plugin catalog is fixed,
+   so a new plugin needs its own screen unless it adopts the schema-generated form. The same
+   idea may apply to a workflow's transition editor or a custom report's builder.
 4. **A feature flag to switch it off**, independent of whether it is configured. See
    [Feature toggles](#plugin-architecture-feature-toggles) below.
 5. **A validate/test affordance where "wrong" is otherwise silent.** A plugin's
@@ -1140,7 +1139,7 @@ These additions are retained tooling targets, not an assertion that they are ins
 | **k6** | Load baselines |
 | **cosign** | Image and release-archive signing |
 | **@vitest/coverage-v8** (present in kaneo, unused) | The 90 % `packages/domain` threshold, enforced per package |
-| A planned small AST script (`check:queries`; not currently wired) | The "no `db.select()` outside `repository.ts`" ownership rule — Biome cannot express it; see [coding standards](design-and-decisions.md#coding-standards-query-ownership-issue-580) for the authoritative contract |
+| A small AST script (`check:queries`; wired with a frozen baseline of existing violations) | The "no `db.select()` outside `repository.ts`" ownership rule — Biome cannot express it; see [coding standards](design-and-decisions.md#coding-standards-query-ownership-issue-580) for the authoritative contract |
 
 Also inherited and to be **consolidated**, per the [inherited-features register](#inherited-features):
 `valibot` → Zod only (one surviving file after the integration deletions); `nanostores` **stays** — it is

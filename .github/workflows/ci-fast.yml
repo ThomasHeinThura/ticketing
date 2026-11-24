@@ -5,7 +5,7 @@
 # the document does not declare: scripts/ci/test-all.mjs reconciles the two on every run,
 # and the `gates-declared` job below fails if they drift apart.
 #
-# Gates that cannot exist yet — check:queries, test:mcp — have no job here
+# Gates that cannot exist yet — test:mcp — have no job here
 # on purpose. `pnpm test:all --list` prints each one with the reason and the issue that unblocks it. A job that passed
 # because it found nothing to check would look like coverage and be worth less than
 # nothing. (`check:ui` is enabled, in the `registers` job below — G1's raw-element and
@@ -108,7 +108,7 @@ jobs:
   static:
     name: static
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -143,6 +143,9 @@ jobs:
       - name: pnpm check:deps
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:deps
+      - name: pnpm check:queries
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm check:queries
 
   registers:
     # DO NOT RENAME THIS JOB. The `protect-main` ruleset binds its required status checks
@@ -252,7 +255,7 @@ jobs:
   test:
     name: unit + component
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:

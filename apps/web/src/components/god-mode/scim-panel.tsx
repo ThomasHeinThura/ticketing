@@ -10,7 +10,6 @@ import {
 } from "@taskdesk/ui";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getApiUrl } from "@/fetchers/get-api-url";
 import { identityAdminFailureKind } from "@/fetchers/god-mode/identity-admin-error";
 import type { ScimAdminRequest } from "@/fetchers/god-mode/identity-connections";
 import { useIdentityConnectionMutations } from "@/hooks/mutations/god-mode/use-identity-connection-mutations";
@@ -28,15 +27,6 @@ import {
 } from "./scim-settings-sections";
 import { ScimTokenSettings } from "./scim-token-settings";
 import { FailureAlert, StepUpFields } from "./step-up-fields";
-
-/** The SCIM provisioning base URL: one endpoint family on the agent origin (IP-11). */
-export function scimEndpointUrl(): string {
-  const api = getApiUrl("");
-  const origin = /^https?:\/\//u.test(api)
-    ? new URL(api).origin
-    : window.location.origin;
-  return `${origin}/scim/v2`;
-}
 
 type Notice =
   | "settings"
@@ -189,7 +179,7 @@ function ScimPanelLoaded({
         <p className="text-sm text-muted-foreground">{t("scim.description")}</p>
         <dl className="text-sm">
           <dt className="text-muted-foreground">{t("scim.endpoint")}</dt>
-          <dd className="break-all">{scimEndpointUrl()}</dd>
+          <dd className="break-all">{settings.data.scimBaseUrl}</dd>
         </dl>
         <p className="text-xs text-muted-foreground">
           {t("scim.endpointNote")}
@@ -237,6 +227,7 @@ function ScimPanelLoaded({
         }}
         onIssued={onBearer}
         step={step}
+        tokenPresent={settings.data.tokenStatus.present}
         version={settings.configVersion}
       />
       <Separator />

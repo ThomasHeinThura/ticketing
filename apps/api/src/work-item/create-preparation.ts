@@ -33,6 +33,7 @@ export type InitialWorkItemFields = {
   assigneeId?: string;
   /** A-03: a customer of the project's organisation, validated in the create transaction. */
   requesterId?: string;
+  priority?: "low" | "medium" | "high" | "urgent";
 };
 
 /** Read live configuration under row locks; caller supplies a serializable transaction. */
@@ -72,7 +73,8 @@ export async function prepareWorkItemCreation(
     input.dueDate !== undefined ||
     input.labelIds !== undefined ||
     input.assigneeId !== undefined ||
-    input.requesterId !== undefined;
+    input.requesterId !== undefined ||
+    input.priority !== undefined;
   if (!input.authorization && needsAuthority)
     throw new HTTPException(403, {
       message: "Initial fields require an authenticated authorization context",
@@ -164,6 +166,14 @@ export async function prepareWorkItemCreation(
       throw new HTTPException(403, {
         message:
           "Initial dates, labels and requester require work item update permission",
+      });
+    // #348: initial priority is field-level like the PATCH rule, not part of bare create.
+    if (
+      input.priority !== undefined &&
+      !can(identity, "work_item:set_priority", "work_item", target)
+    )
+      throw new HTTPException(403, {
+        message: "Initial priority requires work item priority permission",
       });
     if (
       input.assigneeId !== undefined &&

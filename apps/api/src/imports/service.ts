@@ -60,7 +60,9 @@ import {
   importAttachmentJobKey,
   isImportLossCode,
   listPendingImportAttachmentJobs,
+  MAX_ATTACHMENT_ATTEMPTS,
   MAX_REPORTED_LOSSES,
+  pendingAttachmentKeysByChunk,
   processImportAttachmentJobs,
   resolveDeferredImportLinks,
   resolveImportedAssigneeId,
@@ -114,10 +116,19 @@ export async function appendImportAudit(
   }
 }
 
-export async function reportImportAuditWriteFailure(failed: boolean) {
+export async function reportImportAuditWriteFailure(
+  failed: boolean,
+  alertKey?: string,
+) {
   if (!failed) return;
   recordAuditWriteFailure("mutation");
-  await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  if (alertKey)
+    await notifyCurrentInstanceAdminsOfAuditFailure(
+      "mutation",
+      new Date(),
+      alertKey,
+    );
+  else await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
 }
 
 export function canonicalRecords(records: ImportRecord[]) {
@@ -614,6 +625,7 @@ export async function classifyImportRecords(
         workspaceId: run.workspaceId,
         projectId: run.projectId,
         typeId: record.item.typeId,
+        priority: record.item.priority,
         startDate: record.item.startDate,
         dueDate: record.item.dueDate,
         labelIds: record.item.labelIds,
@@ -1367,6 +1379,7 @@ export async function commitImportChunk(
         workspaceId: run.workspaceId,
         projectId: run.projectId,
         typeId: record.item.typeId,
+        priority: record.item.priority,
         startDate: record.item.startDate,
         dueDate: record.item.dueDate,
         labelIds: record.item.labelIds,
@@ -1656,15 +1669,34 @@ export type ImportAttachmentAuthForRun = (
 
 export async function publishCommittedImport(
   result: Awaited<ReturnType<typeof commitImportChunk>>,
-  options: { attachmentAuth?: ImportAttachmentAuthForRun } = {},
+  options: {
+    attachmentAuth?: ImportAttachmentAuthForRun;
+    /** Stable chunk id: a replayed publish raises each audit-failure alert at most once. */
+    alertKey?: string;
+  } = {},
 ) {
   if (result.kind !== "committed") return;
-  await reportImportAuditWriteFailure(result.auditFailure === true);
+  await reportImportAuditWriteFailure(
+    result.auditFailure === true,
+    options.alertKey ? `${options.alertKey}:chunk` : undefined,
+  );
   for (const created of result.createdResults)
     await publishCreatedWorkItem(created);
   for (const updated of result.updateResults)
-    await publishImportedWorkItemUpdate(updated);
-  await drainImportAttachmentJobs(result.attachmentJobs ?? [], options);
+    await publishImportedWorkItemUpdate(
+      updated,
+      options.alertKey
+        ? `${options.alertKey}:update:${updated.updated.id}`
+        : undefined,
+    );
+  const jobs = result.attachmentJobs ?? [];
+  const drained = await drainImportAttachmentJobs(jobs, options);
+  // A run driven through the records route never reaches the engine's finalize step, so finish
+  // the bounded retries here: a transient failure ends as a stored attachment or one loss.
+  // A replayed committed chunk carries no jobs, so a crash that left its ledger pending resumes here.
+  if (!jobs.length || drained.retrying)
+    for (const runId of new Set([result.runId, ...jobs.map((j) => j.runId)]))
+      await resumePendingImportAttachments(runId, options);
 }
 
 /**
@@ -1716,21 +1748,31 @@ export async function insertImportLossRows(
  * recognised by their provenance row and skipped.
  */
 export async function drainImportAttachmentJobs(
-  jobs: readonly ImportAttachmentJob[],
+  allJobs: readonly ImportAttachmentJob[],
   options: { attachmentAuth?: ImportAttachmentAuthForRun } = {},
-): Promise<{ written: number; losses: ImportLoss[] }> {
-  if (!jobs.length) return { written: 0, losses: [] };
+): Promise<{ written: number; losses: ImportLoss[]; retrying: number }> {
+  // A replayed job that already settled (it left the chunk's pending ledger) is skipped before any
+  // download, so a success can never be re-reported as a failure.
+  const ledger = await pendingAttachmentKeysByChunk([
+    ...new Set(allJobs.map((job) => job.chunkRowId)),
+  ]);
+  const jobs = allJobs.filter((job) => {
+    const pending = ledger.get(job.chunkRowId);
+    return pending === undefined || pending.has(importAttachmentJobKey(job));
+  });
+  if (!jobs.length) return { written: 0, losses: [], retrying: 0 };
   let written = 0;
   const losses: ImportLoss[] = [];
-  const failed = (list: readonly ImportAttachmentJob[]) =>
-    list.map((job) => ({
-      code: "attachment_storage_unavailable" as const,
-      sourceType: job.sourceType,
-      sourceId: job.sourceId,
-      entity: "attachment" as const,
-      entitySourceId: job.attachment.sourceId,
-      sourceUrl: job.attachment.url,
-    }));
+  // Transient failures: kept in the pending ledger for another pass until the attempt limit.
+  const retry: { job: ImportAttachmentJob; loss: ImportLoss }[] = [];
+  const failed = (job: ImportAttachmentJob): ImportLoss => ({
+    code: "attachment_storage_unavailable",
+    sourceType: job.sourceType,
+    sourceId: job.sourceId,
+    entity: "attachment",
+    entitySourceId: job.attachment.sourceId,
+    sourceUrl: job.attachment.url,
+  });
   // Credentials are resolved per run at download time and never stored with the job.
   for (const runId of new Set(jobs.map((job) => job.runId))) {
     const runJobs = jobs.filter((job) => job.runId === runId);
@@ -1741,11 +1783,18 @@ export async function drainImportAttachmentJobs(
       const outcome = await processImportAttachmentJobs(runJobs, { auth });
       written += outcome.written;
       losses.push(...outcome.losses);
+      retry.push(...outcome.retry);
     } catch {
-      // Never lose the report of a failure: every job becomes a loss with its source URL.
-      losses.push(...failed(runJobs));
+      retry.push(...runJobs.map((job) => ({ job, loss: failed(job) })));
     }
   }
+  const retrying: ImportAttachmentJob[] = [];
+  for (const { job, loss } of retry) {
+    const attempts = (job.attempts ?? 0) + 1;
+    if (attempts >= MAX_ATTACHMENT_ATTEMPTS) losses.push(loss);
+    else retrying.push({ ...job, attempts });
+  }
+  const retryKeys = new Set(retrying.map(importAttachmentJobKey));
   const lossKey = (loss: ImportLoss) =>
     importAttachmentJobKey({
       sourceType: loss.sourceType,
@@ -1756,37 +1805,85 @@ export async function drainImportAttachmentJobs(
     const chunkJobs = jobs.filter((job) => job.chunkRowId === chunkRowId);
     const keys = new Set(chunkJobs.map(importAttachmentJobKey));
     const chunkLosses = losses.filter((loss) => keys.has(lossKey(loss)));
-    await settleChunkAttachments(chunkRowId, chunkJobs, chunkLosses);
     const first = chunkJobs[0];
-    if (first && chunkLosses.length)
-      // The chunk report above already holds every loss durably; the per-run table is the index the
-      // wizard reads, so a failure here must not fail the import.
-      await insertImportLossRows(
-        db,
-        {
-          workspaceId: first.workspaceId,
-          importRunId: first.runId,
-          importChunkId: chunkRowId,
-        },
-        chunkLosses,
-      ).catch(() => undefined);
+    // The loss index is written in the same transaction that settles the ledger, so a failed index
+    // write leaves the jobs pending and a replay recovers them.
+    await settleChunkAttachments(
+      chunkRowId,
+      chunkJobs.filter((job) => !retryKeys.has(importAttachmentJobKey(job))),
+      chunkLosses,
+      retrying.filter((job) => job.chunkRowId === chunkRowId),
+      first
+        ? (tx, accepted) =>
+            insertImportLossRows(
+              tx,
+              {
+                workspaceId: first.workspaceId,
+                importRunId: first.runId,
+                importChunkId: chunkRowId,
+              },
+              accepted,
+            )
+        : undefined,
+    );
   }
-  return { written, losses };
+  return { written, losses, retrying: retrying.length };
 }
 
 /**
- * Finish attachments a committed chunk planned but a crash or timeout left unprocessed. Idempotent:
- * anything already stored is recognised by its provenance row and skipped. Lane A's runner calls
- * this for a run before it is marked completed.
+ * Finish attachments a committed chunk planned but a crash, timeout or transient failure left
+ * unprocessed. Idempotent: anything already stored is recognised by its provenance row and skipped.
+ * Each pass bumps the attempt count of jobs that fail transiently, so at most
+ * `MAX_ATTACHMENT_ATTEMPTS` passes run. The runner calls this before a run is marked completed.
  */
 export async function resumePendingImportAttachments(
   runId: string,
   options: { attachmentAuth?: ImportAttachmentAuthForRun } = {},
 ) {
-  return drainImportAttachmentJobs(
-    await listPendingImportAttachmentJobs(runId),
-    options,
-  );
+  let written = 0;
+  const losses: ImportLoss[] = [];
+  for (let pass = 0; pass < MAX_ATTACHMENT_ATTEMPTS; pass += 1) {
+    const jobs = await listPendingImportAttachmentJobs(runId);
+    if (!jobs.length) break;
+    const result = await drainImportAttachmentJobs(jobs, options);
+    written += result.written;
+    losses.push(...result.losses);
+    if (!result.retrying) break;
+  }
+  return { written, losses };
+}
+
+/**
+ * Re-insert into the `import_loss` index every loss the committed chunk reports hold. The chunk
+ * report is the durable record; the insert is `onConflictDoNothing`, so this is safe to repeat and
+ * heals a loss-index write that failed after the chunk report was saved.
+ */
+export async function reconcileImportLossIndex(runId: string) {
+  const [run] = await db
+    .select({ workspaceId: RUN.workspaceId })
+    .from(RUN)
+    .where(eq(RUN.id, runId))
+    .limit(1);
+  if (!run) return;
+  const chunks = await db
+    .select({ id: CHUNK.id, report: CHUNK.report })
+    .from(CHUNK)
+    .where(and(eq(CHUNK.importRunId, runId), eq(CHUNK.state, "committed")));
+  for (const chunk of chunks) {
+    const losses = Array.isArray(chunk.report.losses)
+      ? (chunk.report.losses as ImportLoss[])
+      : [];
+    if (losses.length)
+      await insertImportLossRows(
+        db,
+        {
+          workspaceId: run.workspaceId,
+          importRunId: runId,
+          importChunkId: chunk.id,
+        },
+        losses,
+      );
+  }
 }
 
 export async function commitImportChunkRoute(

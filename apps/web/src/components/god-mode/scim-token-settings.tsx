@@ -14,14 +14,14 @@ import type { StepUpAction } from "@/hooks/use-step-up-action";
 type Mutations = ReturnType<typeof useIdentityConnectionMutations>;
 
 /**
- * Bearer token lifecycle. The settings read does not say whether a token exists, so both
- * operations are always offered and the API's own answer (a revoke with no token is a rejected
- * no-op that spends no proof) is reported. A rotated bearer is shown exactly once, held only in
+ * Bearer token lifecycle. The settings read says whether a token exists (never the token), so
+ * revoke is offered only while one does. A rotated bearer is shown exactly once, held only in
  * this component's state, and discarded on dismissal, on any other SCIM change and on unmount.
  */
 export function ScimTokenSettings({
   connectionId,
   version,
+  tokenPresent,
   step,
   mutations,
   issuedBearer,
@@ -30,6 +30,7 @@ export function ScimTokenSettings({
 }: {
   connectionId: string;
   version: number;
+  tokenPresent: boolean;
   step: StepUpAction;
   mutations: Mutations;
   issuedBearer: string | null;
@@ -89,6 +90,11 @@ export function ScimTokenSettings({
         <p className="text-sm text-muted-foreground">
           {t("scim.token.description")}
         </p>
+        <p className="text-sm">
+          {tokenPresent
+            ? t("scim.token.statusPresent")
+            : t("scim.token.statusNone")}
+        </p>
       </header>
       {issuedBearer ? (
         <Alert variant="warning">
@@ -136,7 +142,7 @@ export function ScimTokenSettings({
           {t("scim.token.rotate")}
         </Button>
         <Button
-          disabled={step.busy}
+          disabled={step.busy || !tokenPresent}
           onClick={() => void revoke()}
           type="button"
           variant="destructive"

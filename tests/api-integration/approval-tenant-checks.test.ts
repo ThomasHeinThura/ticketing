@@ -5,7 +5,7 @@
  * check removed from the approvals code makes at least one case here fail.
  */
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { scanApprovalReminders } from "../../apps/api/src/approval/reminder-scan";
 import {
@@ -201,17 +201,20 @@ describe("approvals: 0120 tenant runtime checks (S3)", () => {
       approverId: `nobody-${randomUUID()}`,
     });
     expect(missing.status).toBe(422);
-    // A placeholder.
-    await db
-      .update(schema.personTable)
-      .set({ isPlaceholder: true })
-      .where(eq(schema.personTable.id, a.approverPerson.id));
+    // A placeholder. Migration 0227 (#181) refuses a placeholder that holds a membership, so
+    // the legacy row this runtime check still defends against is built with triggers off.
+    const setPlaceholder = (isPlaceholder: boolean) =>
+      db.transaction(async (tx) => {
+        await tx.execute(sql`set local session_replication_role = replica`);
+        await tx
+          .update(schema.personTable)
+          .set({ isPlaceholder })
+          .where(eq(schema.personTable.id, a.approverPerson.id));
+      });
+    await setPlaceholder(true);
     const placeholder = await request(a, a.requester);
     expect(placeholder.status, await placeholder.clone().text()).toBe(422);
-    await db
-      .update(schema.personTable)
-      .set({ isPlaceholder: false })
-      .where(eq(schema.personTable.id, a.approverPerson.id));
+    await setPlaceholder(false);
     // Inactive.
     await db
       .update(schema.personTable)

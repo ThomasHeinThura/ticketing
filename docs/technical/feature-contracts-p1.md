@@ -77,7 +77,8 @@ whether it is an epic, and which custom fields apply.
   `project.last_work_item_number` incremented in the same transaction. Never reused, even
   after deletion.
 - `WI-3` Title is required, 1–500 characters. Everything else is optional unless a custom
-  field is marked required for that type.
+  field is marked required for that type. An initial priority on create requires
+  `work_item:set_priority`, as on edit.
 - `WI-4` Initial state is the project's own default state (`state.is_default`) — `state`
   carries this directly; `project_state` does not exist, its job folded into the
   project-scoped `state` row itself ([data model](data-model.md) §3,
@@ -1527,7 +1528,11 @@ This document covers behaviour and interface.
 ### Behaviour
 
 - `AT-1` Files attach to a work item, to a specific comment, or to a submission.
-- `AT-2` Upload is direct to object storage via a presigned POST. The portal download
+- `AT-2` S3 driver: upload goes direct to object storage via a presigned PUT that signs
+  the exact key, `Content-Length` and `Content-Type`. Filesystem driver (the default): the
+  upload goes through the API (`PUT` with a key-scoped, expiring token that binds only a
+  size ceiling, not the declared size or content type). Both paths: `complete` first copies
+  the object to its final key, then checks that copy's size and magic bytes (#906). The portal download
   exception to the API byte-proxy rule is defined in `AT-5` and `CP-19`.
 - `AT-3` Every attachment carries `customer_visible`. Staff uploads default to **not**
   visible; customer uploads default to visible. Completed uploads from hidden form fields
@@ -1635,7 +1640,7 @@ POST   /api/portal/requests/{ref}/attachments/presign   { portal: 'customer', pr
 | Attachment on a work item moved to another project | Moves with it |
 | Parent project is soft-deleted | Asset/attachment reads and downloads return `404` while the project is soft-deleted (`project.deleted_at IS NULL`); rows and storage objects remain intact during the 30-day restore window ([decision log](#pending-07-planningdecision-log) 2026-10-19 D3 / #205) |
 | Customer uploads to a resolved request | Allowed within the reopen window (`instance_setting.reopen_window_days`); reopens the request through the workflow's `is_reopen` (`workflow_transition.is_reopen`) transition as a system actor — `WF-21`, one mechanism shared with `CP-8` |
-| Presigned POST conditions | Always pin the exact object key, `content-length-range` up to the limit, and the declared content type — the credential cannot write another key or an unbounded object. The download path serves only `state = 'ready'` rows, never by raw key |
+| Upload credential conditions | S3: the presigned PUT pins the exact object key, the exact `Content-Length` and the declared `Content-Type` as signed headers, so the credential cannot write another key or a different size. Filesystem: the upload token pins the key and a size ceiling only; the declared size is not enforced. `complete` checks the stored size against the limit and records the actual size and copies the object to a new final key. The download path serves only `state = 'ready'` rows, never by raw key |
 | Malware | **No scanner — a stated, accepted residual risk** (decided 2026-09-05: not built or installed in the current scope; revisit before unknown external users can upload). Mitigated by the allowlist, magic-byte check, separate files origin and `Content-Disposition: attachment`. A *future* `storage.antivirus` plugin (ClamAV or a hosted scanner) would gate `pending → ready`; the plugin id is reserved, nothing else ([roadmap.md](#pending-07-planningroadmap)). Archives (`zip`, `7z`, …) are an instance-configurable allowlist entry because they bypass the extension allowlist for the recipient |
 
 <a id="attachments-out-of-scope"></a>

@@ -38,6 +38,38 @@ describe("feature flag registry", () => {
     expect(locked.sort()).toEqual([...LOCKED_FEATURE_DEFAULTS].sort());
   });
 
+  it("ignores a project-on override of feature.sla while the workspace is off (#897)", () => {
+    const feature = "feature.sla" as const;
+    const instance = { enabled: true, locked: false };
+    expect(
+      resolveFeatureFlag({
+        feature,
+        instance,
+        workspace: false,
+        project: true,
+      }),
+    ).toEqual({ enabled: false, source: "workspace" });
+    expect(
+      resolveFeatureFlag({ feature, workspace: true, project: true }),
+    ).toEqual({ enabled: true, source: "project" });
+    expect(
+      resolveFeatureFlag({
+        feature,
+        instance,
+        workspace: true,
+        project: false,
+      }),
+    ).toEqual({ enabled: false, source: "project" });
+    // Other flags keep their project override.
+    expect(
+      resolveFeatureFlag({
+        feature: "feature.intake",
+        workspace: false,
+        project: true,
+      }),
+    ).toEqual({ enabled: true, source: "project" });
+  });
+
   it("resolves project, workspace, instance, and locked instance precedence", () => {
     const feature = "feature.intake" as const;
     expect(

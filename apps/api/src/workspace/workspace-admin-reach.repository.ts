@@ -1,5 +1,13 @@
 import { createId } from "@paralleldrive/cuid2";
-import { and, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  notExists,
+  sql,
+} from "drizzle-orm";
 import db, { schema } from "../database";
 import type { Executor } from "../database/executor";
 import {
@@ -83,12 +91,14 @@ export async function findWorkspaceAdminReachPersonForUpdate(
   executor: Executor,
   userId: string,
 ): Promise<
-  { id: string; side: string; organisationId: string | null } | undefined
+  | { id: string; side: string; active: boolean; organisationId: string | null }
+  | undefined
 > {
   const [person] = await executor
     .select({
       id: schema.personTable.id,
       side: schema.personTable.side,
+      active: schema.personTable.active,
       organisationId: schema.personTable.organisationId,
     })
     .from(schema.personTable)
@@ -213,6 +223,8 @@ export async function listWorkspaceAdminReachReconcileCandidates(): Promise<
       and(
         inArray(schema.workspaceUserTable.role, [...REACH_ROLE_KEYS]),
         eq(schema.personTable.side, "staff"),
+        // #737: a deactivated person is never granted reach.
+        eq(schema.personTable.active, true),
         notExists(
           db
             .select({ one: sql`1` })
@@ -232,4 +244,41 @@ export async function listWorkspaceAdminReachReconcileCandidates(): Promise<
         ),
       ),
     );
+}
+
+/**
+ * #737: people holding an active `system_backfill` workspace grant they no longer qualify
+ * for (not an owner/admin of that workspace any more, or deactivated). The per-member sync
+ * revokes it; admin-made (`direct_origin = 'admin'`) grants are never listed.
+ */
+export async function listWorkspaceAdminReachStaleCandidates(): Promise<
+  {
+    workspaceId: string;
+    userId: string;
+    personId: string;
+  }[]
+> {
+  const rows = await db
+    .select({
+      workspaceId: schema.membershipGrantTable.scopeId,
+      userId: schema.personTable.userId,
+      personId: schema.personTable.id,
+    })
+    .from(schema.membershipGrantTable)
+    .innerJoin(
+      schema.personTable,
+      eq(schema.personTable.id, schema.membershipGrantTable.personId),
+    )
+    .where(
+      and(
+        eq(schema.membershipGrantTable.scope, "workspace"),
+        eq(schema.membershipGrantTable.sourceKind, "direct"),
+        eq(schema.membershipGrantTable.directOrigin, "system_backfill"),
+        isNull(schema.membershipGrantTable.revokedAt),
+        isNotNull(schema.personTable.userId),
+      ),
+    );
+  return rows.flatMap((row) =>
+    row.userId === null ? [] : [{ ...row, userId: row.userId }],
+  );
 }

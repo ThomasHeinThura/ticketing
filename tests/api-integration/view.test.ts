@@ -232,11 +232,13 @@ describe("API integration: saved views", () => {
     await grantProjectRole(member.user.id, target.project.id, [
       "work_item:read",
       "work_item:create",
+      "work_item:set_priority",
       "project:read",
     ]);
     await grantProjectRole(member.user.id, other.project.id, [
       "work_item:read",
       "work_item:create",
+      "work_item:set_priority",
       "project:read",
     ]);
 

@@ -449,4 +449,48 @@ describe("S5 REQUIRED: the atomic transfer endpoint under concurrent use cannot 
     expect(statuses).toEqual([200, 400]);
     expect(await ownerCount(workspaceId)).toBe(1);
   });
+
+  it("two owners removing each other concurrently via DELETE: exactly one succeeds and an owner remains (#93)", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Two Owners Remove",
+    );
+    const second = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+    await db
+      .update(schema.workspaceUserTable)
+      .set({ role: "owner" })
+      .where(
+        and(
+          eq(schema.workspaceUserTable.workspaceId, workspaceId),
+          eq(schema.workspaceUserTable.userId, second.user.id),
+        ),
+      );
+    expect(await ownerCount(workspaceId)).toBe(2);
+
+    const [removed1, removed2] = await Promise.all([
+      removeWorkspaceMemberNative(
+        app,
+        owner.cookie,
+        workspaceId,
+        second.user.id,
+      ),
+      removeWorkspaceMemberNative(
+        app,
+        second.cookie,
+        workspaceId,
+        owner.user.id,
+      ),
+    ]);
+
+    expect([removed1.status, removed2.status].sort()).toEqual([200, 400]);
+    expect(await ownerCount(workspaceId)).toBe(1);
+  });
 });

@@ -25,6 +25,7 @@ describe("POST /api/work-items/search", () => {
     await grantProjectRole(member.user.id, project.id, [
       "work_item:read",
       "work_item:create",
+      "work_item:set_priority",
       "project:read",
     ]);
     const now = new Date();
@@ -126,7 +127,12 @@ describe("POST /api/work-items/search", () => {
     const hiddenGrant = await grantProjectRole(
       member.user.id,
       hiddenProject.project.id,
-      ["project:read", "work_item:read", "work_item:create"],
+      [
+        "project:read",
+        "work_item:read",
+        "work_item:create",
+        "work_item:set_priority",
+      ],
     );
     const workflowStates = await db
       .select({ stateTemplateId: schema.stateTable.stateTemplateId })

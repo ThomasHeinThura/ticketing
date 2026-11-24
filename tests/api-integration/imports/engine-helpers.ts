@@ -29,6 +29,7 @@ const capabilities = [
   "instance:admin",
   "work_item:create",
   "work_item:read",
+  "work_item:set_priority",
   "work_item:update",
 ];
 

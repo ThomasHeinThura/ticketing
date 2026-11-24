@@ -399,7 +399,7 @@ rule for destructive changes are in
 `dist/cli.js` is a second esbuild entry from `apps/api/src/cli.ts`, sharing the API's
 modules. Commands are in the [runbook](#runbook). Because it needs the database URL and
 the encryption key, it runs **inside the container** (`docker compose exec taskdesk node
-dist/cli.js …`), never against the database from elsewhere.
+/app/apps/api/dist/cli.js …`), never against the database from elsewhere.
 
 <a id="container-image-native-dependencies"></a>
 ### Native dependencies
@@ -606,7 +606,7 @@ S3 SigV4 signature covers the `Host` header, so a URL presigned for the internal
 `seaweedfs:8333` endpoint does not verify when the browser fetches it at
 `https://files.<domain>`; the plugin's public endpoint is what goes into the signature.
 For the same reason the **bucket's own CORS** — not a Traefik middleware — must allow
-exactly the two portal origins, because a presigned POST is a cross-origin request from the
+exactly the two portal origins, because a presigned PUT is a cross-origin request from the
 agent or portal page straight to the storage endpoint. Both are stated once here and cited
 elsewhere.
 
@@ -1549,25 +1549,62 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 
 ---
 
+### Release an unused project slug claim
+
+`project_slug_claim` rows are permanent by design ([data model](data-model.md)), so a
+squatted slug stays taken after its project is renamed or deleted. Release a claim only
+when **no work-item key was ever issued** under it. A burned key (`{slug}-{n}` in
+`work_item_key_claim`) means the slug must stay claimed: freeing it would let a new
+project inherit that key range. Requires database access; take a backup first.
+
+1. Confirm no live project holds the slug: `select id from project where slug = 'ABC';`
+   must return no rows.
+2. Confirm no key was burned. Project keys are 2-15 uppercase letters (`PR-13`), so the
+   `LIKE` pattern is safe; refuse to continue if the slug has any other character.
+   `select 1 from work_item_key_claim where key like 'ABC-%';` must return no rows.
+3. Back up the database (see [Backup and restore](#backup-and-restore)).
+4. Stop **every** running TaskDesk API instance (all replicas; the application has no
+   maintenance mode; use `docker compose stop taskdesk` with the same `-f` files as your
+   deployment, or the `scripts/deploy.sh` equivalent) before the checks and keep all of
+   them stopped until the commit: a concurrent rename on any instance could otherwise
+   reclaim the old slug between the checks and the delete and leave the live project
+   without its permanent claim. Start them again after the commit (`docker compose start taskdesk`).
+5. Release the claim in one statement; the predicate repeats the check atomically:
+
+```sql
+begin;
+delete from project_slug_claim
+where slug = 'ABC'
+  and not exists (select 1 from project where slug = 'ABC')
+  and not exists (select 1 from work_item_key_claim where key like 'ABC-%');
+-- expect DELETE 1; roll back on DELETE 0
+commit;
+```
+
+6. Record the release (slug, operator, date, ticket) in the operator log.
+
 <a id="runbook-break-glass-all-administrators-locked-out"></a>
 ### Break-glass: all administrators locked out
 
 Requires database access. Every step is audited.
 
 ```bash
-dc exec taskdesk node dist/cli.js grant-instance-admin you@example.com
+dc exec taskdesk node /app/apps/api/dist/cli.js grant-instance-admin you@example.com
 ```
 
 The CLI is a build target of the image (`apps/api/src/cli.ts` → `dist/cli.js`,
-[container-image.md](#container-image)). Every command writes an audit row with
-`actor_type = 'system'` and the invoking OS user. Commands:
+[container-image.md](#container-image)). `grant-instance-admin` writes an `audit_log` row
+(`auth.instance_admin_break_glass`) with `actor_type = 'system'`, no actor id and the invoking
+OS user, and sends the in-app security alert to every administrator and the target. It uses
+the same eligibility, serialization and step-up-free write as the God Mode grant-admin route
+(one shared function). It does not email administrators yet. Commands:
 
 | Command | Does |
 | --- | --- |
 | `grant-instance-admin <email>` | Break-glass: grants `instance:admin` to an existing person |
-| `disable-auth-plugin <id>` | Disables an identity provider and bumps `config_version` so every replica reloads ([auth runtime reconfiguration](safety-and-runtime.md#auth-runtime-reconfiguration)) |
-| `verify-backup <file>` | `pg_restore --list` plus a decrypt check of one plugin secret against the current key |
-| `rekey-status` | Progress of `secrets-rekey`: rows on the new `key_id` vs total |
+| `disable-auth-plugin <id>` | **Not built yet.** Will disable an identity provider and bump `config_version` ([auth runtime reconfiguration](safety-and-runtime.md#auth-runtime-reconfiguration)) |
+| `verify-backup <file>` | **Not built yet.** Will run `pg_restore --list` plus a decrypt check of one plugin secret against the current key |
+| `rekey-status` | **Not built yet.** Will show the progress of `secrets-rekey`: rows on the new `key_id` vs total |
 
 The command writes an `audit_log` row recording that break-glass was used. If it appears in
 the audit log and nobody knows why, treat it as an incident.
@@ -2422,8 +2459,8 @@ comes from the storage plugin's configured public endpoint, read at runtime, and
 environment variable for it ([configuration-reference.md](configuration.md)).
 
 Two things this middleware does **not** do. It does not set the storage backend's CORS — a
-presigned POST goes from the browser straight to the storage endpoint, so the **bucket's own**
-CORS rules are what admit the agent and portal origins. And it does not affect signatures: a
+presigned PUT goes from the browser straight to the storage endpoint, so the **bucket's own**
+CORS rules (the `PUT` method and the `Content-Type` header) are what admit the agent and portal origins. And it does not affect signatures: a
 URL presigned for the internal endpoint will not verify at `files.<domain>`, which is why the
 plugin's configured public endpoint must equal the browser-facing one. Both are stated in
 full in [deployment.md](#deployment).

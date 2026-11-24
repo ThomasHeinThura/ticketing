@@ -202,9 +202,13 @@ export async function listWorkItems(
     // (`database/schema.ts`), so every work item has exactly one state and template --
     // an INNER JOIN can never drop a row here.
     .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
+    // #314: a template from another workspace must never supply this item's state name.
     .innerJoin(
       stateTemplateTable,
-      eq(stateTable.stateTemplateId, stateTemplateTable.id),
+      and(
+        eq(stateTable.stateTemplateId, stateTemplateTable.id),
+        eq(stateTemplateTable.workspaceId, workItemTable.workspaceId),
+      ),
     )
     // `assignee_id`/`person.user_id` are both nullable (unassigned; or a placeholder
     // person with no linked login) -- LEFT JOIN so those rows still come back, with

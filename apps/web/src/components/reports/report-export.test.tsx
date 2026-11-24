@@ -22,8 +22,11 @@ vi.mock("@/hooks/queries/report", () => ({
   useReportExport: () => exported.current,
 }));
 const download = vi.hoisted(() => vi.fn());
+const status = vi.hoisted(() => vi.fn());
 vi.mock("@/fetchers/report", () => ({
   downloadReportExport: download,
+  getReportExport: status,
+  reportExportDownloadUrl: (id: string) => `/api/report-exports/${id}/download`,
 }));
 const toasts = vi.hoisted(() => ({ info: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/toast", () => ({ toast: toasts }));
@@ -76,12 +79,13 @@ describe("a queued export (RP-10)", () => {
   });
 
   it("offers the authenticated download once ready, and says when rows were cut", async () => {
-    download.mockResolvedValue({
-      filename: "x.csv",
-      response: new Response("a"),
+    status.mockResolvedValue({ data: { status: "ready" } });
+    const hrefs: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      hrefs.push(this.getAttribute("href") ?? "");
     });
-    URL.createObjectURL = vi.fn(() => "blob:x");
-    URL.revokeObjectURL = vi.fn();
     show(info({ status: "ready", rowCount: 210, truncated: true }));
     expect(
       screen.getByText("reports:export.status.ready.description 210"),
@@ -90,7 +94,10 @@ describe("a queued export (RP-10)", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "reports:export.download" }),
     );
-    await vi.waitFor(() => expect(download).toHaveBeenCalledWith("e1"));
+    await vi.waitFor(() =>
+      expect(hrefs).toEqual(["/api/report-exports/e1/download"]),
+    );
+    expect(download).not.toHaveBeenCalled();
   });
 
   it("toasts the error and discards the file when the connection drops mid-transfer", async () => {

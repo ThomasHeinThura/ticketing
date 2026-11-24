@@ -6,6 +6,7 @@
  * and raw SQL fragments are detected by TypeScript-resolved symbols/types so local renames
  * and aliases do not create exemptions.
  */
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as ts from "typescript/unstable/ast";
@@ -1174,10 +1175,68 @@ export async function runQueryOwnershipCheck({ root = repoRoot } = {}) {
   }
 }
 
+/** Baseline of the scanned worktree, not of the worktree this script file lives in. */
+export const baselinePath = (root = repoRoot) =>
+  path.join(root, "scripts", "ci", "check-queries.baseline.json");
+const BASELINE = baselinePath();
+
+/** Violation key without the line number, so unrelated edits do not shift the baseline. */
+export function baselineKey(violationText) {
+  const [location, detail = ""] = violationText.trim().split("\n");
+  return `${location.trim()} :: ${detail.trim().replace(/^line \d+: /, "")}`;
+}
+
+/**
+ * Split violations into new ones and known debt. The baseline maps key to the count frozen
+ * on 24 Nov 2026 (#580); a key may only shrink and unused counts fail the check (so a fixed violation cannot be reused), so a second copy of a known violation in
+ * the same file still fails.
+ */
+export function applyBaseline(violations, baseline) {
+  const left = { ...baseline };
+  const fresh = [];
+  for (const text of violations) {
+    const key = baselineKey(text);
+    if (left[key] > 0) left[key] -= 1;
+    else fresh.push(text);
+  }
+  const fixed = Object.values(left).reduce((sum, n) => sum + n, 0);
+  return { fresh, fixed };
+}
+
+/** New violations plus a failure when baseline allowances are unused, so the baseline only shrinks. */
+// shortcut: a PR can raise a count in the same commit that adds the violation; reviewers see the
+// baseline JSON diff. Compare against the merge-base baseline if that ever slips through.
+export function baselineFailures(violations, baseline) {
+  const { fresh, fixed } = applyBaseline(violations, baseline);
+  return fixed
+    ? [
+        ...fresh,
+        `${fixed} baselined violation(s) no longer occur; run check:queries -- --update-baseline and commit the smaller baseline`,
+      ]
+    : fresh;
+}
+
 if (
   process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   const violations = await runQueryOwnershipCheck();
-  finish({ name: NAME, failures: violations });
+  if (process.argv.includes("--update-baseline")) {
+    const counts = {};
+    for (const text of violations) {
+      const key = baselineKey(text);
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    const sorted = Object.fromEntries(Object.entries(counts).sort());
+    writeFileSync(BASELINE, `${JSON.stringify(sorted, null, "\t")}\n`);
+    process.stdout.write(`${NAME}: baseline written (${violations.length})\n`);
+  } else {
+    finish({
+      name: NAME,
+      failures: baselineFailures(
+        violations,
+        JSON.parse(readFileSync(BASELINE, "utf8")),
+      ),
+    });
+  }
 }

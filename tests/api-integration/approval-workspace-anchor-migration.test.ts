@@ -160,7 +160,7 @@ describe("migration 0120_approval_workspace_anchor -- approval tenant anchor", (
 
   async function personId(pool: Pool, orgId: string) {
     await pool.query(
-      "insert into person (id, organisation_id, side) values ('p1', $1, 'internal') on conflict do nothing",
+      "insert into person (id, organisation_id, side) values ('p1', $1, 'staff') on conflict do nothing",
       [orgId],
     );
   }

@@ -1926,7 +1926,7 @@ This gives, for free, the things other tools build separately:
 Borrowed from OpenProject's journal design.
 
 - `AU-8` Reconstruction is a domain function over activity rows, not a stored snapshot.
-- `AU-9` Reconstruction is available for work items in P2, and for projects in P5.
+- `AU-9` Reconstruction is available for work items. Project reconstruction is out of scope: projects have no activity journal, and the existing project settings history list is the project history surface (project changes also appear in the audit log) (owner decision 24 Nov 2026, #912).
 
 <a id="audit-trail-access"></a>
 ### Access
@@ -2009,6 +2009,7 @@ them; register a new audit-only action in the maintained catalogue before implem
 | `auth.user_suspended` · `auth.user_unsuspended` | God Mode account suspension changes; record target user id, outcome, and whether a finite expiry was set, but never the ban reason text or exact expiry |
 | `auth.sessions_revoked` | God Mode force sign-out; one summary row with target user id and count, never session ids, tokens, IP addresses or user agents |
 | `auth.instance_admin_granted` | God Mode grant-admin; record actor and target user ids plus `granted` or `already_admin`; never record step-up proof, token, or request body |
+| `auth.instance_admin_break_glass` | The `grant-instance-admin` CLI; system actor with no actor id; record target user id, `granted` or `already_admin`, and the invoking OS user; never record credentials |
 | `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |

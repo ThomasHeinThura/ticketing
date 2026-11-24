@@ -8,6 +8,15 @@ Product decisions and their rationale, original Kaneo design/token/motion contra
 - [Licensing/source boundary](#licensing-and-attribution) · [Risks and owner decisions](#risks)
 - [Precedence and source conflicts](#decision-provenance)
 
+## Phase 4 owner decisions — 24 November 2026
+
+Thomas accepted all 41 recommendations in the [Phase 4 decision record](../archive/reports/phase4-decisions-2026-11-21.md). Each item's recommended option is approved scope; anything beyond it still needs asking. CI time limits (24 Nov): `e2e` goes to 60 minutes, `unit + component` to 35 and `static` to 30, because they ran near their old limits (45, 25 and 20). The record covers:
+- workflow changes for #402 and #580;
+- migrations for #181, #398 and #895 (durable pending publication and import checkpoint semantics);
+- the #1200 historical project-key resolver;
+- narrowing AU-9 to work items (#912) and GM-5 to the existing form (#913);
+- the closures listed there.
+
 ## Team deletion confirmation — 16 November 2026
 
 Thomas chose: “Require the team name and update the deletion contract” (#901).
@@ -16,6 +25,13 @@ pending action approval, without adding step-up. This supersedes the team's prev
 click-confirmation entry in the confirmation table and aligns it with ST-8. TM-7 blockers,
 permissions, target-change checks and audit history remain. Existing click requests must
 be cancelled and re-requested; stored pending actions are not rewritten.
+
+## Project SLA needs the workspace flag — 24 November 2026
+
+Thomas chose option A (#897): a project-level `feature.sla` override can only turn SLA off.
+While the workspace resolves `feature.sla` off, a project-on override is ignored by the
+scanner, work-item creation, badges, the portal and reports, matching the settings screens
+that already hide SLA policy and calendar management. No permission change.
 
 <a id="0001-kaneo-as-foundation"></a>
 ## 0001 — kaneo as the foundation, taken once, not forked
@@ -1877,8 +1893,8 @@ evidence.
 - An OIDC-group grant names its external identity, connection, and exactly one OIDC mapping.
 - A SCIM-group grant names its external identity, connection, and exactly one SCIM mapping.
 - External grants have no direct-grant fields and force `sees_all=false`. A source CHECK
-  enforces this exact discriminator shape. `system_backfill` is available only to the
-  forward migration, never to an API request.
+  enforces this exact discriminator shape. `system_backfill` is written only by
+  migrations 0123/0124 and the owner/admin reach sync (decision log 2026-10-14), never by an API request.
 - The writer validates current person and parent lifecycle, connection, mapping, person side,
   role scope, actual resource-owning organisation, forbidden capabilities, and `max_role_rank`
   using the shared [IP-22 source-validity invariant and parent-first total lock/retry protocol](feature-contracts-p3.md#identity-provisioning).
@@ -1950,7 +1966,7 @@ membership id. Each decision repeats `rowDigest` and lists the complete grant se
 `membership_grant` discriminator fields, a private `evidenceReferences` list and a non-empty
 `rationale`. Evidence references point to the operator's durable source material and are
 never copied into application logs. A human decision may select only
-`direct_origin: admin`; `system_backfill` remains migration-only. Its validator rejects
+`direct_origin: admin`; `system_backfill` is never a human choice (written only by migrations 0123/0124 and the reach sync, decision log 2026-10-14). Its validator rejects
 missing, duplicate, unknown, stale, empty, or malformed decisions. This validates the
 record's completeness and shape, not the truth of the cited owner evidence. Before use, the
 cut-over runner must verify the approver is a current instance admin, validate every source
@@ -3187,15 +3203,16 @@ a new term, add it here first.
 <a id="coding-standards"></a>
 ## Query ownership contract
 
-Non-query coding, UTC timestamp/raw-Date and performance clauses are maintained in [retained coding standards](retained-constraints.md#coding-standards). Query and transaction boundaries below are not proof that a checker is wired or all queries are currently scoped.
+Non-query coding, UTC timestamp/raw-Date and performance clauses are maintained in [retained coding standards](retained-constraints.md#coding-standards). Query and transaction boundaries below do not prove all queries are currently scoped; `check:queries` enforces location only.
 
 **Repositories own queries.** Controllers, middleware and services never build a query. A
 repository call that can return cross-organisation data receives the resolved identity and
 applies the caller's reach in the statement predicate. An additional workspace or project id
 must be checked against that identity; an id alone is not authoritative scope. Repository
 location alone does not guarantee scoping. The ownership rule and conventions are under
-[Query ownership](#coding-standards-query-ownership-issue-580) below. `check:queries` (issue #580) is planned
-but not currently wired, and will enforce query locations rather than tenant-predicate semantics.
+[Query ownership](#coding-standards-query-ownership-issue-580) below. `check:queries` (issue #580) is wired in CI and enforces query locations rather than
+tenant-predicate semantics. Violations that existed on 24 Nov 2026 are frozen in
+`scripts/ci/check-queries.baseline.json`; only new ones fail, and the file shrinks as areas are migrated.
 
 <a id="coding-standards-query-ownership-issue-580"></a>
 #### Query ownership (issue #580)
@@ -3790,6 +3807,14 @@ authority. Resolved age comes from transition activity entering the completed ca
 the existing resolved timestamp belongs to SLA effects. No migration or dependency is needed.
 Scheduled candidates share the existing executor and fail-closed permission/loop checks; sweeps
 use durable cursors and skip missed cron windows. Browser and deployed acceptance remain gates.
+
+### 24 Nov 2026 — Thomas: attachment upload is a presigned PUT, not a POST (#906)
+
+`AT-2` now describes what the code does: a presigned PUT (S3: signs the exact `Content-Length` and `Content-Type`; filesystem: an API upload with a size-ceiling token), with a size re-check and copy to a new key at `complete`. No `content-length-range` POST policy; no code change.
+
+### 24 Nov 2026 — Thomas: imported placeholders stay stored active (#907)
+
+Imported placeholder people keep `active = true` so the verified `IP-30` claim works. `IM-7` now says what is contractual: no login, no membership, never assignable, claimable only through the verified path. No code change. Denial tests already exist for unverified, inactive and already-claimed claims (`tests/api-integration/identity/placeholder-claim.test.ts`), password and customer-SSO sign-in (`placeholder-auth.test.ts`) and assignability (`work-item-assignable.test.ts`, L3).
 
 ## Historical 8 Nov 2026 owner decisions
 
