@@ -498,8 +498,24 @@ export async function settleChunkAttachments(
           .filter((job) => !done.has(importAttachmentJobKey(job)))
           .map((job) => again.get(importAttachmentJobKey(job)) ?? job)
       : [];
+    // A slower overlapping replay must not count a job another pass already settled.
+    const live = new Set(
+      (Array.isArray(chunk.report.pendingAttachments)
+        ? (chunk.report.pendingAttachments as ImportAttachmentJob[])
+        : []
+      ).map(importAttachmentJobKey),
+    );
+    const fresh = losses.filter((loss) =>
+      live.has(
+        importAttachmentJobKey({
+          sourceType: loss.sourceType,
+          sourceId: loss.sourceId,
+          attachment: { sourceId: loss.entitySourceId ?? "" },
+        }),
+      ),
+    );
     const { pendingAttachments: _previous, ...rest } = chunk.report;
-    const merged = mergeLossesIntoReport(rest, losses);
+    const merged = mergeLossesIntoReport(rest, fresh);
     await tx
       .update(schema.importChunkTable)
       .set({

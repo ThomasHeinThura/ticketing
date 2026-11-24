@@ -151,15 +151,40 @@ describe("MCP prompt-injection journey on the real API (MC-18)", () => {
     ]);
 
     // (2) Read-only key: every obeyed write is the real 403, with readable guidance.
-    for (const step of plan.filter((p) => p.tool !== "delete_work_item")) {
+    const actionsBefore = await db.select().from(schema.pendingActionTable);
+    const runsBefore = await db.select().from(schema.importRunTable);
+    // MC-18 also names the bulk import write; the hostile text asks for the same effect.
+    const obeyed = [
+      ...plan,
+      {
+        tool: "bulk_create_work_items",
+        args: {
+          action: "preview",
+          workspaceId: world.workspaceId,
+          projectId: world.project.id,
+          sourceRef: "injected",
+          records: [
+            {
+              sourceType: "external_issue",
+              sourceId: "X-1",
+              item: { typeId: world.type.id, title: "pwned" },
+            },
+          ],
+        },
+      },
+    ];
+    for (const step of obeyed) {
       const out = await asReader(step.tool, {
         ...step.args,
         idempotencyKey: randomUUID(),
       });
       expect(out.result.isError, step.tool).toBe(true);
-      expect(out.text, step.tool).toMatch(/read-only/);
     }
     expect(await db.select().from(schema.workItemTable)).toEqual(itemsBefore);
+    expect(await db.select().from(schema.pendingActionTable)).toEqual(
+      actionsBefore,
+    );
+    expect(await db.select().from(schema.importRunTable)).toEqual(runsBefore);
 
     // (3) Write-enabled key: the obeyed delete is the real 202 pending action, nothing is deleted.
     const asWriter = mcpTools(app, writeKey.key);

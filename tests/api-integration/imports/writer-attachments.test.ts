@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../../apps/api/src/database";
 import { importLossTable } from "../../../apps/api/src/database/schema-imports";
@@ -17,6 +17,7 @@ import {
   markMissingImportSourcesStale,
   setImportAttachmentDependencies,
 } from "../../../apps/api/src/imports/writer";
+import { listPendingImportAttachmentJobs } from "../../../apps/api/src/imports/writer/attachments";
 import { createApp } from "../../../apps/api/src/index";
 import { resetTestDatabase } from "../helpers/database";
 import {
@@ -603,6 +604,107 @@ describe("import writer: transient attachment failures (#896)", () => {
     await reconcileImportLossIndex(run.id);
     expect(await lossRows()).toHaveLength(1);
     await reconcileImportLossIndex(run.id); // idempotent
+    expect(await lossRows()).toHaveLength(1);
+  });
+
+  async function commitWithoutDrain(
+    app: ReturnType<typeof createApp>["app"],
+    f: Awaited<ReturnType<typeof writerFixture>>,
+    name: string,
+  ) {
+    const run = await createRun(app, f, name);
+    const records = [
+      attachmentRecord(f, "OV-1", [
+        { sourceId: "a", url: URL_OK, filename: "diagram.png" },
+      ]),
+    ];
+    const preview = await previewChunk(app, f, run.id, "c1", records);
+    await db.transaction((tx) =>
+      commitImportChunk(tx, {
+        actor: {
+          userId: f.user.id,
+          actorType: "api_key",
+          apiKeyId: f.fullKey.id,
+          apiKey: { id: f.fullKey.id },
+          impersonatedBy: null,
+        },
+        runId: run.id,
+        chunkId: "c1",
+        expectedVersion: preview.runVersion,
+        previewDigest: preview.previewDigest,
+        records: records as never,
+      }),
+    ); // the process dies here: nothing drained
+    return { run, records, preview };
+  }
+
+  it("counts a loss once when an overlapping replay settles a job another pass already settled", async () => {
+    const download = vi.fn(async () => terminal);
+    const f = await writerFixture();
+    const { app } = createApp();
+    setImportAttachmentDependencies({ download });
+    const { run } = await commitWithoutDrain(app, f, "att-overlap");
+    const jobs = await listPendingImportAttachmentJobs(run.id);
+    expect(jobs).toHaveLength(1);
+    await drainImportAttachmentJobs(jobs); // both passes read the same pending job
+    await drainImportAttachmentJobs(jobs); // the slower one settles after the first
+    expect((await chunkOf(app, f, run.id)).lossCounts).toEqual({
+      attachment_download_failed: 1,
+    });
+    expect(await lossRows()).toHaveLength(1);
+  });
+
+  it("rolls settlement back when the loss-index insert fails, even with the report full, and a replay recovers", async () => {
+    const download = vi.fn(async () => terminal);
+    const f = await writerFixture();
+    const { app } = createApp();
+    setImportAttachmentDependencies({ download });
+    const { run, records, preview } = await commitWithoutDrain(
+      app,
+      f,
+      "att-atomic",
+    );
+    const filler = Array.from({ length: 1000 }, (_, i) => ({
+      code: "attachment_download_failed",
+      sourceType: "external_issue",
+      sourceId: `FULL-${i}`,
+      entity: "attachment",
+      entitySourceId: "x",
+    }));
+    const [chunk] = await db.select().from(schema.importChunkTable);
+    await db
+      .update(schema.importChunkTable)
+      .set({ report: { ...chunk?.report, losses: filler } })
+      .where(eq(schema.importChunkTable.id, chunk?.id ?? ""));
+    await db.execute(sql`create function fail_loss_index() returns trigger
+      language plpgsql as $$ begin raise exception 'loss index down'; end $$`);
+    await db.execute(
+      sql`create trigger fail_loss_index before insert on import_loss
+        for each row execute function fail_loss_index()`,
+    );
+    try {
+      await expect(resumePendingImportAttachments(run.id)).rejects.toThrow();
+    } finally {
+      await db.execute(sql`drop trigger fail_loss_index on import_loss`);
+      await db.execute(sql`drop function fail_loss_index()`);
+    }
+    // nothing was cleared: the job is still pending and no loss was counted
+    expect(await listPendingImportAttachmentJobs(run.id)).toHaveLength(1);
+    expect(await lossRows()).toHaveLength(0);
+    expect((await chunkOf(app, f, run.id)).lossCounts ?? {}).toEqual({});
+    const replay = await request(
+      app,
+      f.fullKey.key,
+      `/api/imports/${run.id}/records`,
+      idempotentJson("POST", {
+        chunkId: "c1",
+        expectedVersion: preview.runVersion,
+        records,
+        previewDigest: preview.previewDigest,
+      }),
+    );
+    expect(replay.status, await replay.clone().text()).toBe(200);
+    expect(await listPendingImportAttachmentJobs(run.id)).toHaveLength(0);
     expect(await lossRows()).toHaveLength(1);
   });
 });
