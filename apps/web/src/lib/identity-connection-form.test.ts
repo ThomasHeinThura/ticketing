@@ -278,6 +278,8 @@ const settings: ScimAdminSettings = {
       jobTitle: "title",
       locale: "preferredLanguage",
     },
+    tokenStatus: { present: false },
+    scimBaseUrl: "https://ticketing.example.com/scim/v2/test",
     mappings: [],
   },
 };

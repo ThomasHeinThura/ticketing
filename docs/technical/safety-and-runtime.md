@@ -1817,7 +1817,7 @@ never values.
 
 If a reload leaves administrators locked out despite the rules above (a provider that
 passed `test()` but rejects real logins), `auth.password` is still enabled by construction,
-and the CLI (`node dist/cli.js disable-auth-plugin <id>`, [runbook](operations-and-distribution.md#runbook))
+and the CLI (`node /app/apps/api/dist/cli.js disable-auth-plugin <id>`, [runbook](operations-and-distribution.md#runbook))
 flips a row and bumps `config_version`, which the poll picks up within 10 s.
 
 <a id="auth-runtime-reconfiguration-required-reload-and-origin-cases"></a>

@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadItemFacts } from "../../../apps/api/src/agile/item-facts.repository";
+import { createPersonalApiKey } from "../../../apps/api/src/api-key/service";
 import { enqueueAutomationRuns } from "../../../apps/api/src/automation/consumer";
 import {
   type AutomationActor,
@@ -31,7 +32,9 @@ import { requireRow } from "../helpers/fixtures";
 import {
   commitChunk,
   createRun,
+  idempotentJson,
   record,
+  request,
   type WriterFixture,
   writerFixture,
 } from "./writer-fixture";
@@ -156,6 +159,7 @@ describe("P6-R1-01: imported items have no live SLA clock and closed ones are re
       priority: "high",
       actorId: f.user.id,
       actorType: "person",
+      authorization: { userId: f.user.id },
     });
     expect(native.slaPolicyVersionId).toBe(version.id);
 
@@ -365,5 +369,43 @@ describe("P6-R1-07: imports do not trigger automations or outbound webhooks", ()
     expect(
       await db.transaction((tx) => enqueueAutomationRuns(tx, native)),
     ).toBe(1);
+  });
+});
+
+describe("#348: import preview honours the initial priority permission", () => {
+  it("previews a priority-bearing record as rejected for a key without set_priority", async () => {
+    const f = await writerFixture();
+    const { app } = createApp();
+    const key = await createPersonalApiKey(
+      { userId: f.user.id },
+      {
+        name: "no set_priority MCP",
+        capabilities: ["instance:admin", "work_item:create", "work_item:read"],
+        isMcp: true,
+      },
+    );
+    const dryRun = async (extra: Record<string, unknown>) => {
+      const run = await createRun(app, f, `priority-${randomUUID()}`, key.key);
+      const response = await request(
+        app,
+        key.key,
+        `/api/imports/${run.id}/dry-run`,
+        idempotentJson("POST", {
+          chunkId: "c1",
+          expectedVersion: run.version,
+          records: [
+            record(f, "P1", {
+              item: { typeId: f.type.id, title: "P1", ...extra },
+            }),
+          ],
+        }),
+      );
+      expect(response.status, await response.clone().text()).toBe(200);
+      return (await response.json()) as { counts: Record<string, number> };
+    };
+    expect((await dryRun({ priority: "high" })).counts).toMatchObject({
+      rejected: 1,
+    });
+    expect((await dryRun({})).counts).toMatchObject({ rejected: 0 });
   });
 });

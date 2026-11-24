@@ -864,7 +864,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       ]);
       // idempotent
       expect(await reconcileWorkspaceAdminReach()).toEqual({
-        visited: 0,
+        visited: 2,
         failed: 0,
       });
     });
@@ -964,9 +964,27 @@ describe("workspace owner/admin explicit sees_all grant", () => {
         );
       expect(audit).toHaveLength(1);
       expect(await reconcileWorkspaceAdminReach()).toEqual({
-        visited: 0,
+        visited: 1,
         failed: 0,
       });
+    });
+
+    it("reconcile revokes a system_backfill grant whose legacy membership is duplicated", async () => {
+      const world = await newWorld();
+      expect(
+        await backfillGrants(world.owner.user.id, world.workspaceId),
+      ).toHaveLength(1);
+      // The owner row survives, so only sync (not a role filter) can see the ambiguity.
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: world.workspaceId,
+        userId: world.owner.user.id,
+        role: "member",
+        joinedAt: new Date(),
+      });
+      await reconcileWorkspaceAdminReach();
+      expect(
+        await backfillGrants(world.owner.user.id, world.workspaceId),
+      ).toHaveLength(0);
     });
 
     it("reconcile leaves an admin-made grant on a non-admin untouched", async () => {
@@ -1221,7 +1239,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       }
       const logged = errors.mock.calls.map((c) => String(c[0]));
       errors.mockRestore();
-      expect(result).toEqual({ visited: 2, failed: 1 });
+      expect(result).toEqual({ visited: 3, failed: 1 });
       expect(logged).toHaveLength(1);
       expect(logged[0]).toContain(world.workspaceId);
       expect(logged[0]).toContain(badPersonId);
@@ -1234,7 +1252,7 @@ describe("workspace owner/admin explicit sees_all grant", () => {
       expect(counts).toEqual([0, 1]);
       // The failed member is picked up by the next boot.
       expect(await reconcileWorkspaceAdminReach()).toEqual({
-        visited: 1,
+        visited: 3,
         failed: 0,
       });
     });

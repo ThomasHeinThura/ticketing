@@ -7,7 +7,8 @@ import {
   lockEligibleGrantTarget,
 } from "./grant-instance-admin";
 
-export const CLI_USAGE = "Usage: node dist/cli.js grant-instance-admin <email>";
+export const CLI_USAGE =
+  "Usage: node /app/apps/api/dist/cli.js grant-instance-admin <email>";
 
 /** `grant-instance-admin <email>` is the only command; anything else is a usage error. */
 export function parseCliArgs(

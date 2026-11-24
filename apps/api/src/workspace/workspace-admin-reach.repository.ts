@@ -6,7 +6,6 @@ import {
   isNotNull,
   isNull,
   notExists,
-  or,
   sql,
 } from "drizzle-orm";
 import db, { schema } from "../database";
@@ -277,27 +276,6 @@ export async function listWorkspaceAdminReachStaleCandidates(): Promise<
         eq(schema.membershipGrantTable.directOrigin, "system_backfill"),
         isNull(schema.membershipGrantTable.revokedAt),
         isNotNull(schema.personTable.userId),
-        or(
-          eq(schema.personTable.active, false),
-          notExists(
-            db
-              .select({ one: sql`1` })
-              .from(schema.workspaceUserTable)
-              .where(
-                and(
-                  eq(
-                    schema.workspaceUserTable.workspaceId,
-                    schema.membershipGrantTable.scopeId,
-                  ),
-                  eq(
-                    schema.workspaceUserTable.userId,
-                    schema.personTable.userId,
-                  ),
-                  inArray(schema.workspaceUserTable.role, [...REACH_ROLE_KEYS]),
-                ),
-              ),
-          ),
-        ),
       ),
     );
   return rows.flatMap((row) =>

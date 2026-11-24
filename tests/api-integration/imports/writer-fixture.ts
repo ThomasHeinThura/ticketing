@@ -81,6 +81,7 @@ export async function writerFixture() {
         "instance:admin",
         "work_item:create",
         "work_item:read",
+        "work_item:set_priority",
         "work_item:update",
       ],
       isMcp: true,
@@ -90,7 +91,12 @@ export async function writerFixture() {
     { userId: user.id },
     {
       name: "writer no instance admin MCP",
-      capabilities: ["work_item:create", "work_item:read", "work_item:update"],
+      capabilities: [
+        "work_item:create",
+        "work_item:read",
+        "work_item:set_priority",
+        "work_item:update",
+      ],
       isMcp: true,
     },
   );
@@ -125,7 +131,7 @@ export function request(
   return app.request(configured.input, configured.init);
 }
 
-function idempotentJson(method: string, body: unknown) {
+export function idempotentJson(method: string, body: unknown) {
   return {
     method,
     headers: { ...jsonHeaders, "Idempotency-Key": randomUUID() },

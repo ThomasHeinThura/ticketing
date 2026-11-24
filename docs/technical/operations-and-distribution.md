@@ -399,7 +399,7 @@ rule for destructive changes are in
 `dist/cli.js` is a second esbuild entry from `apps/api/src/cli.ts`, sharing the API's
 modules. Commands are in the [runbook](#runbook). Because it needs the database URL and
 the encryption key, it runs **inside the container** (`docker compose exec taskdesk node
-dist/cli.js …`), never against the database from elsewhere.
+/app/apps/api/dist/cli.js …`), never against the database from elsewhere.
 
 <a id="container-image-native-dependencies"></a>
 ### Native dependencies
@@ -1555,7 +1555,7 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 Requires database access. Every step is audited.
 
 ```bash
-dc exec taskdesk node dist/cli.js grant-instance-admin you@example.com
+dc exec taskdesk node /app/apps/api/dist/cli.js grant-instance-admin you@example.com
 ```
 
 The CLI is a build target of the image (`apps/api/src/cli.ts` → `dist/cli.js`,
