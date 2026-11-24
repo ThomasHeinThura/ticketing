@@ -217,6 +217,37 @@ describe("csv import end to end", () => {
     );
   });
 
+  it("imports into a project with a 15-letter key and mints SLUG-n work-item keys (#1199)", async () => {
+    const longKey = "ABCDEFGHIJKLMNO";
+    const f = await engineFixture();
+    await db
+      .update(schema.projectTable)
+      .set({ slug: longKey })
+      .where(eq(schema.projectTable.id, f.project.id));
+    const { app } = createApp();
+    const small = csvText.split(/\r?\n/).slice(0, 3).join("\n");
+    const { run, mapping } = await startCsvRun(app, f, { csvText: small });
+    await confirmMapping(
+      app,
+      f,
+      run.id,
+      mapping as Parameters<typeof confirmMapping>[3],
+    );
+    const dry = await dryRunAndExecuteBody(app, f.key, run.id);
+    await call(
+      app,
+      f.key,
+      `/api/imports/${run.id}/execute`,
+      post(dry.body),
+      202,
+    );
+    expect(await runImportRun(run.id)).toMatchObject({ status: "completed" });
+    expect((await items()).map((i) => i.key).sort()).toEqual([
+      `${longKey}-1`,
+      `${longKey}-2`,
+    ]);
+  });
+
   it("invalid rows appear in the loss report with fixed codes and no free text", async () => {
     const f = await engineFixture();
     const { app } = createApp();

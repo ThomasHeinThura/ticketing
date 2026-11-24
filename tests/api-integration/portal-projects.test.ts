@@ -135,6 +135,22 @@ beforeEach(async () => {
 });
 
 describe("GET /api/portal/projects", () => {
+  it("serves a 15-letter project key in the list, the detail route and the ?project= filter (#1199)", async () => {
+    const longKey = "ABCDEFGHIJKLMNO";
+    await setProject(s.t.project.id, { slug: longKey });
+    const body = (await (await list(s.customer)).json()) as {
+      data: ProjectSummary[];
+    };
+    expect(body.data.map((row) => row.key)).toEqual([longKey]);
+    const opened = await detail(s.customer, longKey);
+    expect(opened.status, await opened.clone().text()).toBe(200);
+    expect(((await opened.json()) as ProjectSummary).key).toBe(longKey);
+    expect(await homeCounts(s.t, s.customer, longKey)).toEqual({
+      actionRequired: 0,
+      outstanding: 0,
+    });
+  });
+
   it("lists only the caller's organisation's live, portal-enabled projects", async () => {
     const fabrikam = await createCustomerPrincipal();
     const { project: fabrikamProject } = await createProjectFixture({
