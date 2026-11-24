@@ -107,7 +107,7 @@ for (const width of [375, 820, 1440])
       await expect(
         page.getByText("Draft saved", { exact: true }),
       ).toBeVisible();
-      expect(writes).toHaveLength(1);
+      expect(writes.length).toBe(1);
       expect(admin.challenges).toHaveLength(1);
 
       // A rate-limited test explains the wait and can be retried.
@@ -147,7 +147,7 @@ for (const width of [375, 820, 1440])
       await expect(
         page.getByText("Draft saved", { exact: true }),
       ).toBeVisible();
-      expect(writes).toHaveLength(2);
+      expect(writes.length).toBe(2);
       // Boolean compare: a mismatch would print the submitted secret.
       expect(
         JSON.stringify((writes[1] as { credentials: unknown }).credentials) ===

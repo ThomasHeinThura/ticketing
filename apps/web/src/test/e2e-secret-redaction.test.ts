@@ -162,6 +162,8 @@ describe("secret assertions in e2e sources", () => {
         /toContain\(\s*[\w.]*secretAccessKey/u,
         /\.credentials\)\.toEqual\(/u,
         /\.toEqual\(challenge\.request\)/u,
+        // toHaveLength prints the whole array, and captured writes hold the credentials.
+        /expect\(writes\)\.toHaveLength\(/u,
       ].some((pattern) => pattern.test(text));
       // Boolean, so a failure does not print the source either.
       expect(offending).toBe(false);
