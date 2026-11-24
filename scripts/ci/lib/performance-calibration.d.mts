@@ -80,7 +80,12 @@ export declare function summariseCalibration(
   runs: number[],
   expectedRuns?: number,
 ): { runs: number[]; medianMs: number; spread: number };
-export declare function resolveJobCalibration(options: {
+export declare function describeRawBatches(
+  batches: unknown,
+  state: string,
+): string[];
+
+type ResolveJobCalibrationOptions = {
   batches: number[][];
   state: CalibrationState;
   reference?: PerformanceReference;
@@ -89,7 +94,14 @@ export declare function resolveJobCalibration(options: {
   maxSpread?: number;
   factorMin?: number;
   factorMax?: number;
-}): Calibration;
+};
+export declare function resolveJobCalibration(
+  options: ResolveJobCalibrationOptions,
+): Calibration;
+export declare function resolveJobCalibrationLogged(
+  options: ResolveJobCalibrationOptions,
+  log?: (line: string) => void,
+): Calibration;
 export declare function normaliseSample(
   sample: CalibrationSample,
   calibration: Calibration,

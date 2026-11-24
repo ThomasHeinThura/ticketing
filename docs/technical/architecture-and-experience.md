@@ -574,7 +574,7 @@ work-item/
 │                     (multi-tenancy.md; `forIdentity(identity)` is the accepted illustration/convention).
 │                     Any additional workspace/project id is checked against that identity and applied
 │                     in the statement predicate. No universal wrapper type is claimed; see coding-standards.md.
-│                     check:queries is planned, not wired.
+│                     check:queries blocks new violations; existing ones are baselined (#580).
 ├── controllers/
 │   ├── create-work-item.ts
 │   ├── update-work-item.ts
@@ -1139,7 +1139,7 @@ These additions are retained tooling targets, not an assertion that they are ins
 | **k6** | Load baselines |
 | **cosign** | Image and release-archive signing |
 | **@vitest/coverage-v8** (present in kaneo, unused) | The 90 % `packages/domain` threshold, enforced per package |
-| A planned small AST script (`check:queries`; not currently wired) | The "no `db.select()` outside `repository.ts`" ownership rule — Biome cannot express it; see [coding standards](design-and-decisions.md#coding-standards-query-ownership-issue-580) for the authoritative contract |
+| A small AST script (`check:queries`; wired with a frozen baseline of existing violations) | The "no `db.select()` outside `repository.ts`" ownership rule — Biome cannot express it; see [coding standards](design-and-decisions.md#coding-standards-query-ownership-issue-580) for the authoritative contract |
 
 Also inherited and to be **consolidated**, per the [inherited-features register](#inherited-features):
 `valibot` → Zod only (one surviving file after the integration deletions); `nanostores` **stays** — it is
