@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getKbSuggestions } from "@/fetchers/kb";
 import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
+import { portalRouteBuilders } from "@/lib/portal-route-builders";
 import { routes } from "@/lib/routes";
 import { KbVisibilityBadge } from "../kb-badges";
 
@@ -79,7 +80,7 @@ export function KbTriageSuggestions({
                   size="sm"
                   onClick={() =>
                     onInsert(
-                      `${article.title}: ${base}${routes.portalKbArticle.build({ id: article.id })}`,
+                      `${article.title}: ${base}${portalRouteBuilders.portalKbArticle.build({ id: article.id })}`,
                     )
                   }
                 >

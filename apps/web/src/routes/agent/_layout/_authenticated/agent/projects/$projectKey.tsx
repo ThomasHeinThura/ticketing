@@ -66,28 +66,24 @@ function ProjectRootRoute() {
   const location = useLocation();
   const encodedBase = `/agent/projects/${encodeURIComponent(projectKey)}`;
   const rawBase = `/agent/projects/${projectKey}`;
-  const redirect = (
-    <Suspense fallback={null}>
-      <ProjectKeyRedirect projectKey={projectKey} />
-    </Suspense>
-  );
-  if (
-    ![encodedBase, `${encodedBase}/`, rawBase, `${rawBase}/`].includes(
-      location.pathname,
-    )
-  )
-    return (
-      <>
-        {redirect}
-        <Outlet />
-      </>
-    );
+  const isOverview = [
+    encodedBase,
+    `${encodedBase}/`,
+    rawBase,
+    `${rawBase}/`,
+  ].includes(location.pathname);
   return (
     <>
-      {redirect}
-      <Suspense fallback={<PageLoading />}>
-        <ProjectOverviewPage projectKey={projectKey} prefetched />
+      <Suspense fallback={null}>
+        <ProjectKeyRedirect projectKey={projectKey} />
       </Suspense>
+      {isOverview ? (
+        <Suspense fallback={<PageLoading />}>
+          <ProjectOverviewPage projectKey={projectKey} prefetched />
+        </Suspense>
+      ) : (
+        <Outlet />
+      )}
     </>
   );
 }

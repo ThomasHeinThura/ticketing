@@ -29,7 +29,8 @@ import {
   getPortalKbCategories,
   type PortalKbCategory,
 } from "@/fetchers/kb/portal";
-import { type PortalKbSearch, routes } from "@/lib/routes";
+import { portalRouteBuilders } from "@/lib/portal-route-builders";
+import type { PortalKbSearch } from "@/lib/routes";
 
 function flatten(categories: PortalKbCategory[]) {
   const children = new Map<string | null, PortalKbCategory[]>();
@@ -71,13 +72,17 @@ export function PortalKbBrowse({
   const [text, setText] = useState(search.q ?? "");
   const [sort, setSort] = useState<"recent" | "popular">("recent");
   const go = (next: PortalKbSearch) =>
-    void navigate({ to: routes.portalKb.path, search: next, replace: true });
+    void navigate({
+      to: portalRouteBuilders.portalKb.path,
+      search: next,
+      replace: true,
+    });
   useEffect(() => {
     if ((search.q ?? "") === text.trim()) return;
     const timer = setTimeout(
       () =>
         void navigate({
-          to: routes.portalKb.path,
+          to: portalRouteBuilders.portalKb.path,
           search: { ...search, q: text.trim() || undefined },
           replace: true,
         }),
@@ -198,7 +203,7 @@ export function PortalKbBrowse({
                     <CardTitle>
                       <Link
                         className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        to={routes.portalKbArticle.path}
+                        to={portalRouteBuilders.portalKbArticle.path}
                         params={{ id: article.id }}
                       >
                         {article.title}

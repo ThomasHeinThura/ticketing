@@ -5,6 +5,7 @@ import {
   defaultParseSearch,
 } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
+import { portalRouteBuilders } from "./portal-route-builders";
 import {
   createRouterParseSearch,
   isProjectViewPathname,
@@ -121,21 +122,24 @@ const cases: Case[] = [
   },
   {
     name: "portal catalogue",
-    pathname: routes.portalCatalogue.path,
+    pathname: portalRouteBuilders.portalCatalogue.path,
     validate: parsePortalCatalogueSearch,
     urls: [
-      routes.portalCatalogue.build(),
-      routes.portalCatalogue.build({ q: "vpn", key: "k" }),
+      portalRouteBuilders.portalCatalogue.build(),
+      portalRouteBuilders.portalCatalogue.build({ q: "vpn", key: "k" }),
       "?q=123&key=true",
     ],
   },
   {
     name: "portal sign-in",
-    pathname: routes.portalSignIn.path,
+    pathname: portalRouteBuilders.portalSignIn.path,
     validate: parsePortalSignInSearch,
     urls: [
-      routes.portalSignIn.build(),
-      routes.portalSignIn.build({ stage: "factor", factor: "backup" }),
+      portalRouteBuilders.portalSignIn.build(),
+      portalRouteBuilders.portalSignIn.build({
+        stage: "factor",
+        factor: "backup",
+      }),
     ],
   },
   {

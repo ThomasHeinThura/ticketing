@@ -14,7 +14,7 @@ import {
   getPortalKbSuggestions,
   recordPortalKbCandidate,
 } from "@/fetchers/kb/portal";
-import { routes } from "@/lib/routes";
+import { portalRouteBuilders } from "@/lib/portal-route-builders";
 
 const MIN_QUERY_LENGTH = 3;
 const DEBOUNCE_MS = 350;
@@ -110,7 +110,9 @@ export function PortalKbSuggestions({
               {/* A new tab keeps the half-written request open; the form is never interrupted. */}
               <a
                 className="font-medium underline-offset-4 hover:underline"
-                href={routes.portalKbArticle.build({ id: article.id })}
+                href={portalRouteBuilders.portalKbArticle.build({
+                  id: article.id,
+                })}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => onOpen(article.id, settled)}

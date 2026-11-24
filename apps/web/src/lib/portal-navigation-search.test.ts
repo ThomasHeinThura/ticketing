@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { portalRouteBuilders } from "./portal-route-builders";
 import {
   parseInstanceAuditSearch,
   parsePortalApprovalsSearch,
@@ -8,13 +9,15 @@ import {
   parsePortalProjectSearch,
   parsePortalReleasesSearch,
   parsePortalRequestsSearch,
-  routes,
 } from "./routes";
 
 describe("portal and audit URL state", () => {
   it("keeps backlog mode in request links without adding it to release links", () => {
     const url = new URL(
-      routes.portalRequests.build({ view: "backlog", cursor: "next_1" }),
+      portalRouteBuilders.portalRequests.build({
+        view: "backlog",
+        cursor: "next_1",
+      }),
       "https://portal.invalid",
     );
     expect(
@@ -23,7 +26,7 @@ describe("portal and audit URL state", () => {
       view: "backlog",
       cursor: "next_1",
     });
-    expect(routes.portalRequests.build()).toBe("/requests");
+    expect(portalRouteBuilders.portalRequests.build()).toBe("/requests");
     expect(parsePortalRequestsSearch({ view: "admin" })).toEqual({});
     expect(
       parsePortalReleasesSearch({ view: "backlog", cursor: "next_1" }),
@@ -33,14 +36,14 @@ describe("portal and audit URL state", () => {
   });
   it("round-trips opaque request cursors and approval selection", () => {
     const requests = new URL(
-      routes.portalRequests.build({ cursor: "opaque_older-50" }),
+      portalRouteBuilders.portalRequests.build({ cursor: "opaque_older-50" }),
       "https://portal.invalid",
     );
     expect(
       parsePortalRequestsSearch(Object.fromEntries(requests.searchParams)),
     ).toEqual({ cursor: "opaque_older-50" });
     const approvals = new URL(
-      routes.portalApprovals.build({ approval: "approval-1" }),
+      portalRouteBuilders.portalApprovals.build({ approval: "approval-1" }),
       "https://portal.invalid",
     );
     expect(
@@ -71,39 +74,57 @@ describe("portal and audit URL state", () => {
       Object.fromEntries(new URL(href, "https://portal.invalid").searchParams);
     for (const [href, parse] of [
       [
-        routes.portalRequests.build({ view: "backlog", project: "ACME" }),
+        portalRouteBuilders.portalRequests.build({
+          view: "backlog",
+          project: "ACME",
+        }),
         parsePortalRequestsSearch,
       ],
       [
-        routes.portalApprovals.build({ approval: "a-1", project: "ACME" }),
+        portalRouteBuilders.portalApprovals.build({
+          approval: "a-1",
+          project: "ACME",
+        }),
         parsePortalApprovalsSearch,
       ],
       [
-        routes.portalReleases.build({ cursor: "c_1", project: "ACME" }),
+        portalRouteBuilders.portalReleases.build({
+          cursor: "c_1",
+          project: "ACME",
+        }),
         parsePortalReleasesSearch,
       ],
       [
-        routes.portalCatalogue.build({ q: "vpn", project: "ACME" }),
+        portalRouteBuilders.portalCatalogue.build({
+          q: "vpn",
+          project: "ACME",
+        }),
         parsePortalCatalogueSearch,
       ],
       [
-        routes.portalKb.build({ q: "vpn", project: "ACME" }),
+        portalRouteBuilders.portalKb.build({ q: "vpn", project: "ACME" }),
         parsePortalKbSearch,
       ],
       [
-        routes.portalInbox.build({ filter: "unread", project: "ACME" }),
+        portalRouteBuilders.portalInbox.build({
+          filter: "unread",
+          project: "ACME",
+        }),
         parsePortalInboxSearch,
       ],
-      [routes.portalHome.build({ project: "ACME" }), parsePortalProjectSearch],
       [
-        routes.portalAccount.build({ project: "ACME" }),
+        portalRouteBuilders.portalHome.build({ project: "ACME" }),
+        parsePortalProjectSearch,
+      ],
+      [
+        portalRouteBuilders.portalAccount.build({ project: "ACME" }),
         parsePortalProjectSearch,
       ],
     ] as const)
       expect(parse(query(href)), href).toMatchObject({ project: "ACME" });
-    expect(routes.portalHome.build()).toBe("/");
-    expect(routes.portalHome.build({ project: "../x" })).toBe("/");
-    expect(routes.portalRequests.build({ project: "ACME" })).toBe(
+    expect(portalRouteBuilders.portalHome.build()).toBe("/");
+    expect(portalRouteBuilders.portalHome.build({ project: "../x" })).toBe("/");
+    expect(portalRouteBuilders.portalRequests.build({ project: "ACME" })).toBe(
       "/requests?project=ACME",
     );
     expect(parsePortalRequestsSearch({ project: "a b" })).toEqual({});
