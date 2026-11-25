@@ -24,6 +24,7 @@
     "helpers/mfa-csrf-app-fixture.ts",
     "helpers/approval-database-fixture.ts",
     "helpers/approval-runtime.ts",
+    "helpers/sit-release-env.ts",
     "scripts/seed-approvals.ts",
     "scripts/seed-approval-auth-provider.ts",
     "scripts/seed-instance-users-customer.ts",
