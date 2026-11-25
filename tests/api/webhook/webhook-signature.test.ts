@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   WEBHOOK_SECRET_OVERLAP_MS,
@@ -7,6 +8,7 @@ import {
   buildWebhookHeaders,
   previousSecretStillValid,
   signWebhookBody,
+  signWebhookBodyV2,
 } from "../../../apps/api/src/webhook/signature";
 
 const BODY = '{"id":"evt_01TEST","event":"work_item.created"}';
@@ -25,6 +27,42 @@ describe("WH-1 signature", () => {
     const reordered = '{"event":"work_item.created","id":"evt_01TEST"}';
     expect(signWebhookBody(SECRET, reordered)).not.toBe(
       signWebhookBody(SECRET, BODY),
+    );
+  });
+});
+
+describe("WH-1 v2 signature", () => {
+  const ts = String(Math.floor(NOW.getTime() / 1000));
+  const headers = buildWebhookHeaders({
+    rawBody: BODY,
+    secret: SECRET,
+    secretPrevious: PREVIOUS,
+    secretRotatedAt: new Date(NOW.getTime() - 60_000),
+    eventKind: "work_item.created",
+    deliveryId: "dlv_1",
+    now: NOW,
+  });
+
+  it("matches the documented recipe: HMAC-SHA256 of timestamp, full stop, body", () => {
+    const expected = createHmac("sha256", SECRET)
+      .update(`${ts}.${BODY}`, "utf8")
+      .digest("hex");
+    expect(headers["X-TaskDesk-Signature-V2"]).toBe(expected);
+    expect(signWebhookBodyV2(SECRET, ts, BODY)).toBe(expected);
+    expect(headers["X-TaskDesk-Signature-V2-Previous"]).toBe(
+      signWebhookBodyV2(PREVIOUS, ts, BODY),
+    );
+  });
+
+  it("changes when the timestamp changes", () => {
+    expect(signWebhookBodyV2(SECRET, String(Number(ts) + 1), BODY)).not.toBe(
+      headers["X-TaskDesk-Signature-V2"],
+    );
+  });
+
+  it("leaves the v1 header unchanged", () => {
+    expect(headers["X-TaskDesk-Signature"]).toBe(
+      "b7807130e01c02b9ddddebdc52216c61356bb35264003ec725d2b450cf03ffba",
     );
   });
 });
