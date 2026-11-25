@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   ACCOUNT_THROTTLE_ALL_IPS_RULE,
   ACCOUNT_THROTTLE_RULE,
@@ -226,8 +226,28 @@ describe("account throttle hooks as auth.ts wires them", () => {
       await accountThrottleBefore(
         hookCtx("/two-factor/verify-totp", { pendingValue: null }),
         t,
+        async () => null,
       );
   });
+
+  it.each(["/two-factor/verify-totp", "/two-factor/verify-backup-code"])(
+    "counts %s against the signed-in session's account when no challenge is pending",
+    async (path) => {
+      const t = setup();
+      const session = async () => ({ user: { id: "user_1" } });
+      const ctx = () => hookCtx(path, { pendingValue: null, ip: IP });
+      for (let i = 0; i < 10; i++)
+        await accountThrottleBefore(ctx(), t, session);
+      await expect(
+        accountThrottleBefore(ctx(), t, session),
+      ).rejects.toMatchObject(body429);
+      // A success on the same session resets that same counter.
+      await accountThrottleAfter(ctx(), t, session);
+      await expect(
+        accountThrottleBefore(ctx(), t, session),
+      ).resolves.toBeUndefined();
+    },
+  );
 
   it("after: a success resets the email+IP counter, a returned Error does not", async () => {
     const t = setup();
@@ -269,5 +289,38 @@ describe("account throttle hooks as auth.ts wires them", () => {
       t,
     );
     await expect(accountThrottleBefore(before(), t)).resolves.toBeUndefined();
+  });
+});
+
+describe("auth rate-limit reset with a stalled Valkey", () => {
+  it("returns within the bounded timeout, clears memory, and swallows a late rejection", async () => {
+    let rejectEval: ((e: Error) => void) | undefined;
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    try {
+      const c = createAuthRateLimitCoordinator({
+        isDistributedConfigured: () => true,
+        getDistributedClient: () => ({
+          eval: () =>
+            new Promise<unknown>((_, reject) => {
+              rejectEval = reject;
+            }),
+        }),
+        distributedTimeoutMs: 10,
+        setUnsharedMetric: () => {},
+        emitWarning: () => {},
+      });
+      const rule = { window: 10, max: 1 };
+      await c.consume("agent", "k", rule); // stalled: falls back to memory
+      const started = Date.now();
+      await c.reset("agent", "k", rule);
+      expect(Date.now() - started).toBeLessThan(500);
+      rejectEval?.(new Error("late"));
+      await new Promise((r) => setTimeout(r, 20));
+      expect(unhandled).not.toHaveBeenCalled();
+      expect((await c.consume("agent", "k", rule)).allowed).toBe(true);
+    } finally {
+      process.off("unhandledRejection", unhandled);
+    }
   });
 });

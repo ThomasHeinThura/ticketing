@@ -292,15 +292,29 @@ export function createAuthRateLimitCoordinator(
       const digest = digestAuthRateLimitKey(scope, key, rule);
       memory.delete(digest);
       if (!isDistributedConfigured()) return;
+      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        await getDistributedClient().eval(
+        const evaluation = getDistributedClient().eval(
           VALKEY_RESET_LUA,
           1,
           `taskdesk:auth-rate-limit:v1:${digest}`,
           0,
         );
+        void Promise.resolve(evaluation).catch(() => {});
+        await Promise.race([
+          evaluation,
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error("Valkey rate-limit timeout")),
+              dependencies.distributedTimeoutMs ?? 500,
+            );
+            timer.unref();
+          }),
+        ]);
       } catch {
-        // Valkey is down: the counter was per-replica memory anyway.
+        // Valkey is down or stalled: the counter was per-replica memory anyway.
+      } finally {
+        clearTimeout(timer);
       }
     },
   };

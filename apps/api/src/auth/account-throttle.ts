@@ -1,4 +1,8 @@
-import { APIError, type createAuthMiddleware } from "better-auth/api";
+import {
+  APIError,
+  type createAuthMiddleware,
+  getSessionFromCtx,
+} from "better-auth/api";
 import { TRUSTED_CLIENT_IP_HEADER } from "../utils/resolve-client-ip";
 import {
   type AuthRateLimitCoordinator,
@@ -75,6 +79,10 @@ const FACTOR_PATHS = [
 
 type HookContext = Parameters<Parameters<typeof createAuthMiddleware>[0]>[0];
 
+type SessionLookup = (
+  ctx: HookContext,
+) => Promise<{ user: { id: string } } | null | undefined>;
+
 // The same resolved address the per-IP limiter keys on (see `advanced.ipAddress` in auth.ts).
 const clientIp = (ctx: HookContext) =>
   ctx.headers?.get(TRUSTED_CLIENT_IP_HEADER) ?? null;
@@ -83,6 +91,7 @@ const clientIp = (ctx: HookContext) =>
 export async function accountThrottleBefore(
   ctx: HookContext,
   throttle = createAccountThrottle(),
+  session: SessionLookup = getSessionFromCtx,
 ) {
   if (ctx.path === SIGN_IN) {
     if (typeof ctx.body?.email === "string")
@@ -90,20 +99,22 @@ export async function accountThrottleBefore(
     return;
   }
   if (!FACTOR_PATHS.includes(ctx.path ?? "")) return;
-  // The pending challenge names the account; with none the endpoint answers 401 anyway.
+  // The pending challenge names the account, else the signed-in session does (a stolen session
+  // must not guess factors unthrottled); with neither the endpoint answers 401 anyway.
   const cookie = ctx.context.createAuthCookie("two_factor");
   const id = await ctx.getSignedCookie(cookie.name, ctx.context.secret);
   const pending = id
     ? await ctx.context.internalAdapter.findVerificationValue(id)
     : null;
-  if (pending)
-    await throttle.attempt("account-totp", pending.value, clientIp(ctx));
+  const account = pending?.value ?? (await session(ctx))?.user.id;
+  if (account) await throttle.attempt("account-totp", account, clientIp(ctx));
 }
 
 /** `hooks.after` step: a success clears the counter, a failure leaves it counted. */
 export async function accountThrottleAfter(
   ctx: HookContext,
   throttle = createAccountThrottle(),
+  session: SessionLookup = getSessionFromCtx,
 ) {
   if (ctx.context.returned instanceof Error) return;
   if (ctx.path === SIGN_IN) {
@@ -115,8 +126,8 @@ export async function accountThrottleAfter(
       );
     return;
   }
-  const userId = FACTOR_PATHS.includes(ctx.path ?? "")
-    ? ctx.context.newSession?.user.id
-    : undefined;
+  if (!FACTOR_PATHS.includes(ctx.path ?? "")) return;
+  const userId =
+    ctx.context.newSession?.user.id ?? (await session(ctx))?.user.id;
   if (userId) await throttle.succeeded("account-totp", userId, clientIp(ctx));
 }
