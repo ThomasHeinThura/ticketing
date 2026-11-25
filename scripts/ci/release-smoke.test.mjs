@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
-function smoke(enabled, kbStatus, flags = []) {
+function smoke(enabled, kbStatus, flags = [], healthFailures = 0) {
   const dir = mkdtempSync(join(tmpdir(), "release-smoke-test-"));
   try {
     const credentials = join(dir, "accounts.json");
@@ -30,11 +30,13 @@ function smoke(enabled, kbStatus, flags = []) {
 const fs = require('node:fs');
 const Module = require('node:module');
 const captures = { contexts: [], pages: [], requests: [] };
+let healthFailures = ${healthFailures};
 process.on('exit', () => fs.writeFileSync(${JSON.stringify(captures)}, JSON.stringify(captures)));
 global.fetch = async (url) => {
  const route = new URL(url).pathname;
  captures.requests.push(route);
  let body = {}, status = 200;
+ if (route === '/api/public/health/ready' && healthFailures-- > 0) return {status:503, json:async()=>({}), headers:{getSetCookie:()=>[]}};
  if (route === '/api/auth/get-session') body = { user: { id: 'owner' } };
  else if (route === '/api/workspace') body = [{id:'workspace'}];
  else if (route === '/api/project') body = [{id:'project', slug:'HELP'}];
@@ -132,4 +134,33 @@ test("smoke rejects unknown or empty account filters before any requests", () =>
     assert.match(result.stderr, /account filter/i);
     assert.deepEqual(result.captures.requests, []);
   }
+});
+
+test("smoke --wait-ready polls readiness until 200 and gives up after the timeout", () => {
+  const waited = smoke(
+    true,
+    200,
+    ["--no-browser", "--wait-ready", "10", "--wait-interval", "0.05"],
+    3,
+  );
+  assert.equal(waited.status, 0, waited.stdout);
+  assert.ok(
+    waited.captures.requests.filter(
+      (route) => route === "/api/public/health/ready",
+    ).length >= 5,
+  );
+  const noWait = smoke(true, 200, ["--no-browser"], 1);
+  assert.equal(noWait.status, 1);
+  assert.match(noWait.stdout, /FAIL {2}ready/);
+  const expired = smoke(
+    true,
+    200,
+    ["--no-browser", "--wait-ready", "0.2", "--wait-interval", "0.05"],
+    1000,
+  );
+  assert.equal(expired.status, 1);
+  assert.match(expired.stdout, /FAIL {2}ready/);
+  const invalid = smoke(true, 200, ["--no-browser", "--wait-ready", "soon"]);
+  assert.equal(invalid.status, 1);
+  assert.match(invalid.stderr, /--wait-ready/);
 });

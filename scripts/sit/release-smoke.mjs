@@ -4,6 +4,7 @@
  *
  *   pnpm sit:smoke                                   local SIT, <credentials-file>
  *   pnpm sit:smoke -- --agent https://… --portal https://… --credentials <file> --out <dir>
+ *   add --wait-ready <seconds> to poll both /api/public/health/ready endpoints until 200 first
  *
  * Read-only: it signs in with each account in the credentials file and reads, never writes.
  * For every account it checks the API (session, workspaces, projects, work items, KB, portal
@@ -41,6 +42,9 @@ const { values: opts } = parseArgs({
       ),
     },
     "no-browser": { type: "boolean", default: false },
+    // Seconds to poll both readiness endpoints before the checks (0 = check once, no wait).
+    "wait-ready": { type: "string", default: "0" },
+    "wait-interval": { type: "string", default: "2" },
     // Every account signs in from one IP. Local Traefik limits each IP to a 1000-request burst
     // and better-auth to 100 auth requests per 10 s, so accounts are spaced apart.
     pause: { type: "string", default: "12" },
@@ -61,9 +65,11 @@ const onlyAccounts = (opts.accounts ?? "")
   .split(",")
   .map((name) => name.trim())
   .filter(Boolean);
-const configuredAccounts = JSON.parse(
-  fs.readFileSync(opts.credentials, "utf8"),
-).accounts;
+// Either { accounts: [...] } or the bare array that the screen sweep and release suite share.
+const credentialsJson = JSON.parse(fs.readFileSync(opts.credentials, "utf8"));
+const configuredAccounts = Array.isArray(credentialsJson)
+  ? credentialsJson
+  : credentialsJson.accounts;
 const unknownAccounts = onlyAccounts.some(
   (name) =>
     !configuredAccounts.some((account) => account.email.split("@")[0] === name),
@@ -92,6 +98,7 @@ const check = (name, ok, detail = "") => {
 const who = (account) => account.email.split("@")[0];
 const isCustomer = (account) =>
   account.side === "customer" ||
+  account.host === "portal" ||
   /^customer\b/i.test(account.role ?? "") ||
   account.email.endsWith("@acme.example");
 
@@ -309,11 +316,21 @@ async function browserChecks(browser, account, base, cookies, pages) {
   await context.close();
 }
 
+const waitSeconds = Number(opts["wait-ready"]);
+const waitInterval = Number(opts["wait-interval"]);
+if (!Number.isFinite(waitSeconds) || waitSeconds < 0 || !(waitInterval > 0))
+  throw new Error("Invalid --wait-ready or --wait-interval: use seconds");
+const deadline = Date.now() + waitSeconds * 1000;
+
 for (const url of [
   `${opts.agent}/api/public/health/ready`,
   `${opts.portal}/api/public/health/ready`,
 ]) {
-  const response = await fetch(url).catch(() => null);
+  let response = await fetch(url).catch(() => null);
+  while (response?.status !== 200 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, waitInterval * 1000));
+    response = await fetch(url).catch(() => null);
+  }
   check(
     `ready ${new URL(url).hostname}`,
     response?.status === 200,
