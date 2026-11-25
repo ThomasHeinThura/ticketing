@@ -97,6 +97,9 @@ export const DEFAULT_MAX_WEBHOOKS = 10;
 export const WEBHOOK_HEADER_SIGNATURE = "X-TaskDesk-Signature";
 export const WEBHOOK_HEADER_SIGNATURE_PREVIOUS =
   "X-TaskDesk-Signature-Previous";
+export const WEBHOOK_HEADER_SIGNATURE_V2 = "X-TaskDesk-Signature-V2";
+export const WEBHOOK_HEADER_SIGNATURE_V2_PREVIOUS =
+  "X-TaskDesk-Signature-V2-Previous";
 export const WEBHOOK_HEADER_EVENT = "X-TaskDesk-Event";
 export const WEBHOOK_HEADER_DELIVERY = "X-TaskDesk-Delivery";
 export const WEBHOOK_HEADER_TIMESTAMP = "X-TaskDesk-Timestamp";
