@@ -40,6 +40,9 @@ test("every exported Storybook story has a visual baseline @visual", async ({
         return storyRendered || (await page.getByRole("dialog").isVisible());
       })
       .toBe(true);
+    // Lazy chunks (the sidebar's ScrollArea, the toaster) swap in after the first paint; wait for
+    // their requests to finish or the shot catches the Suspense fallback on a slow runner.
+    await page.waitForLoadState("networkidle");
     await page.evaluate(async () => {
       await document.fonts.ready;
       await new Promise<void>((resolve) =>
