@@ -9259,6 +9259,12 @@ test("workspace settings features screen @visual", async ({ page }) => {
     page.getByText("Feature switches", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Service levels", { exact: true })).toBeVisible();
+  // History is a lazy chunk above the panel; shooting before it mounts shifts the layout.
+  await expect(
+    page.getByText("Last changed by Visual Tester on Jan 1, 2026, 12:00 PM", {
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("workspace-settings-features.png", {
     animations: "disabled",
     caret: "hide",
