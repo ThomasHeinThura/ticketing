@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 import { redactSecretErrorContext } from "../e2e/helpers/redact-secret-error-context";
 import {
   agentOrigin,
+  ignoreHTTPSErrors,
   portalOrigin,
-  removeWorkItem,
   type Session,
   signIn,
   stamp,
@@ -15,9 +15,15 @@ test.afterEach(({ browserName: _browserName }, testInfo) => {
 
 /**
  * Release journey: portal to agent and back (service desk, portal and identity). A customer
- * raises a request on the portal host, an agent claims it, asks for clarification and accepts
- * it into a work item, and the customer sees the agent's reply. The customer session is
- * refused every agent route. The accepted work item is deleted again at the end.
+ * raises a request on the portal host, an agent claims it, asks for clarification, the customer
+ * answers, and the agent declines it with a reason the customer sees. The customer session is
+ * refused every agent route.
+ *
+ * No route deletes a submission or its messages, and accepting one would leave a work item
+ * whose scheduled purge the submission reference blocks. The journey therefore ends in the
+ * terminal declined state (no work item is ever created) and fails loudly if it cannot get
+ * there. The one declined SUB-n record per run is the only data left behind; accept-into-work-item
+ * is listed as a gap in docs/testing.md.
  */
 test("customer request is triaged by an agent and the customer sees the reply", async ({
   browser,
@@ -26,8 +32,21 @@ test("customer request is triaged by an agent and the customer sees the reply", 
   const customer = await signIn(browser, "customer");
   const lead = await signIn(browser, "lead");
   const sessions: Session[] = [customer, lead];
-  let workItemKey: string | null = null;
   let ref: string | null = null;
+  let closed = false;
+  // A failure before triage must still close the request, and a failed close is loud.
+  async function cleanup() {
+    if (ref && !closed) {
+      const late = await lead.call("POST", `/submissions/${ref}/decline`, {
+        reason: "R929 release journey cleanup after a failed run.",
+      });
+      if (late.status !== 200)
+        throw new Error(
+          `Cleanup decline of ${ref} returned HTTP ${late.status}.`,
+        );
+    }
+    await Promise.all(sessions.map((session) => session.context.close()));
+  }
   try {
     const summary = `R929 portal request ${stamp()}`;
     const question = `R929 which environment is affected ${stamp()}`;
@@ -75,39 +94,44 @@ test("customer request is triaged by an agent and the customer sees the reply", 
     await agentPage.reload();
     await expect(agentPage.getByText(answer).first()).toBeVisible();
 
-    // Accept into a work item in the service project; the customer's request reflects it.
-    const accepted = await lead.call("POST", `/submissions/${ref}/accept`, {
-      projectId: "uat-proj-support",
-      workItemTypeId: "uat-service-type-incident",
+    // The agent declines with a customer-visible reason; the customer sees the closed request.
+    const reason = `R929 closing the release journey request ${stamp()}`;
+    const declined = await lead.call("POST", `/submissions/${ref}/decline`, {
+      reason,
     });
-    expect(accepted.status).toBe(200);
-    expect(accepted.body.state).toBe("accepted");
-    workItemKey = accepted.body.workItem.key as string;
+    expect(declined.status).toBe(200);
+    expect(declined.body.state).toBe("declined");
+    closed = true;
     const seen = await customer.call("GET", `/portal/submissions/${ref}`);
     expect(seen.status).toBe(200);
-    expect(JSON.stringify(seen.body)).not.toContain("uat-proj-support");
+    expect(seen.body.submission.state).toBe("declined");
+    await customerPage.reload();
+    await expect(customerPage.getByText(reason).first()).toBeVisible();
 
-    // Customer is refused agent routes: portal host does not serve them and the portal
-    // session carries no authority on the agent host.
+    // Customer is refused agent routes: the portal host does not serve them ...
     expect((await customer.call("GET", "/workspace")).status).toBe(404);
-    expect(
-      (await customer.call("GET", `/work-items/${workItemKey}`)).status,
-    ).toBe(404);
-    const onAgentHost = await customer.context.request.get(
-      `${agentOrigin}/api/workspace`,
-      { headers: { Origin: agentOrigin } },
-    );
-    expect([401, 403]).toContain(onAgentHost.status());
-  } finally {
-    // A failure before triage still leaves no open request or work item behind.
-    if (ref && !workItemKey) {
-      const late = await lead.call("POST", `/submissions/${ref}/accept`, {
-        projectId: "uat-proj-support",
-        workItemTypeId: "uat-service-type-incident",
-      });
-      workItemKey = late.body?.workItem?.key ?? null;
+    expect((await customer.call("GET", "/work-items/WEB-1")).status).toBe(404);
+    // ... and the portal session replayed on the agent host carries no authority. This runs in
+    // its own context so only the agent host's own TLS policy applies, never the portal's.
+    const replay = await browser.newContext({
+      ignoreHTTPSErrors: ignoreHTTPSErrors(agentOrigin),
+    });
+    try {
+      await replay.addCookies(
+        (await customer.context.cookies()).map((cookie) => ({
+          ...cookie,
+          domain: new URL(agentOrigin).hostname,
+        })),
+      );
+      const onAgentHost = await replay.request.get(
+        `${agentOrigin}/api/workspace`,
+        { headers: { Origin: agentOrigin } },
+      );
+      expect([401, 403]).toContain(onAgentHost.status());
+    } finally {
+      await replay.close();
     }
-    if (workItemKey) await removeWorkItem(lead, workItemKey);
-    await Promise.all(sessions.map((session) => session.context.close()));
+  } finally {
+    await cleanup();
   }
 });

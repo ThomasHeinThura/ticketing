@@ -326,10 +326,21 @@ for (const url of [
   `${opts.agent}/api/public/health/ready`,
   `${opts.portal}/api/public/health/ready`,
 ]) {
-  let response = await fetch(url).catch(() => null);
+  // Every request aborts at the shared deadline (3 s minimum so a single check can finish), and
+  // sleeps never run past it, so a stalled host cannot exceed --wait-ready.
+  const probe = () =>
+    fetch(url, {
+      signal: AbortSignal.timeout(Math.max(deadline - Date.now(), 3000)),
+    }).catch(() => null);
+  let response = await probe();
   while (response?.status !== 200 && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, waitInterval * 1000));
-    response = await fetch(url).catch(() => null);
+    await new Promise((resolve) =>
+      setTimeout(
+        resolve,
+        Math.min(waitInterval * 1000, Math.max(deadline - Date.now(), 0)),
+      ),
+    );
+    response = await probe();
   }
   check(
     `ready ${new URL(url).hostname}`,

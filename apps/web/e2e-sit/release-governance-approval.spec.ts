@@ -104,7 +104,29 @@ test("CAB approval is decided by the named approver and never by the requester",
       after.body as Array<{ transitionId: string; available: boolean }>
     ).find((offer) => offer.transitionId === gated?.transitionId);
     expect(opened?.available).toBe(true);
+    const loaded = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/me/approvals" &&
+        response.request().method() === "GET",
+    );
     await page.reload();
+    const listing = await loaded;
+    expect(listing.status()).toBe(200);
+    const waiting = (await listing.json()) as {
+      approvals: Array<{ workItemKey: string; workItemTitle: string }>;
+    };
+    expect(waiting.approvals.some((entry) => entry.workItemKey === key)).toBe(
+      false,
+    );
+    // The list has rendered (empty state, or the first remaining approval) before absence counts.
+    if (waiting.approvals.length === 0)
+      await expect(
+        page.getByText("No approvals are waiting for you."),
+      ).toBeVisible();
+    else
+      await expect(
+        page.getByText(waiting.approvals[0].workItemTitle).first(),
+      ).toBeVisible();
     await expect(page.getByText(title)).toHaveCount(0);
   } finally {
     if (key) await removeWorkItem(admin, key);

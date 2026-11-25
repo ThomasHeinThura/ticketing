@@ -27,8 +27,41 @@ test("time logged by a member totals correctly and cost stays with rate managers
   const lead = await signIn(browser, "lead");
   const sessions: Session[] = [lead];
   let key: string | null = null;
+  let itemId = "";
   let entryId: string | null = null;
   let member: Session | null = null;
+  // Each cleanup step must succeed; a failure fails the journey instead of leaving data.
+  async function cleanup() {
+    // Each cleanup step must succeed; a failure fails the journey instead of leaving data.
+    if (member && entryId) {
+      const removed = await member.call("DELETE", `/time-entries/${entryId}`);
+      const pending = removed.body?.pendingActionId as string | undefined;
+      if (removed.status !== 202 || !pending)
+        throw new Error(`Time entry deletion returned HTTP ${removed.status}.`);
+      const approved = await member.call(
+        "POST",
+        `/me/pending-actions/${pending}/approve`,
+        {},
+      );
+      if (approved.status !== 200)
+        throw new Error(
+          `Time entry approval returned HTTP ${approved.status}.`,
+        );
+      const gone = await member.call(
+        "GET",
+        `/time-entries?workspaceId=${workspaceId}&workItemId=${itemId}`,
+      );
+      if (
+        gone.status !== 200 ||
+        (gone.body.data as Array<{ id: string }>).some(
+          (entry) => entry.id === entryId,
+        )
+      )
+        throw new Error("Time entry is still listed after its deletion.");
+    }
+    if (key) await removeWorkItem(lead, key);
+    await Promise.all(sessions.map((session) => session.context.close()));
+  }
   try {
     const types = await lead.call(
       "GET",
@@ -44,11 +77,18 @@ test("time logged by a member totals correctly and cost stays with rate managers
     });
     expect(made.status).toBe(200);
     key = made.body.key as string;
-    const itemId = made.body.id as string;
+    itemId = made.body.id as string;
 
     member = await signIn(browser, "member");
     sessions.push(member);
-    const today = new Date().toISOString().slice(0, 10);
+    // "Today" is the member's own calendar day as the API computes it, not UTC.
+    const calendar = await member.call(
+      "GET",
+      `/time-entries?workspaceId=${workspaceId}&workItemId=${itemId}`,
+    );
+    expect(calendar.status).toBe(200);
+    const today = calendar.body.today as string;
+    expect(today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     const logged = await member.call("POST", "/time-entries", {
       workspaceId,
       workItemId: itemId,
@@ -116,13 +156,6 @@ test("time logged by a member totals correctly and cost stays with rate managers
     await expect(row).toBeVisible();
     await expect(row).toContainText("0:50");
   } finally {
-    if (member && entryId) {
-      const removed = await member.call("DELETE", `/time-entries/${entryId}`);
-      const pending = removed.body?.pendingActionId as string | undefined;
-      if (pending)
-        await member.call("POST", `/me/pending-actions/${pending}/approve`, {});
-    }
-    if (key) await removeWorkItem(lead, key);
-    await Promise.all(sessions.map((session) => session.context.close()));
+    await cleanup();
   }
 });

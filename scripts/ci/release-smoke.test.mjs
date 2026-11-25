@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
-function smoke(enabled, kbStatus, flags = [], healthFailures = 0) {
+function smoke(enabled, kbStatus, flags = [], healthFailures = 0, env = {}) {
   const dir = mkdtempSync(join(tmpdir(), "release-smoke-test-"));
   try {
     const credentials = join(dir, "accounts.json");
@@ -32,10 +32,11 @@ const Module = require('node:module');
 const captures = { contexts: [], pages: [], requests: [] };
 let healthFailures = ${healthFailures};
 process.on('exit', () => fs.writeFileSync(${JSON.stringify(captures)}, JSON.stringify(captures)));
-global.fetch = async (url) => {
+global.fetch = async (url, init) => {
  const route = new URL(url).pathname;
  captures.requests.push(route);
  let body = {}, status = 200;
+ if (route === '/api/public/health/ready' && process.env.STALL_READY) await new Promise((_, reject) => { const hold = setTimeout(() => {}, 60000); init.signal.addEventListener('abort', () => { clearTimeout(hold); reject(new Error('aborted')); }); });
  if (route === '/api/public/health/ready' && healthFailures-- > 0) return {status:503, json:async()=>({}), headers:{getSetCookie:()=>[]}};
  if (route === '/api/auth/get-session') body = { user: { id: 'owner' } };
  else if (route === '/api/workspace') body = [{id:'workspace'}];
@@ -74,7 +75,7 @@ Module._load = function(name, ...args) {
         "0",
         ...flags,
       ],
-      { encoding: "utf8", timeout: 30_000 },
+      { encoding: "utf8", timeout: 30_000, env: { ...process.env, ...env } },
     );
     return { ...result, captures: JSON.parse(readFileSync(captures, "utf8")) };
   } finally {
@@ -163,4 +164,19 @@ test("smoke --wait-ready polls readiness until 200 and gives up after the timeou
   const invalid = smoke(true, 200, ["--no-browser", "--wait-ready", "soon"]);
   assert.equal(invalid.status, 1);
   assert.match(invalid.stderr, /--wait-ready/);
+});
+
+test("smoke --wait-ready aborts a stalled readiness request at the deadline", () => {
+  const started = Date.now();
+  const stalled = smoke(
+    true,
+    200,
+    ["--no-browser", "--wait-ready", "1", "--wait-interval", "30"],
+    0,
+    { STALL_READY: "1" },
+  );
+  assert.equal(stalled.status, 1);
+  assert.match(stalled.stdout, /FAIL {2}ready.*unreachable/);
+  // Two hosts, each bounded by the 3 s floor; far below the 30 s interval or a hang.
+  assert.ok(Date.now() - started < 15_000);
 });
