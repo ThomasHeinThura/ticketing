@@ -8604,6 +8604,12 @@ test("project settings budget screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Q4 2026 support", { exact: true }),
   ).toBeVisible();
+  // History is a lazy chunk above the budget list; shooting before it mounts shifts the layout.
+  await expect(
+    page.getByText("Last changed by Visual Tester on Jan 1, 2026, 12:00 PM", {
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("project-settings-budget.png", {
     animations: "disabled",
     caret: "hide",
@@ -9912,6 +9918,12 @@ test("workspace settings time activities screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(
     page.getByText("Backdating limit (days)", { exact: true }),
+  ).toBeVisible();
+  // History is a lazy chunk under the backdating form; shooting before it mounts shifts the layout.
+  await expect(
+    page.getByText("Last changed by Visual Tester on Jan 1, 2026, 12:00 PM", {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot(
     "workspace-settings-time-activities.png",
