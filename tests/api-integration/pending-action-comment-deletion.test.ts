@@ -384,6 +384,33 @@ describe("canonical comment durable deletion", () => {
     expect(JSON.stringify(kept?.payloadSummary)).toContain("Exact comment");
     expect((await comment(f.relation.id)).body).toBeNull();
   });
+  it("keeps the executed confirmation summary body while a legal hold covers its moderator requester only", async () => {
+    const f = await fixture();
+    const author = await createWorkspaceMember({ role: "member" });
+    const authorPerson = requireRow(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, author.user.id)),
+      "author",
+    );
+    await db
+      .update(schema.commentTable)
+      .set({ authorId: authorPerson.id })
+      .where(eq(schema.commentTable.id, f.relation.id));
+    await db.insert(schema.legalHoldTable).values({
+      scope: "person",
+      scopeId: f.person.id,
+      placedBy: "integration-test",
+      reason: "moderator executed summary hold test",
+    });
+    const action = await createPendingAction(f.request);
+    await approveCommentDeletion(f.approval(action.pendingActionId));
+    const summary = (await pending(action.pendingActionId)).payloadSummary;
+    expect(JSON.stringify(summary)).toContain("Exact comment");
+    expect(summary).toMatchObject({ alreadyDeleted: true });
+    expect((await comment(f.relation.id)).body).toBeNull();
+  });
   it("invalidates an edited comment and never deletes its newer body", async () => {
     const f = await fixture();
     const action = await createPendingAction(f.request);
