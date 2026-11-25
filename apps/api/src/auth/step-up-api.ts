@@ -821,6 +821,10 @@ const proveRoute = createRoute({
   },
 });
 
+// Normalised headers (proxy-resolved client IP) without re-reading the body the validator consumed.
+const factorHeaders = (c: Context) =>
+  buildAuthRequest(c, undefined, new Request(c.req.url)).headers;
+
 const routes = apiRouter()
   .openapi(challengeRoute, async (c) => {
     c.header("Cache-Control", "no-store");
@@ -2092,7 +2096,7 @@ const routes = apiRouter()
           const result = await withEnlistedLocalFactorVerification(async () =>
             auth.api.verifyTOTP({
               body: { code: proofInput.code ?? "", trustDevice: false },
-              headers: buildAuthRequest(c).headers,
+              headers: factorHeaders(c),
             }),
           );
           if (result.user.id !== c.get("userId")) return null;
@@ -2100,7 +2104,7 @@ const routes = apiRouter()
           const result = await withEnlistedLocalFactorVerification(async () =>
             auth.api.verifyBackupCode({
               body: { code: proofInput.code ?? "", disableSession: true },
-              headers: buildAuthRequest(c).headers,
+              headers: factorHeaders(c),
             }),
           );
           if (result.user.id !== c.get("userId")) return null;
