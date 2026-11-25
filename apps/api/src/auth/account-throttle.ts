@@ -99,14 +99,17 @@ export async function accountThrottleBefore(
     return;
   }
   if (!FACTOR_PATHS.includes(ctx.path ?? "")) return;
-  // The pending challenge names the account, else the signed-in session does (a stolen session
-  // must not guess factors unthrottled); with neither the endpoint answers 401 anyway.
-  const cookie = ctx.context.createAuthCookie("two_factor");
-  const id = await ctx.getSignedCookie(cookie.name, ctx.context.secret);
-  const pending = id
-    ? await ctx.context.internalAdapter.findVerificationValue(id)
-    : null;
-  const account = pending?.value ?? (await session(ctx))?.user.id;
+  // Better Auth verifies the signed-in session's factor when one exists, so charge that account
+  // (a pending challenge for another account must not redirect the budget); with neither the
+  // endpoint answers 401 anyway.
+  let account = (await session(ctx))?.user.id;
+  if (!account) {
+    const cookie = ctx.context.createAuthCookie("two_factor");
+    const id = await ctx.getSignedCookie(cookie.name, ctx.context.secret);
+    account = id
+      ? (await ctx.context.internalAdapter.findVerificationValue(id))?.value
+      : undefined;
+  }
   if (account) await throttle.attempt("account-totp", account, clientIp(ctx));
 }
 

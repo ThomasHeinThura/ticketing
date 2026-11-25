@@ -213,10 +213,32 @@ describe("account throttle hooks as auth.ts wires them", () => {
     async (path) => {
       const t = setup();
       const ctx = () => hookCtx(path, { pendingValue: "user_1", ip: IP });
-      for (let i = 0; i < 10; i++) await accountThrottleBefore(ctx(), t);
-      await expect(accountThrottleBefore(ctx(), t)).rejects.toMatchObject(
-        body429,
-      );
+      const noSession = async () => null;
+      for (let i = 0; i < 10; i++)
+        await accountThrottleBefore(ctx(), t, noSession);
+      await expect(
+        accountThrottleBefore(ctx(), t, noSession),
+      ).rejects.toMatchObject(body429);
+    },
+  );
+
+  it.each(["/two-factor/verify-totp", "/two-factor/verify-backup-code"])(
+    "%s charges the signed-in account, not a pending challenge for another account",
+    async (path) => {
+      const t = setup();
+      const session = async () => ({ user: { id: "user_A" } });
+      const ctx = () => hookCtx(path, { pendingValue: "user_B", ip: IP });
+      for (let i = 0; i < 10; i++)
+        await accountThrottleBefore(ctx(), t, session);
+      await expect(
+        accountThrottleBefore(ctx(), t, session),
+      ).rejects.toMatchObject(body429);
+      // B's budget was never touched.
+      await expect(
+        accountThrottleBefore(ctx(), t, async () => ({
+          user: { id: "user_B" },
+        })),
+      ).resolves.toBeUndefined();
     },
   );
 
