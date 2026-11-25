@@ -1,3 +1,8 @@
+import { execFile } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   hashPassword,
@@ -56,4 +61,22 @@ describe("password hash", () => {
   it("rejects an unknown hash format", async () => {
     expect((await verifyPassword("plain", "plain")).valid).toBe(false);
   });
+
+  it("lets a process exit on its own after a legacy verify (idle worker is unref'd)", async () => {
+    const root = resolve(import.meta.dirname, "../../..");
+    const script = `import { verifyPassword } from ${JSON.stringify(pathToFileURL(resolve(root, "apps/api/src/auth/password-hash.ts")).href)};
+const r = await verifyPassword("$2b$04$7cfG74vxZplSc30onlI4UORjWx2BORgfFtrANP44k/E61FX1N04CW", "old secret");
+console.log(r.valid);`;
+    const file = resolve(mkdtempSync(resolve(tmpdir(), "pwhash-")), "run.mts");
+    writeFileSync(file, script);
+    const out = await new Promise<string>((done, fail) =>
+      execFile(
+        process.execPath,
+        ["--import", "tsx", file],
+        { cwd: resolve(root, "apps/api"), timeout: 15_000 },
+        (err, stdout, stderr) => (err ? fail(err) : done(stdout || stderr)),
+      ),
+    );
+    expect(out.trim()).toBe("true");
+  }, 20_000);
 });

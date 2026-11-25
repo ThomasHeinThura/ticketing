@@ -48,6 +48,8 @@ function spawn(): Slot {
   worker.on("message", ({ id, valid }: { id: number; valid: boolean }) => {
     slot.pending.get(id)?.(valid);
     slot.pending.delete(id);
+    // An idle worker must not keep the process alive (CLI and seed scripts).
+    if (slot.pending.size === 0) worker.unref();
   });
   worker.on("error", drop);
   worker.on("exit", drop);
@@ -62,6 +64,7 @@ function compareLegacyBcrypt(password: string, hash: string): Promise<boolean> {
   const id = nextId++;
   return new Promise((resolve) => {
     slot.pending.set(id, resolve);
+    slot.worker.ref();
     slot.worker.postMessage({ id, password, hash });
   });
 }
