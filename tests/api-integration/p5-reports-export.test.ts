@@ -403,6 +403,9 @@ describe("synchronous and queued exports (RP-10)", () => {
       {},
     );
     expect(other.status).toBe(202);
+    // Drain the run this kicked, or it holds table locks over the next test's reset.
+    const { data } = (await other.json()) as { data: ExportDto };
+    await settle(w.owner.user, data.id);
   });
 
   it("expires a finished export, drops its content and answers 410", async () => {
