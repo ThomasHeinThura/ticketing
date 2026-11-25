@@ -512,6 +512,103 @@ describe("settings history target scope", () => {
     expect(c.get("projectId")).toBeUndefined();
   });
 
+  it("scopes the workspace feature-switch selector: allowed, missing capability, foreign tenant, missing target", async () => {
+    const staff = (key: "owner" | "viewer") => ({
+      ...identityFor(key),
+      memberships: [{ scope: "workspace" as const, scopeId: WORKSPACE_ID }],
+    });
+    workspaceLookup([{ workspaceId: WORKSPACE_ID }]);
+    resolveRequestIdentity.mockResolvedValue(staff("owner"));
+    const c = context("workspace_features", WORKSPACE_ID);
+    const next = vi.fn();
+    await settingsHistoryScope(c as never, next);
+    expect(next).toHaveBeenCalledOnce();
+    expect(c.get("settingsHistoryScope")).toEqual({
+      type: "workspace_features",
+      id: WORKSPACE_ID,
+      workspaceId: WORKSPACE_ID,
+    });
+    resolveRequestIdentity.mockResolvedValue(staff("viewer"));
+    await expect(
+      settingsHistoryScope(
+        context("workspace_features", WORKSPACE_ID) as never,
+        vi.fn(),
+      ),
+    ).rejects.toMatchObject({ status: 403 });
+    resolveRequestIdentity.mockResolvedValue(staff("owner"));
+    workspaceLookup([{ workspaceId: "other-workspace" }]);
+    await expect(
+      settingsHistoryScope(
+        context("workspace_features", "other-workspace") as never,
+        vi.fn(),
+      ),
+    ).rejects.toMatchObject({ status: 404 });
+    workspaceLookup([]);
+    await expect(
+      settingsHistoryScope(
+        context("workspace_features", "missing") as never,
+        vi.fn(),
+      ),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("scopes the project feature-switch selector: allowed, missing capability, foreign tenant, missing target", async () => {
+    const lookup = (rows: unknown[]) => {
+      const builder = {
+        from: () => builder,
+        innerJoin: () => builder,
+        where: () => builder,
+        limit: async () => rows,
+      };
+      select.mockReset();
+      select.mockReturnValue(builder);
+    };
+    const live = [
+      {
+        id: PROJECT_ID,
+        workspaceId: WORKSPACE_ID,
+        organisationId: ORGANISATION_ID,
+      },
+    ];
+    lookup(live);
+    resolveRequestIdentity.mockResolvedValue(identityFor("owner"));
+    const c = context("project_features", PROJECT_ID);
+    const next = vi.fn();
+    await settingsHistoryScope(c as never, next);
+    expect(next).toHaveBeenCalledOnce();
+    expect(c.get("settingsHistoryScope")).toEqual({
+      type: "project_features",
+      id: PROJECT_ID,
+      workspaceId: WORKSPACE_ID,
+      projectId: PROJECT_ID,
+    });
+    expect(c.get("policyScopeResource")).toBe("project");
+    resolveRequestIdentity.mockResolvedValue(identityFor("viewer"));
+    await expect(
+      settingsHistoryScope(
+        context("project_features", PROJECT_ID) as never,
+        vi.fn(),
+      ),
+    ).rejects.toMatchObject({ status: 403 });
+    resolveRequestIdentity.mockResolvedValue(
+      identityFor("owner", { inReach: false }),
+    );
+    await expect(
+      settingsHistoryScope(
+        context("project_features", PROJECT_ID) as never,
+        vi.fn(),
+      ),
+    ).rejects.toMatchObject({ status: 404 });
+    lookup([]);
+    resolveRequestIdentity.mockResolvedValue(identityFor("owner"));
+    await expect(
+      settingsHistoryScope(
+        context("project_features", "missing") as never,
+        vi.fn(),
+      ),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
   it("binds project automation to the live project and rejects a removed project", async () => {
     const target = { workspaceId: WORKSPACE_ID, projectId: PROJECT_ID };
     const targetBuilder = workspaceLookup([target]);

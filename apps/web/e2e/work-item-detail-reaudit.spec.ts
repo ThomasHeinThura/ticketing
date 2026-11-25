@@ -6,6 +6,11 @@ import {
   WORK_ITEM_KEY,
   WORK_LIST_PATH,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 /**
  * UAT re-audit (d35d165) regressions on the work-item detail and the create dialog, checked

@@ -145,6 +145,18 @@ describe("canonical tool set", () => {
     ]);
   });
 
+  it("passes a 15-letter project key through get_work_item and returns the item (#1199)", async () => {
+    const key = "PROJECTPROJECTS-12";
+    const { call, calls } = harness(() => ({ key, version: 3 }));
+
+    const result = await call("get_work_item", { key });
+
+    expect(calls).toEqual([
+      { path: `/api/work-items/${key}`, init: { method: "GET" } },
+    ]);
+    expect(JSON_RESULT(result)).toMatchObject({ key, version: 3 });
+  });
+
   it("reports only the registered name, bounded duration and outcome", async () => {
     const { call, reports } = harness(() => ({ id: "safe-result" }));
     await call("whoami", {});

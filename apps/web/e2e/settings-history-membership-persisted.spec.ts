@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 import { expect, type Page, type TestInfo, test } from "@playwright/test";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   withMfaCsrfApp,
@@ -237,9 +238,10 @@ test("workspace and project membership role History persists with closed metadat
           .getByLabel("Full name")
           .fill("Disposable Membership Setup");
         await setupPage.getByLabel("Email").fill(email);
-        await setupPage
-          .locator('input[autocomplete="new-password"]')
-          .fill(password);
+        await fillSensitive(
+          setupPage.locator('input[autocomplete="new-password"]'),
+          password,
+        );
         await setupPage.getByRole("button", { name: "Create account" }).click();
         await enrollFirstAdmin(setupPage, origin, password);
         const actors = await seedMatrixActors(databaseUrl, email);

@@ -502,6 +502,8 @@ describe("intake triage route", () => {
       .mockReset()
       .mockResolvedValue({ suggestions: [] });
     renderTriage();
+    // Cold lazy chunks on this path (the detail sheet body) load slower than the 1 s findBy under host load (#776).
+    await vi.dynamicImportSettled();
 
     const preview = await screen.findByRole("button", {
       name: "workItemExtras:detail.attachments.pdfPreviewOpen",

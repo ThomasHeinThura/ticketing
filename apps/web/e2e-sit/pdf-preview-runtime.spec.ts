@@ -8,6 +8,11 @@ import {
   type TestInfo,
   test,
 } from "@playwright/test";
+import { redactSecretErrorContext } from "../e2e/helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const agentOrigin = "https://ticketing.localhost";
 const portalOrigin = "https://portal.localhost";

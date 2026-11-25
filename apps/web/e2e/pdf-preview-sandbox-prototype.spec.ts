@@ -2,6 +2,11 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const origin = "http://127.0.0.1:4178";
 const here = path.dirname(fileURLToPath(import.meta.url));

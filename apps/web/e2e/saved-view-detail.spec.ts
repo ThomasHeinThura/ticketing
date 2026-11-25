@@ -5,6 +5,11 @@ import {
   PROJECT_ID,
   WORKSPACE_ID,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const STORED_FILTER = { field: "priority", op: "eq", value: "high" };
 const savedView = {

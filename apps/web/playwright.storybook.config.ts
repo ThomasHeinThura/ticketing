@@ -20,7 +20,7 @@ export default defineConfig({
     colorScheme: "light",
     reducedMotion: "reduce",
     launchOptions: { args: ["--disable-partial-raster"] },
-    trace: "retain-on-failure",
+    trace: "off",
   },
   webServer: {
     command:

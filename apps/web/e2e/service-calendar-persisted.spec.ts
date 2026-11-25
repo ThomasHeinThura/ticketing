@@ -1,5 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 import {
+  expectPrivately,
+  fillSensitive,
+  matchesPartial,
+} from "../../../tests/e2e/helpers/fill-sensitive";
+import {
   navigateToSetup,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
@@ -48,7 +53,10 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
     await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill("Disposable Calendar Admin");
     await page.getByLabel("Email").fill(email);
-    await page.locator('input[autocomplete="new-password"]').fill(password);
+    await fillSensitive(
+      page.locator('input[autocomplete="new-password"]'),
+      password,
+    );
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
     const workspaceId = await createFirstWorkspace(
@@ -172,10 +180,14 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
       { headers: { Origin: origin } },
     );
     expect(afterRejectedImport.status()).toBe(200);
-    expect(await afterRejectedImport.json()).toMatchObject({
-      version: 2,
-      holidays: [{ date: "2026-12-25", name: "Browser proof holiday" }],
-    });
+    const received1 = await afterRejectedImport.json();
+    expectPrivately(
+      matchesPartial(received1, {
+        version: 2,
+        holidays: [{ date: "2026-12-25", name: "Browser proof holiday" }],
+      }),
+      "Private check failed.",
+    );
 
     const screenshot = testInfo.outputPath("calendar-import-persisted.png");
     await page.screenshot({ path: screenshot, fullPage: true });

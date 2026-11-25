@@ -3,6 +3,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
+import { redactSecretErrorContext } from "../e2e/helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const origin = "https://ticketing.localhost";
 const stateRoot = path.join(
@@ -329,7 +335,7 @@ test("soft-delete and restore the existing QA organisation through God Mode", as
       targetAndConfirmation: "organisation / typed_name_step_up",
     };
     await typedName.fill(fixture.name);
-    await stepUpSecret.fill(adminPassword);
+    await fillSensitive(stepUpSecret, adminPassword);
     const approveResponse = page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
@@ -409,7 +415,10 @@ test("soft-delete and restore the existing QA organisation through God Mode", as
     summary.restorePageLabels = restoreLabels
       .map((text) => text.trim())
       .filter(Boolean);
-    await page.locator("#organisation-restore-secret").fill(adminPassword);
+    await fillSensitive(
+      page.locator("#organisation-restore-secret"),
+      adminPassword,
+    );
     const restoreResponse = page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
@@ -583,7 +592,7 @@ test("soft-delete and restore the existing QA organisation through God Mode", as
         });
         const restoreField = page.locator("#organisation-restore-secret");
         if (await restoreField.isVisible({ timeout: 3_000 })) {
-          await restoreField.fill(adminPassword);
+          await fillSensitive(restoreField, adminPassword);
           const restoreResponse = page.waitForResponse(
             (response) =>
               response.request().method() === "POST" &&

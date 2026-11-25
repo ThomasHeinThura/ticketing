@@ -5899,7 +5899,9 @@ async function installAuthenticatedFixture(page: Page) {
       };
     } else if (
       path === "/api/audit" &&
-      url.search === "?entity_type=workspace&entity_id=visual-workspace"
+      (url.search === "?entity_type=workspace&entity_id=visual-workspace" ||
+        url.search ===
+          "?entity_type=workspace_features&entity_id=visual-workspace")
     ) {
       body = {
         entityType: "workspace",

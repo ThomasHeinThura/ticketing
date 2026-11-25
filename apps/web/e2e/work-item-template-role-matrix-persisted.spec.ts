@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { BUILT_IN_ROLES } from "@taskdesk/permissions";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   type MfaCsrfAppFixtureSetup,
   navigateToSetup,
@@ -329,9 +330,10 @@ test("template defaults, overrides and clears persist across role, device and th
           await navigateToSetup(setupPage, setupUrl);
           await setupPage.getByLabel("Full name").fill("Template Matrix Setup");
           await setupPage.getByLabel("Email").fill(email);
-          await setupPage
-            .locator('input[autocomplete="new-password"]')
-            .fill(password);
+          await fillSensitive(
+            setupPage.locator('input[autocomplete="new-password"]'),
+            password,
+          );
           await setupPage
             .getByRole("button", { name: "Create account" })
             .click();

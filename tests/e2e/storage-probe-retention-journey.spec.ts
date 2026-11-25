@@ -5,6 +5,11 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
+import {
+  expectPrivately,
+  fillSensitive,
+  matchesPartial,
+} from "./helpers/fill-sensitive";
 import { withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -89,9 +94,10 @@ test("storage probe retains a diagnostic object on the real filesystem @a11y", a
           .getByLabel("Full name")
           .fill("Storage journey administrator");
         await page.getByLabel("Email").fill(fixture.email);
-        await page
-          .locator('input[autocomplete="new-password"]')
-          .fill(fixture.password);
+        await fillSensitive(
+          page.locator('input[autocomplete="new-password"]'),
+          fixture.password,
+        );
         const signup = page.waitForResponse(
           (response) =>
             new URL(response.url()).pathname === "/api/auth/sign-up/email" &&
@@ -140,11 +146,15 @@ test("storage probe retains a diagnostic object on the real filesystem @a11y", a
         expect(
           Boolean(await response.request().headerValue("x-taskdesk-csrf")),
         ).toBe(true);
-        expect(await response.json()).toMatchObject({
-          status: "verified",
-          cleanup: "not_attempted",
-          diagnosticObjectMayRemain: true,
-        });
+        const received1 = await response.json();
+        expectPrivately(
+          matchesPartial(received1, {
+            status: "verified",
+            cleanup: "not_attempted",
+            diagnosticObjectMayRemain: true,
+          }),
+          "Private check failed.",
+        );
         const outcome = page
           .getByRole("alert")
           .filter({ hasText: "Storage write and read verified" });

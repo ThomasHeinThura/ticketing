@@ -1,5 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 import {
+  expectPrivately,
+  fillSensitive,
+  matchesPartial,
+} from "../../../tests/e2e/helpers/fill-sensitive";
+import {
   navigateToSetup,
   totpForUri,
   withMfaCsrfApp,
@@ -102,7 +107,10 @@ test("native work-item events invalidate a second authenticated browser session"
       await navigateToSetup(first, setupUrl);
       await first.getByLabel("Full name").fill("Realtime Journey Admin");
       await first.getByLabel("Email").fill(email);
-      await first.locator('input[autocomplete="new-password"]').fill(password);
+      await fillSensitive(
+        first.locator('input[autocomplete="new-password"]'),
+        password,
+      );
       await first.getByRole("button", { name: "Create account" }).click();
       const { provisioningUri } = await enrollFirstAdmin(
         first,
@@ -126,12 +134,16 @@ test("native work-item events invalidate a second authenticated browser session"
 
       await second.goto(new URL("/auth/sign-in", origin).toString());
       await second.getByLabel("Email").fill(email);
-      await second
-        .locator('input[autocomplete="current-password"]')
-        .fill(password);
+      await fillSensitive(
+        second.locator('input[autocomplete="current-password"]'),
+        password,
+      );
       await second.getByRole("button", { name: "Sign in" }).click();
       await expect(second).toHaveURL(/\/auth\/two-factor(?:\?|$)/);
-      await second.locator("#factor-code").fill(totpForUri(provisioningUri));
+      await fillSensitive(
+        second.locator("#factor-code"),
+        totpForUri(provisioningUri),
+      );
       await second.getByRole("button", { name: "Verify and sign in" }).click();
       await expect(second).toHaveURL(/\/(?:dashboard|agent)(?:\/|\?|$)/);
       const firstSessionResponse = await firstContext.request.get(
@@ -150,7 +162,7 @@ test("native work-item events invalidate a second authenticated browser session"
         {},
       );
       // Body names the refusal (CSRF vs membership) if this CI-only 403 recurs.
-      expect(activation.status, JSON.stringify(activation.body)).toBe(200);
+      expect(activation.status, "unexpected status").toBe(200);
 
       const listPath = `/agent/projects/${encodeURIComponent(projectSlug)}/work?layout=list`;
       const listApiPath = `/api/projects/${project.id}/work-items`;
@@ -278,7 +290,10 @@ test("native work-item events invalidate a second authenticated browser session"
         { "if-match": `"${created.version}"` },
       );
       expect(patch.status).toBe(200);
-      expect(patch.body).toMatchObject({ title: updatedTitle, version: 2 });
+      expectPrivately(
+        matchesPartial(patch.body, { title: updatedTitle, version: 2 }),
+        "Private check failed.",
+      );
       const updateRefetchResult = await updateRefetch;
       if ("error" in updateRefetchResult) {
         throw new Error(

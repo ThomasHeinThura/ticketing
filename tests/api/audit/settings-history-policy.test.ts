@@ -24,8 +24,8 @@ import {
 
 describe("settings history policy selection", () => {
   it("uses a closed entity selector with the screen capability", () => {
-    expect(settingsHistoryQuery.shape.entity_type.options).toHaveLength(34);
-    expect(settingsHistoryPolicyVariants).toHaveLength(36);
+    expect(settingsHistoryQuery.shape.entity_type.options).toHaveLength(36);
+    expect(settingsHistoryPolicyVariants).toHaveLength(38);
     expect(
       [
         ...new Set(
@@ -54,6 +54,18 @@ describe("settings history policy selection", () => {
       scope: "workspace",
     });
     expect(selectSettingsHistoryPolicy("project")?.policy).toMatchObject({
+      capability: "project:manage_settings",
+      scope: "project",
+    });
+    expect(
+      selectSettingsHistoryPolicy("workspace_features")?.policy,
+    ).toMatchObject({
+      capability: "workspace:manage_settings",
+      scope: "workspace",
+    });
+    expect(
+      selectSettingsHistoryPolicy("project_features")?.policy,
+    ).toMatchObject({
       capability: "project:manage_settings",
       scope: "project",
     });

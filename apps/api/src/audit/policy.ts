@@ -337,6 +337,13 @@ export const settingsHistoryPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  workspace_features: auditPolicies["GET /api/audit"],
+  project_features: {
+    capability: "project:manage_settings",
+    scope: "project",
+    scopeSource: "row",
+    reach: "required",
+  },
   project_estimates: {
     capability: "project:read",
     scope: "project",

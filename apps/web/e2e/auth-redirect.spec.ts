@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { expect, test } from "@playwright/test";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const uiRequire = createRequire(
   new URL("../../../packages/ui/package.json", import.meta.url),
@@ -65,7 +70,7 @@ test("logged-out protected navigation redirects to sign-in with its target @a11y
           id: string;
           impact: string | null;
           help: string;
-          nodes: Array<{ target: string[]; failureSummary?: string }>;
+          nodes: Array<{ target: string[] }>;
         }>;
       }>;
     };
@@ -76,7 +81,11 @@ test("logged-out protected navigation redirects to sign-in with its target @a11y
         (violation) =>
           violation.impact === "serious" || violation.impact === "critical",
       )
-      .map(({ id, impact, help, nodes }) => ({ id, impact, help, nodes }));
+      .map(({ id, impact, nodes }) => ({
+        id,
+        impact,
+        targets: nodes.map(({ target }) => target.join(" ")),
+      }));
   });
   expect(seriousOrCriticalViolations).toEqual([]);
 });

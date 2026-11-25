@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import { expect, type Page, test } from "@playwright/test";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   navigateToSetup,
   withMfaCsrfApp,
@@ -119,7 +120,10 @@ test("canned response history records persisted snippet changes", async ({
         await navigateToSetup(page, setupUrl);
         await page.getByLabel("Full name").fill(owner);
         await page.getByLabel("Email").fill(email);
-        await page.locator('input[autocomplete="new-password"]').fill(password);
+        await fillSensitive(
+          page.locator('input[autocomplete="new-password"]'),
+          password,
+        );
         await page.getByRole("button", { name: "Create account" }).click();
         await enrollFirstAdmin(page, origin, password);
         const workspaceId = await createFirstWorkspace(

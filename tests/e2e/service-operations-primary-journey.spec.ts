@@ -34,7 +34,7 @@ async function bodyAt(
   status: number,
 ): Promise<JsonRecord> {
   const text = await response.text();
-  expect(response.status(), text).toBe(status);
+  expect(response.status()).toBe(status);
   if (status < 200 || status >= 300 || text.length === 0) return {};
   return JSON.parse(text) as JsonRecord;
 }
@@ -252,7 +252,7 @@ async function runJourney(fixture: MfaCsrfAppFixture) {
       { headers: { Origin: origin } },
     );
     const typesText = await typesResponse.text();
-    expect(typesResponse.status(), typesText).toBe(200);
+    expect(typesResponse.status(), "unexpected status").toBe(200);
     const types = JSON.parse(typesText) as Array<{ id: string }>;
     const workItemType = types[0];
     expect(workItemType?.id).toBeTruthy();

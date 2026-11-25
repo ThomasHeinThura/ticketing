@@ -4,6 +4,11 @@ import {
   PROJECT_ID,
   WORKSPACE_ID,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // The old Kaneo board link: it now opens the canonical work-item board, whose live updates
 // come from the native work-item socket (`/api/ws`, one subscription per project topic).

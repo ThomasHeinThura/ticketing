@@ -16,7 +16,8 @@ export default defineConfig({
     timezoneId: "UTC",
     colorScheme: "light",
     reducedMotion: "reduce",
-    trace: "retain-on-failure",
+    // Off centrally: failing runs must not upload page content (#709).
+    trace: "off",
     ...devices["Desktop Chrome"],
   },
   webServer: {

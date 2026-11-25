@@ -11,6 +11,7 @@ import { resolve } from "node:path";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { redactSecretErrorContext } from "../../apps/web/e2e/helpers/redact-secret-error-context";
 import { completePendingFirstAdminInBrowser } from "./helpers/complete-bootstrap-enrollment";
+import { fillSensitive } from "./helpers/fill-sensitive";
 import {
   fixtureOwnershipJournal,
   type MfaCsrfAppFixture,
@@ -137,7 +138,10 @@ async function signIn(page: Page, origin: string, person: PortalPerson) {
     );
     await page.getByRole("button", { name: /^sign in$/i }).click();
     await safe("customer-password", () =>
-      page.getByLabel("Password", { exact: true }).fill(person.password),
+      fillSensitive(
+        page.getByLabel("Password", { exact: true }),
+        person.password,
+      ),
     );
     const [signedIn] = await Promise.all([
       page.waitForResponse(
@@ -171,7 +175,7 @@ async function setupStaff(page: Page, fixture: MfaCsrfAppFixture) {
       page.getByLabel("Email").fill(fixture.email),
     );
     await safe("staff-password", () =>
-      page.locator('input[name="password"]').fill(fixture.password),
+      fillSensitive(page.locator('input[name="password"]'), fixture.password),
     );
     const [signup] = await Promise.all([
       page.waitForResponse(

@@ -20,6 +20,7 @@ import {
   PERFORMANCE_REFERENCE,
   resolveJobCalibrationLogged,
 } from "../../../scripts/ci/lib/performance-calibration.mjs";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   BOARD_ITEM_COUNT,
   BOARD_PROJECT_KEY,
@@ -35,6 +36,7 @@ import {
 } from "./helpers/g11-performance-fixture";
 import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
 import { attachPerformanceNetworkCapture } from "./helpers/performance-network-summary";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 type BudgetMetric = {
   name: string;
@@ -117,6 +119,11 @@ function readCpuinfo() {
 const jobCalibrations: Partial<
   Record<"throttled" | "unthrottled", Calibration>
 > = {};
+
+// Uses the worker-scoped browser so no extra context is created per test.
+test.afterEach(({ browser: _browser }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test.beforeAll(async ({ browser }) => {
   const host = describeHost({
@@ -439,7 +446,7 @@ async function collectSignInInteraction(page: Page) {
   const email = page.getByLabel("Email", { exact: true });
   const password = page.locator('input[type="password"]');
   await email.fill("g11@example.test");
-  await password.fill("correct-horse-battery-staple");
+  await fillSensitive(password, "correct-horse-battery-staple");
   const submit = page.locator('form button[type="submit"]');
   await captureScreen(page, "sign-in");
   await submit.click();

@@ -845,9 +845,11 @@ describe("transient chunk failures (#895)", () => {
           return { ok: false as const, code: "failed" as const };
         }),
       });
-      const first = drainImportAttachmentJobs(jobs).then(firstSettled);
-      const second = drainImportAttachmentJobs(jobs);
-      await Promise.all([first, second]);
+      // Either drain may enter download first; only that one can settle while the other waits.
+      await Promise.all([
+        drainImportAttachmentJobs(jobs).finally(firstSettled),
+        drainImportAttachmentJobs(jobs).finally(firstSettled),
+      ]);
       expect(entered).toBe(2);
       expect(await db.select().from(schema.attachmentTable)).toHaveLength(1);
       expect((await chunkReport()).lossCounts?.attachment_download_failed).toBe(

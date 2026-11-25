@@ -31,6 +31,11 @@ import {
   type DiagnosticCaptureArtifact,
   persistDiagnosticCapturesBestEffort,
 } from "./helpers/persist-diagnostic-capture-artifact.mjs";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),

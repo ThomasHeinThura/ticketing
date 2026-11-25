@@ -1,9 +1,14 @@
 import { expect, type Page, test } from "@playwright/test";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 import {
   installReportsFitFixture,
   SLA_ATTAINMENT,
 } from "./helpers/reports-fit-fixture";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // UAT re-audit, 3 Nov (reports): an SLA KPI tile with too little data keeps its sentence and its
 // name inside the tile; a viewer is offered no save; the organisation filter comes with the

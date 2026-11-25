@@ -1,10 +1,16 @@
 import { expect, test } from "@playwright/test";
+import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
 import {
   enterVerification,
   expectNoSeriousAxeViolations,
   installIdentityAdminFixture,
   newIdentityFixture,
 } from "./helpers/identity-admin-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 for (const width of [375, 820, 1440])
   for (const theme of ["light", "dark"] as const) {
@@ -101,7 +107,7 @@ for (const width of [375, 820, 1440])
       await expect(
         page.getByText("Draft saved", { exact: true }),
       ).toBeVisible();
-      expect(writes).toHaveLength(1);
+      expect(writes.length).toBe(1);
       expect(admin.challenges).toHaveLength(1);
 
       // A rate-limited test explains the wait and can be retried.
@@ -127,9 +133,9 @@ for (const width of [375, 820, 1440])
       const accessInput = page.getByLabel("New access key ID");
       const secretInput = page.getByLabel("New secret access key");
       await expect(accessInput).toHaveAttribute("type", "password");
-      await accessInput.fill("  AKIAEXAMPLE  ");
+      await fillSensitive(accessInput, "  AKIAEXAMPLE  ");
       await expect(save).toBeDisabled();
-      await secretInput.fill(" example-secret ");
+      await fillSensitive(secretInput, " example-secret ");
       await expect(save).toBeEnabled();
       await expectNoSeriousAxeViolations(page);
       await testInfo.attach(`s3-draft-credentials-${width}-${theme}`, {
@@ -141,11 +147,15 @@ for (const width of [375, 820, 1440])
       await expect(
         page.getByText("Draft saved", { exact: true }),
       ).toBeVisible();
-      expect(writes).toHaveLength(2);
-      expect((writes[1] as { credentials: unknown }).credentials).toEqual({
-        accessKeyId: "AKIAEXAMPLE",
-        secretAccessKey: "example-secret",
-      });
+      expect(writes.length).toBe(2);
+      // Boolean compare: a mismatch would print the submitted secret.
+      expect(
+        JSON.stringify((writes[1] as { credentials: unknown }).credentials) ===
+          JSON.stringify({
+            accessKeyId: "AKIAEXAMPLE",
+            secretAccessKey: "example-secret",
+          }),
+      ).toBe(true);
       await testInfo.attach(`s3-draft-${width}-${theme}`, {
         body: await page.screenshot({ fullPage: true }),
         contentType: "image/png",

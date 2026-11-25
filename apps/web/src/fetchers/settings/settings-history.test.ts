@@ -125,3 +125,29 @@ it.each(["row", "lastChanged"])(
     await expect(getSettingsHistory("workspace", "w1")).rejects.toThrow();
   },
 );
+
+it.each([
+  ["workspace_features", "workspace"],
+  ["project_features", "project"],
+] as const)(
+  "accepts the %s selector's %s response and still checks the id",
+  async (type, entityType) => {
+    const body = (entityId: string) => ({
+      ok: true,
+      json: async () => ({
+        entityType,
+        entityId,
+        workspaceId: "w1",
+        projectId: null,
+        rows: [],
+        lastChanged: null,
+      }),
+    });
+    get.mockResolvedValueOnce(body("x1"));
+    await expect(getSettingsHistory(type, "x1")).resolves.toMatchObject({
+      entityType,
+    });
+    get.mockResolvedValueOnce(body("other"));
+    await expect(getSettingsHistory(type, "x1")).rejects.toThrow("Unexpected");
+  },
+);

@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 const shortcut = process.platform === "darwin" ? "Meta+k" : "Control+k";
 

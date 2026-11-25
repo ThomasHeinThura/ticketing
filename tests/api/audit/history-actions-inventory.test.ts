@@ -75,8 +75,6 @@ const NOT_SETTINGS_HISTORY: Record<string, string> = {
     "project document register entry, not a settings change",
   "estimate.work_item_set":
     "per-item estimate value, not estimate configuration",
-  "feature_flag.changed":
-    "feature flag change has no History target in this contract",
   "hard_purge.executed": "retention purge event, not a settings change",
   "identity.deprovisioned": "identity lifecycle event, not a settings change",
   "identity.linked": "identity lifecycle event, not a settings change",

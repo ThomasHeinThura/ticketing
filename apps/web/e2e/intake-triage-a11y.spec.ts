@@ -5,6 +5,11 @@ import {
   PROJECT_ID,
   TYPE_ID,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // S2 (G4): the open submission is a modal Kaneo side sheet over the triage queue. Its dialog
 // name, header, convert footer, form labels and status live region must pass axe with the

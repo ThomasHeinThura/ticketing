@@ -109,6 +109,10 @@ const entity = {
   import_source_connection: ["plugin.changed"],
   terminology_override: ["terminology.changed"],
   project_estimates: ["estimate.configured", "estimate.system_changed"],
+  // The Features screens: the writer records these on the workspace/project row, which the
+  // General screens also read, so the alias keeps toggles out of their History.
+  workspace_features: ["feature_flag.changed"],
+  project_features: ["feature_flag.changed"],
   service_api_key: [
     "api_key.created",
     "api_key.revoked",
@@ -135,6 +139,22 @@ export const HISTORY_ENTITY_TYPES = Object.keys(entity) as [
   HistoryEntityType,
   ...HistoryEntityType[],
 ];
+
+/**
+ * Selector-only aliases: they pick the Features screens' rows, but the response reports the row
+ * they edit, so the documented response `entityType` set does not change.
+ */
+export const HISTORY_ALIAS_OF = {
+  workspace_features: "workspace",
+  project_features: "project",
+} as const;
+export type HistoryResponseType = Exclude<
+  HistoryEntityType,
+  keyof typeof HISTORY_ALIAS_OF
+>;
+export const HISTORY_RESPONSE_TYPES = HISTORY_ENTITY_TYPES.filter(
+  (type): type is HistoryResponseType => !(type in HISTORY_ALIAS_OF),
+) as [HistoryResponseType, ...HistoryResponseType[]];
 
 /** Targets that live on the instance (or an import source) rather than on a workspace row. */
 export const INSTANCE_PLUGIN_TARGETS: ReadonlySet<string> = new Set([

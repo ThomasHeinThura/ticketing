@@ -30,6 +30,7 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     description: "settings:history.fields.description",
     defaultSlaPolicyId: "settings:history.fields.defaultSlaPolicy",
     defaultServiceCalendarId: "settings:history.fields.defaultServiceCalendar",
+    featureFlag: "settings:history.fields.featureFlag",
   },
   project: {
     name: "settings:history.fields.name",
@@ -51,6 +52,7 @@ const LABELLED_FIELDS: Partial<Record<string, Record<string, string>>> = {
     stateSetMode: "settings:history.fields.stateSetMode",
     position: "settings:history.fields.position",
     isDefault: "settings:history.fields.isDefault",
+    featureFlag: "settings:history.fields.featureFlag",
   },
   // The six `portal.method` markers the API projects for the local sign-in switches.
   instance_auth_methods: {
@@ -164,6 +166,8 @@ const WORKFLOW_FIELDS: Record<string, string> = {
   activeVersion: "settings:history.fields.workflowActiveVersion",
 };
 const UNKNOWN_FIELD = "settings:history.fields.unknown";
+// The API sends `featureFlag:<key>` for a switch change; the Features screen already names each switch.
+const FLAG_MARKER = "featureFlag:";
 
 /** Catalog key of a changed-field marker; an unmapped marker gets the localized generic label, never its raw key. */
 function fieldLabelKey(
@@ -207,6 +211,7 @@ const SELF_LABELS: Record<string, (marker: string) => string> = {
 /** Lazy-load this component; screens pass a target and nothing else. */
 export function SettingsHistory({ target }: { target: HistoryTarget }) {
   const { t, i18n } = useTranslation();
+  useTranslation("featureFlags"); // makes sure the switch names are loaded
   const { state, revalidate } = useSettingsHistory(target);
   if (state.status === "hidden") return null;
   const data = state.status === "ready" ? state.data : null;
@@ -271,9 +276,20 @@ export function SettingsHistory({ target }: { target: HistoryTarget }) {
               row.changedFields.length > 0 && !flat && type
                 ? [
                     ...new Set(
-                      row.changedFields.map((field) =>
-                        t(fieldLabelKey(type, row.action, field)),
-                      ),
+                      row.changedFields.map((field) => {
+                        const flagName = `featureFlags:flags.${field.slice(FLAG_MARKER.length)}.name`;
+                        return t(
+                          field.startsWith(FLAG_MARKER) && i18n.exists(flagName)
+                            ? flagName
+                            : fieldLabelKey(
+                                type,
+                                row.action,
+                                field.startsWith(FLAG_MARKER)
+                                  ? "featureFlag"
+                                  : field,
+                              ),
+                        );
+                      }),
                     ),
                   ].join(", ")
                 : "",

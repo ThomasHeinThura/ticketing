@@ -139,7 +139,7 @@ export async function contextFor(state: StorageState) {
 
 export async function expectStatus(response: APIResponse, status: number) {
   const body = await response.text();
-  expect(response.status(), body).toBe(status);
+  expect(response.status(), "unexpected status").toBe(status);
   return body;
 }
 

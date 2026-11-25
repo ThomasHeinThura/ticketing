@@ -25,7 +25,12 @@ import {
 import { createCustomerPrincipal } from "./helpers/customer-principal";
 import { resetTestDatabase } from "./helpers/database";
 import { createProjectFixture, requireRow } from "./helpers/fixtures";
-import { type IntakeSeed, seedIntake, submitAs } from "./helpers/intake-http";
+import {
+  type IntakeSeed,
+  seedIntake,
+  submitAs,
+  TITLE_FORM,
+} from "./helpers/intake-http";
 
 type ProjectSummary = {
   key: string;
@@ -135,6 +140,68 @@ beforeEach(async () => {
 });
 
 describe("GET /api/portal/projects", () => {
+  it("serves a 15-letter project key in the list, the detail route and the ?project= filter (#1199)", async () => {
+    const longKey = "ABCDEFGHIJKLMNO";
+    await setProject(s.t.project.id, { slug: longKey });
+    const body = (await (await list(s.customer)).json()) as {
+      data: ProjectSummary[];
+    };
+    expect(body.data.map((row) => row.key)).toEqual([longKey]);
+    const opened = await detail(s.customer, longKey);
+    expect(opened.status, await opened.clone().text()).toBe(200);
+    expect(((await opened.json()) as ProjectSummary).key).toBe(longKey);
+    // Two open cases in the long-key project, one in another project the customer reaches:
+    // a filter that ignored the key would count three.
+    await submitAs(s, s.customer, "Long key one");
+    await submitAs(s, s.customer, "Long key two");
+    const { project: other } = await createProjectFixture({
+      workspaceId: s.t.workspaceId,
+      name: "Contoso other",
+    });
+    await setProject(other.id, { organisationId: s.customer.orgId });
+    await db
+      .insert(schema.customerProjectAccessTable)
+      .values({ personId: s.customer.person.id, projectId: other.id });
+    const otherType = requireRow(
+      await db
+        .insert(schema.requestTypeTable)
+        .values({
+          workspaceId: s.t.workspaceId,
+          key: "other-project-request",
+          name: "Other request",
+          group: "General",
+          workItemTypeId: s.t.type.id,
+          defaultProjectId: other.id,
+          formSchema: TITLE_FORM,
+          published: true,
+          customerVisible: true,
+        })
+        .returning(),
+      "other request type",
+    );
+    await db.insert(schema.requestTypeVersionTable).values({
+      workspaceId: s.t.workspaceId,
+      requestTypeId: otherType.id,
+      number: 1,
+      formSchema: TITLE_FORM,
+      workItemTypeId: s.t.type.id,
+      defaultProjectId: other.id,
+    });
+    await db.insert(schema.organisationRequestTypeTable).values({
+      organisationId: s.customer.orgId,
+      requestTypeId: otherType.id,
+    });
+    await submitAs(
+      { t: s.t, requestType: otherType },
+      s.customer,
+      "Other project case",
+    );
+    expect(await homeCounts(s.t, s.customer, longKey)).toEqual({
+      actionRequired: 0,
+      outstanding: 2,
+    });
+  });
+
   it("lists only the caller's organisation's live, portal-enabled projects", async () => {
     const fabrikam = await createCustomerPrincipal();
     const { project: fabrikamProject } = await createProjectFixture({

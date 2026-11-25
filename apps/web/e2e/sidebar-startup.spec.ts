@@ -1,5 +1,14 @@
 import { expect, test } from "@playwright/test";
+import {
+  expectPrivately,
+  matchesPartial,
+} from "../../../tests/e2e/helpers/fill-sensitive";
 import { installPerformanceApiFixture } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 test("service catalogue opens from a project board", async ({ page }) => {
   await installPerformanceApiFixture(page);
@@ -104,7 +113,11 @@ for (const view of ["work?layout=list", "backlog"]) {
     });
     await page.goto(`/agent/projects/WLP/${view}`);
     const response = await projectCapabilityReply;
-    expect(await response.json()).toMatchObject({ createTasks: false });
+    const received1 = await response.json();
+    expectPrivately(
+      matchesPartial(received1, { createTasks: false }),
+      "Private check failed.",
+    );
     await expect(
       page.getByRole("heading", { name: /Performance fixture/ }),
     ).toBeVisible();

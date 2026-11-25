@@ -1,111 +1,363 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { redactSecretErrorContext } from "../../e2e/helpers/redact-secret-error-context";
 
 const repoRoot = resolve(__dirname, "../../../..");
-const e2eRoots = [
-  resolve(repoRoot, "apps/web/e2e"),
-  resolve(repoRoot, "tests/e2e"),
-];
+const webRoot = resolve(repoRoot, "apps/web");
+// Every Playwright config in the repo, found by name or import so a new one cannot be missed.
+const configs = execFileSync(
+  "git",
+  [
+    "ls-files",
+    "-co",
+    "--exclude-standard",
+    "--",
+    "*.config.ts",
+    "*.config.mjs",
+  ],
+  { cwd: repoRoot, encoding: "utf8" },
+)
+  .split("\n")
+  .filter(Boolean)
+  .map((name) => resolve(repoRoot, name))
+  .filter(
+    (path) =>
+      /playwright[^/]*\.config\./u.test(path) ||
+      readFileSync(path, "utf8").includes("@playwright/test"),
+  )
+  .sort();
 
-// UI text that only appears while a spec has an MFA secret on screen: the
-// enrollment step shows the TOTP provisioning URI and the backup-code list.
-const SECRET_SCREEN_MARKERS = [
-  "I saved these codes",
-  "Verify and enable",
-  "#enrollment-code",
-  "otpauth://",
-];
+// Factory configs need arguments, so `--list` cannot load them; their specs
+// are named here and the guard checks them statically.
+const staticOnly: Record<string, string[]> = {
+  "apps/web/playwright.perf-sit.config.ts": [
+    "apps/web/e2e/performance.persisted.bench.ts",
+  ],
+  "scripts/kaneo-parity/playwright.config.mjs": [],
+};
 
-function tsFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory())
-      return name === "node_modules" ? [] : tsFiles(path);
-    return /\.ts$/u.test(name) && !/\.d\.ts$/u.test(name) ? [path] : [];
-  });
-}
-const isSpec = (path: string) => /\.(spec|bench)\.ts$/u.test(path);
-
-// The real-backend fixture signs users up with generated passwords. Playwright's
-// failure context prints form VALUES, so any spec using it can publish them.
-const REAL_BACKEND_FIXTURE = "mfa-csrf-app-fixture";
-
-// A password field filled from a variable (a generated or fixture credential).
-// The statement must name the password before `.fill(` and pass a non-literal
-// argument, so mocked specs that only render a password input, or fill a
-// hard-coded placeholder string, are not flagged.
-const PASSWORD_FILL = /password[^;]*?\.fill\(\s*[A-Za-z_$]/iu;
-
-const stem = (path: string) =>
-  path.replace(/\.ts$/u, "").split("/").pop() as string;
-const importsModule = (source: string, name: string) =>
-  new RegExp(`from\\s+"[^"]*/${name}(\\.ts)?"`, "u").test(source);
-
-const rendersSecret = (source: string) =>
-  SECRET_SCREEN_MARKERS.some((marker) => source.includes(marker)) ||
-  PASSWORD_FILL.test(source) ||
-  importsModule(source, REAL_BACKEND_FIXTURE);
-
-// A spec counts as rendering secrets when it does itself (an MFA marker, a
-// password fill, or an import of the real-backend fixture) or imports a non-spec
-// e2e helper that does, directly or through other helpers.
-function renderingSpecs(): string[] {
-  const all = e2eRoots.flatMap(tsFiles);
-  const sources = new Map(
-    all.map((path) => [path, readFileSync(path, "utf8")]),
-  );
-  const secretHelpers = new Set<string>([REAL_BACKEND_FIXTURE]);
-  const usesSecret = (source: string) =>
-    rendersSecret(source) ||
-    [...secretHelpers].some((helper) => importsModule(source, helper));
-  for (let grew = true; grew; ) {
-    grew = false;
-    for (const path of all) {
-      if (isSpec(path) || secretHelpers.has(stem(path))) continue;
-      if (usesSecret(sources.get(path) as string)) {
-        secretHelpers.add(stem(path));
-        grew = true;
-      }
-    }
-  }
-  return all.filter(
-    (path) => isSpec(path) && usesSecret(sources.get(path) as string),
+function e2eSources(): string[] {
+  return ["apps/web/e2e", "apps/web/e2e-sit", "tests/e2e"].flatMap((dir) =>
+    (readdirSync(resolve(repoRoot, dir), { recursive: true }) as string[])
+      .filter((name) => name.endsWith(".ts"))
+      .map((name) => resolve(repoRoot, dir, name)),
   );
 }
 
-describe("end-to-end specs that render secrets (MFA codes or passwords)", () => {
-  const rendering = renderingSpecs();
+type ListedSuite = { file?: string; suites?: ListedSuite[] };
 
+// The files Playwright itself collects for a config (`--list` needs no browser
+// or server). Importing specs needs the built permissions package.
+function collectedFiles(config: string): string[] {
+  // The json reporter writes the listing to stdout when no output file is set;
+  // a config may log a line before it, so parse from the first line that opens the report.
+  const stdout = execFileSync(
+    "pnpm",
+    [
+      "exec",
+      "playwright",
+      "test",
+      "--list",
+      "--reporter=json",
+      "--config",
+      config,
+    ],
+    {
+      cwd: webRoot,
+      stdio: ["ignore", "pipe", "ignore"],
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
+  const report = JSON.parse(
+    stdout.slice(stdout.startsWith("{") ? 0 : stdout.indexOf("\n{") + 1),
+  ) as {
+    config: { rootDir: string };
+    suites: ListedSuite[];
+    errors: unknown[];
+  };
+  expect(report.errors).toEqual([]);
+  const files = new Set<string>();
+  const walk = (suite: ListedSuite) => {
+    if (suite.file) files.add(resolve(report.config.rootDir, suite.file));
+    for (const child of suite.suites ?? []) walk(child);
+  };
+  for (const suite of report.suites) walk(suite);
+  return [...files].sort();
+}
+
+execFileSync("pnpm", ["--filter", "@taskdesk/permissions", "build"], {
+  cwd: repoRoot,
+  stdio: "ignore",
+});
+const listable = configs.filter(
+  (path) => !(relative(repoRoot, path) in staticOnly),
+);
+const collected = [
+  ...new Set([
+    ...listable.flatMap(collectedFiles),
+    ...Object.values(staticOnly)
+      .flat()
+      .map((name) => resolve(repoRoot, name)),
+  ]),
+].sort();
+
+describe("files Playwright collects for every config", () => {
   it("are found, so the guard is not vacuous", () => {
-    expect(rendering.map((path) => relative(repoRoot, path)).sort()).toEqual(
+    const names = collected.map((path) => relative(repoRoot, path));
+    expect(names).toEqual(
       expect.arrayContaining([
-        "apps/web/e2e/instance-users-journey.spec.ts",
         "apps/web/e2e/mfa-csrf-journey.spec.ts",
-        "apps/web/e2e/realtime.spec.ts",
-        "apps/web/e2e/work-item-comments-journey.spec.ts",
-        "tests/e2e/approvals-primary-journey.spec.ts",
-        "tests/e2e/approver-email-not-leaked.spec.ts",
-        "tests/e2e/customer-cannot-request-cab.spec.ts",
-        "tests/e2e/intake-primary-journey.spec.ts",
-        "tests/e2e/requester-cannot-self-approve.spec.ts",
-        "tests/e2e/service-operations-primary-journey.spec.ts",
+        "apps/web/e2e/visual.spec.ts",
+        "apps/web/e2e/storybook-visual.spec.ts",
+        "apps/web/e2e/performance.initial-page-diagnostic.ts",
+        "apps/web/e2e-sit/mermaid-runtime.spec.ts",
         "tests/e2e/users-primary-journey.spec.ts",
       ]),
     );
+    const configNames = configs.map((path) => relative(repoRoot, path));
+    expect(configNames).toEqual(
+      expect.arrayContaining([
+        "apps/web/playwright.storybook.config.ts",
+        "apps/web/e2e-sit/mermaid-runtime.config.ts",
+        "apps/web/playwright.perf-sit.config.ts",
+      ]),
+    );
+    // Static-only configs are an allowlist, not a way to skip a config.
+    for (const name of Object.keys(staticOnly))
+      expect(configNames).toContain(name);
   });
 
-  it.each(rendering.map((path) => [relative(repoRoot, path), path] as const))(
-    "%s turns off traces, video and screenshots and redacts the failure snapshot",
+  // G8 pins these specs' runtime; they enter no input and render fixtures only.
+  const g8Pinned = [
+    "apps/web/e2e/visual.spec.ts",
+    "apps/web/e2e/storybook-visual.spec.ts",
+  ];
+
+  it.each(g8Pinned)("%s enters no input, so the exemption holds", (name) => {
+    expect(
+      /\.fill\(|\.type\(|pressSequentially|keyboard\./u.test(
+        readFileSync(resolve(repoRoot, name), "utf8"),
+      ),
+    ).toBe(false);
+  });
+
+  it.each(
+    collected
+      .map((path) => [relative(repoRoot, path), path] as const)
+      .filter(([name]) => !g8Pinned.includes(name)),
+  )("%s redacts the failure snapshot", (_name, path) => {
+    expect(readFileSync(path, "utf8")).toMatch(
+      /test\.afterEach\([^)]*testInfo\)\s*=>\s*\{\s*redactSecretErrorContext\(testInfo\);/u,
+    );
+  });
+
+  // Anywhere in the file, so a second test.use({ trace: "on" }) cannot slip by.
+  it.each(
+    [...collected, ...configs].map(
+      (path) => [relative(repoRoot, path), path] as const,
+    ),
+  )("%s only sets trace, video and screenshot to off", (_name, path) => {
+    expect(readFileSync(path, "utf8")).not.toMatch(
+      /\b(?:trace|video|screenshot)\s*:\s*(?:"(?!off")[^"]*"|'[^']*'|\{)/u,
+    );
+  });
+
+  // Step titles of a recording reporter carry fill values, so only "list" may be used.
+  // A config without its own reporter must inherit one by spreading another config.
+  it.each(configs.map((path) => [relative(repoRoot, path), path] as const))(
+    "%s pins the list reporter",
     (_name, path) => {
-      const source = readFileSync(path, "utf8");
-      expect(source).toMatch(
-        /test\.use\(\{\s*trace:\s*"off",\s*video:\s*"off",\s*screenshot:\s*"off"\s*\}\)/u,
+      const text = readFileSync(path, "utf8");
+      const found = [...text.matchAll(/\breporter\s*:\s*([^\n]*)/gu)];
+      const ok =
+        found.length > 0
+          ? found.every((m) =>
+              /^(?:"list"|\[\["list"\]\]),?\s*$/u.test(m[1] ?? ""),
+            )
+          : /\.\.\.base\b/u.test(text);
+      // Any non-"off" value in a config (spec files may pass screenshot options).
+      const loose = /\b(?:trace|video|screenshot)\s*:(?!\s*\\?"off\\?")/u.test(
+        text,
       );
-      expect(source).toMatch(
-        /test\.afterEach\([^)]*testInfo\)\s*=>\s*\{\s*redactSecretErrorContext\(testInfo\);/u,
-      );
+      // Boolean, so a failure does not print the source.
+      expect(ok && !loose).toBe(true);
+    },
+  );
+});
+
+// Upload paths named in workflow text; a block list or a single value after `path:`.
+function uploadPaths(yaml: string): string[] {
+  const lines = yaml.split("\n");
+  const out: string[] = [];
+  lines.forEach((line, i) => {
+    if (!/uses:\s*actions\/upload-artifact@/u.test(line)) return;
+    const indent =
+      (line.match(/^\s*/u)?.[0].length ?? 0) - (/^\s*-/u.test(line) ? 2 : 0);
+    for (let j = i + 1; j < lines.length; j++) {
+      const l = lines[j] ?? "";
+      if (/^\s*-\s/u.test(l) && (l.match(/^\s*/u)?.[0].length ?? 0) <= indent)
+        break;
+      const m = /^\s*path:\s*(.*)$/u.exec(l);
+      if (!m) continue;
+      if (m[1] && !/^[|>]/u.test(m[1])) out.push(m[1].trim());
+      else
+        for (let k = j + 1; /^\s+\S/u.test(lines[k] ?? ""); k++)
+          out.push((lines[k] ?? "").trim());
+      break;
+    }
+  });
+  return out;
+}
+
+const uploadAllowed = /^apps\/web\/test-results\/(?:[\w-]+\/[\w-]+\.json)?$/u;
+function badUpload(path: string): boolean {
+  return (
+    /playwright-report/u.test(path) ||
+    (/test-results/u.test(path) && !uploadAllowed.test(path))
+  );
+}
+
+describe("workflow artifact uploads", () => {
+  const workflows = readdirSync(resolve(repoRoot, ".github/workflows"))
+    .filter((name) => name.endsWith(".yml"))
+    .map((name) => resolve(repoRoot, ".github/workflows", name));
+
+  it.each(workflows.map((path) => [relative(repoRoot, path), path] as const))(
+    "%s uploads no Playwright report or raw test-results",
+    (_name, path) => {
+      const offending = uploadPaths(readFileSync(path, "utf8")).some(badUpload);
+      expect(offending).toBe(false);
+    },
+  );
+
+  it("flags a report path, so the check is not vacuous", () => {
+    const yaml = [
+      "      - uses: actions/upload-artifact@abc",
+      "        with:",
+      "          name: x",
+      "          path: |",
+      "            apps/web/playwright-report/",
+    ].join("\n");
+    expect(uploadPaths(yaml).some(badUpload)).toBe(true);
+    expect(badUpload("apps/web/test-results/other/trace.zip")).toBe(true);
+    expect(badUpload("apps/web/test-results/")).toBe(false);
+  });
+
+  it("sees the real upload paths", () => {
+    const all = workflows.flatMap((path) =>
+      uploadPaths(readFileSync(path, "utf8")),
+    );
+    expect(all).toContain("apps/web/test-results/");
+  });
+});
+
+// A failed expect prints its received value, so a secret must never be the
+// argument of expect() or compared with a value-printing matcher.
+describe("secret assertions in e2e sources", () => {
+  const sources = e2eSources();
+
+  it.each(sources.map((path) => [relative(repoRoot, path), path] as const))(
+    "%s never asserts a secret value with a value-printing matcher",
+    (_name, path) => {
+      const text = readFileSync(path, "utf8");
+      const offending = [
+        /toContain\(\s*[\w.]*secretAccessKey/u,
+        /\.credentials\)\.toEqual\(/u,
+        /\.toEqual\(challenge\.request\)/u,
+        // toHaveLength prints the whole array, and captured writes hold the credentials.
+        /expect\(writes\)\.toHaveLength\(/u,
+      ].some((pattern) => pattern.test(text));
+      // Boolean, so a failure does not print the source either.
+      expect(offending).toBe(false);
+    },
+  );
+});
+
+// An axe violation keeps the failing element's HTML, which includes a filled
+// field's value; keep rule ids, impact and target selectors only.
+describe("axe output in e2e sources", () => {
+  it.each(
+    e2eSources().map((path) => [relative(repoRoot, path), path] as const),
+  )("%s keeps no element HTML or failure summary from axe", (_name, path) => {
+    const text = readFileSync(path, "utf8");
+    if (!text.includes("axe.run")) return;
+    expect(
+      /\b(?:n|node)\.html\b|failureSummary|\bnodes\s*\}\)\)/u.test(text),
+    ).toBe(false);
+  });
+});
+
+// A failed expect prints its received value; a raw response body or parsed
+// JSON can carry a submitted secret, so these go through expectPrivately.
+describe("response bodies in e2e assertions", () => {
+  it.each(
+    e2eSources().map((path) => [relative(repoRoot, path), path] as const),
+  )("%s never passes a raw response body to expect()", (_name, path) => {
+    const text = readFileSync(path, "utf8");
+    // Not preceded by "=>", so the check inside expectPrivately is allowed.
+    const received =
+      /(?<!=>\s*)(?<![.\w])expect\(\s*(?:await\s+[\w.]+\.(?:json|text)\(\)|JSON\.parse\([^)]*\)|[\w.]*(?:[Bb]ody|[Tt]ext|[Jj]son))\s*\)\s*\.(?!toBe\((?:true|false)\))/u;
+    // expect(value, message) prints the message too.
+    const message =
+      /(?<![.\w])expect\([^;]*?,\s*(?:text|body|\w*Body|\w*Text)\s*\)\s*\./u;
+    expect(received.test(text) || message.test(text)).toBe(false);
+  });
+});
+
+// A Playwright expect inside expectPrivately records the received value in the
+// test step, which HTML reports serialize; the check must be plain JS.
+describe("expectPrivately arguments in e2e sources", () => {
+  it.each(
+    e2eSources()
+      .filter((path) => !path.endsWith("fill-sensitive.ts"))
+      .map((path) => [relative(repoRoot, path), path] as const),
+  )("%s runs no Playwright expect inside expectPrivately", (_name, path) => {
+    expect(
+      /expectPrivately\((?:(?!\);)[\s\S])*?\bexpect\(/u.test(
+        readFileSync(path, "utf8"),
+      ),
+    ).toBe(false);
+  });
+});
+
+// Console output ends up in CI logs, and a thrown message in the report.
+describe("log and error output in e2e sources", () => {
+  it.each(
+    e2eSources().map((path) => [relative(repoRoot, path), path] as const),
+  )("%s logs and throws no secret or response body", (_name, path) => {
+    const text = readFileSync(path, "utf8");
+    const word =
+      "password|secret|totpURI|backupCode|accessKey|[Bb]earer|\\.text\\(\\)|\\.json\\(\\)";
+    // Static text may name a field; an interpolated or passed value may not be one.
+    const offending =
+      new RegExp(
+        `console\\.\\w+\\([^;]*(?:\\$\\{[^}]*(?:${word})[^}]*\\}|,\\s*\\w*(?:${word}))`,
+        "iu",
+      ).test(text) ||
+      new RegExp(
+        `new Error\\(\\s*\`[^\`]*\\$\\{[^}]*(?:${word}|[Bb]ody)`,
+        "iu",
+      ).test(text);
+    expect(offending).toBe(false);
+  });
+});
+
+// A rejected raw fill puts its argument in Playwright's call log.
+describe("secret form input in e2e sources", () => {
+  const sources = e2eSources();
+
+  it.each(sources.map((path) => [relative(repoRoot, path), path] as const))(
+    "%s fills secrets only through fillSensitive",
+    (_name, path) => {
+      // Boolean, so a failure does not print the source.
+      expect(
+        /\.fill\(\s*[^)]*(?:password|totpForUri|backupCode|secret|accessKey)/iu.test(
+          readFileSync(path, "utf8"),
+        ),
+      ).toBe(false);
     },
   );
 });

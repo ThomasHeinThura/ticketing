@@ -6,6 +6,11 @@ import {
   installPerformanceApiFixture,
   WORK_LIST_PATH,
 } from "./helpers/g11-performance-fixture";
+import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
+
+test.afterEach(({ browserName: _browserName }, testInfo) => {
+  redactSecretErrorContext(testInfo);
+});
 
 // A direct visit to the work list loads only the namespaces it paints with and fetches the rest
 // after first paint (G11). These specs hold or fail that second fetch and assert that no screen

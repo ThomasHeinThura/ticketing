@@ -7,6 +7,11 @@ import {
   test,
 } from "@playwright/test";
 import {
+  expectPrivately,
+  fillSensitive,
+  matchesPartial,
+} from "../../../tests/e2e/helpers/fill-sensitive";
+import {
   navigateToSetup,
   withMfaCsrfApp,
 } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
@@ -46,7 +51,8 @@ const weekdayWindows = Object.fromEntries(
 
 async function bodyAt(response: APIResponse, status: number) {
   const text = await response.text();
-  expect(response.status(), text).toBe(status);
+  // A body in the message would print on failure; the status alone is enough.
+  expect(response.status()).toBe(status);
   return (text ? JSON.parse(text) : {}) as JsonRecord;
 }
 
@@ -167,7 +173,10 @@ test("S5 creates managed services from the catalogue and filters them by kind on
     await navigateToSetup(page, setupUrl);
     await page.getByLabel("Full name").fill("Disposable Service Admin");
     await page.getByLabel("Email").fill(email);
-    await page.locator('input[autocomplete="new-password"]').fill(password);
+    await fillSensitive(
+      page.locator('input[autocomplete="new-password"]'),
+      password,
+    );
     await page.getByRole("button", { name: "Create account" }).click();
     await enrollFirstAdmin(page, origin, password);
     const workspaceId = await createFirstWorkspace(
@@ -283,11 +292,17 @@ test("S5 creates managed services from the catalogue and filters them by kind on
       createButton.click(),
     ]);
     const inheritBody = await lastCreateProjectBody(page);
-    expect(inheritBody).toMatchObject({
-      kind: "managed_service",
-      supportLevel: "L1",
-    });
-    expect(inheritBody).not.toHaveProperty("serviceCalendarId");
+    expectPrivately(
+      matchesPartial(inheritBody, {
+        kind: "managed_service",
+        supportLevel: "L1",
+      }),
+      "Private check failed.",
+    );
+    expectPrivately(
+      !Object.hasOwn(inheritBody, "serviceCalendarId"),
+      "Private check failed.",
+    );
     const inherited = (await bodyAt(inheritResponse, 200)) as { id: string };
     await expect(page).toHaveURL(new RegExp(`/${inherited.id}(?:/|\\?|$)`));
     expect(

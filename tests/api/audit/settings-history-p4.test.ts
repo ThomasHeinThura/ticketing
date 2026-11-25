@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/pg-proxy";
 import { describe, expect, it } from "vitest";
+import { HISTORY_RESPONSE_TYPES } from "../../../apps/api/src/audit/history-actions";
 import {
   listSettingsHistoryActorNames,
   listSettingsHistoryRows,
@@ -83,7 +84,7 @@ describe("P4 closed settings history", () => {
   });
 
   it("selects only trusted terminology variant and estimate read policy", () => {
-    expect(settingsHistoryPolicyVariants).toHaveLength(36);
+    expect(settingsHistoryPolicyVariants).toHaveLength(38);
     expect(
       settingsHistoryPolicyVariants
         .filter((variant) => variant.entityType === "terminology_override")
@@ -293,5 +294,61 @@ describe("P4 closed settings history", () => {
       expect(row.changedFields).toEqual([]);
       expect(JSON.stringify(row)).not.toContain("private");
     }
+  });
+
+  it("reads feature-switch history from its own types, never the General workspace or project ones", async () => {
+    const { queries, executor } = capture();
+    const base = { identity: owner, workspaceId: "w1" };
+    await listSettingsHistoryRows(
+      {
+        ...base,
+        entityType: "workspace_features",
+        entityId: "w1",
+        projectId: null,
+      },
+      executor as never,
+    );
+    await listSettingsHistoryRows(
+      {
+        ...base,
+        entityType: "project_features",
+        entityId: "p1",
+        projectId: "p1",
+      },
+      executor as never,
+    );
+    await listSettingsHistoryRows(
+      { ...base, entityType: "workspace", entityId: "w1", projectId: null },
+      executor as never,
+    );
+    expect(queries[0]?.params).toContain("feature_flag.changed");
+    expect(queries[0]?.params).toContain("workspace");
+    expect(queries[1]?.params).toContain("feature_flag.changed");
+    expect(queries[1]?.params).toContain("project");
+    expect(queries[1]?.sql).toContain('"audit_log"."project_id" =');
+    expect(queries[2]?.params).not.toContain("feature_flag.changed");
+    // The aliases are selectors only: the response enum keeps reporting the edited row.
+    expect(HISTORY_RESPONSE_TYPES).not.toContain("workspace_features");
+    expect(HISTORY_RESPONSE_TYPES).not.toContain("project_features");
+    expect(HISTORY_RESPONSE_TYPES).toContain("workspace");
+  });
+
+  it("projects a feature-switch row to one closed key marker and never echoes the payload", () => {
+    const row = (feature: unknown) =>
+      entityHistoryRow(
+        {
+          createdAt: new Date(0),
+          actorType: "person",
+          action: "feature_flag.changed",
+          before: { feature, enabled: null },
+          after: { feature, enabled: true, secret: "private" },
+        },
+        "actor",
+      );
+    expect(row("feature.estimates").changedFields).toEqual([
+      "featureFlag:feature.estimates",
+    ]);
+    expect(row("not-a-flag").changedFields).toEqual([]);
+    expect(JSON.stringify(row("feature.estimates"))).not.toContain("private");
   });
 });
