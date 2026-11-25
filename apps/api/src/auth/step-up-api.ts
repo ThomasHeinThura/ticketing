@@ -46,6 +46,7 @@ import {
 } from "../pending-action/deletion-targets";
 import { isHardPurgePendingAction as isHardPurgeAction } from "../pending-action/hard-purge-executor";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import { buildAuthRequest } from "../utils/auth-request";
 import { dbNowUtc } from "../utils/db-time";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { findWebhookWorkspace } from "../webhook/repository";
@@ -2091,7 +2092,7 @@ const routes = apiRouter()
           const result = await withEnlistedLocalFactorVerification(async () =>
             auth.api.verifyTOTP({
               body: { code: proofInput.code ?? "", trustDevice: false },
-              headers: c.req.raw.headers,
+              headers: buildAuthRequest(c).headers,
             }),
           );
           if (result.user.id !== c.get("userId")) return null;
@@ -2099,7 +2100,7 @@ const routes = apiRouter()
           const result = await withEnlistedLocalFactorVerification(async () =>
             auth.api.verifyBackupCode({
               body: { code: proofInput.code ?? "", disableSession: true },
-              headers: c.req.raw.headers,
+              headers: buildAuthRequest(c).headers,
             }),
           );
           if (result.user.id !== c.get("userId")) return null;
