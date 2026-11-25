@@ -404,6 +404,11 @@ describe("canonical comment durable deletion", () => {
       placedBy: "integration-test",
       reason: "moderator executed summary hold test",
     });
+    // Deleting another person's comment needs a workspace role with comment:delete_any.
+    await db
+      .update(schema.workspaceUserTable)
+      .set({ role: "admin" })
+      .where(eq(schema.workspaceUserTable.userId, f.member.user.id));
     const action = await createPendingAction(f.request);
     await approveCommentDeletion(f.approval(action.pendingActionId));
     const summary = (await pending(action.pendingActionId)).payloadSummary;
