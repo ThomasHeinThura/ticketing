@@ -27,7 +27,7 @@ If calibration stops the performance job before G13 runs, G13 remains unmeasured
 | Domain | Covered today by | Gap |
 | --- | --- | --- |
 | Core work | `release-core-work` (create, reload, second session, viewer read-only, stale write 409); API integration; permissions matrix | board/Calendar/Gantt, rank, relate, attach, hierarchy denials; stale-edit conflict UI |
-| Service desk | `release-portal-to-agent` (submit, claim, clarify, reply, decline with reason; leaves one declined SUB-n record per run because no route deletes a submission); integration | accept into a work item (its submission reference would block the purge), SLA clock/pause/breach, request types, calendars, workflows |
+| Service desk | `release-portal-to-agent` (submit, claim, clarify, reply, decline with reason; leaves one declined SUB-n record per run because no route deletes a submission; add teardown when a delete route exists); integration | accept into a work item (its submission reference would block the purge), SLA clock/pause/breach, request types, calendars, workflows |
 | Portal and identity | `release-portal-to-agent` (customer sees reply, refused agent routes); smoke signs in every account | approve/rate/reopen, OTP/magic link, SSO, MFA, sessions, other-organisation isolation |
 | Governance | `release-governance-approval` (CAB request, self and non-approver refused, approver decides); permissions matrix | roles/teams/flags, notifications, automations, webhooks, API keys, MCP, impersonation, God Mode |
 | Planning, time, cost | `release-time-cost` (log, edit, totals, cost only for rate managers, viewer denied, timesheet) | cycles/burndown, weekly timesheet submit, rates, budgets, capacity |

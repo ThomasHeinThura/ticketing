@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { privateRequest } from "../../../tests/e2e/helpers/fill-sensitive";
 import { redactSecretErrorContext } from "../e2e/helpers/redact-secret-error-context";
 import {
   agentOrigin,
@@ -96,6 +97,7 @@ test("customer request is triaged by an agent and the customer sees the reply", 
 
     // The agent declines with a customer-visible reason; the customer sees the closed request.
     const reason = `R929 closing the release journey request ${stamp()}`;
+    // shortcut: one declined SUB-n per run stays on SIT (no submission delete route); add teardown when a delete route exists
     const declined = await lead.call("POST", `/submissions/${ref}/decline`, {
       reason,
     });
@@ -117,17 +119,21 @@ test("customer request is triaged by an agent and the customer sees the reply", 
       ignoreHTTPSErrors: ignoreHTTPSErrors(agentOrigin),
     });
     try {
-      await replay.addCookies(
-        (await customer.context.cookies()).map((cookie) => ({
-          ...cookie,
-          domain: new URL(agentOrigin).hostname,
-        })),
-      );
-      const onAgentHost = await replay.request.get(
-        `${agentOrigin}/api/workspace`,
-        { headers: { Origin: agentOrigin } },
-      );
-      expect([401, 403]).toContain(onAgentHost.status());
+      // privateRequest: a transport failure must not echo the replayed session cookie.
+      const status = await privateRequest(async () => {
+        await replay.addCookies(
+          (await customer.context.cookies()).map((cookie) => ({
+            ...cookie,
+            domain: new URL(agentOrigin).hostname,
+          })),
+        );
+        const response = await replay.request.get(
+          `${agentOrigin}/api/workspace`,
+          { headers: { Origin: agentOrigin } },
+        );
+        return response.status();
+      });
+      expect([401, 403]).toContain(status);
     } finally {
       await replay.close();
     }

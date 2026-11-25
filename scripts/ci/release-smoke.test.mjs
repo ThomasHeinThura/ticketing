@@ -177,6 +177,6 @@ test("smoke --wait-ready aborts a stalled readiness request at the deadline", ()
   );
   assert.equal(stalled.status, 1);
   assert.match(stalled.stdout, /FAIL {2}ready.*unreachable/);
-  // Two hosts, each bounded by the 3 s floor; far below the 30 s interval or a hang.
-  assert.ok(Date.now() - started < 15_000);
+  // Both hosts stall; the run still ends at the 1 s deadline plus startup, not the 30 s interval.
+  assert.ok(Date.now() - started < 4000);
 });

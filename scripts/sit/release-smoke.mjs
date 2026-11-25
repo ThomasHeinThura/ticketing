@@ -322,26 +322,34 @@ if (!Number.isFinite(waitSeconds) || waitSeconds < 0 || !(waitInterval > 0))
   throw new Error("Invalid --wait-ready or --wait-interval: use seconds");
 const deadline = Date.now() + waitSeconds * 1000;
 
-for (const url of [
-  `${opts.agent}/api/public/health/ready`,
-  `${opts.portal}/api/public/health/ready`,
-]) {
-  // Every request aborts at the shared deadline (3 s minimum so a single check can finish), and
-  // sleeps never run past it, so a stalled host cannot exceed --wait-ready.
-  const probe = () =>
-    fetch(url, {
-      signal: AbortSignal.timeout(Math.max(deadline - Date.now(), 3000)),
-    }).catch(() => null);
-  let response = await probe();
-  while (response?.status !== 200 && Date.now() < deadline) {
+// Both hosts are polled at once against one shared deadline. With a wait, each request is capped
+// at the time remaining and nothing is probed after the deadline; without one, a single check
+// gets a fixed 3 s.
+async function waitForReady(url) {
+  const probe = (timeoutMs) =>
+    fetch(url, { signal: AbortSignal.timeout(timeoutMs) }).catch(() => null);
+  if (waitSeconds === 0) return probe(3000);
+  let response = null;
+  while (Date.now() < deadline) {
+    response = await probe(deadline - Date.now());
+    if (response?.status === 200) break;
     await new Promise((resolve) =>
       setTimeout(
         resolve,
         Math.min(waitInterval * 1000, Math.max(deadline - Date.now(), 0)),
       ),
     );
-    response = await probe();
   }
+  return response;
+}
+
+const readyUrls = [
+  `${opts.agent}/api/public/health/ready`,
+  `${opts.portal}/api/public/health/ready`,
+];
+const readyResponses = await Promise.all(readyUrls.map(waitForReady));
+for (const [index, url] of readyUrls.entries()) {
+  const response = readyResponses[index];
   check(
     `ready ${new URL(url).hostname}`,
     response?.status === 200,
