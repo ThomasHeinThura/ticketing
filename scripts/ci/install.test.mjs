@@ -615,6 +615,28 @@ test("local installer rejects profile flags before writing", async (t) => {
   assert.equal(await stat(f.path).catch(() => null), null);
 });
 
+test("local installer refuses fork settings instead of selecting the upstream image", async (t) => {
+  const f = await fixture(t);
+  const before = await readFile(f.sitEnv, "utf8");
+  const args = ["--version", "1.2.3", "--dir", f.path, "--yes"];
+  const forks = [
+    {
+      TASKDESK_REPOSITORY: "acme/taskdesk",
+      TASKDESK_COSIGN_IDENTITY:
+        "https://github.com/acme/taskdesk/.github/workflows/release.yml@refs/heads/main",
+    },
+    { TASKDESK_IMAGE: "ghcr.io/acme/taskdesk" },
+    { TASKDESK_COSIGN_IDENTITY: "https://example.test/release.yml" },
+  ];
+  for (const extra of forks) {
+    const result = run(f, args, extra);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /local SIT supports only the upstream release/);
+    assert.equal(await readFile(f.sitEnv, "utf8"), before);
+    assert.equal(await stat(f.path).catch(() => null), null);
+  }
+});
+
 test("deploy.sh requires buildx up front, with a message naming the cause", async () => {
   const source = await readFile(path.join(root, "scripts/deploy.sh"), "utf8");
   assert.match(
@@ -1542,11 +1564,39 @@ test("upgrade is refused without a fresh backup or --i-have-a-backup", async (t)
     env,
   });
   assert.notEqual(refused.status, 0);
-  assert.match(refused.stderr, /no backup newer than 24 hours/);
+  assert.match(refused.stderr, /no verified backup newer than 24 hours/);
 
   const fresh = path.join(f.temp, "no-backups", "20990101T000000Z");
   await mkdir(fresh, { recursive: true });
   await writeFile(path.join(fresh, "SHA256SUMS"), "");
+  const empty = spawnSync("bash", [deploy, "upgrade", "v1.2.3"], {
+    cwd: f.path,
+    encoding: "utf8",
+    env,
+  });
+  assert.notEqual(empty.status, 0);
+  assert.match(empty.stderr, /no verified backup/);
+
+  const names = ["postgres.dump", "attachments.tar", "attachment-mount.txt"];
+  for (const name of names) await writeFile(path.join(fresh, name), name);
+  const sums = spawnSync("sha256sum", names, { cwd: fresh, encoding: "utf8" });
+  const sumsText =
+    sums.status === 0
+      ? sums.stdout
+      : spawnSync("shasum", ["-a", "256", ...names], {
+          cwd: fresh,
+          encoding: "utf8",
+        }).stdout;
+  await writeFile(path.join(fresh, "SHA256SUMS"), sumsText);
+  await writeFile(path.join(fresh, "postgres.dump"), "damaged");
+  const damaged = spawnSync("bash", [deploy, "upgrade", "v1.2.3"], {
+    cwd: f.path,
+    encoding: "utf8",
+    env,
+  });
+  assert.notEqual(damaged.status, 0);
+  assert.match(damaged.stderr, /no verified backup/);
+  await writeFile(path.join(fresh, "postgres.dump"), "postgres.dump");
   const ok = spawnSync("bash", [deploy, "upgrade", "v1.2.3"], {
     cwd: f.path,
     encoding: "utf8",

@@ -50,6 +50,8 @@ done
 [[ -n "$INSTALL_DIR" && "$INSTALL_DIR" != / ]] || die '--dir must be a non-root path'
 if [[ "$MODE" == local ]]; then
   ((PROFILE_S3 == 0 && SKIP_VERIFY == 0 && DOMAIN_SET == 0 && AGENT_HOST_SET == 0 && PORTAL_HOST_SET == 0 && FILES_HOST_SET == 0)) || die 'local SIT does not accept profile, verification bypass or host override flags'
+  # Local mode pins the upstream image and signer; refuse a fork rather than run upstream code.
+  [[ "$REPOSITORY" == "$UPSTREAM_REPOSITORY" && -z "${TASKDESK_IMAGE:-}" && -z "${TASKDESK_COSIGN_IDENTITY:-}" ]] || die 'local SIT supports only the upstream release; TASKDESK_REPOSITORY, TASKDESK_IMAGE and TASKDESK_COSIGN_IDENTITY apply to production installs'
   [[ "${SIT_COMPOSE_ENV:-}" == /* && -f "$SIT_COMPOSE_ENV" && ! -L "$SIT_COMPOSE_ENV" ]] || die 'local SIT requires an existing absolute SIT_COMPOSE_ENV regular file'
   [[ "${SIT_PRIVATE_DIR:-}" == /* && -d "$SIT_PRIVATE_DIR" && ! -L "$SIT_PRIVATE_DIR" ]] || die 'local SIT requires an existing absolute SIT_PRIVATE_DIR directory'
   for private_file in postgres.env migrate.env app.env valkey.env; do
