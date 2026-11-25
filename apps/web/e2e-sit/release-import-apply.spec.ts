@@ -4,7 +4,6 @@ import {
   discoverTarget,
   removeWorkItem,
   rowsOf,
-  type Session,
   signIn,
   stamp,
   taskTypeId,
