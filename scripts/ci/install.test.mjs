@@ -144,7 +144,7 @@ printf '%s\\n' "$*" >> "$COSIGN_LOG"
     `#!/usr/bin/env bash
 [[ "\${FAKE_DOCKER_MISSING:-0}" != 1 ]] || exit 1
 [[ "$1" == compose && "$2" == version ]] && { printf 'Docker Compose version test\n'; exit 0; }
-[[ "$1" == info ]] && exit 0
+[[ "$1" == info ]] && { [[ "$2" == -f ]] && printf '%s\n' "\${FAKE_DOCKER_ID:-daemon-a}"; exit 0; }
 if [[ "$1" == buildx && "$2" == version ]]; then
   if [[ "\${FAKE_BUILDX_MISSING:-0}" == 1 ]]; then printf "docker: unknown command: docker buildx\\n" >&2; exit 1; fi
   printf 'github.com/docker/buildx v0.38.0 0dbe87f36ed472fe36b6796c3f70b4210a731fc5\\n'; exit 0
@@ -1583,9 +1583,9 @@ test("upgrade is refused without a fresh backup or --i-have-a-backup", async (t)
     "attachment-mount.txt",
     "project.txt",
   ];
-  const seal = async (dir, project) => {
+  const seal = async (dir, project, daemon = "daemon-a") => {
     for (const name of names) await writeFile(path.join(dir, name), name);
-    await writeFile(path.join(dir, "project.txt"), `${project}\n`);
+    await writeFile(path.join(dir, "project.txt"), `${project}\n${daemon}\n`);
     const sums = spawnSync("sha256sum", names, { cwd: dir, encoding: "utf8" });
     await writeFile(
       path.join(dir, "SHA256SUMS"),
@@ -1606,6 +1606,15 @@ test("upgrade is refused without a fresh backup or --i-have-a-backup", async (t)
   });
   assert.notEqual(foreign.status, 0);
   assert.match(foreign.stderr, /no verified backup/);
+  // The same project name on another Docker daemon (a drill context) must not count either.
+  await seal(fresh, "taskdesk", "daemon-b");
+  const otherDaemon = spawnSync("bash", [deploy, "upgrade", "v1.2.3"], {
+    cwd: f.path,
+    encoding: "utf8",
+    env,
+  });
+  assert.notEqual(otherDaemon.status, 0);
+  assert.match(otherDaemon.stderr, /no verified backup/);
   await seal(fresh, "taskdesk");
   await writeFile(path.join(fresh, "postgres.dump"), "damaged");
   const damaged = spawnSync("bash", [deploy, "upgrade", "v1.2.3"], {

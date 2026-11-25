@@ -600,13 +600,15 @@ case "$MODE" in
       # Compose project of this deployment: env override, else the overlay's name:, else the base file's.
       project="${COMPOSE_PROJECT_NAME:-$(sed -n 's/^name: *//p' "$SELECTED_OVERLAY" | head -1)}"
       [ -n "$project" ] || project="$(sed -n 's/^name: *//p' compose.yml | head -1)"
+      # A same-named project on another Docker daemon (a drill context) is not this deployment.
+      source_id="$(printf '%s\n%s' "$project" "$(docker info -f '{{.ID}}' 2>/dev/null)")"
       fresh_backup=0
       while IFS= read -r sums; do
         dir="$(dirname "$sums")"
         for artifact in postgres.dump attachments.tar attachment-mount.txt project.txt; do
           [ -f "$dir/$artifact" ] && grep -q " \*\?$artifact\$" "$sums" || continue 2
         done
-        [ "$(cat "$dir/project.txt" 2>/dev/null)" = "$project" ] || continue
+        [ "$(cat "$dir/project.txt" 2>/dev/null)" = "$source_id" ] || continue
         if command -v sha256sum >/dev/null 2>&1; then
           (cd "$dir" && sha256sum -c SHA256SUMS >/dev/null 2>&1) || continue
         else

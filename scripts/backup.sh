@@ -319,7 +319,9 @@ fi
 
 printf '%s\n' "$DATA_DESTINATION" > "$MOUNT_FILE" || refuse "cannot record attachment mount"
 # deploy.sh upgrade accepts only backups made from the deployment it upgrades.
-printf '%s\n' "$PROJECT" > "$PROJECT_FILE" || refuse "cannot record Compose project"
+# Project plus Docker daemon id: deploy.sh upgrade accepts only a backup of the same deployment.
+printf '%s\n%s\n' "$PROJECT" "$(docker info -f '{{.ID}}' 2>/dev/null)" > "$PROJECT_FILE" ||
+  refuse "cannot record Compose project"
 printf '==> Recording SHA-256 checksums\n'
 if command -v sha256sum >/dev/null 2>&1; then
   sha256sum "$DUMP_FILE" "$ATTACHMENTS_TAR" "$MOUNT_FILE" "$PROJECT_FILE" > "$PARTIAL_FILE" || refuse "checksum failed"
