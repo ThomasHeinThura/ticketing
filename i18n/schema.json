@@ -462,6 +462,12 @@
 								},
 								"chunkLoad": {
 									"type": "string"
+								},
+								"forbidden": {
+									"type": "string"
+								},
+								"notFound": {
+									"type": "string"
 								}
 							},
 							"required": [
@@ -470,7 +476,9 @@
 								"auth",
 								"server",
 								"unknown",
-								"chunkLoad"
+								"chunkLoad",
+								"forbidden",
+								"notFound"
 							]
 						},
 						"troubleshootingSteps": {

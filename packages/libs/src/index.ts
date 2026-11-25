@@ -7,6 +7,7 @@ export {
   FACTOR_ENROLLMENT_REQUIRED,
   notifyServerError,
   onFactorEnrollmentRequired,
+  onUnauthorized,
   primeCsrfToken,
   windowId,
 } from "./hono";

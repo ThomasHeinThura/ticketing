@@ -57,6 +57,7 @@ import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import useCanCreateWorkspace from "@/hooks/use-can-create-workspace";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { authClient } from "@/lib/auth-client";
 import { routes } from "@/lib/routes";
@@ -165,8 +166,11 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const searchTerm = query.trim();
   const searchEnabled = open && searchTerm.length >= 1;
+  // The action filter below follows each keystroke; the server search waits for a typing pause.
+  const requestTerm = useDebouncedValue(searchTerm);
+  const requestEnabled = open && requestTerm.length >= 1;
   const { data: searchResults } = useGlobalSearch({
-    q: searchEnabled ? searchTerm : "",
+    q: requestEnabled ? requestTerm : "",
     type: "all",
     workspaceId: workspace?.id,
     limit: 20,
@@ -267,12 +271,12 @@ export function CommandPalette({
   const searchGroups = useMemo(
     () =>
       projectSearchGroups(
-        searchEnabled ? searchTerm : "",
+        requestEnabled ? requestTerm : "",
         (searchResults?.results ?? []) as SearchResultItem[],
         recentItems,
         (key) => t(key),
       ),
-    [searchEnabled, searchTerm, searchResults?.results, recentItems, t],
+    [requestEnabled, requestTerm, searchResults?.results, recentItems, t],
   );
 
   const selectingRef = useRef(false);

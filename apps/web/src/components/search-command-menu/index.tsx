@@ -36,6 +36,7 @@ import { shortcuts } from "@/constants/shortcuts";
 import useGlobalSearch from "@/hooks/queries/search/use-global-search";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { authClient } from "@/lib/auth-client";
 import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
@@ -83,7 +84,8 @@ function SearchCommandMenu({
   const userId = session?.user?.id;
   const navigate = useNavigate();
 
-  const searchTerm = query.trim();
+  // One request per typing pause; results and the recent list follow the same settled term.
+  const searchTerm = useDebouncedValue(query.trim());
   const searchEnabled = searchTerm.length >= 1;
 
   const { data: searchResults } = useGlobalSearch({
