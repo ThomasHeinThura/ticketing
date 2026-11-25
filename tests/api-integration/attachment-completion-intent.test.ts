@@ -427,8 +427,11 @@ describe("ordinary completion: the durable intent", () => {
         await gate;
         return real(oldKey, newKey);
       });
+    let finished = 0;
     const runs = Array.from({ length: 5 }, () =>
-      settle(completeAttachment(staffInput(w, row))),
+      settle(completeAttachment(staffInput(w, row))).finally(() => {
+        finished += 1;
+      }),
     );
     // Exactly three reservations commit and reach storage; the other two are refused first.
     await waitUntil(
@@ -439,6 +442,9 @@ describe("ordinary completion: the durable intent", () => {
       async () => (await intentRows(row.id)).length === 3,
       "three intents",
     );
+    // The reserved three are parked on the gate, so only the two refusals can settle. Releasing
+    // before they have reserved lets a straggler take a slot the winner frees by consuming its intent.
+    await waitUntil(() => finished === 2, "two refusals");
     release();
     const results = await Promise.all(runs);
     expect(finalize).toHaveBeenCalledTimes(3);

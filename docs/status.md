@@ -1,5 +1,11 @@
 # Current status
 
+**25 Nov.** `main` is `8c22dee3f`, signed `sha256:5dc682b4…` (train k #1239, Phase 4 batch 4-D, no migrations). Closed with evidence: #709 (residual accepted by Thomas: Playwright fill step titles carry the value in local html/json reports or traces only), #226, #477, #762, #776, #900, #908, #910, #1199.
+
+- **Local SIT** runs `8c22dee3f` after a manual pg_dump plus isolated restore into a disposable container (185/185 tables, counts matched). `scripts/backup-maintenance.sh` only supports the production `compose.yml` layout, so it refuses the compose.testing SIT, and #1202 stays open. Release smoke passes 125/125. Browser checks: Features History on the workspace and project screens, and a 15-letter-key project created, opened and deleted by typed key.
+- **UAT (Technexus)** runs `8c22dee3f` after a backup verified by scratch restore (work items matched). Rollback is image-only to `0f2bfc03`. Smoke passes 125/125.
+- **Open:** #929 release regression suite (council: one `pnpm test:release` runner, a coverage map, five persisted SIT journeys first; the wider domain gaps are recorded in the map), #1202 runtime check of `backup.sh`, #899 and #634, and #626 and #55/T-1 for Thomas on UAT. G11 stays report-only and fails on main.
+
 **21 Nov.** `main` is `c264ea8a0`, signed `sha256:0aaca5ba…` (trains e #1229, f #1234, g #1235 merged). Phase 2 is done on local SIT. Phase 3 is done: UAT is clean-installed on the same signed image.
 
 - **Local SIT** runs `c264ea8a0` after a verified backup with scratch restore. Release smoke passes 125/125. A settings re-sweep of 1,620 cells found no console, request or overflow issues; lead and member "denials" were refused History reads, and the sweep tool was fixed. The role journey pass (9 roles, 64 journeys) had 53 pass; it confirmed 1 high, 2 medium and 9 low findings, all fixed in train g. Recheck on `c264ea8a0`: every offered work-item type creates and persists, and approval decisions show in work-item History.

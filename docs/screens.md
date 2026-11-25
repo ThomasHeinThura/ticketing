@@ -71,7 +71,7 @@ Maintained route inventory for automated coverage. 🟡 means built or in progre
 | Workspace — work item types (planned, no route) | `/dashboard/settings/workspace/work-item-types` | route | P2 | ⬜ |
 | Workspace — states | `/dashboard/settings/workspace/states` | route | P1 | 🟡 |
 | Workspace — workflows | `/dashboard/settings/workspace/workflows` | route | P2 | 🟡 |
-| Workflow editor | `/dashboard/settings/workspace/workflows/{id}` | route | P2 | ⬜ |
+| Workflow editor | `/dashboard/settings/workspace/workflows?workflowId={id}` | route | P2 | ⬜ |
 | Workspace — SLA policies | `/dashboard/settings/workspace/sla-policies` | route | P2 | 🟡 |
 | SLA policy editor | `/dashboard/settings/workspace/sla-policies/{id}` | route | P2 | 🟡 |
 | Workspace — service calendars | `/dashboard/settings/workspace/calendars` | route | P2 | 🟡 |
