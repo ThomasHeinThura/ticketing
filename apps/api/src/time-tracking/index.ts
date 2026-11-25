@@ -900,6 +900,7 @@ const router = apiRouter<Vars>()
     await assertTrackingEnabledForProject(
       workspaceId,
       projectId,
+      db,
       TIME_TRACKING_FEATURE_KEY,
       COST_TRACKING_FEATURE_KEY,
     );
@@ -925,6 +926,7 @@ const router = apiRouter<Vars>()
     await assertTrackingEnabledForProject(
       workspaceId,
       projectId,
+      db,
       TIME_TRACKING_FEATURE_KEY,
       COST_TRACKING_FEATURE_KEY,
     );
