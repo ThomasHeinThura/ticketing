@@ -35,7 +35,6 @@ vi.mock("../../../apps/api/src/scheduler/notification-digest", () => ({
 import {
   drainOutbox,
   drainParentEvents,
-  PARENT_DRAIN_LIMIT,
 } from "../../../apps/api/src/scheduler/outbox-drain";
 
 beforeEach(() => {
@@ -57,12 +56,23 @@ describe("parent envelope drain bounds", () => {
     });
   });
 
-  it("bounds a full parent backlog per run", async () => {
+  it("drains more than one hundred parents in one run", async () => {
+    let left = 250;
+    mocks.parent.mockImplementation(async () =>
+      left-- > 0 ? { kind: "delivered", eventId: "e" } : { kind: "idle" },
+    );
+    const outcome = await drainParentEvents();
+    expect(outcome).toMatchObject({ processed: 250, delivered: 250 });
+    expect(outcome.degraded).toBe(false);
+  });
+
+  it("stops starting parents once the time budget is used", async () => {
+    const clock = vi.spyOn(Date, "now");
+    clock.mockReturnValueOnce(0).mockReturnValueOnce(1).mockReturnValue(5001);
     mocks.parent.mockResolvedValue({ kind: "delivered", eventId: "e" });
     const outcome = await drainParentEvents();
-    expect(outcome.processed).toBe(PARENT_DRAIN_LIMIT);
-    expect(outcome.delivered).toBe(PARENT_DRAIN_LIMIT);
-    expect(outcome.degraded).toBe(false);
+    expect(outcome.processed).toBe(1);
+    expect(mocks.parent).toHaveBeenCalledTimes(1);
   });
 
   it("reports retries and dead letters as a degraded run", async () => {
