@@ -1,4 +1,3 @@
-import { createHmac } from "node:crypto";
 import { sendNotificationEmail } from "@taskdesk/email";
 import {
   evaluateQuietHours,
@@ -15,7 +14,13 @@ import {
   resolveTermForm,
 } from "../terminology/service";
 import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
+import {
+  WEBHOOK_HEADER_SIGNATURE,
+  WEBHOOK_HEADER_SIGNATURE_V2,
+  WEBHOOK_HEADER_TIMESTAMP,
+} from "../webhook/constants";
 import { sendWebhookRequest } from "../webhook/safe-http";
+import { signWebhookBody, signWebhookBodyV2 } from "../webhook/signature";
 import {
   findDeliveryEventNotification,
   findDeliveryNotification,
@@ -419,9 +424,14 @@ async function sendWebhookNotification(input: {
   };
 
   if (input.secret) {
-    headers["X-TaskDesk-Signature"] = createHmac("sha256", input.secret)
-      .update(body)
-      .digest("hex");
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    headers[WEBHOOK_HEADER_TIMESTAMP] = timestamp;
+    headers[WEBHOOK_HEADER_SIGNATURE] = signWebhookBody(input.secret, body);
+    headers[WEBHOOK_HEADER_SIGNATURE_V2] = signWebhookBodyV2(
+      input.secret,
+      timestamp,
+      body,
+    );
   }
 
   const response = await sendWithTimeout(input.webhookUrl, {

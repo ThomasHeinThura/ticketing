@@ -3,7 +3,7 @@
 All notable changes to TaskDesk are recorded here and maintained alongside releases.
 The release workflow creates GitHub release notes for a selected source SHA but does not
 write this file. At every stage close, add a short human-written summary of what actually
-shipped — see [Release notes](docs/04-engineering/ci-cd.md#release-notes).
+shipped.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning
 follows [Semantic Versioning](https://semver.org/).
@@ -11,9 +11,7 @@ follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 Three signed prereleases exist (`2.0.0-alpha.1` to `2.0.0-alpha.3`, below). See
-[status.md](docs/07-planning/status.md) for the live picture and
-[accelerated-delivery-plan.md](docs/07-planning/accelerated-delivery-plan.md) for the
-current target calendar.
+[status.md](docs/status.md) for the live picture.
 
 **Planning milestones** (not releases — recorded so the first release notes have a
 starting point):
@@ -42,7 +40,7 @@ starting point):
   only, spawned explicitly), dropping an earlier multi-provider-router and non-Claude
   specialist-subagent experiment that had not worked out in practice; a live UAT deployment
   made an active near-term priority rather than a later item. See the
-  [decision log](docs/07-planning/decision-log.md), 2026-09-15.
+  decision log, 2026-09-15.
 
 **P0 implementation is well underway** — dozens of pull requests have merged covering the
 CI gate matrix, the permissions/policy registry, the deployment skeleton, and a substantial
@@ -52,8 +50,8 @@ part of the `organization()` plugin retrofit. This file does not enumerate them 
 once the first version actually ships.
 
 This file starts recording real entries from the first change merged in
-[P0](docs/07-planning/phases.md). Until then, treat
-[status.md](docs/07-planning/status.md)'s session log as the record of what happened, and
+P0. Until then, treat
+[status.md](docs/status.md)'s session log as the record of what happened, and
 this file as the promise of where product-facing entries will live once there is a product
 to log.
 
@@ -88,12 +86,12 @@ to log.
   `/api/public/health/live` response (`{"status":"ok"}`) and adds a runbook note about
   re-signing in after the cookie rename. Evidence:
   `p0-installer-proof-4-20261010T115535Z` (re-run and S3 cases pass; see the
-  [P0 stage review](docs/07-planning/p0-stage-review.md)).
+  P0 stage review).
 
 <!--
 Entries from here on follow this shape, oldest section at the bottom:
 
-## [2.0.0-alpha.1] - YYYY-MM-DD
+## [version] - release date
 ### Added
 - What shipped, in user-facing language, not commit-message language.
 ### Changed
@@ -101,13 +99,13 @@ Entries from here on follow this shape, oldest section at the bottom:
 ### Security
 - Security-relevant fixes are called out here explicitly, even when the commit message
   that generated the entry didn't say "security" — see
-  docs/01-architecture/security-model.md.
+  the security model.
 -->
 
 ## [2.0.0-alpha.3] - 2026-10-10
 
 Signed prerelease, source `b704f707`. The P0 claim binds to this release
-([P0 stage review](docs/07-planning/p0-stage-review.md)).
+(P0 stage review).
 
 ### Added
 - Database migrations 0088 to 0118 (#618) and 0119 (#620), taking a fresh schema to 120
@@ -190,9 +188,9 @@ with signature and provenance.
   `2.0.0-alpha.2`.
 - No full E2E, screen-reader, keyboard, cross-browser, realistic-data, load or restore
   evidence exists. Thomas deferred these to before `2.0.0` on 2026-10-10 (see the
-  [decision log](docs/07-planning/decision-log.md) and the P0 stage review).
+  decision log and the P0 stage review).
 
 ## Related
 
-- [Status](docs/07-planning/status.md) · [Roadmap](docs/07-planning/roadmap.md)
-- [CI/CD § Releases](docs/04-engineering/ci-cd.md#releases) · [Decision log](docs/07-planning/decision-log.md)
+- [Status](docs/status.md) · [Roadmap](docs/roadmap.md)
+- [CI gates](docs/technical/ci-gates.md) · [Design and decisions](docs/technical/design-and-decisions.md)

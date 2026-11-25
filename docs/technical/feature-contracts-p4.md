@@ -2450,6 +2450,12 @@ does with a webhook is build a link back.
 
 - `WH-1` Signed with HMAC-SHA256 over the raw body, in `X-TaskDesk-Signature`, using a
   per-webhook secret. The secret is rotatable and never returned by the API.
+  `X-TaskDesk-Signature-V2` is the replay-safe form. To verify it, take the
+  `X-TaskDesk-Timestamp` header value, add a full stop, then the raw body exactly as
+  received (`<timestamp>.<body>`); compute HMAC-SHA256 of that text with the secret,
+  lowercase hex; compare in constant time; and reject timestamps older than five minutes.
+  Because the timestamp is signed, a captured delivery cannot be replayed with a new one.
+  The v1 header is unchanged. The notification webhook channel sends the same three headers.
 - `WH-2` Also sent: `X-TaskDesk-Event`, `X-TaskDesk-Delivery`, `X-TaskDesk-Timestamp`.
   Consumers should reject timestamps older than five minutes to prevent replay.
 - `WH-3` Written to `outbox` **in the same transaction as the change**, then delivered by
@@ -2467,7 +2473,7 @@ does with a webhook is build a link back.
 - `WH-8` Redelivery of a specific event is available from the UI.
 - `WH-13` Secret rotation keeps the previous secret valid for **24 hours**; deliveries in
   that window carry two signatures (`X-TaskDesk-Signature` and
-  `X-TaskDesk-Signature-Previous`) so a consumer can roll over without a gap. "Rotate all
+  `X-TaskDesk-Signature-Previous`, plus `X-TaskDesk-Signature-V2-Previous` for v2) so a consumer can roll over without a gap. "Rotate all
   webhook secrets" is a God Mode incident action.
 - `WH-14` **A webhook delivers only events within its owner's reach.** A workspace webhook
   is stamped with the creator's identity; at delivery time the event's entity is checked
