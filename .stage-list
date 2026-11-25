@@ -1,0 +1,6 @@
+apps/api/scripts/seed-uat-users.ts
+apps/api/src/auth.ts
+apps/api/src/auth/step-up-api.ts
+.stage-list
+apps/api/src/auth/password-hash.ts
+tests/api/auth/password-hash.test.ts

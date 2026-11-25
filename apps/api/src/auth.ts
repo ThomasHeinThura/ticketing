@@ -5,7 +5,6 @@ import {
   sendOtpEmail,
   sendPasswordResetEmail,
 } from "@taskdesk/email";
-import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import {
   APIError,
@@ -34,6 +33,7 @@ import {
   InactiveFactorIdentityError,
   loadLocalFactorState,
 } from "./auth/local-factor-service";
+import { hashPassword, verifyPassword } from "./auth/password-hash";
 import {
   canResetPassword,
   consumeResetAddressLimit,
@@ -607,11 +607,24 @@ function createAuth(
         );
       },
       password: {
-        hash: async (password) => {
-          return await bcrypt.hash(password, 10);
-        },
+        hash: hashPassword,
         verify: async ({ hash, password }) => {
-          return await bcrypt.compare(password, hash);
+          const { valid, needsRehash } = await verifyPassword(hash, password);
+          if (valid && needsRehash) {
+            // rehash is best effort: a failed write must never fail a correct sign-in.
+            try {
+              await db
+                .update(schema.accountTable)
+                .set({ password: await hashPassword(password) })
+                .where(
+                  and(
+                    eq(schema.accountTable.providerId, "credential"),
+                    eq(schema.accountTable.password, hash),
+                  ),
+                );
+            } catch {}
+          }
+          return valid;
         },
       },
     },

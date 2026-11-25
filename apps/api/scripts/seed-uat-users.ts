@@ -11,11 +11,11 @@ import {
   INSTANCE_ONLY_FEATURES,
   LOCKED_FEATURE_DEFAULTS,
 } from "@taskdesk/permissions";
-import bcrypt from "bcryptjs";
 import { config } from "dotenv-mono";
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 import { appendAuditLog } from "../src/audit/audit-writer";
+import { verifyPassword } from "../src/auth/password-hash";
 import {
   acceptCustomerInvitation,
   copyCustomerInvitationLink,
@@ -1450,7 +1450,7 @@ async function precheck(credentialsLoaded: boolean) {
         );
       if (
         !credential?.password ||
-        !(await bcrypt.compare(account.password, credential.password))
+        !(await verifyPassword(credential.password, account.password)).valid
       )
         throw new Error(
           "UAT seed refused: the credentials file does not match the existing UAT accounts.",
