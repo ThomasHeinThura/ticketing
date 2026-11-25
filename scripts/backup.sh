@@ -230,6 +230,7 @@ TARGET_REAL=""
 # Relative to the reserved directory, which becomes the working directory.
 DUMP_FILE="postgres.dump"
 MOUNT_FILE="attachment-mount.txt"
+PROJECT_FILE="project.txt"
 ATTACHMENTS_TAR="attachments.tar"
 PARTIAL_FILE=".SHA256SUMS.partial"
 CHECKSUMS_FILE="SHA256SUMS"
@@ -241,7 +242,7 @@ finish() {
   if [ "$OWNED" = 1 ]; then
     # Only the files this run created, inside the reserved directory it is still
     # standing in: a path swapped after reservation cannot redirect this cleanup.
-    rm -f -- "./$DUMP_FILE" "./$ATTACHMENTS_TAR" "./$MOUNT_FILE" "./$PARTIAL_FILE" "./$CHECKSUMS_FILE" \
+    rm -f -- "./$DUMP_FILE" "./$ATTACHMENTS_TAR" "./$MOUNT_FILE" "./$PROJECT_FILE" "./$PARTIAL_FILE" "./$CHECKSUMS_FILE" \
       || printf 'xx could not remove incomplete backup files in %s\n' "$TARGET_REAL" >&2
     if [ "$(pwd -P)" = "$TARGET_REAL" ]; then
       rmdir -- "$TARGET_REAL" 2>/dev/null \
@@ -317,18 +318,20 @@ if ! docker run --rm --network none \
 fi
 
 printf '%s\n' "$DATA_DESTINATION" > "$MOUNT_FILE" || refuse "cannot record attachment mount"
+# deploy.sh upgrade accepts only backups made from the deployment it upgrades.
+printf '%s\n' "$PROJECT" > "$PROJECT_FILE" || refuse "cannot record Compose project"
 printf '==> Recording SHA-256 checksums\n'
 if command -v sha256sum >/dev/null 2>&1; then
-  sha256sum "$DUMP_FILE" "$ATTACHMENTS_TAR" "$MOUNT_FILE" > "$PARTIAL_FILE" || refuse "checksum failed"
+  sha256sum "$DUMP_FILE" "$ATTACHMENTS_TAR" "$MOUNT_FILE" "$PROJECT_FILE" > "$PARTIAL_FILE" || refuse "checksum failed"
 else
-  shasum -a 256 "$DUMP_FILE" "$ATTACHMENTS_TAR" "$MOUNT_FILE" > "$PARTIAL_FILE" || refuse "checksum failed"
+  shasum -a 256 "$DUMP_FILE" "$ATTACHMENTS_TAR" "$MOUNT_FILE" "$PROJECT_FILE" > "$PARTIAL_FILE" || refuse "checksum failed"
 fi
 
 assert_barrier B2
 
 # Publish the completeness marker only after the final barrier check.
 mv -- "$PARTIAL_FILE" "$CHECKSUMS_FILE" || refuse "cannot publish SHA256SUMS"
-chmod 0600 "$DUMP_FILE" "$ATTACHMENTS_TAR" "$MOUNT_FILE" "$CHECKSUMS_FILE" || refuse "cannot restrict backup file permissions"
+chmod 0600 "$DUMP_FILE" "$ATTACHMENTS_TAR" "$MOUNT_FILE" "$PROJECT_FILE" "$CHECKSUMS_FILE" || refuse "cannot restrict backup file permissions"
 DONE=1
 
 printf ' ok Backup complete: %s (pg_restore entries: %s)\n' "$TARGET_REAL" "$LIST_COUNT"

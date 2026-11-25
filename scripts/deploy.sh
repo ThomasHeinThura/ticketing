@@ -597,12 +597,16 @@ case "$MODE" in
     # backup.sh publishes SHA256SUMS last, so it marks a complete backup; check its
     # artifacts against it so a missing or damaged dump is not accepted.
     if [ "$HAVE_BACKUP" -ne 1 ]; then
+      # Compose project of this deployment: env override, else the overlay's name:, else the base file's.
+      project="${COMPOSE_PROJECT_NAME:-$(sed -n 's/^name: *//p' "$SELECTED_OVERLAY" | head -1)}"
+      [ -n "$project" ] || project="$(sed -n 's/^name: *//p' compose.yml | head -1)"
       fresh_backup=0
       while IFS= read -r sums; do
         dir="$(dirname "$sums")"
-        for artifact in postgres.dump attachments.tar attachment-mount.txt; do
+        for artifact in postgres.dump attachments.tar attachment-mount.txt project.txt; do
           [ -f "$dir/$artifact" ] && grep -q " \*\?$artifact\$" "$sums" || continue 2
         done
+        [ "$(cat "$dir/project.txt" 2>/dev/null)" = "$project" ] || continue
         if command -v sha256sum >/dev/null 2>&1; then
           (cd "$dir" && sha256sum -c SHA256SUMS >/dev/null 2>&1) || continue
         else
@@ -612,7 +616,7 @@ case "$MODE" in
         break
       done < <(find "${TASKDESK_BACKUP_ROOT:-$REPO_ROOT/backups}" -maxdepth 2 -name SHA256SUMS -mtime -1 2>/dev/null)
       [ "$fresh_backup" -eq 1 ] \
-        || die "no verified backup newer than 24 hours found (postgres.dump, attachments.tar and attachment-mount.txt must match SHA256SUMS). Run scripts/backup-maintenance.sh first, or pass --i-have-a-backup if one exists elsewhere. Upgrades run irreversible migrations."
+        || die "no verified backup newer than 24 hours found for this deployment (postgres.dump, attachments.tar, attachment-mount.txt and project.txt must match SHA256SUMS). Run scripts/backup-maintenance.sh first, or pass --i-have-a-backup if one exists elsewhere. Upgrades run irreversible migrations."
     fi
     say "note the current digest before the upgrade."
     CURRENT="$(docker inspect --format '{{index .RepoDigests 0}}' "$(dc images -q taskdesk 2>/dev/null | head -1)" 2>/dev/null || true)"

@@ -1577,17 +1577,36 @@ test("upgrade is refused without a fresh backup or --i-have-a-backup", async (t)
   assert.notEqual(empty.status, 0);
   assert.match(empty.stderr, /no verified backup/);
 
-  const names = ["postgres.dump", "attachments.tar", "attachment-mount.txt"];
-  for (const name of names) await writeFile(path.join(fresh, name), name);
-  const sums = spawnSync("sha256sum", names, { cwd: fresh, encoding: "utf8" });
-  const sumsText =
-    sums.status === 0
-      ? sums.stdout
-      : spawnSync("shasum", ["-a", "256", ...names], {
-          cwd: fresh,
-          encoding: "utf8",
-        }).stdout;
-  await writeFile(path.join(fresh, "SHA256SUMS"), sumsText);
+  const names = [
+    "postgres.dump",
+    "attachments.tar",
+    "attachment-mount.txt",
+    "project.txt",
+  ];
+  const seal = async (dir, project) => {
+    for (const name of names) await writeFile(path.join(dir, name), name);
+    await writeFile(path.join(dir, "project.txt"), `${project}\n`);
+    const sums = spawnSync("sha256sum", names, { cwd: dir, encoding: "utf8" });
+    await writeFile(
+      path.join(dir, "SHA256SUMS"),
+      sums.status === 0
+        ? sums.stdout
+        : spawnSync("shasum", ["-a", "256", ...names], {
+            cwd: dir,
+            encoding: "utf8",
+          }).stdout,
+    );
+  };
+  // A complete, checksummed backup of another Compose project must not count.
+  await seal(fresh, "drill");
+  const foreign = spawnSync("bash", [deploy, "upgrade", "v1.2.3"], {
+    cwd: f.path,
+    encoding: "utf8",
+    env,
+  });
+  assert.notEqual(foreign.status, 0);
+  assert.match(foreign.stderr, /no verified backup/);
+  await seal(fresh, "taskdesk");
   await writeFile(path.join(fresh, "postgres.dump"), "damaged");
   const damaged = spawnSync("bash", [deploy, "upgrade", "v1.2.3"], {
     cwd: f.path,
@@ -1596,7 +1615,7 @@ test("upgrade is refused without a fresh backup or --i-have-a-backup", async (t)
   });
   assert.notEqual(damaged.status, 0);
   assert.match(damaged.stderr, /no verified backup/);
-  await writeFile(path.join(fresh, "postgres.dump"), "postgres.dump");
+  await seal(fresh, "taskdesk");
   const ok = spawnSync("bash", [deploy, "upgrade", "v1.2.3"], {
     cwd: f.path,
     encoding: "utf8",

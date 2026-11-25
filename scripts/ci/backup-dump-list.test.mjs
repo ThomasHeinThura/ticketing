@@ -320,6 +320,7 @@ test("P1: verifies the held barrier around dump, list, archive and checksum publ
       "postgres.dump",
       "attachments.tar",
       "attachment-mount.txt",
+      "project.txt",
       "SHA256SUMS",
     ])
       assert.equal(statSync(join(f.output, name)).mode & 0o777, 0o600, name);
