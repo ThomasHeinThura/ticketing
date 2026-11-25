@@ -1,4 +1,3 @@
-import { createRequire } from "node:module";
 import { Worker } from "node:worker_threads";
 import {
   hashApiKeySecretArgon2id,
@@ -15,9 +14,10 @@ const BCRYPT_MAX_BYTES = 72;
 // Inline source keeps this working in the esbuild dist bundle (no separate worker file to emit).
 const WORKER_SOURCE = `
 const { parentPort, workerData } = require("node:worker_threads");
-const bcrypt = require(workerData.bcryptPath);
+const loaded = import(workerData.bcryptUrl).then((module) => module.default ?? module);
 parentPort.on("message", async ({ id, password, hash }) => {
   try {
+    const bcrypt = await loaded;
     parentPort.postMessage({ id, valid: await bcrypt.compare(password, hash) });
   } catch {
     parentPort.postMessage({ id, valid: false });
@@ -32,12 +32,12 @@ const pool: Slot[] = [];
 let nextId = 0;
 
 function spawn(): Slot {
-  const bcryptPath = createRequire(import.meta.url).resolve("bcryptjs");
+  // Resolved here, where node_modules is reachable; the eval'd worker has no module location.
+  const bcryptUrl = import.meta.resolve("bcryptjs");
   const worker = new Worker(WORKER_SOURCE, {
     eval: true,
-    workerData: { bcryptPath },
+    workerData: { bcryptUrl },
   });
-  worker.unref();
   const slot: Slot = { worker, pending: new Map() };
   const drop = () => {
     for (const settle of slot.pending.values()) settle(false);
@@ -53,11 +53,15 @@ function spawn(): Slot {
   });
   worker.on("error", drop);
   worker.on("exit", drop);
+  // After the listeners: attaching "message" re-refs the worker.
+  worker.unref();
   return slot;
 }
 
 function compareLegacyBcrypt(password: string, hash: string): Promise<boolean> {
-  if (pool.length < POOL_SIZE) pool.push(spawn());
+  // Grow only when every worker is busy, so no idle worker is ever spawned.
+  if (pool.length < POOL_SIZE && pool.every((slot) => slot.pending.size > 0))
+    pool.push(spawn());
   const slot = pool.reduce((a, b) =>
     a.pending.size <= b.pending.size ? a : b,
   );
