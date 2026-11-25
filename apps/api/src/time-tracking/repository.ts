@@ -658,6 +658,7 @@ export async function createEntry(input: CreateEntryInput): Promise<string> {
     await assertTrackingEnabledForProject(
       input.workspaceId,
       target.projectId,
+      tx,
       TIME_TRACKING_FEATURE_KEY,
     );
     const person = await loadTimePerson(tx, input.workspaceId, input.personId);
@@ -790,6 +791,7 @@ export async function updateEntry(
       await assertTrackingEnabledForProject(
         input.workspaceId,
         target.projectId,
+        tx,
         TIME_TRACKING_FEATURE_KEY,
       );
       projectId = target.projectId;
@@ -1115,6 +1117,7 @@ export async function startTimer(input: {
       await assertTrackingEnabledForProject(
         input.workspaceId,
         target.projectId,
+        tx,
         TIME_TRACKING_FEATURE_KEY,
       );
       const person = await loadTimePerson(

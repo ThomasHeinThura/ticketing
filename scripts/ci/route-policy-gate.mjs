@@ -12,7 +12,7 @@
  * passing test locally. The check must execute in CI."
  *
  * The suite itself belongs to the policy registry (#7) and lives in `tests/permissions/`
- * (docs/04-engineering/testing-strategy.md § Permission tests). This file does not
+ * (docs/testing.md). This file does not
  * re-implement it. A second route scanner would become a competing source of truth, which
  * is precisely the failure the policy registry exists to prevent — so this only locates the
  * suite, refuses to pass without it, and runs it.
@@ -65,7 +65,7 @@ const candidates = [
 ];
 
 /**
- * Files docs/04-engineering/testing-strategy.md § Permission tests names by hand. Their
+ * Files docs/testing.md. Their
  * absence means the suite is incomplete, not that this gate should relax.
  */
 const requiredCases = ["route-coverage.test.ts", "matrix.test.ts"];
@@ -98,7 +98,7 @@ async function main() {
       `Looked for: ${candidates.map((candidate) => candidate.config).join(", ")}`,
       "",
       "The suite is issue #7's — the policy registry, route coverage and the role x route",
-      "matrix (docs/04-engineering/testing-strategy.md § Permission tests). Once it lands,",
+      "matrix (docs/testing.md). Once it lands,",
       "this wrapper runs it and nothing else changes.",
     ]);
   }
@@ -113,7 +113,7 @@ async function main() {
     blocked([
       `tests/permissions/ exists but is missing: ${missing.join(", ")}`,
       "",
-      "docs/04-engineering/testing-strategy.md names route-coverage.test.ts (every route in",
+      "docs/testing.md names route-coverage.test.ts (every route in",
       "Hono's router carries a policy of one of the five kinds in rbac.md) and matrix.test.ts",
       "(every built-in role against every route, capability and reach). A partial suite is",
       "not coverage.",

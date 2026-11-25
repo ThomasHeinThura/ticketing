@@ -322,6 +322,7 @@ async function projectOrThrow(
   await assertTrackingEnabledForProject(
     workspaceId,
     projectId,
+    db,
     TIME_TRACKING_FEATURE_KEY,
     COST_TRACKING_FEATURE_KEY,
   );

@@ -1,19 +1,17 @@
 import { expect, test } from "@playwright/test";
 import { redactSecretErrorContext } from "../e2e/helpers/redact-secret-error-context";
 import {
+  discoverTarget,
   removeWorkItem,
+  rowsOf,
   type Session,
   signIn,
   stamp,
-  workspaceId,
 } from "./release-helpers";
 
 test.afterEach(({ browserName: _browserName }, testInfo) => {
   redactSecretErrorContext(testInfo);
 });
-
-const projectId = "uat-proj-web";
-const activityId = "uat-time-activity";
 
 /**
  * Release journey: planning, time and cost. A member logs time on an item the journey creates
@@ -28,6 +26,7 @@ test("time logged by a member totals correctly and cost stays with rate managers
   const sessions: Session[] = [lead];
   let key: string | null = null;
   let itemId = "";
+  let workspaceId = "";
   let entryId: string | null = null;
   let member: Session | null = null;
   // Each cleanup step must succeed; a failure fails the journey instead of leaving data.
@@ -63,6 +62,16 @@ test("time logged by a member totals correctly and cost stays with rate managers
     await Promise.all(sessions.map((session) => session.context.close()));
   }
   try {
+    const target = await discoverTarget(lead);
+    const projectId = target.projectId;
+    workspaceId = target.workspaceId;
+    const activities = await lead.call(
+      "GET",
+      `/time-activities?workspaceId=${workspaceId}`,
+    );
+    expect(activities.status).toBe(200);
+    const activityId = rowsOf<{ id: string }>(activities.body)[0]?.id;
+    expect(activityId, "a time activity exists").toBeTruthy();
     const types = await lead.call(
       "GET",
       `/projects/${projectId}/creatable-work-item-types`,

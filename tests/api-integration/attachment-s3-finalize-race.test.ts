@@ -7,7 +7,7 @@
  * checked, so the object marked "ready" could differ from the one actually validated.
  *
  * There is no real S3/MinIO endpoint available in this test environment (this repository
- * deliberately ships no S3 test harness -- `docs/04-engineering/ci-cd.md` names none), so
+ * deliberately ships no S3 test harness -- `docs/technical/ci-gates.md` names none), so
  * this exercises the real `completeAttachment` controller end to end against the REAL S3
  * driver code path (`TASKDESK_STORAGE_DRIVER=s3`), with only the AWS SDK's own network
  * client (`@aws-sdk/client-s3`) replaced by a tiny in-memory fake -- everything above that

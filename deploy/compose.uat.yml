@@ -18,7 +18,7 @@
 #   docker compose -f compose.yml -f deploy/compose.uat.yml up -d --wait
 #
 # UAT is held to the production standard: same image, same resource limits,
-# backed up and monitored (docs/05-operations/environments.md).
+# backed up and monitored (docs/guide/install-and-deploy.md).
 #
 # v1 UAT stays running and untouched. v2 deploys BESIDE it with its own Compose
 # project, containers, network, volumes and database. Never reuse a v1 volume;
@@ -53,7 +53,7 @@ services:
       #   TaskDesk sees  "<forged...>, <viewer>, <cloudfront-edge>"
       #
       # Full evidence, including the captured header values and how to reproduce
-      # the measurement: docs/05-operations/proxy-topology-evidence.md.
+      # the measurement: docs/guide/install-and-deploy.md.
       # ---------------------------------------------------------------
       TASKDESK_TRUST_PROXY: "2"
     labels:
@@ -66,7 +66,7 @@ services:
       # included: v2 UAT and local dev have both run on this box at once) would
       # otherwise merge into this overlay's Traefik service, load-balancing into
       # a backend unreachable from that Traefik's own network.
-      # docs/05-operations/traefik-and-domains.md § Environment-prefixed names
+      # docs/guide/install-and-deploy.md
       #
       # INCIDENT, 2026-09-28: this overlay used the bare name `taskdesk-uat` for
       # its service and three middlewares, on the stated assumption (see the
@@ -195,4 +195,4 @@ networks:
 #   Resolve it at the CDN (an origin custom header `X-Forwarded-Proto: https`,
 #   which CloudFront applies to every origin request) before this overlay is
 #   used for anything that issues a secure cookie or an absolute URL.
-#   docs/05-operations/proxy-topology-evidence.md
+#   docs/guide/install-and-deploy.md

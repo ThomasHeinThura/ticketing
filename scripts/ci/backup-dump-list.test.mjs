@@ -72,6 +72,7 @@ function handle() {
     if (fmt.includes("com.docker.compose.project")) { out.push(c.project + "|" + c.service); return; }
     if (fmt === "{{.HostConfig.NetworkMode}}|{{len .NetworkSettings.Networks}}") { out.push((c.mode || "default") + "|" + c.networks); return; }
     if (fmt === "{{.Id}}") { out.push(id); return; }
+    if (fmt === "{{.Image}}") { out.push("sha256:helper"); return; }
     code = 99; return;
   }
   if (argv[0] === "ps") {
@@ -305,7 +306,7 @@ test("P1: verifies the held barrier around dump, list, archive and checksum publ
     const dump = calls.indexOf(`exec ${DB} pg_dump -Fc -U taskdesk taskdesk`);
     const list = calls.indexOf(`exec -i ${DB} pg_restore --list`);
     const tar = calls.indexOf(
-      "run --rm --network none -v fixture-data:/data:ro alpine:3.22 tar -C /data -cf - .",
+      "run --rm --network none -v fixture-data:/data:ro --entrypoint tar sha256:helper -C /data -cf - .",
     );
     const sum = calls.indexOf("checksum");
     assert.ok(
@@ -319,6 +320,7 @@ test("P1: verifies the held barrier around dump, list, archive and checksum publ
       "postgres.dump",
       "attachments.tar",
       "attachment-mount.txt",
+      "project.txt",
       "SHA256SUMS",
     ])
       assert.equal(statSync(join(f.output, name)).mode & 0o777, 0o600, name);

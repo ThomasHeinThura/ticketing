@@ -40,6 +40,7 @@ if [ "$1" = inspect ] && [[ "$3" != *.Mounts* ]]; then
     *POSTGRES_DB*|*POSTGRES_USER*) printf '2 taskdesk\\n' ;;
     *.Config.Env*) ;;
     '{{.Id}}') printf '%s\\n' "$4" ;;
+    '{{.Image}}') printf 'sha256:helper\\n' ;;
     '{{.Id}}|'*) printf '%s|%s|%s\\n' "$4" "$PROJECT" "$service" ;;
     *com.docker.compose.project*) printf '%s|%s\\n' "$PROJECT" "$service" ;;
     *NetworkMode*) printf 'default|0\\n' ;;
@@ -48,6 +49,7 @@ if [ "$1" = inspect ] && [[ "$3" != *.Mounts* ]]; then
   exit 0
 fi
 case "$*" in
+  *'images -q postgres'*) printf 'sha256:helper\\n'; exit 0 ;;
   *'ps -a -q postgres'*) printf '%s\\n' "$DB_ID"; exit 0 ;;
   'ps -q --no-trunc --filter label='*) printf '%s\\n' "$DB_ID"; exit 0 ;;
   'ps -q --no-trunc --filter volume='*) exit 0 ;;
@@ -153,7 +155,7 @@ for (const script of ["backup.sh", "restore.sh"]) {
   function args(f) {
     return script === "backup.sh"
       ? ["--output-dir", join(f.dir, "new-backup")]
-      : ["--backup", f.backup, "--confirm"];
+      : ["--backup", f.backup, "--confirm", "--mode", "local"];
   }
   test(`${script} uses the selected project's mounted data volume`, () => {
     const f = fixture();
@@ -338,9 +340,13 @@ test("scratch network blocks egress and proxy discovery without publishing ports
 test("restore.sh restores into staging DB first and leaves live DB intact when pg_restore fails (DO-2)", () => {
   const f = fixture();
   try {
-    const failed = f.run("restore.sh", ["--backup", f.backup, "--confirm"], {
-      RECOVERY_TEST_PG_RESTORE_FAIL: "1",
-    });
+    const failed = f.run(
+      "restore.sh",
+      ["--backup", f.backup, "--confirm", "--mode", "local"],
+      {
+        RECOVERY_TEST_PG_RESTORE_FAIL: "1",
+      },
+    );
     assert.notEqual(failed.status, 0);
     assert.match(failed.calls, /createdb .* taskdesk_restore_staging_/);
     assert.match(failed.calls, /pg_restore .* -d taskdesk_restore_staging_/);
@@ -359,7 +365,13 @@ test("restore.sh restores into staging DB first and leaves live DB intact when p
 test("restore.sh swaps staging DB over live DB only after pg_restore exits 0 (DO-2)", () => {
   const f = fixture();
   try {
-    const ok = f.run("restore.sh", ["--backup", f.backup, "--confirm"]);
+    const ok = f.run("restore.sh", [
+      "--backup",
+      f.backup,
+      "--confirm",
+      "--mode",
+      "local",
+    ]);
     assert.equal(ok.status, 0, ok.stderr);
     const createdbIdx = ok.calls.indexOf("createdb ");
     const pgRestoreIdx = ok.calls.indexOf(
@@ -436,9 +448,13 @@ test("resolve_compose_data_volume supports both /app/data and /app/data/attachme
 test("restore promotion failure rolls back both renames and preserves staging", () => {
   const f = fixture();
   try {
-    const result = f.run("restore.sh", ["--backup", f.backup, "--confirm"], {
-      RECOVERY_TEST_PROMOTION_FAIL: "1",
-    });
+    const result = f.run(
+      "restore.sh",
+      ["--backup", f.backup, "--confirm", "--mode", "local"],
+      {
+        RECOVERY_TEST_PROMOTION_FAIL: "1",
+      },
+    );
     assert.notEqual(result.status, 0);
     assert.match(
       result.calls,
@@ -454,9 +470,13 @@ test("restore promotion failure rolls back both renames and preserves staging", 
 test("failed readiness retains recovery database and attachment undo", () => {
   const f = fixture();
   try {
-    const result = f.run("restore.sh", ["--backup", f.backup, "--confirm"], {
-      RECOVERY_TEST_PROBE_FAIL: "1",
-    });
+    const result = f.run(
+      "restore.sh",
+      ["--backup", f.backup, "--confirm", "--mode", "local"],
+      {
+        RECOVERY_TEST_PROBE_FAIL: "1",
+      },
+    );
     assert.notEqual(result.status, 0);
     assert.match(
       result.stderr,
@@ -490,7 +510,7 @@ test("real tar extraction cannot replace the exclusive undo archive", () => {
     assert.equal(spawnSync("tar", ["-cf", archive, "-C", old, "."]).status, 0);
     const source = readFileSync(resolve("scripts/restore.sh"), "utf8");
     const command = source
-      .match(/sh -c '([^']*mkdir "\/data\/\$undo"[^']*)' sh "\$UNDO_DIR"/)[1]
+      .match(/ -c '([^']*mkdir "\/data\/\$undo"[^']*)' sh "\$UNDO_DIR"/)[1]
       .replaceAll("/data", data)
       .replace(" && chown -R 10001:10001 " + data, "");
     const result = spawnSync("sh", ["-c", command, "sh", ".restore-undo-123"], {
@@ -513,7 +533,7 @@ test("real tar extraction cannot replace the exclusive undo archive", () => {
 test("legacy mount must be explicit, match the target, and never override metadata", () => {
   const f = fixture();
   try {
-    const args = ["--backup", f.backup, "--confirm"];
+    const args = ["--backup", f.backup, "--confirm", "--mode", "local"];
     const recorded = f.run("restore.sh", [
       ...args,
       "--legacy-source-mount",
@@ -569,9 +589,13 @@ test("backup mount metadata prevents restoring to a different mount", () => {
       );
       const other =
         destination === "/app/data" ? "/app/data/attachments" : "/app/data";
-      const result = f.run("restore.sh", ["--backup", backupDir, "--confirm"], {
-        RECOVERY_TEST_MOUNTS_JSON: mount(other),
-      });
+      const result = f.run(
+        "restore.sh",
+        ["--backup", backupDir, "--confirm", "--mode", "local"],
+        {
+          RECOVERY_TEST_MOUNTS_JSON: mount(other),
+        },
+      );
       assert.notEqual(result.status, 0);
       assert.match(result.stderr, /mount mismatch/);
       assert.doesNotMatch(
@@ -581,5 +605,17 @@ test("backup mount metadata prevents restoring to a different mount", () => {
     } finally {
       f.close();
     }
+  }
+});
+
+test("restore.sh requires --mode explicitly and touches nothing without it", () => {
+  const f = fixture();
+  try {
+    const result = f.run("restore.sh", ["--backup", f.backup, "--confirm"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /--mode is required/);
+    assert.equal(result.calls, "");
+  } finally {
+    f.close();
   }
 });

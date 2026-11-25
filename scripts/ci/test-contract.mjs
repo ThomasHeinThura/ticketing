@@ -87,7 +87,7 @@ export function approvedBreakIdentity(record) {
  * Validate and parse the pre-2.0 approved-breaking-change allowlist.
  *
  * Strict on purpose: this file is in the security-review scope
- * (docs/04-engineering/ci-cd.md), so a malformed entry is a gate that silently passed a
+ * (docs/technical/ci-gates.md), so a malformed entry is a gate that silently passed a
  * finding nobody actually reviewed. Fail closed rather than guess.
  *
  * @param {string} text raw file contents
