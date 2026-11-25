@@ -596,8 +596,10 @@ for (const width of [820, 1440])
       await header.getByRole("button", { name: "Search tickets..." }).click();
     const search = page.getByRole("searchbox", { name: "Search tickets..." });
     await search.fill("fixture");
-    await search.press("Tab");
     const clear = page.getByRole("button", { name: "Clear all" });
+    // The field follows URL state; Tab before the router commits closes the 820px popover.
+    await expect(clear).toBeVisible();
+    await search.press("Tab");
     await expect(clear).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(search).toHaveValue("");
