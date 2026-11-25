@@ -5918,13 +5918,17 @@ async function installAuthenticatedFixture(page: Page) {
       path === "/api/audit" &&
       (url.search === "?entity_type=project&entity_id=visual-project" ||
         url.search ===
-          "?entity_type=project_estimates&entity_id=visual-project")
+          "?entity_type=project_estimates&entity_id=visual-project" ||
+        url.search === "?entity_type=project_features&entity_id=visual-project")
     ) {
       body = {
         entityType:
           url.search === "?entity_type=project&entity_id=visual-project"
             ? "project"
-            : "project_estimates",
+            : url.search ===
+                "?entity_type=project_features&entity_id=visual-project"
+              ? "project_features"
+              : "project_estimates",
         entityId: "visual-project",
         workspaceId: "visual-workspace",
         projectId: "visual-project",
@@ -8559,6 +8563,12 @@ test("project settings features screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(
     page.getByText("Time-boxed sprints for planning and tracking work.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  // History is a lazy chunk above the panel; shooting before it mounts shifts the layout.
+  await expect(
+    page.getByText("Last changed by Visual Tester on Jan 1, 2026, 12:00 PM", {
       exact: true,
     }),
   ).toBeVisible();
