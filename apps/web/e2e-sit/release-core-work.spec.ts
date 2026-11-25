@@ -1,12 +1,16 @@
 import { expect, test } from "@playwright/test";
 import { redactSecretErrorContext } from "../e2e/helpers/redact-secret-error-context";
-import { removeWorkItem, type Session, signIn, stamp } from "./release-helpers";
+import {
+  discoverTarget,
+  removeWorkItem,
+  type Session,
+  signIn,
+  stamp,
+} from "./release-helpers";
 
 test.afterEach(({ browserName: _browserName }, testInfo) => {
   redactSecretErrorContext(testInfo);
 });
-
-const projectId = "uat-proj-web";
 
 /**
  * Release journey: core work (docs/testing.md Level 2). Creates its own item in the Website
@@ -21,6 +25,7 @@ test("core work persists, is shared, denied to viewers and protected from stale 
   const created: string[] = [];
   const sessions: Session[] = [lead];
   try {
+    const { projectId } = await discoverTarget(lead);
     const title = `R929 core work ${stamp()}`;
     const types = await lead.call(
       "GET",
