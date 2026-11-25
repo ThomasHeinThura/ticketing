@@ -356,7 +356,7 @@ async function seedReachableMentionRecipient(
       [administratorEmail],
     );
     expect(administrator.rowCount).toBe(1);
-    // Owner/admin/manager workspace authority is additive (Thomas, 12 Nov).
+    // Owner/admin/manager workspace authority is additive (product decision, 12 Nov).
     // A separate member exercises the comment-only project's real update denial.
     await client.query(
       'INSERT INTO "user" (id, name, email, email_verified) VALUES ($1, $2, $3, true)',

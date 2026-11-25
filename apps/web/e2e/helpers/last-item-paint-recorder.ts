@@ -82,7 +82,7 @@ export function installLastItemPaintRecorderInDocument(
 
     /**
      * G11 "work-list render, 500 rows" (`?layout=table`): the virtualized table's first painted
-     * viewport with all 500 rows loaded. Thomas decided this definition on 28 Oct 2026; the
+     * viewport with all 500 rows loaded. The product owner decided this definition on 28 Oct 2026; the
      * budget is unchanged. The table windows its rows, so it never mounts 500 `tbody tr`:
      * "loaded" is the table's `aria-rowcount` (header row plus one per loaded row), and
      * "painted" is every row position that intersects the viewport being mounted, in order and

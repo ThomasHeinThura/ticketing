@@ -60,7 +60,7 @@ const getPendingRoute = createRoute({
 // user could look up ANY invitation by id). `invitation/policy.ts` had flagged this exact
 // route as needing a human decision on delete-vs-restrict-vs-declare-open (Opus delta
 // pass F4 on PR #440's route-classification guard fix -- see
-// docs/07-planning/security-reviews/440-runtime-authorization-wiring.md). Thomas's
+// docs/07-planning/security-reviews/440-runtime-authorization-wiring.md). the product owner's
 // decision (2026-09-28): keep the operation registered (deleting it outright would be a
 // breaking removal without a deprecation window, which `docs/01-architecture/
 // api-design.md`'s Versioning section forbids once a stable v2.0.0+ tag exists, as one

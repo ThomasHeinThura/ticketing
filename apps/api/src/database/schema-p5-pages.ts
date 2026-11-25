@@ -75,7 +75,7 @@ export const projectPageTable = pgTable(
 
 /**
  * PG-4: a version snapshot. Immutable (an UPDATE trigger refuses edits), except that autosave
- * coalescing (0212, Thomas 31 Oct 2026) may update the page's latest "edit" version by its author.
+ * coalescing (0212, product decision, 31 Oct 2026) may update the page's latest "edit" version by its author.
  */
 export const projectPageVersionTable = pgTable(
   "project_page_version",

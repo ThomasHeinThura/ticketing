@@ -574,7 +574,7 @@ const AUTOMATIC_EFFECT_KINDS: ReadonlySet<string> = new Set(
  * authored kinds. A version with no state templates at all is rejected outright: a workflow that
  * can hold no work item is malformed, not merely empty.
  *
- * **The effect-kind check is `WF-22`** (Thomas's decision, 2026-09-10; spec text at
+ * **The effect-kind check is `WF-22`** (the product owner's decision, 2026-09-10; spec text at
  * `docs/03-features/workflows.md`). `workflow_transition.effects` is a `jsonb` column,
  * exactly like `guards` — a later migration, a hand-edited row, or a rolled-back
  * deployment can put a `kind` there this build has never heard of, or (worse) one of

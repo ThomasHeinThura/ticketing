@@ -407,7 +407,7 @@ async function main() {
               `\`${key}\` was ADDED to the baseline relative to the merge base ` +
                 `${base.sha.slice(0, 9)} (${base.ref}). This list only ever shrinks: ` +
                 `${label} is inherited debt, and appending to it is how a new violation ` +
-                "ships green. Fix the violation, or take the change to Thomas as a " +
+                "ships green. Fix the violation, or take the change to the product owner as a " +
                 "deliberate, recorded exception.",
             ),
           );

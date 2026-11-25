@@ -12,7 +12,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * this batch restricted `/api/column/*` to a browser session, and declaring it now would
  * narrow reach relative to what the route has always done.
  *
- * **Capability: `project:manage_settings` on every mutation (A8-2, Thomas 8 Nov).** rbac.md's
+ * **Capability: `project:manage_settings` on every mutation (A8-2, product decision, 8 Nov).** rbac.md's
  * `project:manage_settings` is "**Project states**, features, labels, SLA and calendar
  * assignment, automations", and `data-model.md`'s project-scoped `state` table is the native
  * successor to kaneo's board `column` (`name`, `icon`, `color`, `isFinal`, `position`), so

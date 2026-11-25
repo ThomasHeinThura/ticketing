@@ -208,7 +208,7 @@ taskdesk:
     # rate-limit bucket, the API-key IP allowlist and audit_log.actor_ip.
     #
     # Set it explicitly whenever anything else sits in front of the Ingress.
-    # On the bimats.com host the measured chain is CloudFront -> Traefik ->
+    # On a CDN-fronted host the measured chain is CloudFront -> Traefik ->
     # TaskDesk, so deploy/compose.uat.yml sets 2 explicitly — that number came
     # from headers captured off the running host, not from counting boxes on a
     # diagram. Measure yours the same way before setting it:

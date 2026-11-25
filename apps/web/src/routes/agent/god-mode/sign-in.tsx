@@ -16,7 +16,7 @@ import { godModeRedirectPath } from "@/lib/god-mode-paths";
 import { parseOptionalStringSearch } from "@/lib/optional-string-search";
 
 /**
- * God Mode's own sign-in page (L-03, Thomas 30 Oct, option A). Password and the existing
+ * God Mode's own sign-in page (L-03, product decision, 30 Oct, option A). Password and the existing
  * two-factor step only: no SSO, social, email-code, sign-up or invitation path, because
  * identity-provider data never grants instance admin. It creates the same session as the normal
  * sign-in; the God Mode pages and the API still decide who is an instance admin.

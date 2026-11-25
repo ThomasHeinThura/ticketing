@@ -115,7 +115,7 @@ describe("versioned release requires the consolidated phase report before build/
   it("validates unchanged reviewed source after the report-only commit", () => {
     const result = check(fixture());
     assert.equal(result.status, 0, output(result));
-    assert.match(output(result), /Thomas acceptance is recorded separately/);
+    assert.match(output(result), /owner acceptance is recorded separately/);
   });
   it("fails closed when the phase/report is omitted", () => {
     const result = check(fixture(), {

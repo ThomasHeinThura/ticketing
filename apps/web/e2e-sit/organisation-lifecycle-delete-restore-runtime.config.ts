@@ -14,7 +14,7 @@ export default defineConfig({
     baseURL: "https://ticketing.localhost",
     ignoreHTTPSErrors: false,
     locale: "en-US",
-    timezoneId: "Asia/Yangon",
+    timezoneId: "UTC",
     colorScheme: "light",
     reducedMotion: "reduce",
     trace: "off",

@@ -12,7 +12,7 @@ export default defineConfig({
   use: {
     baseURL: agentOrigin,
     locale: "en-US",
-    timezoneId: "Asia/Yangon",
+    timezoneId: "UTC",
     colorScheme: "light",
     reducedMotion: "reduce",
     ignoreHTTPSErrors: ignoreHTTPSErrors(agentOrigin),

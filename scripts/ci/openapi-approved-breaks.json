@@ -5,7 +5,7 @@
 		"fingerprint": "8f4e10455f15",
 		"pr": 891,
 		"reason": "Retired legacy immediate delete: DELETE /activity/comment no longer deletes with 200; it answers 410 Gone (after the same reach checks) with Deprecation/Sunset/successor Link, pointing at the pending-action successor. Intentional removal of a no-approval delete.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
 	},
 	{
 		"operation": "DELETE /attachments/{id}",
@@ -13,7 +13,7 @@
 		"fingerprint": "049c6a700833",
 		"pr": 891,
 		"reason": "DELETE /attachments/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "DELETE /canned-responses/{id}",
@@ -21,7 +21,7 @@
 		"fingerprint": "d4d3417f61d1",
 		"pr": 891,
 		"reason": "DELETE /canned-responses/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "DELETE /column/{id}",
@@ -29,7 +29,7 @@
 		"fingerprint": "c8282e671448",
 		"pr": 891,
 		"reason": "DELETE /column/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "DELETE /comment/{id}",
@@ -37,7 +37,7 @@
 		"fingerprint": "afc054668df8",
 		"pr": 891,
 		"reason": "Retired legacy immediate delete: DELETE /comment/{id} no longer deletes with 200; it answers 410 Gone (after the same reach checks) with Deprecation/Sunset/successor Link, pointing at the pending-action successor. Intentional removal of a no-approval delete.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
 	},
 	{
 		"operation": "DELETE /comments/{id}",
@@ -45,7 +45,7 @@
 		"fingerprint": "73d81d5b0115",
 		"pr": 891,
 		"reason": "DELETE /comments/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "DELETE /invitation/{id}",
@@ -53,7 +53,7 @@
 		"fingerprint": "57c06b7cee8c",
 		"pr": 891,
 		"reason": "DELETE /invitation/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "DELETE /label/project/{projectId}/catalogue/{id}",
@@ -61,7 +61,7 @@
 		"fingerprint": "255b7a97eabf",
 		"pr": 891,
 		"reason": "DELETE /label/project/{projectId}/catalogue/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "DELETE /label/{id}",
@@ -69,7 +69,7 @@
 		"fingerprint": "371629fd307f",
 		"pr": 891,
 		"reason": "DELETE /label/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "GET /portal/submissions/{ref}",
@@ -77,7 +77,7 @@
 		"fingerprint": "72c06b581c8b",
 		"pr": 891,
 		"reason": "messages[].actorType was an unconstrained string and is now the closed enum customer | triager | system (this finding: customer); 'system' is the IQ-15 auto-decline author, never a person id.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15 (system auto-decline); feature-contracts-p3.md CP-4 (no person ids for customers)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15 (system auto-decline); feature-contracts-p3.md CP-4 (no person ids for customers)"
 	},
 	{
 		"operation": "GET /portal/submissions/{ref}",
@@ -85,7 +85,7 @@
 		"fingerprint": "04a06a1d1bd5",
 		"pr": 891,
 		"reason": "messages[].actorType was an unconstrained string and is now the closed enum customer | triager | system (this finding: system); 'system' is the IQ-15 auto-decline author, never a person id.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15 (system auto-decline); feature-contracts-p3.md CP-4 (no person ids for customers)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15 (system auto-decline); feature-contracts-p3.md CP-4 (no person ids for customers)"
 	},
 	{
 		"operation": "GET /portal/submissions/{ref}",
@@ -93,7 +93,7 @@
 		"fingerprint": "281ca098abdd",
 		"pr": 891,
 		"reason": "messages[].actorType was an unconstrained string and is now the closed enum customer | triager | system (this finding: triager); 'system' is the IQ-15 auto-decline author, never a person id.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15 (system auto-decline); feature-contracts-p3.md CP-4 (no person ids for customers)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15 (system auto-decline); feature-contracts-p3.md CP-4 (no person ids for customers)"
 	},
 	{
 		"operation": "GET /portal/submissions/{ref}",
@@ -101,7 +101,7 @@
 		"fingerprint": "96b739f43781",
 		"pr": 891,
 		"reason": "Portal submission detail no longer exposes the linked work item's internal workflow state name (workItem.state); the customer sees the server-decided customerStatus plus workItem.resolvedAt and the customer-safe SLA projection. Portal client reads customerStatus, never workItem.state.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p3.md CP-5 (customer-facing terminology, never internal state names), CP-6 / SLA-21; commit f4106eb80"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p3.md CP-5 (customer-facing terminology, never internal state names), CP-6 / SLA-21; commit f4106eb80"
 	},
 	{
 		"operation": "POST /portal/submissions/{ref}/messages",
@@ -109,7 +109,7 @@
 		"fingerprint": "9a4c370354e0",
 		"pr": 891,
 		"reason": "POST /portal/submissions/{ref}/messages: message authorId is null for system-authored messages (IQ-15 clarification auto-decline); the database enforces (actor_type = 'system') = (author_id IS NULL). Staff and customer messages still carry an author.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
 	},
 	{
 		"operation": "POST /project",
@@ -117,7 +117,7 @@
 		"fingerprint": "1127d14a282d",
 		"pr": 891,
 		"reason": "POST /project slug (project key) now validates ^[A-Z]{2,8}$ as the contract requires; the web create-project modal validates the same PROJECT_KEY_PATTERN before submit.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md PR-13 (project key is 2–8 uppercase characters)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md PR-13 (project key is 2–8 uppercase characters)"
 	},
 	{
 		"operation": "DELETE /project/{id}",
@@ -125,7 +125,7 @@
 		"fingerprint": "7900854809b8",
 		"pr": 891,
 		"reason": "DELETE /project/{id} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "DELETE /project/{id}/document-links/{documentLinkId}",
@@ -133,7 +133,7 @@
 		"fingerprint": "d541e339cbd9",
 		"pr": 891,
 		"reason": "DELETE /project/{id}/document-links/{documentLinkId} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "DELETE /project/{id}/milestones/{milestoneId}",
@@ -141,7 +141,7 @@
 		"fingerprint": "e634630afaab",
 		"pr": 891,
 		"reason": "DELETE /project/{id}/milestones/{milestoneId} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "DELETE /project/{id}/prerequisites/{prerequisiteId}",
@@ -149,7 +149,7 @@
 		"fingerprint": "107568db1cdc",
 		"pr": 891,
 		"reason": "DELETE /project/{id}/prerequisites/{prerequisiteId} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "GET /search",
@@ -157,7 +157,7 @@
 		"fingerprint": "097582e8a315",
 		"pr": 891,
 		"reason": "Global search returns the new result kind kb_article (canonical work items, people, saved views, KB articles, pages); the web command palette (search-targets.ts) handles every kind. Legacy kinds unchanged.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
 	},
 	{
 		"operation": "GET /search",
@@ -165,7 +165,7 @@
 		"fingerprint": "0cca6fe3f44a",
 		"pr": 891,
 		"reason": "Global search returns the new result kind page (canonical work items, people, saved views, KB articles, pages); the web command palette (search-targets.ts) handles every kind. Legacy kinds unchanged.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
 	},
 	{
 		"operation": "GET /search",
@@ -173,7 +173,7 @@
 		"fingerprint": "898e89c5ead7",
 		"pr": 891,
 		"reason": "Global search returns the new result kind person (canonical work items, people, saved views, KB articles, pages); the web command palette (search-targets.ts) handles every kind. Legacy kinds unchanged.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
 	},
 	{
 		"operation": "GET /search",
@@ -181,7 +181,7 @@
 		"fingerprint": "512b3d2428c0",
 		"pr": 891,
 		"reason": "Global search returns the new result kind saved_view (canonical work items, people, saved views, KB articles, pages); the web command palette (search-targets.ts) handles every kind. Legacy kinds unchanged.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
 	},
 	{
 		"operation": "GET /search",
@@ -189,7 +189,7 @@
 		"fingerprint": "c634be226cc8",
 		"pr": 891,
 		"reason": "Global search returns the new result kind work_item (canonical work items, people, saved views, KB articles, pages); the web command palette (search-targets.ts) handles every kind. Legacy kinds unchanged.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p1.md SV-1 (palette searches work items, people, saved views, KB articles); feature-contracts-p5.md PG-6 (pages in canonical search)"
 	},
 	{
 		"operation": "GET /submissions/{ref}",
@@ -197,7 +197,7 @@
 		"fingerprint": "fbb134f8ccc1",
 		"pr": 891,
 		"reason": "GET /submissions/{ref}: message authorId is null for system-authored messages (IQ-15 clarification auto-decline); the database enforces (actor_type = 'system') = (author_id IS NULL). Staff and customer messages still carry an author.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
 	},
 	{
 		"operation": "POST /submissions/{ref}/decline",
@@ -205,7 +205,7 @@
 		"fingerprint": "70525082aca0",
 		"pr": 891,
 		"reason": "POST /submissions/{ref}/decline: message authorId is null for system-authored messages (IQ-15 clarification auto-decline); the database enforces (actor_type = 'system') = (author_id IS NULL). Staff and customer messages still carry an author.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
 	},
 	{
 		"operation": "POST /submissions/{ref}/messages",
@@ -213,7 +213,7 @@
 		"fingerprint": "09ea2dbd76b2",
 		"pr": 891,
 		"reason": "POST /submissions/{ref}/messages: message authorId is null for system-authored messages (IQ-15 clarification auto-decline); the database enforces (actor_type = 'system') = (author_id IS NULL). Staff and customer messages still carry an author.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-15; data-model.md submission_message (check submission_message_system_author)"
 	},
 	{
 		"operation": "DELETE /task-relation/{id}",
@@ -221,7 +221,7 @@
 		"fingerprint": "e6b05924ca53",
 		"pr": 891,
 		"reason": "Retired legacy immediate delete: DELETE /task-relation/{id} no longer deletes with 200; it answers 410 Gone (after the same reach checks) with Deprecation/Sunset/successor Link, pointing at the pending-action successor. Intentional removal of a no-approval delete.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
 	},
 	{
 		"operation": "DELETE /task/{id}",
@@ -229,7 +229,7 @@
 		"fingerprint": "fc5efdfc49c2",
 		"pr": 891,
 		"reason": "Retired legacy immediate delete: DELETE /task/{id} no longer deletes with 200; it answers 410 Gone (after the same reach checks) with Deprecation/Sunset/successor Link, pointing at the pending-action successor. Intentional removal of a no-approval delete.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (universal deletion approval); delete-routes-never-immediate.test.ts 'four retired legacy deletes answer 410'; events.md (DELETE remains 410)"
 	},
 	{
 		"operation": "POST /views/{id}/run",
@@ -237,7 +237,7 @@
 		"fingerprint": "023cb84c4bfd",
 		"pr": 891,
 		"reason": "A saved view whose query.entity is 'submission' (intake queue half) runs to { submissions, page, meta }; work-item views still return WorkItemListResponse. Declared anyOf; the web runSavedView fetcher branches on 'submissions' (oasdiff finding: response-body-any-of-added).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
 	},
 	{
 		"operation": "POST /views/{id}/run",
@@ -245,7 +245,7 @@
 		"fingerprint": "024daaeca05a",
 		"pr": 891,
 		"reason": "A saved view whose query.entity is 'submission' (intake queue half) runs to { submissions, page, meta }; work-item views still return WorkItemListResponse. Declared anyOf; the web runSavedView fetcher branches on 'submissions' (oasdiff finding: response-body-type-changed).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
 	},
 	{
 		"operation": "POST /views/{id}/run",
@@ -253,7 +253,7 @@
 		"fingerprint": "83b73f4607c2",
 		"pr": 891,
 		"reason": "A saved view whose query.entity is 'submission' (intake queue half) runs to { submissions, page, meta }; work-item views still return WorkItemListResponse. Declared anyOf; the web runSavedView fetcher branches on 'submissions' (oasdiff finding: response-required-property-removed).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
 	},
 	{
 		"operation": "POST /views/{id}/run",
@@ -261,7 +261,7 @@
 		"fingerprint": "a3a97f5bb822",
 		"pr": 891,
 		"reason": "A saved view whose query.entity is 'submission' (intake queue half) runs to { submissions, page, meta }; work-item views still return WorkItemListResponse. Declared anyOf; the web runSavedView fetcher branches on 'submissions' (oasdiff finding: response-required-property-removed).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
 	},
 	{
 		"operation": "POST /views/{id}/run",
@@ -269,7 +269,7 @@
 		"fingerprint": "31ad48863c39",
 		"pr": 891,
 		"reason": "A saved view whose query.entity is 'submission' (intake queue half) runs to { submissions, page, meta }; work-item views still return WorkItemListResponse. Declared anyOf; the web runSavedView fetcher branches on 'submissions' (oasdiff finding: response-required-property-removed).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p2.md IQ-19 (queue = two saved views, entity submission | work_item)"
 	},
 	{
 		"operation": "POST /work-items/search",
@@ -277,7 +277,7 @@
 		"fingerprint": "cb38454849e1",
 		"pr": 891,
 		"reason": "Work-item search cursor input max is 2048, the same bound as every other cursor; the server never issues a longer cursor (repository.ts falls back to a compact anchor cursor above 2048) and cursors are opaque, actor/query-bound continuations from this route only.",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md work-item search v1 (cursor is an opaque continuation from this route)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md work-item search v1 (cursor is an opaque continuation from this route)"
 	},
 	{
 		"operation": "DELETE /work-items/{key}",
@@ -285,7 +285,7 @@
 		"fingerprint": "13d1a9523093",
 		"pr": 891,
 		"reason": "DELETE /work-items/{key} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "POST /workflows/{id}/versions/{number}/publish",
@@ -293,7 +293,7 @@
 		"fingerprint": "b52ec8e82139",
 		"pr": 891,
 		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-body-any-of-added, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
 	},
 	{
 		"operation": "POST /workflows/{id}/versions/{number}/publish",
@@ -301,7 +301,7 @@
 		"fingerprint": "7e803832195c",
 		"pr": 891,
 		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-body-type-changed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
 	},
 	{
 		"operation": "POST /workflows/{id}/versions/{number}/publish",
@@ -309,7 +309,7 @@
 		"fingerprint": "32dc548cc120",
 		"pr": 891,
 		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
 	},
 	{
 		"operation": "POST /workflows/{id}/versions/{number}/publish",
@@ -317,7 +317,7 @@
 		"fingerprint": "642c2f1ca942",
 		"pr": 891,
 		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
 	},
 	{
 		"operation": "POST /workflows/{id}/versions/{number}/publish",
@@ -325,7 +325,7 @@
 		"fingerprint": "84350ab8c855",
 		"pr": 891,
 		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
 	},
 	{
 		"operation": "POST /workflows/{id}/versions/{number}/publish",
@@ -333,7 +333,7 @@
 		"fingerprint": "cd99b5634036",
 		"pr": 891,
 		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
 	},
 	{
 		"operation": "POST /workflows/{id}/versions/{number}/publish",
@@ -341,7 +341,7 @@
 		"fingerprint": "1d74a8a17da7",
 		"pr": 891,
 		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
 	},
 	{
 		"operation": "POST /workflows/{id}/versions/{number}/publish",
@@ -349,7 +349,7 @@
 		"fingerprint": "48f23c75513f",
 		"pr": 891,
 		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
 	},
 	{
 		"operation": "POST /workflows/{id}/versions/{number}/publish",
@@ -357,7 +357,7 @@
 		"fingerprint": "c60cbc64a2ca",
 		"pr": 891,
 		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
 	},
 	{
 		"operation": "POST /workflows/{id}/versions/{number}/publish",
@@ -365,7 +365,7 @@
 		"fingerprint": "0969231b7602",
 		"pr": 891,
 		"reason": "Publish gains an opt-in ?dryRun=true that returns the read-only WorkflowVersionValidation report (valid, affected counts, stuck/unreachable states) instead of publishing; the response is declared anyOf[WorkflowVersion, WorkflowVersionValidation]. Without dryRun the response is the unchanged WorkflowVersion (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (workflow publish states blast radius via ?dryRun=true); WF-9"
 	},
 	{
 		"operation": "DELETE /workspace/{workspaceId}",
@@ -373,7 +373,7 @@
 		"fingerprint": "3d6872802a98",
 		"pr": 891,
 		"reason": "DELETE /workspace/{workspaceId} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "DELETE /workspace/{workspaceId}/roles/{roleId}",
@@ -381,7 +381,7 @@
 		"fingerprint": "5c80728c297f",
 		"pr": 891,
 		"reason": "DELETE /workspace/{workspaceId}/roles/{roleId} no longer deletes immediately with 200; it records a pending action and answers 202 { pendingActionId, action, summary, confirmation, expiresAt, approveUrl }, nothing deleted until approved. Web/MCP callers already handle 202 (MCP tools/pending-deletion.ts).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — safety-and-runtime.md PA-1/PA-2 (every deletion is a pending action); delete-routes-runtime-pending.test.ts"
 	},
 	{
 		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
@@ -389,7 +389,7 @@
 		"fingerprint": "977e06047f8a",
 		"pr": 891,
 		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-body-any-of-added, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
 	},
 	{
 		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
@@ -397,7 +397,7 @@
 		"fingerprint": "33af0bb7761c",
 		"pr": 891,
 		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-body-type-changed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
 	},
 	{
 		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
@@ -405,7 +405,7 @@
 		"fingerprint": "9b30e62c4cb6",
 		"pr": 891,
 		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
 	},
 	{
 		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
@@ -413,7 +413,7 @@
 		"fingerprint": "2af727f68268",
 		"pr": 891,
 		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
 	},
 	{
 		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
@@ -421,7 +421,7 @@
 		"fingerprint": "11f70f968f27",
 		"pr": 891,
 		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
 	},
 	{
 		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
@@ -429,7 +429,7 @@
 		"fingerprint": "a37fe33086ce",
 		"pr": 891,
 		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
 	},
 	{
 		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
@@ -437,7 +437,7 @@
 		"fingerprint": "696bfe3e08bd",
 		"pr": 891,
 		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
 	},
 	{
 		"operation": "PATCH /workspace/{workspaceId}/roles/{roleId}",
@@ -445,7 +445,7 @@
 		"fingerprint": "81a2afe95fc2",
 		"pr": 891,
 		"reason": "Role PATCH gains an opt-in ?dryRun=true returning { affected: { people, workItems, projects } } without spending the step-up proof or writing; declared anyOf[WorkspaceRole, preview]. Without dryRun the response is the unchanged WorkspaceRole (oasdiff reports this finding, response-required-property-removed, because the schema is now a union).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p4.md ST-7 (role change ?dryRun=true returns affected counts)"
 	},
 	{
 		"operation": "POST /portal/submissions/{ref}/attachments/{id}/complete",
@@ -453,7 +453,7 @@
 		"fingerprint": "59058091752f",
 		"pr": 891,
 		"reason": "Portal attachment-complete response is now a dedicated customer projection instead of allOf[Attachment, …]: the staff Attachment component gained commentId, canDelete and canRestore, which must not reach the portal. Fields returned to the customer are unchanged (same 11 properties, same required set).",
-		"decision": "Thomas-approved 27 Oct 2026 in PR #891 review — feature-contracts-p3.md CP-3/CP-4 (portal shapes are server-filtered customer projections)"
+		"decision": "Owner-approved 27 Oct 2026 in PR #891 review — feature-contracts-p3.md CP-3/CP-4 (portal shapes are server-filtered customer projections)"
 	},
 	{
 		"operation": "POST /service-calendars/{id}/holidays/import",
@@ -461,7 +461,7 @@
 		"fingerprint": "7e2f65842b28",
 		"pr": 1006,
 		"reason": "The holiday import body's `ics` string is now capped at 262144 characters (256 KiB), the parser's existing HOLIDAY_IMPORT_LIMITS.bytes; a longer file was already refused with 400 by the parser, so no previously accepted request is refused. The schema cap rejects it earlier, before parsing.",
-		"decision": "Thomas-approved 31 Oct 2026 — issue #704 part 1 (lone-surrogate 500 and holiday import bound), fixed in PR #1006"
+		"decision": "Owner-approved 31 Oct 2026 — issue #704 part 1 (lone-surrogate 500 and holiday import bound), fixed in PR #1006"
 	},
 	{
 		"operation": "GET /storage/portal-download",
@@ -469,7 +469,7 @@
 		"fingerprint": "6748abc0a499",
 		"pr": 1103,
 		"reason": "The v2 person-bound portal download token requires attachment id to resolve the current authorized row. Old key-bearing links have a five-minute lifetime but are rejected immediately after this route change.",
-		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
+		"decision": "The product owner approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
 	},
 	{
 		"operation": "GET /storage/portal-download",
@@ -477,7 +477,7 @@
 		"fingerprint": "120671cca674",
 		"pr": 1103,
 		"reason": "The v2 person-bound portal download token requires the public parent reference so current request or submission reach is rechecked before every byte request.",
-		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
+		"decision": "The product owner approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
 	},
 	{
 		"operation": "GET /storage/portal-download",
@@ -485,7 +485,7 @@
 		"fingerprint": "4a5c3f30e276",
 		"pr": 1103,
 		"reason": "The v2 person-bound portal download token requires request or submission scope to select the current reach predicate before reading storage.",
-		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
+		"decision": "The product owner approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
 	},
 	{
 		"operation": "GET /storage/portal-download",
@@ -493,7 +493,7 @@
 		"fingerprint": "a87cbc8872de",
 		"pr": 1103,
 		"reason": "The filename now comes from the authorized attachment row, preventing a signed link from supplying untrusted download metadata.",
-		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
+		"decision": "The product owner approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
 	},
 	{
 		"operation": "GET /storage/portal-download",
@@ -501,7 +501,7 @@
 		"fingerprint": "e6ca740590b4",
 		"pr": 1103,
 		"reason": "The object key now comes from the attachment row after live reach; no storage key is exposed in a portal link, including prefixed S3 keys.",
-		"decision": "Thomas approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
+		"decision": "The product owner approved API-mediated S3 portal downloads with live access and HEAD/Range on 10 Nov 2026; AT-5 and CP-19 record the new token contract."
 	},
 	{
 		"operation": "POST /workspace/{workspaceId}/invitations",
@@ -533,7 +533,7 @@
 		"fingerprint": "9a85b12561c7",
 		"pr": 1122,
 		"reason": "Workspace creation requires the instance administrator to name an existing active staff owner using ownerUserId.",
-		"decision": "Thomas, owner decision D-A, 12 Nov 2026"
+		"decision": "Owner decision D-A, 12 Nov 2026"
 	},
 	{
 		"operation": "POST /instance/notification-providers/email/test",
@@ -541,7 +541,7 @@
 		"fingerprint": "b735d575ce37",
 		"pr": 1126,
 		"reason": "The Test action now sends a real email to a recipient the administrator types, so `recipient` is required. The only client is the God Mode email settings screen, updated in the same PR.",
-		"decision": "Thomas, owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
+		"decision": "Owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
 	},
 	{
 		"operation": "POST /instance/notification-providers/email/test",
@@ -549,7 +549,7 @@
 		"fingerprint": "47dff6f6c6f0",
 		"pr": 1126,
 		"reason": "The Test response is now either a success result or a failure result with the SMTP reply code and a clear message, expressed as two alternatives.",
-		"decision": "Thomas, owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
+		"decision": "Owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
 	},
 	{
 		"operation": "POST /instance/notification-providers/email/test",
@@ -557,7 +557,7 @@
 		"fingerprint": "d21999362760",
 		"pr": 1126,
 		"reason": "Same change as the oneOf entry: the 200 body became a union of the success and failure results.",
-		"decision": "Thomas, owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
+		"decision": "Owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
 	},
 	{
 		"operation": "POST /instance/notification-providers/email/test",
@@ -565,7 +565,7 @@
 		"fingerprint": "2737783c3aff",
 		"pr": 1126,
 		"reason": "`verified` described a login-only check that no longer exists; the result now reports whether the test email was handed to the provider.",
-		"decision": "Thomas, owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
+		"decision": "Owner decision D-M, 12 Nov 2026 (docs/plan.md section 2: Amazon SES setup in God Mode with a Test button that sends a real email); PR #1126 independent security review, three rounds."
 	},
 	{
 		"operation": "PUT /instance/auth/local-methods",
@@ -573,7 +573,7 @@
 		"fingerprint": "b87998864d85",
 		"pr": 1131,
 		"reason": "The local sign-in settings body now carries staffSelfRegistrationEnabled so the staff sign-up switch is saved with the other methods in one confirmed write.",
-		"decision": "Thomas, owner decision D-B, 12 Nov 2026: staff sign-up is invitation-only by default with a God Mode switch that needs the second factor."
+		"decision": "Owner decision D-B, 12 Nov 2026: staff sign-up is invitation-only by default with a God Mode switch that needs the second factor."
 	},
 	{
 		"operation": "POST /me/step-up",
@@ -581,7 +581,7 @@
 		"fingerprint": "4e457ce0fcb7",
 		"pr": 1131,
 		"reason": "The local-methods confirmation bindings were replaced by bindings that include staffSelfRegistrationEnabled; the old shapes are superseded, not dropped without replacement.",
-		"decision": "Thomas, owner decision D-B, 12 Nov 2026: staff sign-up is invitation-only by default with a God Mode switch that needs the second factor."
+		"decision": "Owner decision D-B, 12 Nov 2026: staff sign-up is invitation-only by default with a God Mode switch that needs the second factor."
 	},
 	{
 		"operation": "POST /me/step-up/challenges",
@@ -589,7 +589,7 @@
 		"fingerprint": "1e55fd8f909c",
 		"pr": 1131,
 		"reason": "The second-factor challenge for saving local sign-in settings is bound to the staff sign-up switch value, so a proof cannot be reused for a different switch state.",
-		"decision": "Thomas, owner decision D-B, 12 Nov 2026: staff sign-up is invitation-only by default with a God Mode switch that needs the second factor."
+		"decision": "Owner decision D-B, 12 Nov 2026: staff sign-up is invitation-only by default with a God Mode switch that needs the second factor."
 	},
 	{
 		"operation": "PATCH /task/bulk",
@@ -597,7 +597,7 @@
 		"fingerprint": "199f2d290bf5",
 		"pr": 1185,
 		"reason": "Retired legacy bulk task endpoint PATCH /api/task/bulk had zero live web, MCP, or integration callers after canonical POST /api/work-items/bulk shipped (including pending-action bulk deletion). Removed together with its dead web fetchers/hooks/toolbars and contract update.",
-		"decision": "Thomas, docs/plan.md section 4 P-19 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: remove dead PATCH /api/task/bulk alongside its retained-constraints.md contract update."
+		"decision": "Owner decision, docs/plan.md section 4 P-19 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: remove dead PATCH /api/task/bulk alongside its retained-constraints.md contract update."
 	},
 	{
 		"operation": "GET /task/export/{projectId}",
@@ -605,7 +605,7 @@
 		"fingerprint": "bb7c3298488e",
 		"pr": 1185,
 		"reason": "Retired legacy JSON task export GET /api/task/export/{projectId} in favour of GET /api/work-items/export; deprecated route now returns 410 Gone with Deprecation/Sunset/Link successor headers after reach, work_item:read capability, and live-project checks.",
-		"decision": "Thomas, docs/plan.md section 4 P-15 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: retire legacy task export to 410 Gone alongside retained-constraints.md update."
+		"decision": "Owner decision, docs/plan.md section 4 P-15 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: retire legacy task export to 410 Gone alongside retained-constraints.md update."
 	},
 	{
 		"operation": "POST /task/import/{projectId}",
@@ -613,7 +613,7 @@
 		"fingerprint": "cf9a743f446a",
 		"pr": 1185,
 		"reason": "Retired legacy JSON task import POST /api/task/import/{projectId} no longer accepts an import body after retirement to 410 Gone in favour of POST /api/instance/imports.",
-		"decision": "Thomas, docs/plan.md section 4 P-15 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: retire legacy task import to 410 Gone alongside retained-constraints.md update."
+		"decision": "Owner decision, docs/plan.md section 4 P-15 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: retire legacy task import to 410 Gone alongside retained-constraints.md update."
 	},
 	{
 		"operation": "POST /task/import/{projectId}",
@@ -621,7 +621,7 @@
 		"fingerprint": "545f3da7ac2f",
 		"pr": 1185,
 		"reason": "Retired legacy JSON task import POST /api/task/import/{projectId} in favour of POST /api/instance/imports; deprecated route now returns 410 Gone with Deprecation/Sunset/Link successor headers after reach, work_item:create capability, and live-project checks.",
-		"decision": "Thomas, docs/plan.md section 4 P-15 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: retire legacy task import to 410 Gone alongside retained-constraints.md update."
+		"decision": "Owner decision, docs/plan.md section 4 P-15 (14 Nov 2026) and docs/technical/design-and-decisions.md Decision 20: retire legacy task import to 410 Gone alongside retained-constraints.md update."
 	},
 	{
 		"operation": "GET /instance/plugins",
@@ -629,7 +629,7 @@
 		"fingerprint": "fea10cdacffc",
 		"pr": 1186,
 		"reason": "Expanded GET /instance/plugins inventory to expose configured runtime sub-processor kinds including identity for W12 H-1.",
-		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+		"decision": "Owner decision, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
 	},
 	{
 		"operation": "GET /instance/plugins",
@@ -637,7 +637,7 @@
 		"fingerprint": "6fe6d1658a8c",
 		"pr": 1186,
 		"reason": "Expanded GET /instance/plugins inventory to expose identity.sso sub-processor entries for W12 H-1.",
-		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+		"decision": "Owner decision, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
 	},
 	{
 		"operation": "GET /instance/plugins",
@@ -645,7 +645,7 @@
 		"fingerprint": "cfc411c6660d",
 		"pr": 1186,
 		"reason": "Expanded GET /instance/plugins inventory to expose observability sub-processor kinds for W12 H-1.",
-		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+		"decision": "Owner decision, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
 	},
 	{
 		"operation": "GET /instance/plugins",
@@ -653,7 +653,7 @@
 		"fingerprint": "d20e99f4fae1",
 		"pr": 1186,
 		"reason": "Expanded GET /instance/plugins inventory to expose observability.telemetry sub-processor entries for W12 H-1.",
-		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+		"decision": "Owner decision, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
 	},
 	{
 		"operation": "GET /instance/plugins",
@@ -661,7 +661,7 @@
 		"fingerprint": "04717b5601ec",
 		"pr": 1186,
 		"reason": "Expanded GET /instance/plugins inventory to expose storage sub-processor kinds for W12 H-1.",
-		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+		"decision": "Owner decision, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
 	},
 	{
 		"operation": "GET /instance/plugins",
@@ -669,7 +669,7 @@
 		"fingerprint": "d9f2fb75d839",
 		"pr": 1186,
 		"reason": "Expanded GET /instance/plugins inventory to expose storage.s3 sub-processor entries for W12 H-1.",
-		"decision": "Thomas, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
+		"decision": "Owner decision, docs/plan.md section 4 H-1 (14 Nov 2026) and docs/technical/safety-and-runtime.md sub-processor disclosure."
 	},
 	{
 		"operation": "DELETE /teams/{id}",
@@ -677,7 +677,7 @@
 		"fingerprint": "db2d7eb4a62c",
 		"pr": 1196,
 		"reason": "Team deletion now returns typed_name instead of click and requires the exact team name before execution. Other deletion response contracts are unchanged.",
-		"decision": "Thomas explicitly approved 16 Nov 2026: Require the team name and update the deletion contract (#901). Recorded in docs/technical/design-and-decisions.md and the team confirmation row in docs/technical/safety-and-runtime.md."
+		"decision": "The product owner explicitly approved 16 Nov 2026: Require the team name and update the deletion contract (#901). Recorded in docs/technical/design-and-decisions.md and the team confirmation row in docs/technical/safety-and-runtime.md."
 	},
 	{
 		"operation": "GET /portal/notification-preferences/canonical",
@@ -685,7 +685,7 @@
 		"fingerprint": "64f61061211d",
 		"pr": 1197,
 		"reason": "added the new `approval.expiring` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "GET /portal/notification-preferences/canonical",
@@ -693,7 +693,7 @@
 		"fingerprint": "49ab66939ed9",
 		"pr": 1197,
 		"reason": "added the new `approval.requested` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "GET /portal/notification-preferences/canonical",
@@ -701,7 +701,7 @@
 		"fingerprint": "1f8d99dd0a2f",
 		"pr": 1197,
 		"reason": "added the new `approval.withdrawn` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "GET /portal/notification-preferences/canonical",
@@ -709,7 +709,7 @@
 		"fingerprint": "5939eefe9e92",
 		"pr": 1197,
 		"reason": "added the new `submission.accepted` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "GET /portal/notification-preferences/canonical",
@@ -717,7 +717,7 @@
 		"fingerprint": "a0a7203f7fb6",
 		"pr": 1197,
 		"reason": "added the new `submission.declined` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "GET /portal/notification-preferences/canonical",
@@ -725,7 +725,7 @@
 		"fingerprint": "78ad8f04382c",
 		"pr": 1197,
 		"reason": "added the new `submission.replied` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "GET /portal/notification-preferences/canonical",
@@ -733,7 +733,7 @@
 		"fingerprint": "c5e7f516e7d2",
 		"pr": 1197,
 		"reason": "added the new `work_item.transitioned` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "PUT /portal/notification-preferences/canonical",
@@ -741,7 +741,7 @@
 		"fingerprint": "f1eb0e6afc6d",
 		"pr": 1197,
 		"reason": "added the new `approval.expiring` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "PUT /portal/notification-preferences/canonical",
@@ -749,7 +749,7 @@
 		"fingerprint": "2a4f5261c9e2",
 		"pr": 1197,
 		"reason": "added the new `approval.requested` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "PUT /portal/notification-preferences/canonical",
@@ -757,7 +757,7 @@
 		"fingerprint": "c27ef87b8b19",
 		"pr": 1197,
 		"reason": "added the new `approval.withdrawn` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "PUT /portal/notification-preferences/canonical",
@@ -765,7 +765,7 @@
 		"fingerprint": "3a524d152925",
 		"pr": 1197,
 		"reason": "added the new `submission.accepted` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "PUT /portal/notification-preferences/canonical",
@@ -773,7 +773,7 @@
 		"fingerprint": "aff6b04bcec3",
 		"pr": 1197,
 		"reason": "added the new `submission.declined` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "PUT /portal/notification-preferences/canonical",
@@ -781,7 +781,7 @@
 		"fingerprint": "a9ee03e2beb0",
 		"pr": 1197,
 		"reason": "added the new `submission.replied` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "PUT /portal/notification-preferences/canonical",
@@ -789,7 +789,7 @@
 		"fingerprint": "1988a1806e71",
 		"pr": 1197,
 		"reason": "added the new `work_item.transitioned` enum value to the `items/eventKind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "GET /portal/notification/inbox",
@@ -797,7 +797,7 @@
 		"fingerprint": "1b14560506a6",
 		"pr": 1197,
 		"reason": "added the new `submission.accepted` enum value to the `data/items/kind` response property for the response status `200`",
-		"decision": "Thomas explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
+		"decision": "The product owner explicitly approved these exact 15 additive enum findings on 16 Nov 2026 in continuation chat: 'Approve these 15 enum additions'. NO-21, issue #903; seven kinds on canonical GET, seven on PUT and submission.accepted in the portal inbox. No other contract finding is approved."
 	},
 	{
 		"operation": "POST /project",
@@ -805,6 +805,6 @@
 		"fingerprint": "0c4584fc52c5",
 		"pr": 1201,
 		"reason": "Owner-requested #1199 extends new project keys from 2-8 to 2-15 uppercase ASCII letters. The accepted set is a strict superset; the minimum, alphabet, existing keys, legacy update exemption and permanent claims remain unchanged. No other API change is covered.",
-		"decision": "Thomas requested longer project short names with support for at least 10 characters; #1199 records the bounded 15-letter maximum and retained short/legacy keys. PR #1201 implements that direction; docs/technical/feature-contracts-p1.md PR-13."
+		"decision": "The product owner requested longer project short names with support for at least 10 characters; #1199 records the bounded 15-letter maximum and retained short/legacy keys. PR #1201 implements that direction; docs/technical/feature-contracts-p1.md PR-13."
 	}
 ]

@@ -2,7 +2,7 @@
  * F15 — the mandatory security review must cover the machinery that decides whether
  * anything gets reviewed, and the dependency graph that decides what code exists.
  *
- * Thomas's decision, 2026-09-08 (archive/2026-10-22/docs/07-planning/decision-log.md). Before it, the gate
+ * the product owner's decision, 2026-09-08 (archive/2026-10-22/docs/07-planning/decision-log.md). Before it, the gate
  * could not see changes to itself: PR #19 — the pull request that BUILDS this gate —
  * touched `.github/**`, `scripts/ci/**`, `package.json`, `pnpm-workspace.yaml` and
  * `pnpm-lock.yaml`, and the checker correctly reported "no security-review path touched
@@ -107,7 +107,7 @@ describe("security-review paths — F15 scope", () => {
       [],
       `${missed.length} path(s) that MUST require an independent security review are not ` +
         "matched by ci-cd.md's list. The gate would not see a change to itself, which is " +
-        "the F15 blind spot Thomas's 2026-09-08 decision closed. Restore the globs in " +
+        "the F15 blind spot the product owner's 2026-09-08 decision closed. Restore the globs in " +
         `docs/technical/ci-gates.md (currently ${globs.length}):\n  ${missed.join("\n  ")}`,
     );
   });

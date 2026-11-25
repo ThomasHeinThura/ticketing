@@ -9,7 +9,7 @@ import {
 } from "../database/schema";
 
 /**
- * A-03 (Thomas, 3 November 2026): staff may name a customer as a work item's requester
+ * A-03 (product decision, 3 November 2026): staff may name a customer as a work item's requester
  * (`work_item.requester_id`), so a request raised by staff opens in that customer's portal
  * (`CP-16`, D6). The requester must be an active customer person of the item's project's
  * organisation; anyone else is refused with 422. Clearing is allowed.

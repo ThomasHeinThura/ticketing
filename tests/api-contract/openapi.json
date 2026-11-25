@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://taskdesk.bimats.com/api",
+      "url": "https://taskdesk.example.com/api",
       "description": "TaskDesk API Server"
     }
   ],

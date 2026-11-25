@@ -12,7 +12,7 @@ describe("Avatar", () => {
   it("renders the fallback while the image is unavailable", () => {
     render(
       <Avatar>
-        <AvatarImage alt="Thomas Hein Thura" src="" />
+        <AvatarImage alt="Tina Harper" src="" />
         <AvatarFallback>TH</AvatarFallback>
       </Avatar>,
     );
@@ -33,12 +33,12 @@ describe("Avatar", () => {
 
     render(
       <Avatar>
-        <AvatarImage alt="Thomas Hein Thura" src="/avatar.png" />
+        <AvatarImage alt="Tina Harper" src="/avatar.png" />
         <AvatarFallback>TH</AvatarFallback>
       </Avatar>,
     );
 
-    const image = screen.getByRole("img", { name: "Thomas Hein Thura" });
+    const image = screen.getByRole("img", { name: "Tina Harper" });
     expect(image).toHaveAttribute("src", "/avatar.png");
     expect(image).toBeVisible();
   });
@@ -68,7 +68,7 @@ describe("Avatar", () => {
 
     const { baseElement } = render(
       <Avatar>
-        <AvatarImage alt="Thomas Hein Thura" src="/avatar.png" />
+        <AvatarImage alt="Tina Harper" src="/avatar.png" />
         <AvatarFallback>TH</AvatarFallback>
       </Avatar>,
     );

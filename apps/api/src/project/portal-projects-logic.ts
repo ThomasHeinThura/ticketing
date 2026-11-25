@@ -1,7 +1,7 @@
 import { daysBetween } from "./overview-logic";
 
 /**
- * Pure rules behind the portal Project Details page (S4c; D2/D3 approved by Thomas, 31 Oct
+ * Pure rules behind the portal Project Details page (S4c; D2/D3 approved by the product owner, 31 Oct
  * 2026). No database access, so `tests/api/project/portal-projects-logic.test.ts` exercises them
  * directly.
  */

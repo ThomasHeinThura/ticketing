@@ -90,7 +90,7 @@ const PasswordResetEmail = ({
 };
 
 PasswordResetEmail.PreviewProps = {
-  resetLink: "https://taskdesk.bimats.com/auth/reset-password?token=example",
+  resetLink: "https://taskdesk.example.com/auth/reset-password?token=example",
   userName: "Jane",
 } as PasswordResetEmailProps;
 
