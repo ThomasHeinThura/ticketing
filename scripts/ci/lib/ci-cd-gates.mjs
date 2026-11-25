@@ -2,7 +2,7 @@ import { readText } from "./repo.mjs";
 import { ciCdPath } from "./security-paths.mjs";
 
 /**
- * docs/04-engineering/ci-cd.md declares itself "the single list of CI checks". So the list
+ * docs/technical/ci-gates.md declares itself "the single list of CI checks". So the list
  * is read out of it rather than restated, and scripts/ci/test-all.mjs reconciles what CI
  * actually runs against what that document says it runs. A gate added to the document with
  * no implementation shows up as missing; a gate implemented with no entry in the document

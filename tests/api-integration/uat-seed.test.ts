@@ -13,7 +13,15 @@ import os from "node:os";
 import path from "node:path";
 import { can, reaches } from "@taskdesk/permissions";
 import { and, eq, sql } from "drizzle-orm";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   assertUatSeedDatabase,
   runUatSeed,
@@ -99,7 +107,15 @@ function execute(
   });
 }
 let directory: string;
+let seedConfirmDatabase: string;
 let first: { stdout: string; stderr: string };
+// The seed refuses unless the operator names the connected database.
+beforeAll(async () => {
+  seedConfirmDatabase = (
+    await db.execute<{ name: string }>(sql`select current_database() as name`)
+  ).rows[0]?.name as string;
+  vi.stubEnv("TASKDESK_SEED_CONFIRM_DATABASE", seedConfirmDatabase);
+});
 async function snapshot() {
   const tables = (
     await db.execute<{ name: string }>(
@@ -604,11 +620,15 @@ describe("clean-install seed on a disposable migrated database", () => {
     const connect = vi.spyOn(getDatabasePool(), "connect");
     try {
       expect(() =>
-        assertUatSeedDatabase({ port: 62870, database: "unused_test" }),
+        assertUatSeedDatabase({ port: 1, database: "unused_test" }),
       ).toThrowError(
         new Error(
-          "UAT seed refused: native PostgreSQL port 62870 is protected.",
+          "UAT seed refused: set TASKDESK_SEED_CONFIRM_DATABASE=unused_test to confirm this is the database to seed.",
         ),
+      );
+      vi.stubEnv(
+        "TASKDESK_SEED_CONFIRM_DATABASE",
+        "taskdesk_browser_journey_1022_test",
       );
       expect(() =>
         assertUatSeedDatabase({
@@ -623,6 +643,7 @@ describe("clean-install seed on a disposable migrated database", () => {
       expect(connect).not.toHaveBeenCalled();
     } finally {
       connect.mockRestore();
+      vi.stubEnv("TASKDESK_SEED_CONFIRM_DATABASE", seedConfirmDatabase);
     }
     await expect(
       run([
