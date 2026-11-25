@@ -5923,12 +5923,10 @@ async function installAuthenticatedFixture(page: Page) {
     ) {
       body = {
         entityType:
-          url.search === "?entity_type=project&entity_id=visual-project"
-            ? "project"
-            : url.search ===
-                "?entity_type=project_features&entity_id=visual-project"
-              ? "project_features"
-              : "project_estimates",
+          url.search ===
+          "?entity_type=project_estimates&entity_id=visual-project"
+            ? "project_estimates"
+            : "project",
         entityId: "visual-project",
         workspaceId: "visual-workspace",
         projectId: "visual-project",
