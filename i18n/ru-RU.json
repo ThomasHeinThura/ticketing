@@ -6720,7 +6720,9 @@
 				"warn": "warn",
 				"info": "info",
 				"debug": "debug"
-			}
+			},
+			"sessionMaxDays": "Staff session maximum lifetime (days)",
+			"sessionMaxDaysHelp": "A staff session older than this is signed out, however active it is. 1 to 90 days."
 		}
 	},
 	"customFields": {

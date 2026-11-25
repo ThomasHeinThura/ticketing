@@ -10,7 +10,13 @@ type BetterAuthRateLimitStorage = NonNullable<
   NonNullable<BetterAuthOptions["rateLimit"]>["customStorage"]
 >;
 
-export type AuthRateLimitScope = "agent" | "customer" | "invite" | "copy-link";
+export type AuthRateLimitScope =
+  | "agent"
+  | "customer"
+  | "invite"
+  | "copy-link"
+  | "account-password"
+  | "account-totp";
 
 export type AuthRateLimitRule = {
   window: number;
@@ -40,6 +46,11 @@ if n == 1 or pttl < 0 then
   pttl = tonumber(ARGV[1])
 end
 return { n, pttl }
+`;
+
+const VALKEY_RESET_LUA = `
+redis.call('DEL', KEYS[1])
+return { 0, 0 }
 `;
 
 type MemoryBucket = {
@@ -75,6 +86,12 @@ export type AuthRateLimitCoordinator = {
     key: string,
     rule: AuthRateLimitRule,
   ): Promise<AuthRateLimitDecision>;
+  /** Clears one counter (a successful sign-in); a Valkey failure still clears the local bucket. */
+  reset(
+    scope: AuthRateLimitScope,
+    key: string,
+    rule: AuthRateLimitRule,
+  ): Promise<void>;
 };
 
 export function digestAuthRateLimitKey(
@@ -271,6 +288,21 @@ export function createAuthRateLimitCoordinator(
       };
     },
     consume,
+    async reset(scope, key, rule) {
+      const digest = digestAuthRateLimitKey(scope, key, rule);
+      memory.delete(digest);
+      if (!isDistributedConfigured()) return;
+      try {
+        await getDistributedClient().eval(
+          VALKEY_RESET_LUA,
+          1,
+          `taskdesk:auth-rate-limit:v1:${digest}`,
+          0,
+        );
+      } catch {
+        // Valkey is down: the counter was per-replica memory anyway.
+      }
+    },
   };
 }
 
@@ -292,6 +324,14 @@ export function consumeSharedAuthRateLimit(
   rule: AuthRateLimitRule,
 ): Promise<AuthRateLimitDecision> {
   return defaultAuthRateLimitCoordinator.consume(scope, key, rule);
+}
+
+export function resetSharedAuthRateLimit(
+  scope: AuthRateLimitScope,
+  key: string,
+  rule: AuthRateLimitRule,
+): Promise<void> {
+  return defaultAuthRateLimitCoordinator.reset(scope, key, rule);
 }
 
 export function resetAuthRateLimitWarningForTest(): void {

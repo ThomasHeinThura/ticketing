@@ -29009,6 +29009,12 @@
 						"saveFactor": {
 							"type": "string"
 						},
+						"sessionMaxDays": {
+							"type": "string"
+						},
+						"sessionMaxDaysHelp": {
+							"type": "string"
+						},
 						"logLevels": {
 							"type": "string"
 						},
@@ -29125,6 +29131,8 @@
 						"requiredAudience",
 						"roleId",
 						"saveFactor",
+						"sessionMaxDays",
+						"sessionMaxDaysHelp",
 						"logLevels",
 						"defaultLevel",
 						"saveLevels",

@@ -41,6 +41,7 @@ import {
   loadLocalFactorState,
 } from "./auth/local-factor-service";
 import { isIncompleteBootstrapSession } from "./auth/repository";
+import { enforceStaffSessionCap } from "./auth/session-lifetime";
 import stepUp from "./auth/step-up-api";
 import automation from "./automation";
 import cannedResponse from "./canned-response";
@@ -584,9 +585,14 @@ async function handleAuthRequest(
     c.req.path === "/api/auth/sign-up/email";
   if (agentEmailSignup) await c.req.raw.clone().arrayBuffer();
 
-  const session = await selected.api.getSession({
+  const resolved = await selected.api.getSession({
     headers: c.req.raw.headers,
   });
+  // A staff session past the instance lifetime cap is revoked and treated as signed out.
+  const session =
+    resolved?.session && (await enforceStaffSessionCap(resolved.session))
+      ? null
+      : resolved;
   if (
     session?.session &&
     (session.session.portal !== portal ||
