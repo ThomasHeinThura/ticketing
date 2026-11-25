@@ -1,5 +1,7 @@
 # Handover — 12 November 2026 (Codex → Claude, fleet in Orca)
 
+> **25 Nov:** train k (#1239) is merged and released as `8c22dee3f`. Local SIT and UAT run it, and smoke passes 125/125 on both. Current state is in [status](status.md). Next is #929 (release suite slice).
+
 > **20 Nov (Thomas):** Claude coordinates again under [plan section 0](plan.md#0-plan-of-20-nov-thomas-approved-all-phases) and the AGENTS.md fleet rules (Sonnet-only Claude subagents; Codex Terra/Luna/Sol via Orca; up to six review rounds). No hourly report. #1195, #1196, #1197 and #1201 are merged; #1098 merged 12 Nov and #1089 closed 13 Nov. The 13 Nov worktree list below is history: 108 merged or closed-PR remote branches and 25 local ones were removed on 20 Nov. Older notes below may contradict this; this note wins.
 
 > **16 Nov coordinator update:** Codex coordinates existing Orca Run `run_fcfd513c447f`; only Codex workers are dispatched. The verified catalog supports `gpt-6.1-terra` for routine work and `gpt-6-sol` with High reasoning for independent risky review. Claude, Gemini and Antigravity are unavailable and their historical sessions are not resumed. Existing hourly reporting remains enabled. Thomas approved the 11-line #910 viewer-header readiness fix and its next matrix run; that run passed 42 cells/102 scenarios, with final independent review, hosted CI and signed acceptance still pending. #1197 is ready for review at `e4d2a31a4` with fresh required CI running.
