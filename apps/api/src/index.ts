@@ -590,7 +590,8 @@ async function handleAuthRequest(
   });
   // A staff session past the instance lifetime cap is revoked and treated as signed out.
   const session =
-    resolved?.session && (await enforceStaffSessionCap(resolved.session))
+    resolved?.session?.portal === portal &&
+    (await enforceStaffSessionCap(resolved.session))
       ? null
       : resolved;
   if (
