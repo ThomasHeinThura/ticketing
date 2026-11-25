@@ -22,7 +22,18 @@ If calibration stops the performance job before G13 runs, G13 remains unmeasured
 ## Level 2 — every release (merge to `main`), before deploying
 
 1. **Release smoke** — `pnpm sit:smoke` (read-only; signs in every account in `~/.taskdesk/sit-credentials.json`, checks the API and opens the main agent and portal screens in Chromium, failing on HTTP 5xx/429, page or console errors and error boundaries). Against Technexus: `NODE_EXTRA_CA_CERTS= pnpm sit:smoke -- --agent https://<agent host> --portal https://<portal host> --credentials <file>`.
-2. **Release regression suite on local SIT** (to be built, backlog L-03a): persisted Playwright journeys against `https://ticketing.localhost` / `https://portal.localhost` with real API and database, covering every area per role. Seed specs live in `apps/web/e2e-sit/`.
+2. **Release regression suite on local SIT** (backlog L-03a, first slice): `SIT_ACCOUNTS_FILE=<private JSON array of {role, host, email, password}> pnpm test:release` runs, in order and stopping at the first failure, the release smoke (waits up to 120 s for both hosts), the persisted journeys `apps/web/e2e-sit/release-*.config.ts` against `https://ticketing.localhost` / `https://portal.localhost`, and `pnpm test:permissions`. `RELEASE_SWEEP=1` appends the screen sweep (long; it writes to SIT). Origins default to local SIT (`SIT_AGENT_ORIGIN`, `SIT_PORTAL_ORIGIN`); Chromium skips the certificate check for `*.localhost` only. Journeys create and remove their own work items, never touch existing records and never run the seeder. Older seed specs in `apps/web/e2e-sit/` need Thomas's private state files and are not part of the command.
+
+| Domain | Covered today by | Gap |
+| --- | --- | --- |
+| Core work | `release-core-work` (create, reload, second session, viewer read-only, stale write 409); API integration; permissions matrix | board/Calendar/Gantt, rank, relate, attach, hierarchy denials; stale-edit conflict UI |
+| Service desk | `release-portal-to-agent` (submit, claim, clarify, reply, decline with reason; leaves one declined SUB-n record per run because no route deletes a submission; add teardown when a delete route exists); integration | accept into a work item (its submission reference would block the purge), SLA clock/pause/breach, request types, calendars, workflows |
+| Portal and identity | `release-portal-to-agent` (customer sees reply, refused agent routes); smoke signs in every account | approve/rate/reopen, OTP/magic link, SSO, MFA, sessions, other-organisation isolation |
+| Governance | `release-governance-approval` (CAB request, self and non-approver refused, approver decides); permissions matrix | roles/teams/flags, notifications, automations, webhooks, API keys, MCP, impersonation, God Mode |
+| Planning, time, cost | `release-time-cost` (log, edit, totals, cost only for rate managers, viewer denied, timesheet) | cycles/burndown, weekly timesheet submit, rates, budgets, capacity |
+| Reports, KB, change | `report-epic-rollup` (private state, outside the command); smoke opens KB | 20 reports, dashboards, KB publish/deflection, freeze/CAB rollback, release notes |
+| Import | `release-import` (every workspace role refused, God Mode screen denied) | CSV preview and apply: needs an `instance:admin` login that SIT_ACCOUNTS_FILE does not hold; no adapter journey |
+
 
 | Area | Journeys |
 | --- | --- |
