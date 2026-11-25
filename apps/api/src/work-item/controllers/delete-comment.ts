@@ -104,6 +104,11 @@ export async function deleteCommentInTransaction(
     await tx
       .delete(commentVersionTable)
       .where(eq(commentVersionTable.commentId, commentId));
+    // Earlier cancelled confirmations keep the full text in their preview summary.
+    await tx.execute(
+      sql`UPDATE "pending_action" SET "payload_summary" = "payload_summary" || '{"commentBody": null}'::jsonb
+        WHERE "payload_summary"->>'commentId' = ${commentId} AND "payload_summary" ? 'commentBody'`,
+    );
   }
 
   const [deleted] = await tx

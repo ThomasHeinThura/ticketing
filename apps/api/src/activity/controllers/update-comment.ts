@@ -66,9 +66,8 @@ async function updateComment(
       action: "comment.updated",
       entityType: "comment",
       entityId: updated.id,
-      // Text is never copied into the append-only audit chain (purge on delete).
-      before: { contentRedacted: true },
-      after: { contentRedacted: true },
+      before: { content: existing.content ?? null },
+      after: { content: updated.content ?? null },
     });
 
     return { updated, projectId: task.projectId };

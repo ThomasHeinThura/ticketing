@@ -308,6 +308,46 @@ describe("canonical comment durable deletion", () => {
     );
     expect(JSON.stringify(audit.before)).toContain("Exact comment");
   });
+  it("clears the comment text from an earlier cancelled confirmation once deleted", async () => {
+    const f = await fixture();
+    const first = await createPendingAction(f.request);
+    await decideOwnPendingAction({
+      id: first.pendingActionId,
+      requesterPersonId: f.person.id,
+      outcome: "cancelled",
+      sessionId: f.session.id,
+    });
+    const second = await createPendingAction(f.request);
+    await approveCommentDeletion(f.approval(second.pendingActionId));
+    const rows = await db.select().from(schema.pendingActionTable);
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    expect(JSON.stringify(rows.map((row) => row.payloadSummary))).not.toContain(
+      "Exact comment",
+    );
+  });
+  it("keeps an earlier cancelled confirmation summary while a legal hold covers the author", async () => {
+    const f = await fixture();
+    await db.insert(schema.legalHoldTable).values({
+      scope: "person",
+      scopeId: f.person.id,
+      placedBy: "integration-test",
+      reason: "pending summary hold test",
+    });
+    const first = await createPendingAction(f.request);
+    await decideOwnPendingAction({
+      id: first.pendingActionId,
+      requesterPersonId: f.person.id,
+      outcome: "cancelled",
+      sessionId: f.session.id,
+    });
+    const second = await createPendingAction(f.request);
+    await approveCommentDeletion(f.approval(second.pendingActionId));
+    const [kept] = await db
+      .select()
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, first.pendingActionId));
+    expect(JSON.stringify(kept?.payloadSummary)).toContain("Exact comment");
+  });
   it("invalidates an edited comment and never deletes its newer body", async () => {
     const f = await fixture();
     const action = await createPendingAction(f.request);
