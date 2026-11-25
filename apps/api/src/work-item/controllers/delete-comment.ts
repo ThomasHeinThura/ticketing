@@ -104,10 +104,15 @@ export async function deleteCommentInTransaction(
     await tx
       .delete(commentVersionTable)
       .where(eq(commentVersionTable.commentId, commentId));
-    // Earlier cancelled confirmations keep the full text in their preview summary.
+    // Earlier cancelled confirmations keep the full text in their preview summary, except those a hold
+    // covers through their own requester, decider or organisation (workItemPeople omits them).
     await tx.execute(
-      sql`UPDATE "pending_action" SET "payload_summary" = "payload_summary" || '{"commentBody": null}'::jsonb
-        WHERE "payload_summary"->>'commentId' = ${commentId} AND "payload_summary" ? 'commentBody'`,
+      sql`UPDATE "pending_action" pa SET "payload_summary" = pa."payload_summary" || '{"commentBody": null}'::jsonb
+        WHERE pa."payload_summary"->>'commentId' = ${commentId} AND pa."payload_summary" ? 'commentBody'
+        AND NOT ${openHoldOver(
+          sql`SELECT pa."requested_by_person_id" UNION ALL SELECT pa."decided_by_person_id"`,
+          sql`SELECT pa."organisation_id"`,
+        )}`,
     );
   }
 
