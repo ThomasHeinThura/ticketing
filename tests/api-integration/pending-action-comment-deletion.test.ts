@@ -241,6 +241,73 @@ describe("canonical comment durable deletion", () => {
         ),
     ).toHaveLength(1);
   });
+  it("purges edit-history text and the audit before-body on delete", async () => {
+    const f = await fixture();
+    await db.insert(schema.commentVersionTable).values({
+      commentId: f.relation.id,
+      body: f.relation.body,
+      editedBy: f.member.user.id,
+      number: 1,
+    });
+    const action = await createPendingAction(f.request);
+    await approveCommentDeletion(f.approval(action.pendingActionId));
+    expect(
+      await db
+        .select()
+        .from(schema.commentVersionTable)
+        .where(eq(schema.commentVersionTable.commentId, f.relation.id)),
+    ).toHaveLength(0);
+    const audit = requireRow(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, f.relation.id),
+            eq(schema.auditLogTable.action, "comment.deleted"),
+          ),
+        ),
+      "audit",
+    );
+    expect(JSON.stringify(audit.before)).not.toContain("Exact comment");
+  });
+  it("keeps edit history and the audit before-body while an open legal hold covers the author", async () => {
+    const f = await fixture();
+    await db.insert(schema.legalHoldTable).values({
+      scope: "person",
+      scopeId: f.person.id,
+      placedBy: "integration-test",
+      reason: "comment purge hold test",
+    });
+    await db.insert(schema.commentVersionTable).values({
+      commentId: f.relation.id,
+      body: f.relation.body,
+      editedBy: f.member.user.id,
+      number: 1,
+    });
+    const action = await createPendingAction(f.request);
+    await approveCommentDeletion(f.approval(action.pendingActionId));
+    expect((await comment(f.relation.id)).body).toBeNull();
+    expect(
+      await db
+        .select()
+        .from(schema.commentVersionTable)
+        .where(eq(schema.commentVersionTable.commentId, f.relation.id)),
+    ).toHaveLength(1);
+    const audit = requireRow(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, f.relation.id),
+            eq(schema.auditLogTable.action, "comment.deleted"),
+          ),
+        ),
+      "audit",
+    );
+    expect(JSON.stringify(audit.before)).toContain("Exact comment");
+  });
   it("invalidates an edited comment and never deletes its newer body", async () => {
     const f = await fixture();
     const action = await createPendingAction(f.request);

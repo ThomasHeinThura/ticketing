@@ -63,7 +63,8 @@ async function createComment(
       before: null,
       after: {
         taskId,
-        content: activity.content ?? null,
+        // Text is never copied into the append-only audit chain (purge on delete).
+        contentRedacted: true,
       },
     });
 

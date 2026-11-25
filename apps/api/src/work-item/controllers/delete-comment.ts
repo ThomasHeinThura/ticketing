@@ -1,10 +1,16 @@
 import type { JsonValue } from "@taskdesk/domain";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
-import { commentTable, workItemTable } from "../../database/schema";
+import {
+  commentTable,
+  commentVersionTable,
+  workItemTable,
+} from "../../database/schema";
 import type { ApiKey } from "../../openapi";
 import type { PendingActionTransaction } from "../../pending-action/service";
+import { fenceLegalHolds } from "../../scheduler/soft-delete-purge.repository";
+import { openHoldOver, workItemPeople } from "../../utils/legal-hold-scope";
 import {
   assertProjectStillLive,
   assertWorkItemStillLive,
@@ -84,6 +90,22 @@ export async function deleteCommentInTransaction(
   assertWorkItemStillLive(workItem);
   await assertProjectStillLive(tx, workItem.projectId);
 
+  // Purge the retained text unless an open hold covers the item's people or organisations.
+  await fenceLegalHolds(tx);
+  const heldRows = await tx.execute<{ held: boolean }>(
+    sql`SELECT ${openHoldOver(
+      workItemPeople(sql`SELECT ${locked.workItemId}::text`),
+      sql`SELECT w."organisation_id" FROM "workspace" w WHERE w."id" = ${workspaceId}
+      UNION ALL SELECT p."organisation_id" FROM "project" p WHERE p."id" = ${workItem.projectId}`,
+    )} AS held`,
+  );
+  const held = Boolean(heldRows.rows[0]?.held);
+  if (!held) {
+    await tx
+      .delete(commentVersionTable)
+      .where(eq(commentVersionTable.commentId, commentId));
+  }
+
   const [deleted] = await tx
     .update(commentTable)
     .set({
@@ -108,7 +130,9 @@ export async function deleteCommentInTransaction(
     entityType: "comment",
     entityId: deleted.id,
     before: {
-      body: (locked.body ?? null) as JsonValue,
+      // shortcut: audit rows written before this change keep comment text (chain is append-only); a redaction column needs a contract change
+      body: held ? ((locked.body ?? null) as JsonValue) : null,
+      bodyRedacted: !held,
       deletedAt: null,
     },
     after: {

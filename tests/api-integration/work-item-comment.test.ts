@@ -563,6 +563,35 @@ describe("API integration: work-item comments (#27)", () => {
     );
   });
 
+  it("never copies comment text into the audit rows of a create and an edit", async () => {
+    const { app, workItem } = await setupWorkItem("member");
+    const text = (value: string) => ({
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: value }] },
+      ],
+    });
+    const created = (await (
+      await postComment(app, workItem.key, {
+        body: text("audit-secret-one"),
+        visibility: "internal",
+      })
+    ).json()) as { id: string };
+    expect(
+      (await patchComment(app, created.id, { body: text("audit-secret-two") }))
+        .status,
+    ).toBe(200);
+    const rows = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, created.id));
+    expect(rows.map((row) => row.action).sort()).toEqual([
+      "comment.updated",
+      "work_item.commented",
+    ]);
+    expect(JSON.stringify(rows)).not.toContain("audit-secret");
+  });
+
   it("CA-1: posts an internal comment and publishes work_item.commented", async () => {
     const { app, workItem } = await setupWorkItem("member");
 
