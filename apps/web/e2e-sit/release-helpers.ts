@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { Browser, BrowserContext } from "@playwright/test";
 import { privateRequest } from "../../../tests/e2e/helpers/fill-sensitive";
+import {
+  sitAccountsFile,
+  sitAgentOrigin,
+  sitPortalOrigin,
+} from "../../../tests/e2e/helpers/sit-release-env";
 
 /**
  * Shared sign-in and API plumbing for the release journeys (`pnpm test:release`).
@@ -11,10 +16,8 @@ import { privateRequest } from "../../../tests/e2e/helpers/fill-sensitive";
  * every request that carries them or a session cookie runs through privateRequest, so a
  * failure message cannot echo them. Journeys create their own fixtures and remove them again.
  */
-export const agentOrigin =
-  process.env.SIT_AGENT_ORIGIN ?? "https://ticketing.localhost";
-export const portalOrigin =
-  process.env.SIT_PORTAL_ORIGIN ?? "https://portal.localhost";
+export const agentOrigin = sitAgentOrigin;
+export const portalOrigin = sitPortalOrigin;
 export const workspaceId = "uat-ws";
 
 /**
@@ -37,7 +40,7 @@ export type Role =
 type Account = { role: string; host: string; email: string; password: string };
 
 function account(role: Role): Account {
-  const file = process.env.SIT_ACCOUNTS_FILE;
+  const file = sitAccountsFile;
   if (!file) throw new Error("SIT_ACCOUNTS_FILE is required.");
   const raw = JSON.parse(readFileSync(file, "utf8")) as
     | Account[]
