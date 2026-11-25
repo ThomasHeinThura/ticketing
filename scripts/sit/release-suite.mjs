@@ -17,7 +17,7 @@
  * certificate through NODE_EXTRA_CA_CERTS. Arguments after `--` go to the smoke step.
  */
 import { spawn } from "node:child_process";
-import { mkdtempSync, readdirSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,8 +37,19 @@ const agent = process.env.SIT_AGENT_ORIGIN ?? "https://ticketing.localhost";
 const portal = process.env.SIT_PORTAL_ORIGIN ?? "https://portal.localhost";
 const smokeArgs = process.argv.slice(2).filter((arg) => arg !== "--");
 const journeyDir = path.join(repo, "apps/web/e2e-sit");
+const hasInstanceAdmin = JSON.parse(readFileSync(accounts, "utf8")).some(
+  (row) => row.role === "instance-admin",
+);
+const notRun = [];
 const journeys = readdirSync(journeyDir)
   .filter((name) => /^release-.+\.config\.ts$/.test(name))
+  .filter((name) => {
+    // Import apply needs instance:admin; without that account it is reported, never passed.
+    if (name !== "release-import-apply.config.ts" || hasInstanceAdmin)
+      return true;
+    notRun.push("journey release-import-apply (no instance-admin account)");
+    return false;
+  })
   .sort();
 if (journeys.length === 0) {
   console.error("No apps/web/e2e-sit/release-*.config.ts journeys found.");
@@ -148,6 +159,7 @@ console.log("\n=== release suite summary ===");
 for (const row of summary)
   console.log(`${row.ok ? "PASS" : "FAIL"}  ${row.name}  ${row.seconds}s`);
 const skipped = steps.length - summary.length;
+for (const name of notRun) console.log(`NOT RUN  ${name}`);
 if (skipped > 0)
   console.log(`NOT RUN  ${skipped} step(s) after a failure or the time limit`);
 process.exitCode =

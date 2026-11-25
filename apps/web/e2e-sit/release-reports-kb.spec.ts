@@ -33,10 +33,6 @@ test("a published article reaches the portal customer and the reports page opens
       "GET",
       `/kb/articles?workspaceId=${workspaceId}&q=${encodeURIComponent(title)}&limit=50`,
     );
-    test.skip(
-      [404, 409].includes(found.status),
-      "feature.knowledge_base is off for this workspace.",
-    );
     expect(found.status).toBe(200);
     const existing = rowsOf<{ id: string; title: string }>(found.body).find(
       (row) => row.title === title,
