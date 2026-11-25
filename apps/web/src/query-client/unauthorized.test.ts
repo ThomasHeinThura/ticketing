@@ -65,13 +65,14 @@ it("does not redirect from the sign-in page itself", async () => {
   const { default: client } = await import("./index");
   const { HttpError } = await import("@/lib/http-error");
   await expect(
-    client.fetchQuery({
-      queryKey: ["sign-in-401"],
-      queryFn: async () => {
-        throw new HttpError(401, "refused");
-      },
-      retry: false,
-    }),
+    client
+      .getMutationCache()
+      .build(client, {
+        mutationFn: async () => {
+          throw new HttpError(401, "refused");
+        },
+      })
+      .execute(undefined),
   ).rejects.toMatchObject({ status: 401 });
   expect(replace).not.toHaveBeenCalled();
 });

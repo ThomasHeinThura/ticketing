@@ -170,7 +170,7 @@ export function createQueryClient() {
       onError: (error, query) => {
         if (isUnauthorizedError(error)) {
           client.removeQueries({ queryKey: portalSessionQueryKey });
-          redirectToSignIn();
+          handleUnauthorized();
           return;
         }
         historyHooks.onRefusal?.(client, query, error);
