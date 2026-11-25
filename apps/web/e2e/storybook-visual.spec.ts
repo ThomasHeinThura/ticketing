@@ -28,6 +28,8 @@ test("every exported Storybook story has a visual baseline @visual", async ({
     await page.goto(
       `http://127.0.0.1:6006/iframe.html?id=${story.id}&viewMode=story`,
     );
+    // A marked Suspense fallback means a lazy chunk (the sidebar's ScrollArea) has not swapped
+    // in yet; shooting it was the #1243 flake, so readiness also waits for it to go.
     // Wait for the renderer to attach story content. Some modal stories put their only
     // visible surface in a portal because Storybook makes the canvas inert.
     await expect
@@ -35,14 +37,12 @@ test("every exported Storybook story has a visual baseline @visual", async ({
         const storyRoot = page.locator("#storybook-root");
         const storyRendered = await storyRoot.evaluate(
           (root) =>
-            root.childElementCount > 0 || Boolean(root.textContent?.trim()),
+            (root.childElementCount > 0 || Boolean(root.textContent?.trim())) &&
+            root.querySelector("[data-suspense-pending]") === null,
         );
         return storyRendered || (await page.getByRole("dialog").isVisible());
       })
       .toBe(true);
-    // Lazy chunks (the sidebar's ScrollArea, the toaster) swap in after the first paint; wait for
-    // their requests to finish or the shot catches the Suspense fallback on a slow runner.
-    await page.waitForLoadState("networkidle");
     await page.evaluate(async () => {
       await document.fonts.ready;
       await new Promise<void>((resolve) =>
