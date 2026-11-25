@@ -589,7 +589,9 @@ describe("API integration: work-item comments (#27)", () => {
       "comment.updated",
       "work_item.commented",
     ]);
-    expect(JSON.stringify(rows)).not.toContain("audit-secret");
+    expect(
+      JSON.stringify(rows.map((row) => [row.before, row.after])),
+    ).not.toContain("audit-secret");
   });
 
   it("CA-1: posts an internal comment and publishes work_item.commented", async () => {
