@@ -306,10 +306,13 @@ fi
 assert_barrier B1
 
 printf '==> Archiving attachment volume (%s) to %s/%s\n' "$DATA_VOLUME" "$TARGET_REAL" "$ATTACHMENTS_TAR"
+capture HELPER_IMAGE docker inspect --format '{{.Image}}' "$DB_ID" \
+  && [ -n "$HELPER_IMAGE" ] || refuse "cannot read the postgres image for the archive helper"
+# The stack's own postgres image carries tar, so no unpinned image is pulled.
 if ! docker run --rm --network none \
   -v "$DATA_VOLUME:/data:ro" \
-  alpine:3.22 \
-  tar -C /data -cf - . > "$ATTACHMENTS_TAR"; then
+  --entrypoint tar "$HELPER_IMAGE" \
+  -C /data -cf - . > "$ATTACHMENTS_TAR"; then
   refuse "attachment archive failed"
 fi
 

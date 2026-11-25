@@ -1,7 +1,7 @@
 /**
  * The switch for issue #8 Slice 2's shadow-mode middleware.
  *
- * `TASKDESK_POLICY_SHADOW` (`docs/05-operations/configuration-reference.md`, "Optional"),
+ * `TASKDESK_POLICY_SHADOW` (`docs/guide/install-and-deploy.md`, "Optional"),
  * following `TASKDESK_STORAGE_DRIVER`'s precedent as a narrow, interim bootstrap bridge:
  * `plugin-architecture.md`'s "Feature toggles" mechanism (`instance_feature_flag` and its
  * two per-scope tables, resolved through `packages/permissions/src/features.ts`) is

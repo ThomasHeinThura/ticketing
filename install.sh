@@ -2,11 +2,17 @@
 # TaskDesk thin release bootstrap. Full deployment logic remains in scripts/deploy.sh.
 set -Eeuo pipefail
 
-readonly REPOSITORY='ThomasHeinThura/ticketing'
+readonly UPSTREAM_REPOSITORY='ThomasHeinThura/ticketing'
+readonly REPOSITORY="${TASKDESK_REPOSITORY:-$UPSTREAM_REPOSITORY}"
 readonly RELEASE_BASE="https://github.com/${REPOSITORY}/releases/download"
 readonly STABLE_URL='https://get.taskdesk.dev/stable.txt'
 readonly COSIGN_ISSUER='https://token.actions.githubusercontent.com'
-readonly COSIGN_IDENTITY="https://github.com/${REPOSITORY}/.github/workflows/release.yml@refs/heads/main"
+# A fork signs with its own workflow identity; it must be named, never inferred.
+if [[ "$REPOSITORY" != "$UPSTREAM_REPOSITORY" && -z "${TASKDESK_COSIGN_IDENTITY:-}" ]]; then
+  printf "error: TASKDESK_REPOSITORY is set, so TASKDESK_COSIGN_IDENTITY (the exact workflow identity that signs its releases) must be set too\n" >&2
+  exit 1
+fi
+readonly COSIGN_IDENTITY="${TASKDESK_COSIGN_IDENTITY:-https://github.com/${UPSTREAM_REPOSITORY}/.github/workflows/release.yml@refs/heads/main}"
 
 say() { printf '==> %s\n' "$*"; }
 warn() { printf '!! %s\n' "$*" >&2; }

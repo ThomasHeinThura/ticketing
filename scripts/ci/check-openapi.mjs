@@ -4,7 +4,7 @@
  *
  * kaneo had `scripts/openapi/check.mjs`, which regenerated the document and failed when it
  * differed from the committed copy. It wrote `apps/docs/openapi.json`, and `apps/docs` is a
- * *Do not copy* row in docs/04-engineering/repository-bootstrap.md, so neither the script
+ * *Do not copy* row in docs/technical/ci-gates.md, so neither the script
  * nor its two package.json entries survived the import and the drift check was lost
  * (docs/07-planning/status.md § Blocked). This restores it against a TaskDesk destination.
  *
@@ -17,7 +17,7 @@
  * baseline a drift check compares against.
  *
  * The baseline therefore lives in `tests/api-contract/`, which is where
- * docs/04-engineering/testing-strategy.md § API contract tests puts the contract layer, and
+ * docs/testing.md, and
  * is exactly the document `pnpm test:contract` needs: Redocly lints it, and `oasdiff
  * breaking` diffs the pull request's spec against main's. Publishing the same document to
  * apps/site/public/ is a separate step that arrives with apps/site, whose stack is still an

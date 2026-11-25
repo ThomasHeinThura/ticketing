@@ -23,7 +23,7 @@ services:
     environment:
       # Local Traefik is the only hop in front of the container, and it is on
       # the same Docker network. Directly verifiable here, unlike a real
-      # deployment: see docs/05-operations/proxy-topology-evidence.md.
+      # deployment: see docs/guide/install-and-deploy.md.
       TASKDESK_TRUST_PROXY: "1"
       # HTTP webhook targets are permitted in development only (WH-12).
       NODE_ENV: development
@@ -36,7 +36,7 @@ services:
       # or network. Two stacks on the same host that both defined a service
       # named `taskdesk` would merge into one Traefik service with both
       # containers as backends, load-balancing into an unreachable one.
-      # docs/05-operations/traefik-and-domains.md § Environment-prefixed names
+      # docs/guide/install-and-deploy.md
       - traefik.enable=true
       - traefik.docker.network=taskdesk
       - traefik.http.services.taskdesk-local.loadbalancer.server.port=${TASKDESK_PORT:-5173}

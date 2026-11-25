@@ -19,7 +19,7 @@
  * behind, and no allow-list can cover a name that is computed at runtime.
  *
  * The inherited kaneo surface has not finished its migration to the five-plus-six rule
- * (docs/04-engineering/repository-bootstrap.md § 2), so env-baseline.json records the debt
+ * (docs/technical/ci-gates.md), so env-baseline.json records the debt
  * that exists today. The baseline is a ratchet: an unapproved read that is not already in
  * it fails the build. Entries may be removed and never added by hand — regenerate with
  * `pnpm check:env --prune` after deleting code, never to make a new violation pass.
@@ -479,7 +479,7 @@ async function main() {
   if (debt > 0) {
     warnings.push(
       `${debt} inherited environment-read deviation(s) still baselined in scripts/ci/env-baseline.json ` +
-        "(docs/04-engineering/repository-bootstrap.md § 2 migration is unfinished). This number must only fall.",
+        "(docs/technical/ci-gates.md). This number must only fall.",
     );
   }
 

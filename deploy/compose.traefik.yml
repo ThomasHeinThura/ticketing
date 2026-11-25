@@ -20,7 +20,7 @@
 # 80/443, unset on a genuinely clean machine) let that host override without
 # touching this file. scripts/deploy.sh checks these ports are free before
 # starting anything, and fails with the env vars to set rather than a bare
-# Docker "address already in use". See docs/05-operations/traefik-and-domains.md
+# Docker "address already in use". See docs/guide/install-and-deploy.md
 # § Local development.
 #
 # NOT PROVIDED, deliberately: an ACME/Let's Encrypt resolver for a standalone
@@ -31,7 +31,7 @@
 # nothing else. Adding one is a decision, not an implementation detail, so it is
 # raised rather than invented. See docs/07-planning/status.md.
 #
-# Specification: docs/05-operations/traefik-and-domains.md
+# Specification: docs/guide/install-and-deploy.md
 
 services:
   traefik:

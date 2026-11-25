@@ -13,6 +13,8 @@
 #   --target production|sit|uat  select release overlay (upgrade/rollback; default production)
 #   --overlay <path>    use an explicit Compose overlay path (deploy/upgrade/rollback)
 #   --profile s3        also run the opt-in SeaweedFS object store
+#   --i-have-a-backup   upgrade only: confirm a backup exists (otherwise scripts/backup.sh
+#                       output under backups/ newer than 24 h is required)
 #   --no-verify         skip the cosign signature check (loud, deliberate)
 #   --no-probe          skip the post-deploy API probe (CI only; never routine)
 #   --seed              run the clean-install demo seed (sit, uat only). Requires verified setup;
@@ -21,7 +23,7 @@
 # It is idempotent. It generates any missing secret and never regenerates one
 # that already has a value.
 #
-# Specification: docs/05-operations/deployment.md § First run
+# Specification: docs/guide/install-and-deploy.md
 #   1. generate any missing secrets
 #   2. start Postgres and Valkey (and SeaweedFS + bucket create with --profile
 #      s3) and wait for health
@@ -61,11 +63,11 @@ CALLER_IMAGE_DIGEST_SET="${TASKDESK_IMAGE_DIGEST+1}"
 CALLER_IMAGE_DIGEST="${TASKDESK_IMAGE_DIGEST:-}"
 
 # The signature is verified against the EXACT workflow identity — repository,
-# workflow file and ref — not just the OIDC issuer (docs/04-engineering/ci-cd.md).
+# workflow file and ref — not just the OIDC issuer (docs/technical/ci-gates.md).
 # The workflow file is owned by #10; if it is renamed, this must be renamed with
 # it, and a mismatch fails closed rather than silently accepting any signature.
 COSIGN_ISSUER="https://token.actions.githubusercontent.com"
-COSIGN_IDENTITY="https://github.com/ThomasHeinThura/ticketing/.github/workflows/release.yml@refs/heads/main"
+COSIGN_IDENTITY_UPSTREAM="https://github.com/ThomasHeinThura/ticketing/.github/workflows/release.yml@refs/heads/main"
 
 BLUE=$'\033[34m'; RED=$'\033[31m'; YELLOW=$'\033[33m'; GREEN=$'\033[32m'; OFF=$'\033[0m'
 [ -t 1 ] || { BLUE=""; RED=""; YELLOW=""; GREEN=""; OFF=""; }
@@ -78,6 +80,7 @@ die()  { printf '%sxx%s %s\n'  "$RED"    "$OFF" "$*" >&2; exit 1; }
 MODE=""
 PROFILE_S3=0
 VERIFY=1
+HAVE_BACKUP=0
 PROBE=1
 SEED=0
 UPGRADE_REF=""
@@ -141,6 +144,7 @@ while [ $# -gt 0 ]; do
     --profile) [ "${2:-}" = "s3" ] || die "--profile takes 's3'"; PROFILE_S3=1; shift 2 ;;
     --profile=s3) PROFILE_S3=1; shift ;;
     --no-verify) VERIFY=0; shift ;;
+    --i-have-a-backup) HAVE_BACKUP=1; shift ;;
     --no-probe) PROBE=0; shift ;;
     --seed) SEED=1; shift ;;
     *) die "unknown flag '$1'" ;;
@@ -303,7 +307,13 @@ fi
 # Image signature — resolve a mutable tag once, then verify and pull only the
 # immutable digest. Compose receives the digest through the exported variable.
 # ---------------------------------------------------------------------------
-IMAGE_REPOSITORY="ghcr.io/thomasheinthura/taskdesk"
+UPSTREAM_IMAGE="ghcr.io/thomasheinthura/taskdesk"
+IMAGE_REPOSITORY="${TASKDESK_IMAGE:-$UPSTREAM_IMAGE}"
+# A fork image is signed by the fork's own workflow; never check it against ours.
+if [ "$IMAGE_REPOSITORY" != "$UPSTREAM_IMAGE" ] && [ -z "${TASKDESK_COSIGN_IDENTITY:-}" ]; then
+  die "TASKDESK_IMAGE is set, so TASKDESK_COSIGN_IDENTITY (the exact workflow identity that signs it) must be set too"
+fi
+COSIGN_IDENTITY="${TASKDESK_COSIGN_IDENTITY:-$COSIGN_IDENTITY_UPSTREAM}"
 
 image_ref() {
   local tag="${TASKDESK_IMAGE_TAG:-v2.0.0}"
@@ -402,7 +412,7 @@ assert_port_unpublished() {
      service was loaded (no shipped overlay has one), or the container uses host
      networking. Remove it from your own overlay, or bring the stack down and
      re-run without it.
-     docs/05-operations/traefik-and-domains.md"
+     docs/guide/install-and-deploy.md"
   fi
   ok "no application port is published"
 }
@@ -438,7 +448,7 @@ print_setup_token() {
   else
     warn "no setup token in the container log."
     warn "the first-run setup page is not implemented yet (issue #11 scope note);"
-    warn "until it is, follow docs/05-operations/runbook.md § First run."
+    warn "until it is, follow docs/guide/troubleshooting.md."
   fi
 }
 
@@ -490,7 +500,7 @@ seed_if_permitted() (
     dc exec -T taskdesk sh -c 'umask 077; cat > "$1"' sh "$in_container" < "$credentials" \
       || die "could not restore private seed credentials"
   fi
-  dc exec -T taskdesk node apps/api/dist/seed-uat.js --uat --credentials-file "$in_container" \
+  dc exec -T -e "TASKDESK_SEED_CONFIRM_DATABASE=${POSTGRES_DB:-taskdesk}" taskdesk node apps/api/dist/seed-uat.js --uat --credentials-file "$in_container" \
     || die "Demo seeding failed. Finish first-administrator setup, fix the error above and rerun with --seed."
   ok "Demo account passwords are in $credentials (0600)"
 )
@@ -584,7 +594,12 @@ case "$MODE" in
     ;;
 
   upgrade)
-    say "before an upgrade: run scripts/backup-maintenance.sh (operations runbook) and note the current digest."
+    # backup.sh publishes SHA256SUMS last, so it marks a complete backup.
+    if [ "$HAVE_BACKUP" -ne 1 ] \
+      && [ -z "$(find "${TASKDESK_BACKUP_ROOT:-$REPO_ROOT/backups}" -maxdepth 2 -name SHA256SUMS -mtime -1 2>/dev/null | head -1)" ]; then
+      die "no backup newer than 24 hours found. Run scripts/backup-maintenance.sh first, or pass --i-have-a-backup if one exists elsewhere. Upgrades run irreversible migrations."
+    fi
+    say "note the current digest before the upgrade."
     CURRENT="$(docker inspect --format '{{index .RepoDigests 0}}' "$(dc images -q taskdesk 2>/dev/null | head -1)" 2>/dev/null || true)"
     CURRENT_CONTAINER="$(dc ps -q taskdesk 2>/dev/null | head -1)"
     CURRENT_IMAGE_REF="$(docker inspect --format '{{.Config.Image}}' "$CURRENT_CONTAINER" 2>/dev/null || true)"
@@ -694,6 +709,6 @@ case "$MODE" in
     ok "rolled back to $ROLLBACK_DIGEST"
     warn "a rollback does NOT undo a migration. If the upgrade you are undoing"
     warn "applied a destructive change, restore from backup instead —"
-    warn "docs/04-engineering/migrations.md, docs/05-operations/backup-and-restore.md"
+    warn "docs/technical/operations-and-distribution.md, docs/guide/install-and-deploy.md"
     ;;
 esac

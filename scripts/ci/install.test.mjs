@@ -567,7 +567,7 @@ for (const mode of ["production", "upgrade", "rollback"]) {
     const args =
       mode === "rollback"
         ? ["rollback", `sha256:${"d".repeat(64)}`, "v1.2.2"]
-        : [mode];
+        : [mode, "--i-have-a-backup"];
     await rm(path.join(f.temp, "docker.log"), { force: true });
     await rm(path.join(f.temp, "docker.log.started"), { force: true });
     const result = spawnSync(
@@ -1156,7 +1156,7 @@ for (const target of ["production", "sit"]) {
         const args =
           mode === "rollback"
             ? [mode, `sha256:${"d".repeat(64)}`, "v1.2.2"]
-            : [mode];
+            : [mode, "--i-have-a-backup"];
         const result = spawnSync(
           "bash",
           [path.join(f.path, "scripts/deploy.sh"), ...args, "--target", target],
@@ -1225,7 +1225,7 @@ for (const mode of ["upgrade", "rollback"]) {
       const args =
         mode === "rollback"
           ? [mode, `sha256:${"d".repeat(64)}`, "v1.2.2"]
-          : [mode];
+          : [mode, "--i-have-a-backup"];
       const result = spawnSync(
         "bash",
         [path.join(f.path, "scripts/deploy.sh"), ...args, "--target=sit", flag],
@@ -1326,12 +1326,18 @@ test("--overlay and --target=uat select UAT overlay across upgrade and rollback 
     path.join(f.path, "deploy", "compose.uat.yml"),
   );
   for (const [modeArgs, overlayArgs] of [
-    [["upgrade"], ["--overlay", "deploy/compose.uat.yml"]],
+    [
+      ["upgrade", "--i-have-a-backup"],
+      ["--overlay", "deploy/compose.uat.yml"],
+    ],
     [
       ["rollback", `sha256:${"d".repeat(64)}`, "v1.2.2"],
       ["--overlay=deploy/compose.uat.yml"],
     ],
-    [["upgrade"], ["--target", "uat"]],
+    [
+      ["upgrade", "--i-have-a-backup"],
+      ["--target", "uat"],
+    ],
   ]) {
     await rm(path.join(f.temp, "docker.log"), { force: true });
     await rm(path.join(f.temp, "docker.log.started"), { force: true });
@@ -1418,7 +1424,12 @@ test("upgrade clears TASKDESK_IMAGE_DIGEST pinned by a prior rollback (DO-4)", a
 
   const up = spawnSync(
     "bash",
-    [path.join(f.path, "scripts/deploy.sh"), "upgrade", "v1.2.3"],
+    [
+      path.join(f.path, "scripts/deploy.sh"),
+      "upgrade",
+      "v1.2.3",
+      "--i-have-a-backup",
+    ],
     { cwd: f.path, encoding: "utf8", env },
   );
   assert.equal(up.status, 0, `${up.stdout}${up.stderr}`);
@@ -1454,7 +1465,12 @@ test("failed upgrade migration retains previous image selection", async (t) => {
   const before = await readFile(path.join(f.path, ".env"), "utf8");
   const result = spawnSync(
     "bash",
-    [path.join(f.path, "scripts/deploy.sh"), "upgrade", "v1.2.3"],
+    [
+      path.join(f.path, "scripts/deploy.sh"),
+      "upgrade",
+      "v1.2.3",
+      "--i-have-a-backup",
+    ],
     {
       cwd: f.path,
       encoding: "utf8",
@@ -1500,4 +1516,65 @@ test("installer rejects a missing recovery archive member before writes", async 
     /missing a required regular file: scripts\/restore.sh/,
   );
   await assert.rejects(stat(f.path), { code: "ENOENT" });
+});
+
+function deployEnv(f, extra = {}) {
+  return {
+    ...process.env,
+    PATH: `${f.bin}:${process.env.PATH}`,
+    HOME: f.temp,
+    COSIGN_LOG: path.join(f.temp, "cosign.log"),
+    FAKE_DOCKER_FULL: "1",
+    FAKE_RAW: RAW_MANIFEST,
+    FAKE_DOCKER_LOG: path.join(f.temp, "docker.log"),
+    TASKDESK_BACKUP_ROOT: path.join(f.temp, "no-backups"),
+    ...extra,
+  };
+}
+
+test("upgrade is refused without a fresh backup or --i-have-a-backup", async (t) => {
+  const { f } = await productionRun(t);
+  const env = deployEnv(f);
+  const deploy = path.join(f.path, "scripts/deploy.sh");
+  const refused = spawnSync("bash", [deploy, "upgrade", "v1.2.3"], {
+    cwd: f.path,
+    encoding: "utf8",
+    env,
+  });
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, /no backup newer than 24 hours/);
+
+  const fresh = path.join(f.temp, "no-backups", "20990101T000000Z");
+  await mkdir(fresh, { recursive: true });
+  await writeFile(path.join(fresh, "SHA256SUMS"), "");
+  const ok = spawnSync("bash", [deploy, "upgrade", "v1.2.3"], {
+    cwd: f.path,
+    encoding: "utf8",
+    env,
+  });
+  assert.equal(ok.status, 0, `${ok.stdout}${ok.stderr}`);
+});
+
+test("an overridden image needs its own cosign identity", async (t) => {
+  const { f } = await productionRun(t);
+  const deploy = path.join(f.path, "scripts/deploy.sh");
+  const upgrade = (extra) =>
+    spawnSync("bash", [deploy, "upgrade", "v1.2.3", "--i-have-a-backup"], {
+      cwd: f.path,
+      encoding: "utf8",
+      env: deployEnv(f, extra),
+    });
+  const refused = upgrade({ TASKDESK_IMAGE: "ghcr.io/acme/taskdesk" });
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, /TASKDESK_COSIGN_IDENTITY/);
+  const ok = upgrade({
+    TASKDESK_IMAGE: "ghcr.io/acme/taskdesk",
+    TASKDESK_COSIGN_IDENTITY:
+      "https://github.com/acme/taskdesk/.github/workflows/release.yml@refs/heads/main",
+  });
+  assert.equal(ok.status, 0, `${ok.stdout}${ok.stderr}`);
+  assert.match(
+    await readFile(path.join(f.temp, "cosign.log"), "utf8"),
+    /acme\/taskdesk@/,
+  );
 });
