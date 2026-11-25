@@ -5918,13 +5918,15 @@ async function installAuthenticatedFixture(page: Page) {
       path === "/api/audit" &&
       (url.search === "?entity_type=project&entity_id=visual-project" ||
         url.search ===
-          "?entity_type=project_estimates&entity_id=visual-project")
+          "?entity_type=project_estimates&entity_id=visual-project" ||
+        url.search === "?entity_type=project_features&entity_id=visual-project")
     ) {
       body = {
         entityType:
-          url.search === "?entity_type=project&entity_id=visual-project"
-            ? "project"
-            : "project_estimates",
+          url.search ===
+          "?entity_type=project_estimates&entity_id=visual-project"
+            ? "project_estimates"
+            : "project",
         entityId: "visual-project",
         workspaceId: "visual-workspace",
         projectId: "visual-project",
@@ -8562,6 +8564,12 @@ test("project settings features screen @visual", async ({ page }) => {
       exact: true,
     }),
   ).toBeVisible();
+  // History is a lazy chunk above the panel; shooting before it mounts shifts the layout.
+  await expect(
+    page.getByText("Last changed by Visual Tester on Jan 1, 2026, 12:00 PM", {
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("project-settings-features.png", {
     animations: "disabled",
     caret: "hide",
@@ -8603,6 +8611,12 @@ test("project settings budget screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(
     page.getByText("Q4 2026 support", { exact: true }),
+  ).toBeVisible();
+  // History is a lazy chunk above the budget list; shooting before it mounts shifts the layout.
+  await expect(
+    page.getByText("Last changed by Visual Tester on Jan 1, 2026, 12:00 PM", {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("project-settings-budget.png", {
     animations: "disabled",
@@ -9259,6 +9273,12 @@ test("workspace settings features screen @visual", async ({ page }) => {
     page.getByText("Feature switches", { exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Service levels", { exact: true })).toBeVisible();
+  // History is a lazy chunk above the panel; shooting before it mounts shifts the layout.
+  await expect(
+    page.getByText("Last changed by Visual Tester on Jan 1, 2026, 12:00 PM", {
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(page).toHaveScreenshot("workspace-settings-features.png", {
     animations: "disabled",
     caret: "hide",
@@ -9906,6 +9926,12 @@ test("workspace settings time activities screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(
     page.getByText("Backdating limit (days)", { exact: true }),
+  ).toBeVisible();
+  // History is a lazy chunk under the backdating form; shooting before it mounts shifts the layout.
+  await expect(
+    page.getByText("Last changed by Visual Tester on Jan 1, 2026, 12:00 PM", {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot(
     "workspace-settings-time-activities.png",
