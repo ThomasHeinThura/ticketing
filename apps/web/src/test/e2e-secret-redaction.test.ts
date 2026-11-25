@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, relative, resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { redactSecretErrorContext } from "../../e2e/helpers/redact-secret-error-context";
 
@@ -52,8 +51,9 @@ type ListedSuite = { file?: string; suites?: ListedSuite[] };
 // The files Playwright itself collects for a config (`--list` needs no browser
 // or server). Importing specs needs the built permissions package.
 function collectedFiles(config: string): string[] {
-  const out = join(mkdtempSync(join(tmpdir(), "pw-list-")), "list.json");
-  execFileSync(
+  // The json reporter writes the listing to stdout when no output file is set;
+  // a config may log a line before it, so parse from the first line that opens the report.
+  const stdout = execFileSync(
     "pnpm",
     [
       "exec",
@@ -66,16 +66,18 @@ function collectedFiles(config: string): string[] {
     ],
     {
       cwd: webRoot,
-      stdio: "ignore",
-      env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: out },
+      stdio: ["ignore", "pipe", "ignore"],
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
     },
   );
-  const report = JSON.parse(readFileSync(out, "utf8")) as {
+  const report = JSON.parse(
+    stdout.slice(stdout.startsWith("{") ? 0 : stdout.indexOf("\n{") + 1),
+  ) as {
     config: { rootDir: string };
     suites: ListedSuite[];
     errors: unknown[];
   };
-  rmSync(resolve(out, ".."), { recursive: true, force: true });
   expect(report.errors).toEqual([]);
   const files = new Set<string>();
   const walk = (suite: ListedSuite) => {

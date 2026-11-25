@@ -92,12 +92,9 @@ const channels = {
   // An axe failure used to keep the element HTML, including a field's value.
   axe: {
     setup: `await page.setContent('<input type="password" value="' + process.env.CANARY_SECRET + '">');`,
-    leaky: `const v = await page.evaluate(async () => { await new Promise((r) => { const s = document.createElement('script'); s.textContent = ${JSON.stringify(
-      readFileSync(
-        resolve(repo, "packages/ui/node_modules/axe-core/axe.min.js"),
-        "utf8",
-      ),
-    )}; document.head.append(s); r(0); }); const out = await window.axe.run(document); return out.violations.map(({ id, nodes }) => ({ id, nodes })); });
+    leaky: `await page.addScriptTag({ path: ${JSON.stringify(
+      resolve(repo, "packages/ui/node_modules/axe-core/axe.min.js"),
+    )} }); const v = await page.evaluate(async () => { const out = await window.axe.run(document); return out.violations.map(({ id, nodes }) => ({ id, nodes })); });
     expect(v).toEqual([]);`,
     safe: "await expectNoSeriousAxeViolations(page);",
     imports: `import { expectNoSeriousAxeViolations } from ${JSON.stringify(fixture)};`,

@@ -776,7 +776,8 @@ export function sections(markdown) {
       visible &&
       line.trim() &&
       !NOT_PARAGRAPH.test(line) &&
-      !/<!--|-->/.test(line)
+      !line.includes("<!--") &&
+      !line.includes("-->")
         ? line
         : null;
     boundary = !line.trim();
