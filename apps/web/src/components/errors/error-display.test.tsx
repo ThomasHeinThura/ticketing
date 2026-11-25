@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe("ErrorDisplay", () => {
-  it("opens the deployment guide on the canonical Bimats product host", () => {
+  it("opens the deployment guide on the project documentation site", () => {
     const open = vi.spyOn(window, "open").mockImplementation(() => null);
 
     render(<ErrorDisplay error={new Error("CORS blocked the request")} />);
@@ -26,7 +26,7 @@ describe("ErrorDisplay", () => {
       .click();
 
     expect(open).toHaveBeenCalledWith(
-      "https://taskdesk.bimats.com/docs",
+      "https://github.com/ThomasHeinThura/ticketing/tree/main/docs",
       "_blank",
       "noopener,noreferrer",
     );

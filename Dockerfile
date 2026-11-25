@@ -1,13 +1,13 @@
 # TaskDesk — one image: API + agent bundle + portal bundle + scheduler.
 #
-# Specification: docs/05-operations/container-image.md
+# Specification: docs/guide/install-and-deploy.md
 # This file replaces Dockerfile.kaneo, which cannot build in this tree: it COPYs
 # apps/web/nginx.kaneo.conf, apps/web/env.sh and deploy/kaneo-entrypoint.sh, none
 # of which the kaneo import copied in.
 #
 # Build (single arch, verification):
 #   docker build -t taskdesk:dev .
-# Build (release, multi-arch, pushed by digest — see docs/04-engineering/ci-cd.md):
+# Build (release, multi-arch, pushed by digest — see docs/technical/ci-gates.md):
 #   docker buildx build --platform linux/amd64,linux/arm64 --push .
 #
 # Deviations from container-image.md, and why:

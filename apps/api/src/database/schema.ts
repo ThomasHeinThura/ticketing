@@ -6131,7 +6131,7 @@ export const attachmentTable = pgTable(
 // only `ALTER TABLE ... OWNER TO` a *different*, lesser-privileged role would make a
 // grant-based restriction real, and that would require provisioning a second DB role in
 // `compose.yml`/the Helm chart/`deploy/` (the `taskdesk_app`/`taskdesk_maint` split
-// `docs/04-engineering/migrations.md`'s "Append-only tables" section describes) -- out
+// `docs/technical/operations-and-distribution.md`'s "Append-only tables" section describes) -- out
 // of scope for a schema-and-writer slice; tracked as a real gap, not assumed away. The
 // migration still issues `REVOKE UPDATE, DELETE, TRUNCATE ... FROM PUBLIC` as harmless
 // defense-in-depth for any future lesser-privileged role, but that REVOKE is NOT what

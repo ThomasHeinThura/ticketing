@@ -372,6 +372,7 @@ function tryRescueContainerCredentials({ cmd, containerId, credentials }) {
 function ensureHostCredentials({
   cmd,
   containerId,
+  dbName,
   credentials,
   checkpointFile,
   checkpoint,
@@ -426,6 +427,8 @@ function ensureHostCredentials({
   try {
     cmd("docker", [
       "exec",
+      "-e",
+      `TASKDESK_SEED_CONFIRM_DATABASE=${dbName}`,
       containerId,
       "node",
       "apps/api/dist/seed-uat.js",
@@ -507,6 +510,7 @@ function ensureHostCredentials({
 function seedAndSmoke({
   cmd,
   dc,
+  dbName,
   checkedContainer,
   env,
   composeEnv,
@@ -525,6 +529,7 @@ function seedAndSmoke({
   const activeCheckpoint = ensureHostCredentials({
     cmd,
     containerId,
+    dbName,
     credentials,
     checkpointFile,
     checkpoint,
@@ -952,6 +957,7 @@ export function executeFresh({
       seedAndSmoke({
         cmd,
         dc,
+        dbName,
         checkedContainer,
         env,
         composeEnv,

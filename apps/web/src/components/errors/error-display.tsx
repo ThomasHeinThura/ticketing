@@ -94,7 +94,7 @@ export function ErrorDisplay({
               <Button
                 onClick={() =>
                   window.open(
-                    "https://taskdesk.bimats.com/docs",
+                    "https://github.com/ThomasHeinThura/ticketing/tree/main/docs",
                     "_blank",
                     "noopener,noreferrer",
                   )

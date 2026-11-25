@@ -183,7 +183,7 @@ attachments the database does not know about, which is harmless. The reverse sho
 whose objects are missing, which is not.
 
 ```bash
-scripts/restore.sh --backup 2026-09-05T10-00 --confirm
+scripts/restore.sh --backup 2026-09-05T10-00 --confirm --mode production
 ```
 
 The restore script verifies checksums and the dump listing before stopping the app,
