@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
  * tested for this, not only a test-side import."
  *
  * `apps/api/package.json`'s `build` script is the one that actually produces the artifact
- * this repository ships (`docs/05-operations/container-image.md`'s Dockerfile runs it). This
+ * this repository ships (`docs/guide/install-and-deploy.md`'s Dockerfile runs it). This
  * test parses that script's own command line -- rather than hand-copying its flags into a
  * second, driftable esbuild config -- and re-runs the exact same esbuild invocation
  * in-process with `metafile: true`, then asserts `apps/api/src/policy-registry.ts` is one of

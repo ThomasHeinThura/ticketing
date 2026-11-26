@@ -414,7 +414,7 @@ const SAFE_INLINE_ASSET_TYPES = new Set([
  *
  *  - Production (the shipped Dockerfile): `node apps/api/dist/index.js` runs
  *    from `WORKDIR /app`, and the web bundle is copied to `/app/public`
- *    (see docs/05-operations/container-image.md and the Dockerfile's
+ *    (see docs/guide/install-and-deploy.md and the Dockerfile's
  *    `runtime` stage) — three directories up from the bundled file, then
  *    into `public`.
  *  - Local dev/build (`tsx watch` on `src/index.ts`, or a plain `node
@@ -1386,7 +1386,7 @@ export function createApp(
   });
 
   // Liveness: the process is up, touches no dependency. A Postgres blip must never
-  // restart a healthy container — see docs/05-operations/deployment.md § Health and
+  // restart a healthy container — see docs/guide/install-and-deploy.md
   // readiness, and charts/taskdesk/values.yaml's comment on the same separation.
   api.get("/public/health/live", (c) => {
     return c.json({ status: "ok" });
@@ -2982,7 +2982,7 @@ export function createApp(
  *     `ensureApplicationRole`. Selected by `TASKDESK_ROLE=migrate` (see the
  *     `isMainModule` block below), following the same env-var-selects-behaviour
  *     pattern `TASKDESK_ROLE=web`/`jobs` already document
- *     (`docs/05-operations/container-image.md`) — not a new, parallel mechanism.
+ *     (`docs/guide/install-and-deploy.md`) — not a new, parallel mechanism.
  *   - `runApiBootTasks()` — everything the serving process needs, using ONLY the
  *     application connection: `assertApplicationRoleIsNotPrivileged`, the policy
  *     registry log line (#302), the DML-only seed/backfill steps, plugin/scheduler/

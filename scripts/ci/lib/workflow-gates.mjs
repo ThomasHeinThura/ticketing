@@ -4,7 +4,7 @@
  * The gates the workflows ACTUALLY execute — the third party to the reconciliation.
  *
  * **M2 — "CI matches ci-cd.md" reconciled two sets, not three.** `test-all.mjs` compared
- * `docs/04-engineering/ci-cd.md`'s declared list against its own hand-maintained manifest.
+ * `docs/technical/ci-gates.md`'s declared list against its own hand-maintained manifest.
  * Both are documents. Neither is the workflow, so a gate could run in CI while appearing
  * in neither, or appear in both while running as something else. A reconciliation between
  * two documents is a spell-check. This reads the workflows.

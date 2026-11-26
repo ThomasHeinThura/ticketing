@@ -403,7 +403,7 @@ export function getDatabasePool(): Pool {
     // listener throws on that event, which is an unhandled exception that
     // crashes the whole process — turning a brief database outage into a
     // full restart, exactly what the liveness/readiness split
-    // (docs/05-operations/deployment.md § Health and readiness) exists to
+    // (docs/guide/install-and-deploy.md) exists to
     // prevent. A regularly-polled /api/public/health/ready makes an idle
     // pooled client, and therefore this failure mode, routinely reachable
     // rather than theoretical.

@@ -2926,9 +2926,10 @@ export function assertUatSeedDatabase(database: {
   port: number;
   database: string;
 }) {
-  if (database.port === 62870)
+  // Explicit opt-in so a seed never hits a database the operator did not name.
+  if (process.env.TASKDESK_SEED_CONFIRM_DATABASE !== database.database)
     throw new Error(
-      "UAT seed refused: native PostgreSQL port 62870 is protected.",
+      `UAT seed refused: set TASKDESK_SEED_CONFIRM_DATABASE=${database.database} to confirm this is the database to seed.`,
     );
   assertNotLiveDatabase(database.database);
 }

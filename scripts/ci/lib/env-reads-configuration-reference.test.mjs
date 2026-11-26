@@ -27,7 +27,7 @@ test("maintained environment contract preserves bootstrap and external-reader bo
       "TASKDESK_PORTAL_URL",
     ],
   );
-  assert.equal(reference.optional.size, 14);
+  assert.equal(reference.optional.size, 15);
   for (const name of [
     "TASKDESK_MIGRATION_DATABASE_URL",
     "TASKDESK_LOCAL_MAILPIT_CAPTURE",
@@ -36,18 +36,22 @@ test("maintained environment contract preserves bootstrap and external-reader bo
     "TASKDESK_STORAGE_FILESYSTEM_ROOT",
     "TASKDESK_POLICY_SHADOW",
     "TASKDESK_POLICY_ENFORCE",
+    "TASKDESK_SEED_CONFIRM_DATABASE",
   ])
     assert.ok(reference.optional.has(name));
   assert.deepEqual(
     [...reference.postgresImage],
     ["POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD"],
   );
-  assert.equal(reference.notReadByApplication.size, 11);
+  assert.equal(reference.notReadByApplication.size, 14);
   for (const name of [
     "DOMAIN",
     "TASKDESK_IMAGE_DIGEST",
     "TASKDESK_API_URL",
     "TASKDESK_API_KEY",
+    "TASKDESK_IMAGE",
+    "TASKDESK_COSIGN_IDENTITY",
+    "TASKDESK_REPOSITORY",
   ]) {
     assert.ok(reference.notReadByApplication.has(name));
     assert.equal(
@@ -135,7 +139,7 @@ test("reader runs in an isolated checkout without archive and fails if the maint
     path.join(await realpath(scratch), "docs/technical/configuration.md"),
   );
   assert.equal(result.required.length, 5);
-  assert.equal(result.optional.length, 14);
+  assert.equal(result.optional.length, 15);
   await rename(
     path.join(scratch, "docs/technical/configuration.md"),
     path.join(scratch, "docs/technical/configuration.missing"),

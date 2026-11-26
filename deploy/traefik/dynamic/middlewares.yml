@@ -1,6 +1,6 @@
 # Traefik file-provider middlewares.
 #
-# Specification: docs/05-operations/traefik-and-domains.md § Security headers
+# Specification: docs/guide/install-and-deploy.md
 #
 # Declared once, here, so they cannot drift between routers. Routers reference
 # them as `<name>@file`.

@@ -547,6 +547,7 @@ async function readableNativeRows(
           COST_TRACKING_FEATURE_KEY,
           project.workspaceId,
           project.id,
+          tx,
         ),
       });
   }

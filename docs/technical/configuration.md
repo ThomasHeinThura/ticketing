@@ -32,6 +32,7 @@ This maintained contract registers bootstrap environment names for `check:env` a
 | `TASKDESK_STORAGE_FILESYSTEM_ROOT` | `/app/data/attachments` | Writable filesystem-storage root; mount persistent storage for durable bytes. |
 | `TASKDESK_POLICY_SHADOW` | `off` | Interim `on`/`off` policy comparison. Records disagreements without changing responses; invalid values fail startup. |
 | `TASKDESK_POLICY_ENFORCE` | empty | Exact comma-separated registry source paths. Reject unknown, duplicate, empty or whitespace-padded members; the task source must be last after all other sources. Requires separately verified policy cutover evidence. |
+| `TASKDESK_SEED_CONFIRM_DATABASE` | unset | Demo seed (`seed-uat`) only: must equal the connected database name or the seed refuses to run. Never set it on a serving deployment. |
 
 The storage and policy switches are bounded bootstrap compatibility, not permission to add customer-specific environment configuration. Environment names that remain in `scripts/ci/env-baseline.json` are inherited migration debt; that baseline only shrinks.
 
@@ -56,6 +57,8 @@ These names configure deployment tooling or an external client. Registering them
 | `DOMAIN` | Compose, at file-parse time | Base domain for proxy host rules. |
 | `TASKDESK_AGENT_HOST` · `TASKDESK_PORTAL_HOST` · `TASKDESK_FILES_HOST` | Compose, at file-parse time | Explicit proxy hostnames; empty values derive agent/portal/files hosts from the domain. Files applies when the storage profile needs it. |
 | `TASKDESK_IMAGE_TAG` · `TASKDESK_IMAGE_DIGEST` | Compose | Shipping image selection and digest-pinned rollback. |
+| `TASKDESK_IMAGE` · `TASKDESK_COSIGN_IDENTITY` | Compose, `scripts/deploy.sh` | Fork image repository (default `ghcr.io/thomasheinthura/taskdesk`) and the exact cosign workflow identity that signs it. Deploy refuses an overridden image without its identity. |
+| `TASKDESK_REPOSITORY` | `install.sh` | Fork GitHub `owner/repo` for release archives; needs `TASKDESK_COSIGN_IDENTITY` too. |
 | `TASKDESK_HSTS_PRELOAD` | Compose, into the Traefik headers middleware | Explicit opt-in to HSTS subdomains/preload commitments. |
 | `TASKDESK_LOCAL_HTTP_PORT` · `TASKDESK_LOCAL_HTTPS_PORT` | Compose, `deploy/compose.traefik.yml` (`local` mode only) | Local proxy listener ports, default 80/443; verify availability before starting. |
 | `TASKDESK_API_URL` · `TASKDESK_API_KEY` | `@taskdesk/mcp`, on the user's own machine | External MCP client's instance URL and scoped API credential; the API server reads neither name. |
@@ -87,7 +90,7 @@ Configuration is backed-up data: `instance_setting`, `instance_branding`, `insta
 
 ## Source installer integrity
 
-The maintained source SHA-256 for `install.sh` is `2a38ded00fb7f47bdcd9605d1aed532c6e8948e1b19719fa789a273087e4a00f`. Refresh it with an intentional installer change. The installer regression checks the actual source bytes; release archives and deployed images still require their own verified checksums and source identity.
+The maintained source SHA-256 for `install.sh` is `6afea0316f0274dd5fe700fce778dc834d53e7f3868bd479c623e88a26f110dc`. Refresh it with an intentional installer change. The installer regression checks the actual source bytes; release archives and deployed images still require their own verified checksums and source identity.
 
 
 ### Staff registration
