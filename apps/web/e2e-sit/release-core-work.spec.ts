@@ -6,6 +6,7 @@ import {
   type Session,
   signIn,
   stamp,
+  taskTypeId,
 } from "./release-helpers";
 
 test.afterEach(({ browserName: _browserName }, testInfo) => {
@@ -27,15 +28,7 @@ test("core work persists, is shared, denied to viewers and protected from stale 
   try {
     const { projectId } = await discoverTarget(lead);
     const title = `R929 core work ${stamp()}`;
-    const types = await lead.call(
-      "GET",
-      `/projects/${projectId}/creatable-work-item-types`,
-    );
-    expect(types.status).toBe(200);
-    const typeId = (
-      types.body as Array<{ id: string; key: string; isEpic: boolean }>
-    ).find((type) => type.key === "task" && !type.isEpic)?.id;
-    expect(typeId).toBeTruthy();
+    const typeId = await taskTypeId(lead, projectId);
     const made = await lead.call("POST", `/projects/${projectId}/work-items`, {
       typeId,
       title,

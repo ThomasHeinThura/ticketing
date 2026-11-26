@@ -7,6 +7,7 @@ import {
   type Session,
   signIn,
   stamp,
+  taskTypeId,
 } from "./release-helpers";
 
 test.afterEach(({ browserName: _browserName }, testInfo) => {
@@ -72,13 +73,7 @@ test("time logged by a member totals correctly and cost stays with rate managers
     expect(activities.status).toBe(200);
     const activityId = rowsOf<{ id: string }>(activities.body)[0]?.id;
     expect(activityId, "a time activity exists").toBeTruthy();
-    const types = await lead.call(
-      "GET",
-      `/projects/${projectId}/creatable-work-item-types`,
-    );
-    const typeId = (
-      types.body as Array<{ id: string; key: string; isEpic: boolean }>
-    ).find((type) => type.key === "task" && !type.isEpic)?.id;
+    const typeId = await taskTypeId(lead, projectId);
     const title = `R929 time and cost ${stamp()}`;
     const made = await lead.call("POST", `/projects/${projectId}/work-items`, {
       typeId,

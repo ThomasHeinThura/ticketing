@@ -17,6 +17,7 @@
  * deploy/local/certs/local.crt (the package script sets it); Chromium skips the check for
  * *.localhost hosts only.
  */
+import { createHmac } from "node:crypto";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
@@ -102,6 +103,35 @@ const isCustomer = (account) =>
   /^customer\b/i.test(account.role ?? "") ||
   account.email.endsWith("@acme.example");
 
+// RFC 6238 code from an otpauth:// URI; the key is never logged.
+function totpCode(uri, now = Date.now()) {
+  const secret = new URL(uri).searchParams.get("secret") ?? "";
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = 0;
+  let value = 0;
+  const bytes = [];
+  for (const character of secret.toUpperCase().replaceAll("=", "")) {
+    const digit = alphabet.indexOf(character);
+    if (digit < 0) throw new Error("totpUri has no valid key");
+    value = (value << 5) | digit;
+    bits += 5;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes.push((value >>> bits) & 0xff);
+      value &= (1 << bits) - 1;
+    }
+  }
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(now / 30_000)));
+  const digest = createHmac("sha1", Buffer.from(bytes))
+    .update(counter)
+    .digest();
+  const offset = digest[digest.length - 1] & 0x0f;
+  return String(
+    (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000,
+  ).padStart(6, "0");
+}
+
 async function signIn(base, account, attempt = 0) {
   const response = await fetch(`${base}/api/auth/sign-in/email`, {
     method: "POST",
@@ -121,7 +151,25 @@ async function signIn(base, account, attempt = 0) {
   const cookies = (response.headers.getSetCookie?.() ?? []).map(
     (c) => c.split(";")[0],
   );
-  return { status: response.status, cookies };
+  if (response.status !== 200) return { status: response.status, cookies };
+  const reply = await response.json().catch(() => ({}));
+  if (!reply?.twoFactorRedirect) return { status: response.status, cookies };
+  // Password accepted; the account has TOTP (every instance administrator after setup).
+  if (!account.totpUri) return { status: 401, cookies: [] };
+  const verified = await fetch(`${base}/api/auth/two-factor/verify-totp`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      Origin: base,
+      cookie: cookies.join("; "),
+    },
+    body: JSON.stringify({ code: totpCode(account.totpUri) }),
+    redirect: "manual",
+  });
+  const sessionCookies = (verified.headers.getSetCookie?.() ?? []).map(
+    (c) => c.split(";")[0],
+  );
+  return { status: verified.status, cookies: sessionCookies };
 }
 
 async function getJson(base, cookies, route) {
@@ -170,7 +218,9 @@ async function apiChecks(account, base, cookies) {
   const workspaces = await getJson(base, cookies, "/api/workspace");
   check(
     `${name}: workspaces`,
-    workspaces.status === 200 && length(workspaces.body) > 0,
+    // An instance administrator need not belong to any workspace (setup creates none for it).
+    workspaces.status === 200 &&
+      (account.role === "instance-admin" || length(workspaces.body) > 0),
     `${workspaces.status} n=${length(workspaces.body)}`,
   );
   const workspaceId = workspaces.body?.[0]?.id;
