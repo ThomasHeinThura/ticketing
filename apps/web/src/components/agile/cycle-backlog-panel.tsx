@@ -151,7 +151,7 @@ export function CycleBacklogPanel({
           aria-label={t(
             kind === "cycle" ? "backlog.title" : "backlog.moduleTitle",
           )}
-          className="flex max-h-[28rem] flex-col gap-1.5 overflow-y-auto rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+          className="flex max-h-[28rem] flex-col gap-1.5 overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >
           {items.map((item) => (
             <BacklogRow
