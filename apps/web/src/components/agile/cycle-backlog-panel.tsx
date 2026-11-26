@@ -145,7 +145,14 @@ export function CycleBacklogPanel({
       ) : items.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t("backlog.empty")}</p>
       ) : (
-        <ul className="flex max-h-[28rem] flex-col gap-1.5 overflow-y-auto">
+        <ul
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: read-only rows have no focusable child, so the scroll list itself must take focus
+          tabIndex={0}
+          aria-label={t(
+            kind === "cycle" ? "backlog.title" : "backlog.moduleTitle",
+          )}
+          className="flex max-h-[28rem] flex-col gap-1.5 overflow-y-auto rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        >
           {items.map((item) => (
             <BacklogRow
               key={item.id}
