@@ -32,6 +32,13 @@ test("an instance administrator previews and applies a CSV import and the item i
   try {
     const { workspaceId, projectId } = await discoverTarget(lead);
     const typeId = await taskTypeId(lead, projectId);
+    // Imports need instance administration and read access to the target workspace
+    // (requireImportWorkspaceRead); instance administration alone grants no workspace reach.
+    const rootWorkspaces = await root.call("GET", "/workspace");
+    expect(
+      JSON.stringify(rootWorkspaces.body).includes(`"${workspaceId}"`),
+      "the instance-admin account must be a member of the release workspace and project",
+    ).toBe(true);
     const runStamp = stamp();
     const title = `R929 import apply ${runStamp}`;
     const source = await post("/import-sources", {
