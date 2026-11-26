@@ -440,7 +440,11 @@ print_setup_token() {
   # The setup token is printed once per start while setup_completed_at is null;
   # every restart issues a fresh one and invalidates the previous.
   local line
-  line="$(dc logs taskdesk 2>/dev/null | grep -iE 'setup (token|url)' | tail -1 || true)"
+  # The one-time URL already carries the token, so print it alone; fall back to a bare token line.
+  local logs
+  logs="$(dc logs taskdesk 2>/dev/null || true)"
+  line="$(printf '%s\n' "$logs" | grep -iE 'setup url' | tail -1 || true)"
+  [ -n "$line" ] || line="$(printf '%s\n' "$logs" | grep -iE 'setup token' | tail -1 || true)"
   if [ -n "$line" ]; then
     printf '    %s\n' "$line"
   elif [ -n "${TASKDESK_BOOTSTRAP_ADMIN_EMAIL:-}" ]; then
@@ -570,6 +574,7 @@ case "$MODE" in
     dc up -d --wait taskdesk
     assert_port_unpublished
     probe_api
+    persist_image_selection "${TASKDESK_IMAGE_TAG:-v2.0.0}" "$TASKDESK_IMAGE_DIGEST"
     print_setup_token
     seed_if_permitted
     print_urls
@@ -589,6 +594,7 @@ case "$MODE" in
     dc up -d --wait
     assert_port_unpublished
     probe_api
+    persist_image_selection "${TASKDESK_IMAGE_TAG:-v2.0.0}" "$TASKDESK_IMAGE_DIGEST"
     print_setup_token
     print_urls
     ;;

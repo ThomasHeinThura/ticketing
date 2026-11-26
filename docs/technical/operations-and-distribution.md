@@ -1097,7 +1097,8 @@ Sentry, OTLP), listed live in God Mode → Plugins, which is the sub-processor r
 The bootstrap source is [`install.sh`](../../install.sh). The intended public command is:
 
 ```bash
-curl -fsSL https://get.taskdesk.dev/install.sh | bash
+curl -fsSLO https://raw.githubusercontent.com/<owner>/<repo>/main/install.sh
+bash install.sh --env production --domain example.com
 ```
 
 A clean host needs only a shell, outbound HTTPS, and the platform tools described below. The
@@ -1105,10 +1106,10 @@ installer obtains a specific signed GitHub release archive and hands off to the 
 `scripts/deploy.sh` used by the manual deployment path. It does not clone the source tree or
 implement a second deployment mechanism.
 
-The bootstrapper and release assets require verification independently of public hosting. Serving `install.sh` and
-`stable.txt` at `get.taskdesk.dev`, hardening that URL, and promoting the stable version
-pointer are P7 hosting work. Until those static assets are published, use a reviewed local
-copy of `install.sh` and pass `--version` for a published release.
+The bootstrapper and release assets are verified independently of where `install.sh` is
+downloaded from. Review the script before running it. No separate hosting is needed: the
+installer reads releases from the GitHub repository it is configured for
+(`TASKDESK_REPOSITORY`, default the upstream repository).
 
 <a id="one-line-install-install-flow"></a>
 ### Install flow
@@ -1127,9 +1128,9 @@ copy of `install.sh` and pass `--version` for a published release.
    and the later install-file prompt. It never pipes a remote script into a shell. The Docker
    daemon must be running and accessible to the invoking user.
 3. **Choose a release.** `--version TAG` selects an exact semantic version tag. Without that
-   flag, the installer reads the single-line `stable.txt` pointer over HTTPS. A static
-   `stable.txt` is published as part of P7 hosting; it is not dynamically resolved by a
-   service.
+   flag, the installer asks the GitHub API for the repository's latest release
+   (`/releases/latest`, which never returns drafts or pre-releases). A pre-release is only
+   installed when named with `--version`.
 4. **Authenticate before extraction.** Downloaded release assets are the versioned archive,
    its SHA-256 file, and separate cosign bundles for both files. Cosign verification pins the
    GitHub Actions OIDC issuer and the exact `release.yml` workflow identity. The archive hash
@@ -1300,9 +1301,9 @@ Canonical local SIT uses its separate existing-copy procedure. The signed archiv
 <a id="one-line-install-hosting-boundary"></a>
 ### Hosting boundary
 
-P7 publishes two static files at `get.taskdesk.dev`: `install.sh` and `stable.txt`. The latter
-contains one stable release tag and is updated only by the P7 promotion process. This feature
-does not create or operate that host, publish a customer release, or promote a version.
+The stable version is the repository's latest non-prerelease GitHub release; publishing a
+release is what promotes it. There is no separate pointer host. This feature does not publish
+a customer release or promote a version.
 
 <a id="proxy-topology-evidence"></a>
 ## Proxy topology — measured, not assumed
