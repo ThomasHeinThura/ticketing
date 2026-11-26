@@ -5460,7 +5460,7 @@
 			"endLabel": "{{label}} end",
 			"ends": "Ends",
 			"label": "{{day}} window {{count}}",
-			"move": "Move {{label}} from {{from}} to {{to}}",
+			"move": "Move {{label}}: {{from}}–{{to}}",
 			"remove": "Remove",
 			"removeWindow": "Remove {{label}}",
 			"startLabel": "{{label}} start",

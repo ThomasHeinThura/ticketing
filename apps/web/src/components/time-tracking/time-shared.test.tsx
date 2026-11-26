@@ -26,7 +26,7 @@ describe("ActivitySelect", () => {
         }
       />,
     );
-    const trigger = screen.getByRole("button", { name: "Activity" });
+    const trigger = screen.getByRole("button", { name: /^Activity(:|$)/ });
     expect(trigger).toHaveTextContent("Development");
     expect(screen.queryByRole("combobox")).toBeNull();
     fireEvent.click(trigger);

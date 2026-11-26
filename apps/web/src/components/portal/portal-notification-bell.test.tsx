@@ -57,12 +57,30 @@ describe("PortalNotificationBell (C8-3 / W5, DS-09)", () => {
 
   afterEach(() => cleanup());
 
+  it("names the trigger with the capped badge text above 99 unread", async () => {
+    mocks.get.mockResolvedValue({
+      data: [],
+      unreadCount: 150,
+      hasMore: false,
+      nextCursor: null,
+    });
+    renderBell();
+    await waitFor(() =>
+      expect(screen.getByRole("button")).toHaveTextContent("99+"),
+    );
+    expect(screen.getByRole("button")).toHaveAccessibleName(
+      "notifications.inbox: 99+",
+    );
+  });
+
   it("renders a readable 11px unread badge and keeps menu unread status screen-reader-only instead of visually duplicating the badge count", async () => {
     renderBell();
     const trigger = await screen.findByRole("button", {
       name: "notifications.inbox",
     });
     await waitFor(() => expect(trigger).toHaveTextContent("3"));
+    // WCAG 2.5.3: the visible badge text is part of the accessible name.
+    expect(trigger).toHaveAccessibleName("notifications.inbox: 3");
     const badge = trigger.querySelector("span");
     expect(badge).toHaveClass("text-xs");
     expect(badge).not.toHaveClass("text-[9px]");

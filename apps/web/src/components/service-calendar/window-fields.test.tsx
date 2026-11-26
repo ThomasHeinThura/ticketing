@@ -34,9 +34,12 @@ describe("weekly calendar window", () => {
     fireEvent.click(boundary);
     expect(onChange).toHaveBeenLastCalledWith({ to: 1020 });
     expect(container.querySelector('input[type="time"]')).toBeNull();
-    expect(
-      screen.getByRole("button", { name: /Move Monday window 1/ }),
-    ).toHaveAttribute("aria-roledescription", "draggable");
+    const move = screen.getByRole("button", { name: /Move Monday window 1/ });
+    expect(move).toHaveAttribute("aria-roledescription", "draggable");
+    // WCAG 2.5.3: the visible time range is contained in the name.
+    expect(move).toHaveAccessibleName(
+      `Move Monday window 1: ${move.textContent}`,
+    );
   });
 
   it("shows times without editing controls for read-only windows", () => {

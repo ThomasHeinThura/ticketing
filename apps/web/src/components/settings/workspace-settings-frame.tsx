@@ -270,9 +270,16 @@ export function WorkspaceSettingsFrame({ children }: { children: ReactNode }) {
         </div>
       </SettingsSidebar>
 
-      <div id={SETTINGS_CONTENT_ID} className="flex-1 min-w-0 overflow-y-auto">
+      {/* Keyboard-reachable scroll region (axe scrollable-region-focusable). */}
+      <section
+        id={SETTINGS_CONTENT_ID}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll region must be focusable to scroll by keyboard
+        tabIndex={0}
+        aria-label={t("navigation:page.settingsWorkspaceTab")}
+        className="flex-1 min-w-0 overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+      >
         {children}
-      </div>
+      </section>
     </div>
   );
 }

@@ -320,10 +320,14 @@ describe("portal shell", () => {
     renderShell();
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "shell.userMenu.label Ada Customer",
+        name: /shell\.userMenu\.label Ada Customer$/,
       }),
     );
     const menu = await screen.findByRole("menu");
+    // WCAG 2.5.3: the avatar shows "AC", so the trigger name starts with it.
+    expect(
+      screen.getByRole("button", { name: /^AC shell\.userMenu\.label/ }),
+    ).toBeInTheDocument();
     expect(within(menu).getByText("Ada Customer")).toBeInTheDocument();
     expect(within(menu).getByText("ada@example.test")).toBeInTheDocument();
     fireEvent.click(
@@ -347,7 +351,9 @@ describe("portal shell", () => {
         : "commandPalette.darkTheme",
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "shell.userMenu.label Ada Customer" }),
+      screen.getByRole("button", {
+        name: /shell\.userMenu\.label Ada Customer$/,
+      }),
     );
     await screen.findByRole("menu");
     expect(screen.queryByRole("menuitem", { name: "shell.theme" })).toBeNull();
@@ -365,7 +371,9 @@ describe("portal shell", () => {
       expect(screen.queryByRole("switch", { name: "shell.theme" })).toBeNull(),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "shell.userMenu.label Ada Customer" }),
+      screen.getByRole("button", {
+        name: /shell\.userMenu\.label Ada Customer$/,
+      }),
     );
     fireEvent.click(
       await screen.findByRole("menuitem", { name: "shell.theme" }),
@@ -378,7 +386,7 @@ describe("portal shell", () => {
     renderShell();
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "shell.userMenu.label Ada Customer",
+        name: /shell\.userMenu\.label Ada Customer$/,
       }),
     );
     fireEvent.click(

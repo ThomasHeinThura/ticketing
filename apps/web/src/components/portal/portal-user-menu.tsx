@@ -83,9 +83,10 @@ export default function PortalUserMenu({
           variant="ghost"
           size="icon"
           className="shrink-0 rounded-full p-0"
-          aria-label={t("shell.userMenu.label", {
+          // WCAG 2.5.3: the avatar shows initials, so the name starts with them.
+          aria-label={`${initials} ${t("shell.userMenu.label", {
             name: user.name || user.email,
-          })}
+          })}`}
         >
           <Avatar className="size-7">
             {user.image ? <AvatarImage src={user.image} alt="" /> : null}

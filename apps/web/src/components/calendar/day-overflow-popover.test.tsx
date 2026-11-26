@@ -19,7 +19,7 @@ vi.mock("@/lib/format", () => ({
   formatDateShort: (value: Date) => value.toISOString().slice(0, 10),
 }));
 
-const TRIGGER_NAME = "tasks:calendar.dayTasksAriaLabel";
+const TRIGGER_NAME = /^tasks:calendar\.dayTasksAriaLabel/;
 
 function task(
   id: string,
@@ -47,6 +47,23 @@ const dayTasks = [
 ];
 
 describe("DayOverflowPopover", () => {
+  it("keeps the visible +N more text inside the accessible name (WCAG 2.5.3)", () => {
+    render(
+      <DayOverflowPopover
+        day={AUGUST_10}
+        tasks={dayTasks}
+        hiddenCount={2}
+        projectSlug="KAN"
+        onOpenTask={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("button", { name: TRIGGER_NAME });
+    expect(trigger.textContent).toBe("tasks:calendar.moreTasks");
+    expect(trigger).toHaveAccessibleName(
+      expect.stringContaining("tasks:calendar.moreTasks"),
+    );
+  });
+
   it("keeps the task list closed until the overflow label is clicked", () => {
     render(
       <DayOverflowPopover

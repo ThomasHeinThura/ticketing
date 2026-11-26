@@ -459,9 +459,13 @@ describe("PortalProjectDetails", () => {
     expect(screen.getByText("Business hours")).toBeInTheDocument();
     expect(screen.getByText("Jun 30, 2026")).toBeInTheDocument();
     const email = screen.getByRole("link", {
-      name: "projects.detail.contacts.emailLabel(name=Mara Manager)",
+      name: /^projects\.detail\.contacts\.emailLabel\(name=Mara Manager\)/,
     });
     expect(email).toHaveAttribute("href", "mailto:mara@example.test");
+    // WCAG 2.5.3: the visible address is part of the accessible name.
+    expect(email).toHaveAccessibleName(
+      "projects.detail.contacts.emailLabel(name=Mara Manager): mara@example.test",
+    );
     expect(screen.getByText("Technical lead")).toBeInTheDocument();
     expect(
       screen.getByText("projects.detail.subscription.remaining(count=265)"),

@@ -183,7 +183,7 @@ describe("canonical Kaneo relations section", () => {
     };
     mount();
     const trigger = await screen.findByRole("button", {
-      name: translate("workItems:relations.type"),
+      name: new RegExp(`^${translate("workItems:relations.type")}(:|$)`),
     });
     expect(trigger).toHaveTextContent(
       translate("workItems:relations.types.relates"),

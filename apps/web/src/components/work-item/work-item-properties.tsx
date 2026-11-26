@@ -34,7 +34,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/avatar";
 import { ActionTooltip } from "@/components/common/action-tooltip";
@@ -1171,23 +1171,29 @@ function LabelsControl({
             variant="ghost"
             size="sm"
             className="h-auto min-h-5 flex-wrap justify-start gap-1.5 px-0 py-0 font-normal"
-            aria-label={title}
+            aria-label={
+              selected.length > 0
+                ? `${title}: ${selected.map((label) => label.name).join(" ")}`
+                : title
+            }
             disabled={!canUpdateTasks() || unavailable}
           />
         }
       >
         {selected.map((label) => (
-          <Badge
-            key={label.id}
-            variant="outline"
-            className="flex items-center gap-1 px-1.5 py-0.5 text-[10px]"
-          >
-            <span
-              className="size-1.5 shrink-0 rounded-full"
-              style={{ backgroundColor: resolveLabelColor(label.color) }}
-            />
-            <span className="max-w-[60px] truncate">{label.name}</span>
-          </Badge>
+          <Fragment key={label.id}>
+            <Badge
+              variant="outline"
+              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px]"
+            >
+              <span
+                className="size-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: resolveLabelColor(label.color) }}
+              />
+              <span className="max-w-[60px] truncate">{label.name}</span>
+            </Badge>
+            {/* A space between badges keeps their text apart for the accessible-name check. */}{" "}
+          </Fragment>
         ))}
         <Plus className="size-3" />
       </PopoverTrigger>

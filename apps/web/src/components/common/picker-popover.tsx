@@ -73,6 +73,10 @@ export function PickerPopover({
   const selected = options.find((option) => option.value === value);
   const searchable =
     searchableOverride ?? options.length > PICKER_SEARCH_THRESHOLD;
+  const visibleText = selected?.label ?? placeholder;
+  // WCAG 2.5.3: the name must contain the visible text, so append it to the label.
+  const triggerName =
+    ariaLabel && visibleText ? `${ariaLabel}: ${visibleText}` : ariaLabel;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -81,12 +85,12 @@ export function PickerPopover({
           type="button"
           variant="outline"
           size="sm"
-          aria-label={ariaLabel}
+          aria-label={triggerName}
           disabled={disabled}
           data-testid={testId}
           className={cn("min-w-0 justify-between gap-2 font-normal", className)}
         >
-          <span className="truncate">{selected?.label ?? placeholder}</span>
+          <span className="truncate">{visibleText}</span>
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         </Button>
       </PopoverTrigger>

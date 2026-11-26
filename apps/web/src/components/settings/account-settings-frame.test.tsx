@@ -56,6 +56,14 @@ describe("AccountSettingsFrame (L-03)", () => {
     ]);
   });
 
+  it("makes the scrolling content a focusable, named region", () => {
+    render(<AccountSettingsFrame>content</AccountSettingsFrame>);
+    const region = screen.getByRole("region", { name: "settings:account" });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region).toHaveClass("overflow-y-auto");
+    expect(region).toHaveTextContent("content");
+  });
+
   it("marks Security as the current page on the security URL", () => {
     location.pathname = "/dashboard/settings/account/security";
     render(<AccountSettingsFrame>content</AccountSettingsFrame>);

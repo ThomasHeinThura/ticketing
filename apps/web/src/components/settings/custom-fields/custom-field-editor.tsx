@@ -518,7 +518,7 @@ function EditorForm({
               {t("customFields:editor.noTypes")}
             </p>
           ) : (
-            <Table>
+            <Table scrollLabel={t("customFields:editor.visibilityTitle")}>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("customFields:editor.typeColumn")}</TableHead>

@@ -588,7 +588,7 @@ describe("MembersTable narrow widths (finding #4)", () => {
 
     const row = screen.getByText(longMember.name as string).closest("tr");
     const pickers = within(row as HTMLElement).getAllByRole("button", {
-      name: "team:roles.member",
+      name: /^team:roles\.member(:|$)/,
     });
     // One picker per breakpoint: the column copy from sm up, the copy under
     // the name below sm. Each is display:none on the other side.
@@ -633,7 +633,7 @@ describe("MembersTable narrow widths (finding #4)", () => {
     );
 
     const [inName] = screen.getAllByRole("button", {
-      name: "team:roles.member",
+      name: /^team:roles\.member(:|$)/,
     });
     fireEvent.click(inName);
     expect(

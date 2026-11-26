@@ -72,7 +72,7 @@ function setup() {
 }
 function open() {
   fireEvent.click(
-    screen.getByRole("button", { name: "workItems:parent.label" }),
+    screen.getByRole("button", { name: /^workItems:parent\.label(:|$)/ }),
   );
 }
 function typeKey(key: string) {
@@ -115,7 +115,7 @@ describe("Kaneo parent control", () => {
     setup();
     expect(fake.permission).toHaveBeenCalledWith("ws", "project");
     expect(
-      screen.getByRole("button", { name: "workItems:parent.label" }),
+      screen.getByRole("button", { name: /^workItems:parent\.label(:|$)/ }),
     ).toBeDisabled();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
@@ -188,6 +188,15 @@ describe("Kaneo parent control", () => {
     expect(screen.getByRole("textbox")).toHaveValue("OPS-2");
     expect(fake.save).toHaveBeenCalledTimes(1);
   });
+  it("keeps the visible parent key inside the accessible name (WCAG 2.5.3)", () => {
+    fake.ancestors = [{ key: "OPS-2" }];
+    setup();
+    const trigger = screen.getByRole("button", {
+      name: /^workItems:parent\.label(:|$)/,
+    });
+    expect(trigger).toHaveTextContent("OPS-2");
+    expect(trigger).toHaveAccessibleName("workItems:parent.label: OPS-2");
+  });
   it("detaches with the same versioned mutation path", async () => {
     fake.ancestors = [{ key: "OPS-2" }];
     setup();
@@ -210,7 +219,7 @@ describe("Kaneo parent control", () => {
     await waitFor(() => expect(onAccessLost).toHaveBeenCalled());
     expect(screen.queryByText("OPS-900")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "workItems:parent.label" }),
+      screen.getByRole("button", { name: /^workItems:parent\.label(:|$)/ }),
     ).toBeDisabled();
   });
 });

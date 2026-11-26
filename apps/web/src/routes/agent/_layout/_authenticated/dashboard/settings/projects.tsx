@@ -234,11 +234,17 @@ function RouteComponent() {
         </div>
       </SettingsSidebar>
 
-      <div className="flex-1 min-w-0 overflow-y-auto">
+      {/* Keyboard-reachable scroll region (axe scrollable-region-focusable). */}
+      <section
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll region must be focusable to scroll by keyboard
+        tabIndex={0}
+        aria-label={t("navigation:page.settingsTitle")}
+        className="flex-1 min-w-0 overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+      >
         {/* A project id that is neither listed nor archived is missing or out of reach: one
             denial instead of each settings panel failing its own way. */}
         {projectNotFound ? <ProjectNotFound /> : <Outlet />}
-      </div>
+      </section>
     </div>
   );
 }

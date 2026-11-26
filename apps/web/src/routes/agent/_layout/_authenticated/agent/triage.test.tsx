@@ -896,7 +896,9 @@ describe("intake triage route", () => {
     // jsdom has no layout: assert the class contract measured in Chromium at
     // 375 px (a flex child with min-width:auto would grow to its select text).
     for (const name of ["Destination project", "Work item type"]) {
-      const trigger = await screen.findByRole("button", { name });
+      const trigger = await screen.findByRole("button", {
+        name: new RegExp(`^${name}(:|$)`),
+      });
       const wrapper = trigger.closest("div.flex-col") as HTMLElement;
       expect(wrapper.className).toContain("min-w-0");
       expect(wrapper.className).toContain("max-w-full");

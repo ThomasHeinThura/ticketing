@@ -729,7 +729,9 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
 
     const view = renderActivity();
     await pickCanned(
-      within(view.container).getByRole("button", { name: "Canned response" }),
+      within(view.container).getByRole("button", {
+        name: /^Canned response(:|$)/,
+      }),
     );
     await waitFor(() => {
       const saved = JSON.parse(
@@ -774,7 +776,9 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
     ]);
     const view = renderActivity();
     await pickCanned(
-      within(view.container).getByRole("button", { name: "Canned response" }),
+      within(view.container).getByRole("button", {
+        name: /^Canned response(:|$)/,
+      }),
     );
     await waitFor(() =>
       expect(editable(view.container)?.textContent).toContain("Due 2026-10-25"),
@@ -808,7 +812,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       ).toContain("Keep my draft"),
     );
     const select = within(view.container).getByRole("button", {
-      name: "Canned response",
+      name: /^Canned response(:|$)/,
     });
     await pickCanned(select);
     await waitFor(() =>
@@ -869,7 +873,7 @@ describe("work item comment editor lifecycle and CA-16 drafts", () => {
       ).toContain("Keep pending draft"),
     );
     const select = within(view.container).getByRole("button", {
-      name: "Canned response",
+      name: /^Canned response(:|$)/,
     });
     const send = within(view.container).getByRole("button", {
       name: "Add internal note",

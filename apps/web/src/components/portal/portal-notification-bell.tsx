@@ -35,7 +35,12 @@ export default function PortalNotificationBell() {
           variant="ghost"
           size="icon"
           className="relative shrink-0"
-          aria-label={t("notifications.inbox")}
+          // WCAG 2.5.3: the name contains the visible unread badge text.
+          aria-label={
+            unreadCount > 0
+              ? `${t("notifications.inbox")}: ${unreadCount > 99 ? "99+" : unreadCount}`
+              : t("notifications.inbox")
+          }
         >
           <Bell className="size-4" aria-hidden="true" />
           {unreadCount > 0 ? (

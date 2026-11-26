@@ -101,7 +101,7 @@ describe("IntakeQueuePicker", () => {
   it("renders human labels instead of current and visibility value ids", async () => {
     renderPicker({ canCreate: true, queueId: "pair-1" });
     const picker = await screen.findByRole("button", {
-      name: "queue.choose",
+      name: /^queue\.choose(:|$)/,
     });
     await waitFor(() => expect(picker).toHaveTextContent("Saved support"));
     expect(picker).not.toHaveTextContent("pair-1");
@@ -126,8 +126,10 @@ describe("IntakeQueuePicker", () => {
 
   it("shows reachable saved queues and reports the selected pair", async () => {
     const { onSelect } = renderPicker();
-    await screen.findByRole("button", { name: "queue.choose" });
-    fireEvent.click(screen.getByRole("button", { name: "queue.choose" }));
+    await screen.findByRole("button", { name: /^queue\.choose(:|$)/ });
+    fireEvent.click(
+      screen.getByRole("button", { name: /^queue\.choose(:|$)/ }),
+    );
     fireEvent.click(
       await screen.findByRole("button", { name: "Saved support" }),
     );
