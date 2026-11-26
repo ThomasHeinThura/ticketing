@@ -1,7 +1,7 @@
 #!/bin/sh
 # TaskDesk container entrypoint.
 #
-# Specification: docs/05-operations/container-image.md § Entrypoint
+# Specification: docs/guide/install-and-deploy.md
 #
 #   1. validate the five required environment variables; exit 1 with a clear
 #      message if absent
@@ -61,7 +61,7 @@ Set them in your .env file (see deploy/.env.example) and start again.
 There is no default for any of them, and there must not be: an absent
 TASKDESK_AUTH_SECRET once fell through to a constant published in better-auth's
 own source, which signed every session cookie with a value anyone can read.
-Reference: docs/05-operations/configuration-reference.md
+Reference: docs/guide/install-and-deploy.md
 EOF
   exit 1
 fi

@@ -1,12 +1,16 @@
 import { expect, test } from "@playwright/test";
 import { redactSecretErrorContext } from "../e2e/helpers/redact-secret-error-context";
-import { removeWorkItem, type Session, signIn, stamp } from "./release-helpers";
+import {
+  discoverTarget,
+  removeWorkItem,
+  type Session,
+  signIn,
+  stamp,
+} from "./release-helpers";
 
 test.afterEach(({ browserName: _browserName }, testInfo) => {
   redactSecretErrorContext(testInfo);
 });
-
-const projectId = "uat-proj-web";
 
 /**
  * Release journey: governance approval. An admin raises a change in the Website Relaunch
@@ -22,6 +26,12 @@ test("CAB approval is decided by the named approver and never by the requester",
   const sessions: Session[] = [admin];
   let key: string | null = null;
   try {
+    const { projectId } = await discoverTarget(admin);
+    // The lead is the change approver; the approver id is the lead's own person id.
+    const lead = await signIn(browser, "lead");
+    sessions.push(lead);
+    const identity = await lead.call("GET", "/me/identity");
+    expect(identity.status).toBe(200);
     const types = await admin.call(
       "GET",
       `/projects/${projectId}/creatable-work-item-types`,
@@ -61,7 +71,7 @@ test("CAB approval is decided by the named approver and never by the requester",
     const requested = await admin.call("POST", `/work-items/${key}/approvals`, {
       transitionId: gated?.transitionId,
       kind: "cab",
-      approverId: "uat-person-lead",
+      approverId: identity.body.personId as string,
     });
     expect(requested.status).toBe(200);
     expect(requested.body.state).toBe("pending");
@@ -86,8 +96,6 @@ test("CAB approval is decided by the named approver and never by the requester",
     expect(JSON.stringify(stillPending.body)).toContain('"state":"pending"');
 
     // The lead finds the request in the approvals lens and approves it.
-    const lead = await signIn(browser, "lead");
-    sessions.push(lead);
     const page = await lead.context.newPage();
     await page.goto("/agent/my-work?lens=approvals");
     await expect(page.getByText(title).first()).toBeVisible();

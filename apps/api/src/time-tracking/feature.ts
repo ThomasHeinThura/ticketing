@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import type { Executor } from "../database/executor";
 import { cycleTable, moduleTable } from "../database/schema-p5-agile";
 import {
   listWorkspaceFeatures,
@@ -15,32 +16,30 @@ export const COST_TRACKING_FEATURE_KEY = "feature.cost_tracking";
 export async function assertTrackingEnabledForProject(
   workspaceId: string,
   projectId: string,
+  executor: Executor,
   ...keys: Array<
     typeof TIME_TRACKING_FEATURE_KEY | typeof COST_TRACKING_FEATURE_KEY
   >
 ): Promise<void> {
   for (const key of keys)
-    if (!(await trackingFeatureEnabled(key, workspaceId, projectId)))
+    if (!(await trackingFeatureEnabled(key, workspaceId, projectId, executor)))
       throw new HTTPException(409, { message: "feature_disabled" });
 }
 
 /**
- * Resolve a time/cost feature flag (instance, workspace, project hierarchy). Fails closed: an
- * unreadable flag is off, so a broken lookup stops tracking rather than allowing it.
+ * Resolve a time/cost feature flag (instance, workspace, project hierarchy). Callers inside a
+ * transaction pass it as `executor`; a lookup error propagates (5xx) rather than reading as off.
  */
 export async function trackingFeatureEnabled(
   key: typeof TIME_TRACKING_FEATURE_KEY | typeof COST_TRACKING_FEATURE_KEY,
   workspaceId: string,
   projectId: string | null = null,
+  executor: Executor = db,
 ): Promise<boolean> {
-  try {
-    const features = projectId
-      ? await resolveProjectFeatures(projectId, workspaceId)
-      : await listWorkspaceFeatures(workspaceId);
-    return features.find((entry) => entry.key === key)?.enabled === true;
-  } catch {
-    return false;
-  }
+  const features = projectId
+    ? await resolveProjectFeatures(projectId, workspaceId, executor)
+    : await listWorkspaceFeatures(workspaceId, executor);
+  return features.find((entry) => entry.key === key)?.enabled === true;
 }
 
 /**

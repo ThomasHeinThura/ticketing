@@ -2,9 +2,9 @@
 #
 # TaskDesk restore script.
 #
-#   scripts/restore.sh --backup <id-or-dir> --confirm [--mode local|production]
+#   scripts/restore.sh --backup <id-or-dir> --confirm --mode local|sit|uat|production|isolated
 #
-# Specification: docs/05-operations/backup-and-restore.md § Restore
+# Specification: docs/guide/install-and-deploy.md
 #   1. Verify backup checksums and `pg_restore --list` before stopping anything
 #   2. Stop the application (`taskdesk`), leaving PostgreSQL running
 #   3. Restore PostgreSQL into a temporary staging DB (`createdb` + `pg_restore`), then swap over live DB
@@ -20,20 +20,20 @@ ENV_FILE="$REPO_ROOT/.env"
 BACKUP_ROOT="${TASKDESK_BACKUP_ROOT:-$REPO_ROOT/backups}"
 BACKUP_ARG=""
 CONFIRMED=0
-MODE="local"
+MODE=""
 PROJECT_NAME=""
 LEGACY_MOUNT=""
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/restore.sh --backup <id-or-dir> --confirm [--mode local|production]
+  scripts/restore.sh --backup <id-or-dir> --confirm --mode local|sit|uat|production|isolated
 
 Options:
   --project-name <name>  Select an isolated Compose project (default: Compose configuration)
   --backup <id-or-dir>  Backup identifier under backups/ or path to backup directory
   --confirm             Required confirmation flag before overwriting database and attachments
-  --mode <mode>         Compose overlay mode: local (default), sit, uat, production or isolated
+  --mode <mode>         Compose overlay mode (required): local, sit, uat, production or isolated
   --legacy-source-mount <path>  Source mount for backups without mount metadata
 EOF
   exit "${1:-1}"
@@ -79,6 +79,11 @@ done
 
 if [ -z "$BACKUP_ARG" ]; then
   printf 'xx --backup <id-or-dir> is required\n' >&2
+  usage 1
+fi
+
+if [ -z "$MODE" ]; then
+  printf 'xx --mode is required (a wrong default would restart production as a dev stack)\n' >&2
   usage 1
 fi
 
@@ -171,6 +176,10 @@ DATA_MOUNT="$(resolve_compose_data_volume)" || exit 1
 DATA_VOLUME="${DATA_MOUNT%%:*}"
 [ "$SOURCE_MOUNT" = "${DATA_MOUNT#*:}" ] || { printf 'xx attachment mount mismatch; restore refused\n' >&2; exit 1; }
 
+# The stack's own postgres image carries sh and tar, so no unpinned image is pulled.
+HELPER_IMAGE="$(dc images -q postgres | head -1)"
+[ -n "$HELPER_IMAGE" ] || { printf 'xx cannot find the postgres image to run the attachment helper\n' >&2; exit 1; }
+
 STAGING_DB="${POSTGRES_DB:0:35}_restore_staging_$$"
 RECOVERY_DB="${POSTGRES_DB:0:35}_restore_recovery_$$"
 STAGING_ACTIVE=0
@@ -211,8 +220,8 @@ PROMOTED=1
 printf '==> Step 3: Restoring attachment volume (%s)\n' "$DATA_VOLUME"
 docker run --rm -i \
   -v "$DATA_VOLUME:/data" \
-  alpine:3.22 \
-  sh -c 'undo="$1"; mkdir "/data/$undo" && tar -C /data --exclude="./$undo" -cf "/data/$undo/attachments.tar" . && tar -C /data --exclude="./$undo" --exclude="./$undo/*" -xf - && chown -R 10001:10001 /data' sh "$UNDO_DIR" < "$ATTACHMENTS_TAR"
+  --entrypoint sh "$HELPER_IMAGE" \
+  -c 'undo="$1"; mkdir "/data/$undo" && tar -C /data --exclude="./$undo" -cf "/data/$undo/attachments.tar" . && tar -C /data --exclude="./$undo" --exclude="./$undo/*" -xf - && chown -R 10001:10001 /data' sh "$UNDO_DIR" < "$ATTACHMENTS_TAR"
 
 printf '==> Step 4: Running migrations and role grants\n'
 dc run --rm migrate
@@ -227,7 +236,7 @@ for _ in $(seq 1 30); do
     dc exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
       -c "DROP DATABASE \"$RECOVERY_DB\";" >/dev/null
     PROMOTED=0
-    docker run --rm -v "$DATA_VOLUME:/data" alpine:3.22 sh -c 'rm -f "/data/$1/attachments.tar" && rmdir "/data/$1"' sh "$UNDO_DIR"
+    docker run --rm -v "$DATA_VOLUME:/data" --entrypoint sh "$HELPER_IMAGE" -c 'rm -f "/data/$1/attachments.tar" && rmdir "/data/$1"' sh "$UNDO_DIR"
     printf ' ok Restore verified and /api/public/health/ready is green\n'
     exit 0
   fi

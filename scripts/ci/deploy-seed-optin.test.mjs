@@ -61,6 +61,7 @@ warn() { :; }
 die() { exit 1; }
 dc() {
   shift 3
+  case "$1" in TASKDESK_SEED_CONFIRM_DATABASE=*) shift 2 ;; esac
   case "$1" in
     node) printf '%s' 'private fixture' > "$HOME/container/credentials"; return 1 ;;
     test) test -f "$HOME/container/credentials" ;;

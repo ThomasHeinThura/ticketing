@@ -55,7 +55,7 @@
  *   claim trigger's INSERT is now `ON CONFLICT ("key", work_item_id) DO NOTHING` (see the
  *   migration SQL and `workItemKeyClaimTable`'s comment in `schema.ts`). N3 (a doc comment
  *   crediting the wrong mechanism for O3's fix) and N4 (a dead cross-reference to
- *   `docs/04-engineering/migrations.md`) are documentation-only corrections with nothing
+ *   `docs/technical/operations-and-distribution.md`) are documentation-only corrections with nothing
  *   to regression-test here.
  *
  * `work_item.type_id` vs `work_item_type.workspace_id` (the other half of S2, #191 O5) was

@@ -1,6 +1,6 @@
 /**
  * `WORKFLOW_ALIASES` — the map of `pnpm <script>` commands a workflow executes that stand
- * in for a DIFFERENT gate `docs/04-engineering/ci-cd.md` declares (M2, `test-all.mjs`).
+ * in for a DIFFERENT gate `docs/technical/ci-gates.md` declares (M2, `test-all.mjs`).
  *
  * Left key: the command a workflow runs. Right key: the gate ci-cd.md declares.
  *

@@ -8111,6 +8111,8 @@ test("workspace settings labels screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { level: 1, name: "Labels" }),
   ).toBeVisible();
+  // The heading renders before the label list query resolves; shooting then caught "Loading labels...".
+  await expect(page.getByText("VIP customer")).toBeVisible();
   await expect(page).toHaveScreenshot("workspace-settings-labels.png", {
     animations: "disabled",
     caret: "hide",

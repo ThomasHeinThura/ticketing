@@ -220,6 +220,7 @@ export async function budgetThresholdRecipients(
       COST_TRACKING_FEATURE_KEY,
       workspaceId,
       projectId,
+      tx,
     ))
   )
     return [];
