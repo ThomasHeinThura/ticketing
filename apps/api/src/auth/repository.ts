@@ -1516,3 +1516,19 @@ export async function getIdentityConnectionConfigVersions() {
     })
     .from(schema.identityConnectionTable);
 }
+
+/** Swaps one credential hash for another; matching the old hash makes a concurrent change win. */
+export async function replaceCredentialPasswordHash(
+  oldHash: string,
+  newHash: string,
+) {
+  await db
+    .update(schema.accountTable)
+    .set({ password: newHash })
+    .where(
+      and(
+        eq(schema.accountTable.providerId, "credential"),
+        eq(schema.accountTable.password, oldHash),
+      ),
+    );
+}
