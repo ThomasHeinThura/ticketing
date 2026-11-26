@@ -452,7 +452,7 @@ export const projectPolicies = {
     reach: "required",
   },
 
-  // Project Overview (0213; decisions D1/D2, Thomas 31 Oct 2026). Reads need project:read.
+  // Project Overview (0213; decisions D1/D2, product decision, 31 Oct 2026). Reads need project:read.
   // The summary and lifecycle status share project:update with health and milestones; the
   // contract is engagement configuration, so writing it needs project:manage_settings.
   "GET /api/project/{id}/overview": {

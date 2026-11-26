@@ -5,7 +5,7 @@ import { SettingsShell } from "@/components/settings/settings-shell";
 import { useInstanceAdminSignal } from "@/hooks/use-instance-admin-signal";
 
 /**
- * God Mode at the agent host root (L-03, Thomas 30 Oct, option A). The parent `_authenticated`
+ * God Mode at the agent host root (L-03, product decision, 30 Oct, option A). The parent `_authenticated`
  * guard sends a signed-out visitor to `/god-mode/sign-in` and still enforces MFA enrolment; a
  * signed-in non-admin sees the access-denied screen. The API (`requireCurrentInstanceAdmin`,
  * `instance:admin`, session only) stays the authority for every request.

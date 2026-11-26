@@ -9,7 +9,7 @@ test.afterEach(({ browserName: _browserName }, testInfo) => {
   redactSecretErrorContext(testInfo);
 });
 
-// Thomas, 3 Nov: every report and dashboard chart fits its container at every width; wide
+// product decision, 3 Nov: every report and dashboard chart fits its container at every width; wide
 // content scrolls inside its own frame, never the page; labels and captions are never cut off.
 // Agent screens run on the G11 network-edge fixture plus a reports overlay; the portal Dashboard
 // runs on the built portal. Screenshots are evidence files, not G8 baselines.

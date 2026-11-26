@@ -121,7 +121,7 @@ async function main() {
     name: NAME,
     failures,
     ok: submission
-      ? "description and consolidated phase evidence validated; Thomas acceptance remains separate"
+      ? "description and consolidated phase evidence validated; owner acceptance remains separate"
       : "description complete; phase not submitted, no independent review or acceptance inferred",
   });
 }

@@ -21,7 +21,7 @@ const BOARD_OPTIONS: LastItemPaintRecorderOptions = {
 };
 
 /**
- * The virtualized work table (G11 work-list render, Thomas 28 Oct 2026): `loaded` rows stated
+ * The virtualized work table (G11 work-list render, product decision, 28 Oct 2026): `loaded` rows stated
  * by `aria-rowcount`, of which `mounted` (from row 1) are in the DOM, then bottom padding.
  */
 function listMarkup({

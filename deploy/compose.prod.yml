@@ -30,7 +30,7 @@ services:
       # It is WRONG for a host where a CDN or load balancer sits in front of
       # Traefik. Do not raise it because the diagram has more boxes: read the
       # X-Forwarded-For that actually arrives and count. The method, and the
-      # measured answer for the bimats.com host, are in
+      # measured answer for a CDN-fronted host, are in
       # docs/guide/install-and-deploy.md.
       # ---------------------------------------------------------------
       TASKDESK_TRUST_PROXY: "1"

@@ -9,7 +9,7 @@
  * other change — product, dependency, deployment, CI, or any mix — is FULL and runs everything.
  * ci-cd.md § Applicability is the human-readable statement of this rule; this file is the rule.
  *
- * How it is trusted (Thomas, decision log 2026-10-09, "Opus policy-repair conductor"):
+ * How it is trusted (product decision, decision log 2026-10-09, "Opus policy-repair conductor"):
  *
  *   - It is executed from the MERGE BASE, never from the pull request's own head: the composite
  *     action .github/actions/change-scope does `git show <merge-base>:scripts/ci/classify-change.mjs`

@@ -41,7 +41,7 @@ import {
  * from a staff row. Never returned: the assignee or default assignee (`CP-4`), the internal
  * status note, the SLA policy, individual time entries, rates or the people who logged time.
  * Named staff are the project's designated key contacts only (`CP-4`): the manager and active
- * staff stakeholders. D3 (Thomas, 31 Oct 2026) allows the contract period and the hours used and
+ * staff stakeholders. D3 (product decision, 31 Oct 2026) allows the contract period and the hours used and
  * remaining.
  *
  * The per-project counts use the same case rules as the portal dashboard (S4b,

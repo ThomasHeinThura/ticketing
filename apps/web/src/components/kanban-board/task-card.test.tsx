@@ -685,7 +685,7 @@ describe("canonical work-item card", () => {
         task={{
           ...task,
           assigneeId: "person-9",
-          assigneeName: "Thomas Example",
+          assigneeName: "Taylor Example",
         }}
         projectSlug="PRJ"
         taskIsCompleted={false}

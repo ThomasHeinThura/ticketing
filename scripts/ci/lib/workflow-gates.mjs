@@ -115,7 +115,7 @@ export function isExecuting(kind) {
 /**
  * **A9 — one reviewed, step-level shape for change-scope applicability.**
  *
- * Thomas authorized policy-only pull requests to skip product re-measurement (decision log
+ * The product owner authorized policy-only pull requests to skip product re-measurement (decision log
  * 2026-10-09, "Opus policy-repair conductor"). The mechanism must not change what a required
  * check means in any other situation, so it lives INSIDE each gated job rather than in the
  * job graph: every gated job still starts on every run, exactly as before. Its first steps

@@ -204,7 +204,7 @@ function grantAppliesTo(
  * implications expanded and clamped to each grant's own tier.
  *
  * **Scopes narrow**, except for validated workspace owner/admin/manager grants in the
- * target workspace: their project grants add to workspace authority (Thomas, 12 Nov 2026).
+ * target workspace: their project grants add to workspace authority (product decision, 12 Nov 2026).
  * Other roles retain project override semantics. Instance roles always apply.
  *
  * **Tiers clamp.** Each grant's capabilities are expanded through `expandCapabilities` with

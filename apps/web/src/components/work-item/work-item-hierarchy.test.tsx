@@ -123,7 +123,7 @@ const child = {
   stateCategory: "started",
   hasChildren: false,
   assigneeId: "person-2",
-  assigneeName: "Thomas Example",
+  assigneeName: "Taylor Example",
 };
 function successful(data: unknown) {
   return {
@@ -171,7 +171,7 @@ describe("original Kaneo direct Sub-tasks composition", () => {
       "true",
     );
     expect(
-      screen.getByRole("img", { name: "Thomas Example" }),
+      screen.getByRole("img", { name: "Taylor Example" }),
     ).toHaveTextContent("TE");
     expect(
       screen.queryByRole("link", { name: /Private cached title/ }),

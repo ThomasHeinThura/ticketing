@@ -23,7 +23,7 @@ type PermissionMap = Record<string, string[]>;
  * permission checks resolve the caller's actual workspace role; this additional guard remains
  * for routes whose authority also requires its stricter role-row semantics.
  *
- * **Thomas's decision (2026-09-08): do not bless implicit workspace authority.** This middleware is additive,
+ * **the product owner's decision (2026-09-08): do not bless implicit workspace authority.** This middleware is additive,
  * scoped to exactly the two mutation routes that need it, and changes nothing for anyone who
  * is not an instance admin — `requireWorkspacePermission` already resolved their authority
  * from the caller's workspace role.

@@ -20,7 +20,7 @@ const project: RoleGrant = {
   rank: 30,
   capabilities: ["project:read"],
 };
-describe("Thomas 12 Nov: project roles only add for workspace owner/admin/manager", () => {
+describe("product decision, 12 Nov: project roles only add for workspace owner/admin/manager", () => {
   for (const role of [
     "owner",
     "admin",
