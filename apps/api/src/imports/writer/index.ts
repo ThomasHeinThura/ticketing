@@ -2,10 +2,7 @@ import { eq } from "drizzle-orm";
 import { schema } from "../../database";
 import type { Transaction } from "../../database/executor";
 import type { ImportRecord } from "../schema";
-import {
-  stampCreatedActivityAsImported,
-  writeImportedHistory,
-} from "./activity";
+import { writeImportedHistory } from "./activity";
 import { type ImportAttachmentJob, planImportAttachments } from "./attachments";
 import { writeImportedComments } from "./comments";
 import { applyImportedCustomFields, applyImportedState } from "./fields";
@@ -110,7 +107,6 @@ export async function writeImportedRecordExtras(
 }> {
   const { record, workItemId } = input;
   if (input.created) {
-    await stampCreatedActivityAsImported(ctx, { workItemId, record });
     await applyImportedState(ctx, { workItemId, record });
     await applyImportedCustomFields(ctx, { workItemId, record });
   }

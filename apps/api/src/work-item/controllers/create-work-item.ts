@@ -52,6 +52,14 @@ function eventSourceFor(actorType: ActivityActorType): "agent" | "api" {
   }
 }
 
+/** Import identity for the `created` activity row, written at INSERT (`activity` is append-only). */
+export type CreatedActivityImport = {
+  importedAt: Date;
+  createdAt?: Date;
+  actorId?: string;
+  actorType?: ActivityActorType;
+};
+
 export type CreateWorkItemInput = InitialWorkItemFields & {
   authorization?: CreateAuthorization;
   projectId: string;
@@ -70,6 +78,8 @@ export type CreateWorkItemInput = InitialWorkItemFields & {
    * live clock that breaches and escalates the moment it lands (see imports/writer/fields.ts).
    */
   sla?: "none";
+  /** Imports: stamps the `created` activity row as imported, with the source time and author. */
+  createdActivity?: CreatedActivityImport;
   /** Runs inside the create transaction right after the row and its initial fields (`WI-5` templates). */
   afterInsert?: (
     tx: Parameters<Parameters<typeof withCreationTransaction>[0]>[0],
@@ -214,10 +224,17 @@ export async function createWorkItemInTransaction(
     {
       workspaceId: inserted.workspaceId,
       workItemId: inserted.id,
-      actorId,
-      actorType,
+      actorId: input.createdActivity?.actorId ?? actorId,
+      actorType: input.createdActivity?.actorType ?? actorType,
       verb: "created",
       payload: { key: inserted.key, title: inserted.title },
+      ...(input.createdActivity
+        ? {
+            origin: "imported" as const,
+            importedAt: input.createdActivity.importedAt,
+            createdAt: input.createdActivity.createdAt,
+          }
+        : {}),
     },
   ]);
 
