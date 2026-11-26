@@ -43,6 +43,18 @@ describe("PickerPopover", () => {
     expect(screen.getByRole("button")).toHaveAccessibleName("Pick: Choose one");
   });
 
+  it("does not repeat a value the label already names", () => {
+    render(
+      <PickerPopover
+        value="v1"
+        options={options(3)}
+        onChange={vi.fn()}
+        ariaLabel="option 1"
+      />,
+    );
+    expect(screen.getByRole("button")).toHaveAccessibleName("option 1");
+  });
+
   it("renders a plain option list for up to 8 options and selects one", () => {
     const onChange = vi.fn();
     render(

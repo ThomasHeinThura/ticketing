@@ -1322,7 +1322,7 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
         expect(changedDueDate.status(), "unexpected status").toBe(200);
         // Kaneo's picker popover: a trigger button opening a list of option buttons.
         const responseSelect = page.getByRole("button", {
-          name: "Canned responses",
+          name: "Canned responses: Insert a saved response",
           exact: true,
         });
         await expect(responseSelect).toBeVisible();

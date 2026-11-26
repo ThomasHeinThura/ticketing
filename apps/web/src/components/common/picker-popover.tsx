@@ -76,7 +76,11 @@ export function PickerPopover({
   const visibleText = selected?.label ?? placeholder;
   // WCAG 2.5.3: the name must contain the visible text, so append it to the label.
   const triggerName =
-    ariaLabel && visibleText ? `${ariaLabel}: ${visibleText}` : ariaLabel;
+    ariaLabel &&
+    visibleText &&
+    !ariaLabel.toLowerCase().includes(visibleText.toLowerCase())
+      ? `${ariaLabel}: ${visibleText}`
+      : ariaLabel;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
