@@ -180,6 +180,29 @@ export type RunnerOutcome = {
   pausedReason?: ImportPausedReason;
 };
 
+/** Server-side trace of a failure that pauses the run; class and message only, never record data. */
+function logChunkFailure(runId: string, error: unknown) {
+  console.error(
+    JSON.stringify({
+      job: IMPORT_RUN_JOB,
+      runId,
+      outcome: "chunk_failed",
+      error: error instanceof Error ? error.name : "unknown",
+      // Only a SQLSTATE: a query error's message carries the bound parameters (record contents).
+      sqlState: sqlStateOf(error),
+    }),
+  );
+}
+
+function sqlStateOf(error: unknown): string | undefined {
+  for (let current = error, depth = 0; current && depth < 3; depth += 1) {
+    const code = (current as { code?: unknown }).code;
+    if (typeof code === "string" && /^[0-9A-Z]{5}$/.test(code)) return code;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return undefined;
+}
+
 export function kickImportRun(runId: string) {
   if (!autoStart) return;
   void runImportRunJob(runId).catch((error) =>
@@ -739,7 +762,10 @@ async function finalizeRun(
         await backoff(attempt);
         await options.beforeRetry?.();
         continue;
-      } else paused = "chunk_failed";
+      } else {
+        logChunkFailure(runId, error);
+        paused = "chunk_failed";
+      }
     }
     break;
   }
@@ -809,6 +835,7 @@ export async function runImportRun(
       // A connection still unavailable right after a transient failure belongs to the same budget.
       if (!isTransientImportError(error)) throw error;
       if (retries >= TRANSIENT_RETRIES) {
+        logChunkFailure(runId, error);
         await pauseRun(runId, "chunk_failed", null);
         return { status: "paused", chunks, pausedReason: "chunk_failed" };
       }
@@ -931,6 +958,7 @@ export async function runImportRun(
         reconcileOnly = true;
         continue;
       }
+      logChunkFailure(runId, error);
       return pause("chunk_failed");
     }
     retries = 0;

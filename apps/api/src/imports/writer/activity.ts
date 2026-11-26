@@ -1,5 +1,6 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { schema } from "../../database";
+import type { CreatedActivityImport } from "../../work-item/controllers/create-work-item";
 import type { ImportRecord } from "../schema";
 import { resolveImportPerson } from "./people";
 import { readSourceTime } from "./time";
@@ -8,16 +9,16 @@ import { type ImportWriterContext, recordLoss } from "./types";
 const ACTIVITY = schema.activityTable;
 
 /**
- * Give the item's `created` journal row its historical identity (IM-6): the source creation time
- * and the source author, with the `imported` marker and the real write time in `imported_at`.
- * Only a row that is still native (`origin` null) is touched, so a rerun is a no-op. The work item's
- * own `created_at`/SLA columns are deliberately not moved. `audit_log` is never touched.
+ * The historical identity of an imported item's `created` journal row (IM-6): the source creation
+ * time and the source author, with the `imported` marker and the real write time in `imported_at`.
+ * Resolved before the item is created so the row is INSERTED with it: `activity` is append-only and
+ * the application role cannot UPDATE it. The work item's own `created_at`/SLA columns are
+ * deliberately not moved. `audit_log` is never touched.
  */
-export async function stampCreatedActivityAsImported(
+export async function resolveCreatedActivityImport(
   ctx: ImportWriterContext,
-  input: { workItemId: string; record: ImportRecord },
-) {
-  const { record } = input;
+  record: ImportRecord,
+): Promise<CreatedActivityImport> {
   const created = readSourceTime(record.sourceCreatedAt, ctx.now, ctx.now);
   if (!created.valid)
     recordLoss(ctx, {
@@ -26,13 +27,13 @@ export async function stampCreatedActivityAsImported(
       sourceId: record.sourceId,
       entity: "work_item",
     });
-  let actor: { personId: string } | null = null;
+  let actorId: string | undefined;
   if (record.sourceAuthorEmail) {
     const person = await resolveImportPerson(ctx, {
       email: record.sourceAuthorEmail,
       name: record.sourceAuthorName,
     });
-    if (person) actor = { personId: person.personId };
+    if (person) actorId = person.personId;
     else
       recordLoss(ctx, {
         code: "author_unresolved",
@@ -41,22 +42,11 @@ export async function stampCreatedActivityAsImported(
         entity: "work_item",
       });
   }
-  await ctx.tx
-    .update(ACTIVITY)
-    .set({
-      origin: "imported",
-      importedAt: ctx.now,
-      ...(created.valid ? { createdAt: created.at } : {}),
-      ...(actor ? { actorId: actor.personId, actorType: "person" } : {}),
-    })
-    .where(
-      and(
-        eq(ACTIVITY.workItemId, input.workItemId),
-        eq(ACTIVITY.workspaceId, ctx.workspaceId),
-        eq(ACTIVITY.verb, "created"),
-        isNull(ACTIVITY.origin),
-      ),
-    );
+  return {
+    importedAt: ctx.now,
+    ...(created.valid ? { createdAt: created.at } : {}),
+    ...(actorId ? { actorId, actorType: "person" as const } : {}),
+  };
 }
 
 export type HistoryWriteCounts = { created: number; duplicate: number };
