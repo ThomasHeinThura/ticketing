@@ -47,3 +47,18 @@ it("keeps the read-only backlog list keyboard-scrollable (axe scrollable-region-
   expect(list).toHaveAttribute("tabindex", "0");
   expect(screen.queryByRole("button")).toBeNull();
 });
+
+it("adds no extra tab stop for editors, whose rows already have buttons", () => {
+  render(
+    <CycleBacklogPanel
+      project={{ id: "p1", slug: "web" }}
+      workspaceId="w1"
+      canAdd
+      onAdd={vi.fn()}
+      kind="module"
+    />,
+  );
+  const list = screen.getByRole("list", { name: "backlog.moduleTitle" });
+  expect(list).not.toHaveAttribute("tabindex");
+  expect(screen.getAllByRole("button").length).toBeGreaterThan(0);
+});

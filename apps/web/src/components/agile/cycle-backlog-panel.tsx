@@ -146,8 +146,8 @@ export function CycleBacklogPanel({
         <p className="text-muted-foreground text-sm">{t("backlog.empty")}</p>
       ) : (
         <ul
-          // biome-ignore lint/a11y/noNoninteractiveTabindex: read-only rows have no focusable child, so the scroll list itself must take focus
-          tabIndex={0}
+          // Read-only rows have no focusable child, so the scroll list itself takes focus.
+          tabIndex={canAdd ? undefined : 0}
           aria-label={t(
             kind === "cycle" ? "backlog.title" : "backlog.moduleTitle",
           )}
