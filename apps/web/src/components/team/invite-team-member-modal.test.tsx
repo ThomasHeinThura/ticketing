@@ -105,7 +105,7 @@ describe("staff invitation role", () => {
   it("offers only returned roles and submits the selected role", async () => {
     render(<InviteTeamMemberModal open onClose={vi.fn()} />);
     fireEvent.click(
-      screen.getByRole("button", { name: "team:inviteModal.roleLabel" }),
+      screen.getByRole("button", { name: /^team:inviteModal\.roleLabel(:|$)/ }),
     );
     expect(screen.queryByText("Owner")).toBeNull();
     expect(screen.queryByText("Admin")).toBeNull();
@@ -140,7 +140,9 @@ describe("staff invitation role", () => {
       });
       render(<InviteTeamMemberModal open onClose={vi.fn()} />);
       fireEvent.click(
-        screen.getByRole("button", { name: "team:inviteModal.roleLabel" }),
+        screen.getByRole("button", {
+          name: /^team:inviteModal\.roleLabel(:|$)/,
+        }),
       );
       fireEvent.click(screen.getByText("Lead"));
       fireEvent.change(screen.getByLabelText("team:inviteModal.emailLabel"), {

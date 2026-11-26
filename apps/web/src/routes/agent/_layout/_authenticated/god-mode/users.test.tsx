@@ -408,7 +408,9 @@ describe("God Mode Users action context", () => {
     mocks.search = { cursor: "page-2" };
     render(<Harness />);
     fireEvent.click(
-      screen.getByRole("button", { name: "instanceUsers:copy.4dc97a606e2f" }),
+      screen.getByRole("button", {
+        name: /^instanceUsers:copy\.4dc97a606e2f(:|$)/,
+      }),
     );
     fireEvent.click(
       await screen.findByRole("button", {
@@ -419,7 +421,9 @@ describe("God Mode Users action context", () => {
     expect(mocks.search.cursor).toBeUndefined();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "instanceUsers:copy.dd5947e50ac8" }),
+      screen.getByRole("button", {
+        name: /^instanceUsers:copy\.dd5947e50ac8(:|$)/,
+      }),
     );
     fireEvent.click(
       await screen.findByRole("button", {
@@ -433,10 +437,10 @@ describe("God Mode Users action context", () => {
   it("shows the filter and step-up labels, never the raw option values", async () => {
     render(<Harness />);
     const sideTrigger = screen.getByLabelText(
-      "instanceUsers:copy.4dc97a606e2f",
+      /^instanceUsers:copy\.4dc97a606e2f(:|$)/,
     );
     const activeTrigger = screen.getByLabelText(
-      "instanceUsers:copy.dd5947e50ac8",
+      /^instanceUsers:copy\.dd5947e50ac8(:|$)/,
     );
     expect(sideTrigger.textContent).toContain(
       "instanceUsers:copy.ec137488beec",

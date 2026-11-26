@@ -524,7 +524,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
       );
       expect(response.status(), "unexpected status").toBe(200);
       await page.reload();
-      const trigger = page.getByRole("button", { name: "Labels", exact: true });
+      const trigger = page.getByRole("button", { name: /^Labels(:|$)/ });
       await expect(trigger).toBeEnabled();
       await trigger.click();
       const saved = page.waitForResponse(
@@ -582,7 +582,7 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
         fullPage: true,
       });
       await page.goto(itemUrl);
-      const trigger = page.getByRole("button", { name: "Labels", exact: true });
+      const trigger = page.getByRole("button", { name: /^Labels(:|$)/ });
       await trigger.click();
       const assigned = page.waitForResponse(
         (answer) =>
@@ -778,10 +778,10 @@ test("real Comments UI posts, edits, pages history, and preserves scoped mention
     ).toHaveCount(0);
 
     await expect(
-      page.getByRole("button", { name: "Labels", exact: true }),
+      page.getByRole("button", { name: /^Labels(:|$)/ }),
     ).toBeDisabled();
     await expect(
-      page.getByRole("button", { name: "Labels", exact: true }),
+      page.getByRole("button", { name: /^Labels(:|$)/ }),
     ).toContainText("SIT label");
 
     const activity = page.getByTestId("work-item-activity");
@@ -1322,7 +1322,7 @@ test("CA-19/20 inserts an item-scoped canned response as an editable comment dra
         expect(changedDueDate.status(), "unexpected status").toBe(200);
         // Kaneo's picker popover: a trigger button opening a list of option buttons.
         const responseSelect = page.getByRole("button", {
-          name: "Canned responses",
+          name: "Canned responses: Insert a saved response",
           exact: true,
         });
         await expect(responseSelect).toBeVisible();

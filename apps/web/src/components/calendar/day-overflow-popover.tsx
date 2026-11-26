@@ -37,7 +37,8 @@ export default function DayOverflowPopover({
   return (
     <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger
-        aria-label={t("tasks:calendar.dayTasksAriaLabel", { date: dayLabel })}
+        // WCAG 2.5.3: the name contains the visible "+N more" text.
+        aria-label={`${t("tasks:calendar.dayTasksAriaLabel", { date: dayLabel })}: ${t("tasks:calendar.moreTasks", { count: hiddenCount })}`}
         className="w-full truncate rounded-sm px-1.5 pb-1 text-left text-[10px] leading-tight text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {t("tasks:calendar.moreTasks", { count: hiddenCount })}

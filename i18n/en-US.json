@@ -5884,7 +5884,7 @@
 		"window": {
 			"timeline": "{{day}} coverage timeline",
 			"label": "{{day}} window {{count}}",
-			"move": "Move {{label}} from {{from}} to {{to}}",
+			"move": "Move {{label}}: {{from}}–{{to}}",
 			"starts": "Starts",
 			"ends": "Ends",
 			"endBoundary": "End at 24:00",

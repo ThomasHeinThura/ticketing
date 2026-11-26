@@ -735,6 +735,13 @@ describe("WorkItemInlineFields", () => {
     expect(screen.queryByTestId("work-item-inline-assignee")).toBeNull();
   });
 
+  it("starts the avatar-only assignee name with the visible initials (WCAG 2.5.3)", () => {
+    renderInline(item({ assigneeId: "person-1", assigneeName: "Riley Fox" }));
+    const trigger = screen.getByTestId("work-item-inline-assignee");
+    expect(trigger).toHaveTextContent("RF");
+    expect(trigger).toHaveAccessibleName(/^RF .*Riley Fox$/);
+  });
+
   it("confirms reassignment and sends the expected current holder", async () => {
     mocks.people = [{ personId: "person-2", name: "Casey Ray" }];
     renderInline(item({ assigneeId: "person-1", assigneeName: "Riley Fox" }));

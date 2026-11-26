@@ -695,7 +695,7 @@ test("calendar list and editor preserve URL state and confirm manual changes", a
   await expect(page.getByText("2027 after holidays")).toBeVisible();
 
   const draggableWindow = page.getByRole("button", {
-    name: /Move Monday window 1 from 09:00 to 17:00/,
+    name: /^Move Monday window 1: 09:00–17:00$/,
   });
   const dragBox = await draggableWindow.boundingBox();
   expect(dragBox).not.toBeNull();

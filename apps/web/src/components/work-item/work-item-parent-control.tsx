@@ -118,6 +118,13 @@ export default function WorkItemParentControl({
       }
     },
   });
+  const parentText = !first
+    ? t(
+        hierarchy.isError
+          ? "workItems:parent.unavailable"
+          : "workItems:parent.loading",
+      )
+    : (parent?.key ?? t("workItems:parent.none"));
   const trigger = (
     <Button
       variant="ghost"
@@ -126,18 +133,11 @@ export default function WorkItemParentControl({
         !compact && "lg:w-full",
       )}
       disabled={!first || !canUpdateTasks() || mutation.isPending}
-      aria-label={t("workItems:parent.label")}
+      // WCAG 2.5.3: the name contains the visible text.
+      aria-label={`${t("workItems:parent.label")}: ${parentText}`}
     >
       <GitBranch className="size-4" />
-      <span className="truncate">
-        {!first
-          ? t(
-              hierarchy.isError
-                ? "workItems:parent.unavailable"
-                : "workItems:parent.loading",
-            )
-          : (parent?.key ?? t("workItems:parent.none"))}
-      </span>
+      <span className="truncate">{parentText}</span>
     </Button>
   );
   if (!canUpdateTasks()) return trigger;

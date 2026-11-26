@@ -284,7 +284,7 @@ test("insertion resolves current context and preserves drafts on failure", async
   await page.goto("/agent/work-items/WLP-1");
   // Kaneo's picker popover: a trigger button opening a list of option buttons.
   const select = page.getByRole("button", {
-    name: "Canned responses",
+    name: "Canned responses: Insert a saved response",
     exact: true,
   });
   const option = page.getByRole("dialog").getByRole("button", {

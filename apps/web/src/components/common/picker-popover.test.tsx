@@ -19,6 +19,42 @@ const options = (count: number) =>
   }));
 
 describe("PickerPopover", () => {
+  it("keeps the visible text inside the accessible name (WCAG 2.5.3)", () => {
+    const { rerender } = render(
+      <PickerPopover
+        value="v1"
+        options={options(3)}
+        onChange={vi.fn()}
+        ariaLabel="Pick"
+      />,
+    );
+    const trigger = screen.getByRole("button");
+    expect(trigger).toHaveTextContent("Option 1");
+    expect(trigger).toHaveAccessibleName("Pick: Option 1");
+    rerender(
+      <PickerPopover
+        value={undefined}
+        placeholder="Choose one"
+        options={options(3)}
+        onChange={vi.fn()}
+        ariaLabel="Pick"
+      />,
+    );
+    expect(screen.getByRole("button")).toHaveAccessibleName("Pick: Choose one");
+  });
+
+  it("does not repeat a value the label already names", () => {
+    render(
+      <PickerPopover
+        value="v1"
+        options={options(3)}
+        onChange={vi.fn()}
+        ariaLabel="option 1"
+      />,
+    );
+    expect(screen.getByRole("button")).toHaveAccessibleName("option 1");
+  });
+
   it("renders a plain option list for up to 8 options and selects one", () => {
     const onChange = vi.fn();
     render(
@@ -29,7 +65,7 @@ describe("PickerPopover", () => {
         ariaLabel="Pick"
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Pick" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Pick(:|$)/ }));
     expect(screen.queryByRole("combobox")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Option 3" }));
     expect(onChange).toHaveBeenCalledWith("v3");
@@ -45,7 +81,7 @@ describe("PickerPopover", () => {
         ariaLabel="Pick"
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Pick" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Pick(:|$)/ }));
     const search = await screen.findByRole("combobox", {
       name: "Search options",
     });
@@ -66,7 +102,7 @@ describe("PickerPopover", () => {
         ariaLabel="Pick"
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Pick" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Pick(:|$)/ }));
     expect(screen.queryByRole("combobox")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Option 8" }));
     expect(onChange).toHaveBeenCalledWith("v8");
@@ -81,7 +117,7 @@ describe("PickerPopover", () => {
         ariaLabel="Pick"
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Pick" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Pick(:|$)/ }));
     fireEvent.change(
       await screen.findByRole("combobox", { name: "Search options" }),
       {

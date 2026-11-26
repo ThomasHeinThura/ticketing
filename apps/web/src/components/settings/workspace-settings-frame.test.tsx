@@ -90,6 +90,16 @@ afterEach(() => {
 });
 
 describe("WorkspaceSettingsFrame", () => {
+  it("makes the scrolling content a focusable, named region", () => {
+    render(<WorkspaceSettingsFrame>body</WorkspaceSettingsFrame>);
+    const region = screen.getByRole("region", {
+      name: "navigation:page.settingsWorkspaceTab",
+    });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region).toHaveClass("overflow-y-auto");
+    expect(region).toHaveTextContent("body");
+  });
+
   it("shows a plain member only the entries they can open (C6)", () => {
     permissions.settings = false;
     permissions.calendars = false;

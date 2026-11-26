@@ -180,9 +180,10 @@ function ContactsCard({ project }: { project: PortalProjectDetail }) {
                 {contact.email ? (
                   <a
                     href={`mailto:${contact.email}`}
-                    aria-label={t("projects.detail.contacts.emailLabel", {
+                    // WCAG 2.5.3: the name contains the visible address.
+                    aria-label={`${t("projects.detail.contacts.emailLabel", {
                       name,
-                    })}
+                    })}: ${contact.email}`}
                     className="flex w-fit items-center gap-1.5 rounded-sm text-primary text-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Mail className="size-3.5" aria-hidden="true" />

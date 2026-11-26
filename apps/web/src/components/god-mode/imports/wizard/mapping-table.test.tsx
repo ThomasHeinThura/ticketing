@@ -143,7 +143,9 @@ describe("MappingStep", () => {
         4,
       ),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Target for Bug" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Target for Bug(:|$)/ }),
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Bug" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
     expect(mocks.save.mock.calls[0]?.[1]).toEqual({
@@ -180,7 +182,9 @@ describe("MappingStep", () => {
     await screen.findByText("Bug", { selector: "td" });
     mocks.save.mockRejectedValueOnce(new HttpError(409, "conflict"));
     mocks.get.mockReset().mockResolvedValue(mappingOf(initial(), 4));
-    fireEvent.click(screen.getByRole("button", { name: "Target for Bug" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Target for Bug(:|$)/ }),
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Bug" }));
 
     expect(

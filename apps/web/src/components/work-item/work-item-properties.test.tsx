@@ -168,8 +168,12 @@ describe("WorkItemProperties", () => {
     expect(screen.getByTestId("work-item-priority-control")).toBeDisabled();
     expect(screen.getByTestId("work-item-assignee-control")).toBeDisabled();
     expect(await screen.findByText("Support")).toBeVisible();
+    // WCAG 2.5.3: the visible label names are part of the accessible name.
     expect(
-      screen.getByRole("button", { name: "tasks:properties.labels" }),
+      screen.getByRole("button", { name: /^tasks:properties\.labels(:|$)/ }),
+    ).toHaveAccessibleName("tasks:properties.labels: Support");
+    expect(
+      screen.getByRole("button", { name: /^tasks:properties\.labels(:|$)/ }),
     ).toBeDisabled();
     expect(screen.getByTestId("parent-control")).toBeInTheDocument();
     for (const copy of screen.getAllByRole("button", {
@@ -196,7 +200,7 @@ describe("WorkItemProperties", () => {
     });
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     const trigger = screen.getByRole("button", {
-      name: "tasks:properties.labels",
+      name: /^tasks:properties\.labels(:|$)/,
     });
     await waitFor(() => expect(trigger).toBeEnabled());
     expect(screen.getByTestId("work-item-labels-group")).toContainElement(
@@ -266,7 +270,7 @@ describe("WorkItemProperties", () => {
     mocks.update.mockResolvedValue({ key: "HELP-7", version: 5 });
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     const trigger = screen.getByRole("button", {
-      name: "tasks:properties.labels",
+      name: /^tasks:properties\.labels(:|$)/,
     });
     await waitFor(() => expect(trigger).toBeEnabled());
     fireEvent.click(trigger);
@@ -289,6 +293,21 @@ describe("WorkItemProperties", () => {
     );
   });
 
+  it("keeps several visible label names, space separated, inside the accessible name", async () => {
+    mocks.labels.mockResolvedValue([
+      { id: "label-1", name: "Support", color: "teal", assigned: true },
+      { id: "label-2", name: "Billing", color: "blue", assigned: true },
+    ]);
+    renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
+    const trigger = await screen.findByRole("button", {
+      name: /^tasks:properties\.labels: Support/,
+    });
+    expect(trigger.textContent).toContain("Support Billing");
+    expect(trigger).toHaveAccessibleName(
+      "tasks:properties.labels: Support Billing",
+    );
+  });
+
   it("shows existing labels without offering edits to a read-only actor", async () => {
     mocks.canUpdate = false;
     mocks.labels.mockResolvedValue([
@@ -297,7 +316,7 @@ describe("WorkItemProperties", () => {
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     expect(await screen.findByText("Support")).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "tasks:properties.labels" }),
+      screen.getByRole("button", { name: /^tasks:properties\.labels(:|$)/ }),
     ).toBeDisabled();
     expect(mocks.update).not.toHaveBeenCalled();
   });
@@ -309,7 +328,7 @@ describe("WorkItemProperties", () => {
     mocks.update.mockRejectedValue(new WorkItemVersionConflictError(4, 5));
     renderProps(<WorkItemProperties item={item()} onAccessLost={vi.fn()} />);
     const trigger = screen.getByRole("button", {
-      name: "tasks:properties.labels",
+      name: /^tasks:properties\.labels(:|$)/,
     });
     await waitFor(() => expect(trigger).toBeEnabled());
     fireEvent.click(trigger);

@@ -1042,7 +1042,8 @@ export default function WorkItemInlineFields({
           ? "h-7 max-w-40 justify-start gap-1.5 px-1.5 text-xs"
           : "h-7 w-7 shrink-0 rounded-full"
       }
-      aria-label={`${t("workItems:list.columnAssignee")}: ${assigneeName}`}
+      // WCAG 2.5.3: the avatar shows initials, so the name starts with them.
+      aria-label={`${presentation !== "table" && display.kind === "person" ? `${getInitials(display.name)} ` : ""}${t("workItems:list.columnAssignee")}: ${assigneeName}`}
       data-testid="work-item-inline-assignee"
     >
       {presentation === "table" ? (

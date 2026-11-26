@@ -94,6 +94,14 @@ describe("project settings layout", () => {
     expect(state.permissionTargets).toContainEqual(["ws_1", "p1"]);
   });
 
+  it("makes the scrolling settings content a focusable, named region", () => {
+    renderLayout();
+    const region = screen.getByRole("region", { name: "Settings" });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region).toHaveClass("overflow-y-auto");
+    expect(region).toContainElement(screen.getByTestId("settings-outlet"));
+  });
+
   it("shows Budget when only the workspace time setting is readable", () => {
     state.logTime = true;
     renderLayout();

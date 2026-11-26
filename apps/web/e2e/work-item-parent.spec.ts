@@ -103,7 +103,7 @@ async function fixture(page: Page) {
   };
 }
 async function choose(page: Page) {
-  await page.getByRole("button", { name: "Parent", exact: true }).click();
+  await page.getByRole("button", { name: /^Parent(:|$)/ }).click();
   await page
     .getByRole("textbox", { name: "Parent work item key" })
     .fill("WLP-2");
@@ -122,7 +122,7 @@ test("parent property attaches, survives reload and detaches through versioned c
     .getByRole("textbox", { name: "Parent work item key" })
     .press("Enter");
   await expect(
-    page.getByRole("button", { name: "Parent", exact: true }),
+    page.getByRole("button", { name: /^Parent(:|$)/ }),
   ).toContainText("WLP-2");
   // The new parent is the ancestor row of the hierarchy's tree mode.
   const hierarchy = page.getByTestId("work-item-hierarchy");
@@ -137,7 +137,7 @@ test("parent property attaches, survives reload and detaches through versioned c
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "Parent", exact: true }),
+    page.getByRole("button", { name: /^Parent(:|$)/ }),
   ).toContainText("WLP-2");
   // Approvals is a collapsed, URL-addressed disclosure in the properties panel.
   await page.getByRole("button", { name: "Approvals", exact: true }).click();
@@ -146,16 +146,16 @@ test("parent property attaches, survives reload and detaches through versioned c
     path: info.outputPath("kaneo-parent-property.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Parent", exact: true }).click();
+  await page.getByRole("button", { name: /^Parent(:|$)/ }).click();
   await page
     .getByRole("button", { name: "Remove parent", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Parent", exact: true }),
+    page.getByRole("button", { name: /^Parent(:|$)/ }),
   ).toContainText("No parent");
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "Parent", exact: true }),
+    page.getByRole("button", { name: /^Parent(:|$)/ }),
   ).toContainText("No parent");
 });
 
@@ -185,6 +185,6 @@ test("parent property retains a rejected draft for conflict and cycle recovery",
   ).toHaveValue("WLP-2");
   await page.getByRole("button", { name: "Set parent", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Parent", exact: true }),
+    page.getByRole("button", { name: /^Parent(:|$)/ }),
   ).toContainText("WLP-2");
 });

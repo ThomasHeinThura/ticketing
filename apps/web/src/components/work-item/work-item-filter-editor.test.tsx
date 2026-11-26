@@ -118,7 +118,7 @@ describe("work-item filter editor", () => {
       throw new Error("Expected the current nested filter group.");
     fireEvent.click(
       within(currentNestedGroup).getByRole("button", {
-        name: "Group operator",
+        name: /^Group operator(:|$)/,
       }),
     );
     pickOption(await screen.findByRole("button", { name: "any (OR)" }));
@@ -154,7 +154,7 @@ describe("work-item filter editor", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Operator for State group" }),
+      screen.getByRole("button", { name: /^Operator for State group(:|$)/ }),
     );
     pickOption(await screen.findByRole("button", { name: "is one of" }));
     expect(screen.getByRole("checkbox", { name: "started" })).toBeChecked();
@@ -191,7 +191,7 @@ describe("work-item filter editor", () => {
     render(<StatefulEditor filter="lifecycle:deleted" onApply={onApply} />);
 
     expect(
-      await screen.findByRole("button", { name: "Value for Lifecycle" }),
+      await screen.findByRole("button", { name: /^Value for Lifecycle(:|$)/ }),
     ).toHaveTextContent("deleted");
     fireEvent.click(screen.getByRole("button", { name: "Text" }));
     const textFilter = screen.getByLabelText(
@@ -283,17 +283,17 @@ describe("work-item filter editor", () => {
       />,
     );
     const fields = await screen.findAllByRole("button", {
-      name: "Filter field",
+      name: /^Filter field(:|$)/,
     });
     expect(fields.map((field) => field.textContent)).toEqual([
       "Priority",
       "Due date",
     ]);
     expect(
-      screen.getByRole("button", { name: "Operator for Priority" }),
+      screen.getByRole("button", { name: /^Operator for Priority(:|$)/ }),
     ).toHaveTextContent("at or after / at least");
     expect(
-      screen.getByRole("button", { name: "Group operator" }),
+      screen.getByRole("button", { name: /^Group operator(:|$)/ }),
     ).toHaveTextContent("all (AND)");
   });
 
@@ -332,7 +332,7 @@ describe("work-item filter editor", () => {
       />,
     );
     const field = (
-      await screen.findAllByRole("button", { name: "Filter field" })
+      await screen.findAllByRole("button", { name: /^Filter field(:|$)/ })
     )[0];
     if (!field) throw new Error("expected a field selector");
     fireEvent.click(field);
@@ -357,7 +357,9 @@ describe("work-item filter editor", () => {
       />,
     );
     fireEvent.click(
-      await screen.findByRole("button", { name: "Operator for Priority" }),
+      await screen.findByRole("button", {
+        name: /^Operator for Priority(:|$)/,
+      }),
     );
     const option = await screen.findByRole("button", { name: "is one of" });
     fireEvent.keyDown(option, { key: "Escape" });

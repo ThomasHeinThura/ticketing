@@ -321,7 +321,8 @@ function RouteComponent() {
                       <Button
                         variant="ghost"
                         type="button"
-                        aria-label={t("settings:informationPage.avatar.edit")}
+                        // WCAG 2.5.3: the avatar shows initials, so the name starts with them.
+                        aria-label={`${getInitials(user?.name)} ${t("settings:informationPage.avatar.edit")}`}
                         disabled={isUploadingAvatar || isRemovingAvatar}
                         className="group relative rounded-full outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
                       />

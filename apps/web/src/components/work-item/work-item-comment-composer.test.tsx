@@ -206,7 +206,7 @@ function renderComposer(
     },
     async pickCanned(optionLabel: string) {
       const trigger = await within(composer).findByRole("button", {
-        name: "activity:timeline.cannedResponses",
+        name: /^activity:timeline\.cannedResponses(:|$)/,
       });
       await waitFor(() => expect(trigger).toBeEnabled());
       fireEvent.click(trigger);
