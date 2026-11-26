@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { redactSecretErrorContext } from "../e2e/helpers/redact-secret-error-context";
 import {
@@ -24,13 +25,16 @@ test("an instance administrator previews and applies a CSV import and the item i
   test.setTimeout(300_000);
   const lead = await signIn(browser, "lead");
   const root = await signIn(browser, "instance-admin");
+  // Import writes require an Idempotency-Key (apps/api/src/imports/index.ts).
+  const post = (path: string, body: unknown) =>
+    root.call("POST", path, body, { "Idempotency-Key": randomUUID() });
   let itemKey: string | null = null;
   try {
     const { workspaceId, projectId } = await discoverTarget(lead);
     const typeId = await taskTypeId(lead, projectId);
     const runStamp = stamp();
     const title = `R929 import apply ${runStamp}`;
-    const source = await root.call("POST", "/import-sources", {
+    const source = await post("/import-sources", {
       workspaceId,
       pluginId: "import.csv",
       name: `R929 import ${stamp()}`,
@@ -39,17 +43,16 @@ test("an instance administrator previews and applies a CSV import and the item i
       },
     });
     expect(source.status).toBe(200);
-    const run = await root.call(
-      "POST",
-      `/import-sources/${source.body.id}/runs`,
-      { projectId, sourceRef: "r929.csv" },
-    );
+    const run = await post(`/import-sources/${source.body.id}/runs`, {
+      projectId,
+      sourceRef: "r929.csv",
+    });
     expect(run.status).toBe(200);
     const runId = run.body.id as string;
 
     // Setup steps run in the background; poll the engine job until it settles.
     async function step(name: "discover" | "dry-run-all") {
-      const started = await root.call("POST", `/imports/${runId}/${name}`, {});
+      const started = await post(`/imports/${runId}/${name}`, {});
       expect(started.status).toBe(202);
       for (let attempt = 0; attempt < 60; attempt += 1) {
         const engine = await root.call("GET", `/imports/${runId}/engine`);
@@ -76,7 +79,7 @@ test("an instance administrator previews and applies a CSV import and the item i
             ? { kind: "group", group: "started" }
             : { kind: "ignore" },
     }));
-    const confirmed = await root.call("POST", `/imports/${runId}/mapping`, {
+    const confirmed = await post(`/imports/${runId}/mapping`, {
       expectedMappingVersion: mapping.body.mappingVersion,
       entries,
       confirmProposals: true,
@@ -88,7 +91,7 @@ test("an instance administrator previews and applies a CSV import and the item i
     expect(report.body.counts.created).toBe(1);
     expect(report.body.counts.rejected).toBe(0);
 
-    const executed = await root.call("POST", `/imports/${runId}/execute`, {
+    const executed = await post(`/imports/${runId}/execute`, {
       dryRunDigest: report.body.digest,
       mappingVersion: report.body.mappingVersion,
       totalCount: report.body.counts.processed,
