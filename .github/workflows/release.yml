@@ -13,14 +13,6 @@ on:
         description: Full commit SHA already reachable from main
         required: true
         type: string
-      phase:
-        description: Completed phase covered by one consolidated independent review (P0..P9)
-        required: true
-        type: string
-      phase_report:
-        description: Source-bound report path (docs/evidence/Pn-review.json)
-        required: true
-        type: string
       version:
         description: SemVer release version without the leading v (for example 2.0.0-alpha.1)
         required: true
@@ -41,6 +33,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+      checks: read
       packages: write
     outputs:
       image: ${{ steps.release.outputs.image }}
@@ -153,39 +146,44 @@ jobs:
           echo "publish_tags=$publish_tags" >> "$GITHUB_OUTPUT"
           echo "is_release=$is_release" >> "$GITHUB_OUTPUT"
 
-      - name: Verify consolidated phase review before a versioned release
+      - name: Verify every required check passed on the source commit before a versioned release
         if: github.event_name == 'workflow_dispatch'
         env:
-          INPUT_PHASE: ${{ inputs.phase }}
-          INPUT_PHASE_REPORT: ${{ inputs.phase_report }}
-          # The workflow's protected-main trigger commit supplies the gate, not an
-          # older selected source whose checker might predate phase submissions.
-          POLICY_SOURCE_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.release.outputs.source_sha }}
         shell: bash
         run: |
-          set -euo pipefail
-          [[ "$INPUT_PHASE" =~ ^P[0-9]$ ]] || {
-            echo "::error::A versioned release requires phase P0..P9"
+          set -Eeuo pipefail
+          # The required list comes from the live main ruleset, so it cannot drift from
+          # what merging required. Reachability from main was proved by the previous step.
+          required="$(gh api "repos/${GITHUB_REPOSITORY}/rules/branches/main" \
+            --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context] | unique | .[]')"
+          if [[ -z "$required" ]]; then
+            echo "::error::Could not read any required status check for main; refusing to release"
             exit 1
-          }
-          [[ "$INPUT_PHASE_REPORT" == "docs/evidence/${INPUT_PHASE}-review.json" ]] || {
-            echo "::error::A versioned release requires the exact consolidated phase report path"
-            exit 1
-          }
-          [[ "$POLICY_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
-            echo "::error::Cannot verify the release workflow's gate authority"
-            exit 1
-          }
-          git cat-file -e "${POLICY_SOURCE_SHA}^{commit}"
-          phase_gate_root="$(mktemp -d "${RUNNER_TEMP}/taskdesk-phase-gate.XXXXXX")"
-          trap 'rm -rf -- "$phase_gate_root"' EXIT
-          git archive "$POLICY_SOURCE_SHA" \
-            scripts/ci/check-reviews.mjs \
-            scripts/ci/lib/head-binding.mjs \
-            scripts/ci/lib/git-baseline.mjs \
-            scripts/ci/lib/repo.mjs | tar -x -C "$phase_gate_root"
-          node "$phase_gate_root/scripts/ci/check-reviews.mjs" \
-            --phase "$INPUT_PHASE" --report "$INPUT_PHASE_REPORT"
+          fi
+          # A merge commit on main only carries the push-triggered checks; the PR-only checks
+          # ran on the merged branch head (second parent, up to date with main by ruleset).
+          candidates=("$SOURCE_SHA")
+          if parent="$(git rev-parse --verify --quiet "${SOURCE_SHA}^2")"; then
+            candidates+=("$parent")
+          fi
+          runs="[]"
+          for sha in "${candidates[@]}"; do
+            runs="$(jq -c --argjson more "$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${sha}/check-runs?per_page=100" \
+              --jq '.check_runs[] | {name, id, conclusion}' | jq -s -c .)" '. + $more' <<< "$runs")"
+          done
+          failed=0
+          while IFS= read -r check; do
+            # Missing, pending, skipped, cancelled and failed runs all fail closed.
+            ok="$(jq -r --arg n "$check" 'any(.[]; .name == $n and .conclusion == "success")' <<< "$runs")"
+            if [[ "$ok" != "true" ]]; then
+              echo "::error::Required check '${check}' has no successful run on ${SOURCE_SHA}"
+              failed=1
+            fi
+          done <<< "$required"
+          [[ "$failed" == "0" ]] || exit 1
+          echo "All required checks succeeded for ${SOURCE_SHA}"
 
       - name: Set up QEMU with pinned binfmt image
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0

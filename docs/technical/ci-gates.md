@@ -151,10 +151,12 @@ Ordinary PRs describe their result and actual validation. No per-change reviewer
 security-review note or screenshot section is mandatory. An explicit `Phase completion`
 section with Phase/Report fields invokes this same source-bound validator in the existing
 required PR job. Unfinished integration reports phase not submitted, never accepted.
-Versioned release dispatch requires phase/report inputs and validates them before build or
-publication, using the gate from the protected workflow trigger commit so selecting an
-older source cannot select an older permissive checker. Main-push Edge artifacts remain
-CI outputs, not phase acceptance. Existing required job/context names are unchanged.
+Versioned release dispatch takes only `source_sha` and `version`. Before build or publication
+it requires `source_sha` to be reachable from `main` and every required status check in the
+live `main` ruleset to have a successful run on that commit (or on the merged branch head for
+checks that only run on pull requests); a missing, pending, skipped or failed check stops the
+release. Main-push Edge artifacts remain CI outputs, not acceptance. Existing required
+job/context names are unchanged.
 
 Passing validates evidence structure and binding; it cannot prove reviewer identity,
 review quality or runtime acceptance. Thomas's walkthrough and decision remain separate.
