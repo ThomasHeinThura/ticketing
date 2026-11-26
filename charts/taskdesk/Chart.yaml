@@ -13,10 +13,9 @@ keywords:
 home: https://github.com/ThomasHeinThura/ticketing
 sources:
   - https://github.com/ThomasHeinThura/ticketing
-icon: https://raw.githubusercontent.com/ThomasHeinThura/ticketing/main/apps/web/public/logo-light.svg
 maintainers:
   - name: TaskDesk Team
-    url: https://github.com/usetaskdesk
+    url: https://github.com/ThomasHeinThura
 annotations:
   artifacthub.io/license: AGPL-3.0-only
   artifacthub.io/containsSecurityUpdates: "false"

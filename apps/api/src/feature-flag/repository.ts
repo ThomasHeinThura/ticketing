@@ -246,7 +246,7 @@ export async function listWorkspaceFeatures(
 export async function listProjectFeatures(
   projectId: string,
   workspaceId: string,
-  executor = db,
+  executor: Pick<typeof db, "select"> = db,
 ) {
   const [instanceRows, workspaceRows, rows] = await Promise.all([
     readInstanceRows(executor),
@@ -273,7 +273,7 @@ export async function listProjectFeatures(
 export async function resolveProjectFeatures(
   projectId: string,
   workspaceId: string,
-  executor = db,
+  executor: Pick<typeof db, "select"> = db,
 ) {
   const features = await listProjectFeatures(projectId, workspaceId, executor);
   return features.map((f) => ({
@@ -290,7 +290,7 @@ export async function resolveProjectFeatures(
  */
 export async function resolveWorkspaceFeatureValues(
   workspaceId: string,
-  executor = db,
+  executor: Pick<typeof db, "select"> = db,
 ) {
   const [instanceRows, workspaceRows] = await Promise.all([
     readInstanceRows(executor),
@@ -314,7 +314,7 @@ export async function projectsWithFeature(
   feature: FeatureFlag,
   workspaceId: string,
   projectIds: string[],
-  executor = db,
+  executor: Pick<typeof db, "select"> = db,
 ): Promise<string[]> {
   if (projectIds.length === 0) return [];
   try {

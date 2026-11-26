@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://taskdesk.example.com/api",
+      "url": "https://taskdesk.test/api",
       "description": "TaskDesk API Server"
     }
   ],

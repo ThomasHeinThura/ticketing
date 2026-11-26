@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check:skips — "no .skip / .only / describe.skip" (docs/04-engineering/ci-cd.md).
+ * check:skips — "no .skip / .only / describe.skip" (docs/technical/ci-gates.md).
  *
  * Testing strategy rule 2: never disable a test to make a build pass. AGENTS.md do-not 5
  * says the same, and Definition of Done's "Any change" checklist has a box for it. This is

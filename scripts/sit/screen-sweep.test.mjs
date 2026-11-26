@@ -5,6 +5,7 @@ import {
   buildSummary,
   classifyDenial,
   isApiDenial,
+  issuesOf,
   parseCli,
   parseRoutes,
   redactText,
@@ -204,4 +205,19 @@ test("a refused History read is not a page denial", () => {
   assert.equal(isApiDenial(h, 403), false);
   assert.equal(isApiDenial("https://h/api/workspace/w1", 403), true);
   assert.equal(isApiDenial("https://h/api/audit/instance", 403), true);
+});
+
+test("only critical axe violations fail a cell; the rest are warnings", () => {
+  const base = { role: "owner", route: "/a", width: 390, theme: "dark" };
+  const serious = { ...base, axe: [{ id: "x", impact: "serious", nodes: 2 }] };
+  const critical = {
+    ...base,
+    axe: [{ id: "y", impact: "critical", nodes: 1 }],
+  };
+  assert.deepEqual(issuesOf(serious), []);
+  assert.deepEqual(issuesOf(critical), ["axe"]);
+  assert.match(
+    buildSummary({ axe: true }, [serious]),
+    /\| serious \| 1 \| 1 \|/,
+  );
 });

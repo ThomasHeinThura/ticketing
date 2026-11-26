@@ -266,8 +266,16 @@ export function issuesOf(cell) {
   if (cell.consoleErrors?.length) issues.push("console");
   if (cell.failedRequests?.length) issues.push("request");
   if (cell.overflow) issues.push("overflow");
-  if (cell.axe?.length) issues.push("axe");
+  // Only critical axe violations fail a cell; the rest are warnings (see axeWarningsOf).
+  if (cell.axe?.some((v) => v.impact === "critical")) issues.push("axe");
   return issues;
+}
+
+/** Non-critical axe violations of one cell, by impact. */
+export function axeWarningsOf(cell) {
+  const counts = { serious: 0, moderate: 0, minor: 0 };
+  for (const v of cell.axe ?? []) if (v.impact in counts) counts[v.impact]++;
+  return counts;
 }
 
 /** Markdown summary: counts, failing routes, role x route denial matrix. */
@@ -291,6 +299,15 @@ export function buildSummary(meta, cells) {
       (type) => `| ${type} | ${count((c) => issuesOf(c).includes(type))} |`,
     ),
     `| denied | ${count((c) => c.denied)} |`,
+    "",
+    "## Axe warnings (not failures; only critical counts as an issue)",
+    "",
+    "| Impact | Cells | Violations |",
+    "| --- | ---: | ---: |",
+    ...["serious", "moderate", "minor"].map(
+      (impact) =>
+        `| ${impact} | ${count((c) => axeWarningsOf(c)[impact] > 0)} | ${cells.reduce((n, c) => n + axeWarningsOf(c)[impact], 0)} |`,
+    ),
     "",
     "## Routes with failures",
     "",
@@ -552,9 +569,11 @@ async function visit(context, job, axeBuilder) {
     });
     if (axeBuilder && !denial.denied) {
       const axe = await new axeBuilder({ page }).analyze();
-      result.axe = axe.violations
-        .filter((v) => v.impact === "serious" || v.impact === "critical")
-        .map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length }));
+      result.axe = axe.violations.map((v) => ({
+        id: v.id,
+        impact: v.impact,
+        nodes: v.nodes.length,
+      }));
     }
     result.shot = path.join(
       "shots",

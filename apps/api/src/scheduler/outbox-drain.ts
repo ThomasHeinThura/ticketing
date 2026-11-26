@@ -6,13 +6,14 @@ import { drainNotificationDigests } from "./notification-digest";
 import { drainP4Consumers } from "./outbox-drain-p4";
 
 /** Every replica may run: persisted child reservation fences serialize attempts. Parent
- * event consumer state is independent and is never terminalized by one child's result. */
+ * event consumer state is independent and is never terminalized by one child's result.
+ * Deliveries drain one at a time until the queue is idle or the budget is used. */
 export async function drainImmediateNotifications(budgetMs = 20_000) {
   let processed = 0;
   let degraded = false;
   const runtime = immediateNotificationRuntime();
   const started = Date.now();
-  for (; processed < 100 && Date.now() - started < budgetMs; processed++) {
+  for (; Date.now() - started < budgetMs; processed++) {
     // Each call claims and completes one independently fenced delivery. Do not
     // interrupt the provider/claim completion pair once it has started.
     await assertJobExecutionOwned();
@@ -29,8 +30,7 @@ export async function drainImmediateNotifications(budgetMs = 20_000) {
   return { processed, degraded };
 }
 
-/** Parent envelopes per run and their wall-clock budget. */
-export const PARENT_DRAIN_LIMIT = 100;
+/** Wall-clock budget for parent envelopes per run; the loop also ends on an idle queue. */
 export const PARENT_DRAIN_BUDGET_MS = 5_000;
 
 /**
@@ -44,12 +44,7 @@ export async function drainParentEvents() {
   let dead = 0;
   let degraded = false;
   const started = Date.now();
-  for (
-    ;
-    processed < PARENT_DRAIN_LIMIT &&
-    Date.now() - started < PARENT_DRAIN_BUDGET_MS;
-    processed++
-  ) {
+  for (; Date.now() - started < PARENT_DRAIN_BUDGET_MS; processed++) {
     // Parent claims are independent SKIP LOCKED work units.
     await assertJobExecutionOwned();
     try {

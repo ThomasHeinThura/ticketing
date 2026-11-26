@@ -86,7 +86,7 @@ export {
 
 // Matches the directory the Dockerfile itself creates (owned by the runtime user) and the
 // path compose.yml/charts/taskdesk mount the persistent volume at — see
-// docs/05-operations/configuration-reference.md. Exported so a test can assert the default
+// docs/guide/install-and-deploy.md. Exported so a test can assert the default
 // without performing I/O against a path this process may not be able to write to on every host.
 export const DEFAULT_ROOT = "/app/data/attachments";
 

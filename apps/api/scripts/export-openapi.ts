@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { getConfiguredAgentOrigin } from "../src/auth";
 import { createApp } from "../src/index";
 
-process.env.KANEO_API_URL = "https://taskdesk.example.com";
+process.env.KANEO_API_URL = "https://taskdesk.test";
 
 const { app } = createApp();
 const agentOrigin = new URL(getConfiguredAgentOrigin());

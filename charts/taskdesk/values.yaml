@@ -91,7 +91,7 @@ postgresql:
 # ServiceAccount and the bundled Postgres existed, so a fresh `helm install` timed
 # out). Safe with multiple replicas: migrations and the role/grant bootstrap are
 # idempotent under their own advisory lock. See templates/deployment.yaml and
-# docs/05-operations/kubernetes.md.
+# docs/guide/install-and-deploy.md.
 migrate:
   enabled: true
   resources: {}
@@ -105,7 +105,7 @@ migrate:
 # TaskDesk application configuration (combined API + web frontend)
 taskdesk:
   image:
-    repository: ghcr.io/usetaskdesk/taskdesk
+    repository: ghcr.io/thomasheinthura/taskdesk
     # Defaults to Chart.appVersion when empty.
     tag: ""
     pullPolicy: IfNotPresent
@@ -145,7 +145,7 @@ taskdesk:
   env:
     # --------------------------------------------------------------------
     # The five required bootstrap variables.
-    # docs/05-operations/configuration-reference.md is the authority; nothing
+    # docs/guide/install-and-deploy.md is the authority; nothing
     # here may introduce a name that is not in it.
     #
     # THERE IS NO DEFAULT FOR ANY SECRET, AND THERE MUST NOT BE. The chart
@@ -212,7 +212,7 @@ taskdesk:
     # TaskDesk, so deploy/compose.uat.yml sets 2 explicitly — that number came
     # from headers captured off the running host, not from counting boxes on a
     # diagram. Measure yours the same way before setting it:
-    #   docs/05-operations/proxy-topology-evidence.md
+    #   docs/guide/install-and-deploy.md
     #
     # Status: the reader that applies the default of 1 (parseTrustProxyDepth in
     # apps/api/src/utils/resolve-client-ip.ts) ships with #6. Until #6 merges,
@@ -271,7 +271,7 @@ taskdesk:
         # role that owns every table and is allowed to run DDL, separate from the
         # application role above. Set `enabled: true` and point this at that role
         # once your external Postgres has one provisioned
-        # (docs/05-operations/configuration-reference.md has the split's full
+        # (docs/guide/install-and-deploy.md has the split's full
         # rationale).
         migration:
           enabled: false
@@ -303,7 +303,7 @@ taskdesk:
   #       name: oauth-secret
   # Liveness touches no dependency, so a Postgres blip never restarts a healthy
   # pod and turn a brief outage into a long one. Readiness is where the
-  # database check belongs. docs/05-operations/deployment.md § Health and readiness
+  # database check belongs. docs/guide/install-and-deploy.md
   livenessProbe:
     httpGet:
       path: /api/public/health/live

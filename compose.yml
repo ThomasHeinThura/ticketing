@@ -1,6 +1,6 @@
 # TaskDesk — base Compose file.
 #
-# Specification: docs/05-operations/deployment.md § Compose files
+# Specification: docs/guide/install-and-deploy.md
 #
 # THIS FILE PUBLISHES NO APPLICATION PORT, AND MUST NOT.
 # Compose *concatenates* `ports:` across files: an overlay can add a published
@@ -8,7 +8,7 @@
 # port 5173 is reachable from the proxy network alone, so publishing it here
 # would publish it in production too. No overlay publishes it either: the local
 # stack reaches it through its own Traefik (#752).
-#   docs/05-operations/traefik-and-domains.md
+#   docs/guide/install-and-deploy.md
 #
 # Never use this file on its own — always base + one overlay:
 #   local       docker compose -f compose.yml -f deploy/compose.local.yml   -f deploy/compose.traefik.yml up -d --wait
@@ -32,7 +32,7 @@ services:
   # `taskdesk` service. `restart: "no"`: a failed migration must surface as a
   # failed `docker compose up`, not silently retry forever.
   migrate:
-    image: ghcr.io/thomasheinthura/taskdesk:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
+    image: ${TASKDESK_IMAGE:-ghcr.io/thomasheinthura/taskdesk}:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
     restart: "no"
     read_only: true
     cap_drop: [ALL]
@@ -65,7 +65,7 @@ services:
     # `repo:tag` normally; `repo:tag@sha256:…` when TASKDESK_IMAGE_DIGEST is set,
     # in which case the digest is what Docker actually pulls. Promotion and
     # rollback are both "edit the digest and bring the service back up".
-    image: ghcr.io/thomasheinthura/taskdesk:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
+    image: ${TASKDESK_IMAGE:-ghcr.io/thomasheinthura/taskdesk}:${TASKDESK_IMAGE_TAG:-v2.0.0}${TASKDESK_IMAGE_DIGEST:+@}${TASKDESK_IMAGE_DIGEST:-}
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -95,9 +95,9 @@ services:
       # TASKDESK_TRUST_PROXY is deliberately NOT set here. It is a security
       # boundary and its value is the measured number of trusted proxy hops in
       # front of this container, which differs per deployment. The overlays set
-      # it. See docs/05-operations/proxy-topology-evidence.md.
+      # it. See docs/guide/install-and-deploy.md.
       # TASKDESK_ENCRYPTION_KEY_PREVIOUS is set by hand, only during a key
-      # rotation window (docs/05-operations/runbook.md).
+      # rotation window (docs/guide/troubleshooting.md).
       # TASKDESK_BOOTSTRAP_ADMIN_EMAIL is set only for headless installs.
     volumes:
       # Attachment bytes for the default storage.filesystem backend.
@@ -176,7 +176,7 @@ services:
   # header, so a URL presigned for seaweedfs:8333 will not verify in a browser.
   # And the BUCKET's own CORS — not a Traefik middleware — is what admits the
   # agent and portal origins for a presigned PUT.
-  # docs/05-operations/deployment.md § Object storage, when it is wanted
+  # docs/guide/install-and-deploy.md, when it is wanted
   # ---------------------------------------------------------------------
   seaweedfs:
     image: chrislusf/seaweedfs:3.97

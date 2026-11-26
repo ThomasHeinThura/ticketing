@@ -14,7 +14,7 @@
 # that TaskDesk attaches to its network and contributes only labels. A host with
 # no proxy of its own additionally loads deploy/compose.traefik.yml.
 #
-# Specification: docs/05-operations/deployment.md, traefik-and-domains.md
+# Specification: docs/guide/install-and-deploy.md
 
 services:
   taskdesk:
@@ -31,7 +31,7 @@ services:
       # Traefik. Do not raise it because the diagram has more boxes: read the
       # X-Forwarded-For that actually arrives and count. The method, and the
       # measured answer for a CDN-fronted host, are in
-      # docs/05-operations/proxy-topology-evidence.md.
+      # docs/guide/install-and-deploy.md.
       # ---------------------------------------------------------------
       TASKDESK_TRUST_PROXY: "1"
     labels:
@@ -43,7 +43,7 @@ services:
       # sharing this same host's Traefik would otherwise merge into one
       # Traefik service with both containers as backends, load-balancing into
       # one that is unreachable from this Traefik's own network.
-      # docs/05-operations/traefik-and-domains.md § Environment-prefixed names
+      # docs/guide/install-and-deploy.md
       - traefik.enable=true
       - traefik.docker.network=proxy
       - traefik.http.services.taskdesk-prod.loadbalancer.server.port=${TASKDESK_PORT:-5173}

@@ -37,13 +37,20 @@ const failures = new FailureLimiter();
  * selector and verified in constant time (cached once verified, never across a changed hash).
  */
 async function findVerifiedApiKey(key: string, clientIp: string) {
+  // A string that cannot be a key is refused once its address is over the failure limit, so
+  // junk is not free. Below the limit it still gets the cheap legacy hash lookup, because
+  // rewritten legacy keys keep arbitrary secrets that may not match the key pattern.
+  const wellFormed = looksLikeApiKey(key);
+  if (!wellFormed) {
+    const wait = failures.blockedFor(clientIp);
+    if (wait > 0) throw new VerificationThrottledError(wait);
+  }
   const legacy = await findActiveApiKeyByHash(legacySha256ApiKeyHash(key));
   if (legacy) {
     await tryUpgrade(key, legacy.id, legacy.key);
     return legacy;
   }
-  // R7-03: a string that cannot be a key never reaches the lookup or the hash.
-  if (!looksLikeApiKey(key)) {
+  if (!wellFormed) {
     noteFailure(clientIp);
     return undefined;
   }
