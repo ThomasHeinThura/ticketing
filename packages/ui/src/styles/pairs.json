@@ -38243,6 +38243,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/jobs.tsx::GodModeJobsRoute::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/mcp.tsx::GodModeMcpRoute::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/section[0]/label[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/section[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/section[2]/p[0]::text-muted-foreground#0",
@@ -48133,6 +48134,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
+					"jsx:section[0]/section[0]/label[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/section[0]/label[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
 					"jsx:section[0]/section[0]/p[0]>bg-background"
 				],
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/section[0]/p[0]::text-muted-foreground#0",
@@ -51414,6 +51426,7 @@
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/jobs.tsx::GodModeJobsRoute::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/mcp.tsx::GodModeMcpRoute::div[0]/header[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/header[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/section[0]/label[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/section[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/section[2]/p[0]::text-muted-foreground#0",
@@ -61297,6 +61310,17 @@
 					"jsx:section[0]/header[0]/p[0]>bg-background"
 				],
 				"id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/header[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "nearest-opaque-ancestor",
+				"usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx:ObservabilitySettings",
+					"jsx:section[0]/section[0]/label[0]/span[0]>bg-background"
+				],
+				"id": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx::ObservabilitySettings::section[0]/section[0]/label[0]/span[0]::text-muted-foreground#0",
 				"surfaceContext": "nearest-opaque-ancestor",
 				"usage": "apps/web/src/routes/agent/_layout/_authenticated/god-mode/observability.tsx"
 			},

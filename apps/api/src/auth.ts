@@ -5,7 +5,6 @@ import {
   sendOtpEmail,
   sendPasswordResetEmail,
 } from "@taskdesk/email";
-import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import {
   APIError,
@@ -25,6 +24,10 @@ import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
 import { and, eq, gt } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
+import {
+  accountThrottleAfter,
+  accountThrottleBefore,
+} from "./auth/account-throttle";
 import { authConfigurationVersion } from "./auth/configuration-version";
 import {
   IMPERSONATION_SESSION_SECONDS,
@@ -34,6 +37,7 @@ import {
   InactiveFactorIdentityError,
   loadLocalFactorState,
 } from "./auth/local-factor-service";
+import { hashPassword, verifyPassword } from "./auth/password-hash";
 import {
   canResetPassword,
   consumeResetAddressLimit,
@@ -66,6 +70,7 @@ import {
   hasCustomerSidePerson,
   isPendingFirstAdministrator,
   promoteFirstAuthUser,
+  replaceCredentialPasswordHash,
   updateSessionActiveOrganizationId,
   updateSessionPortal,
 } from "./auth/repository";
@@ -607,11 +612,19 @@ function createAuth(
         );
       },
       password: {
-        hash: async (password) => {
-          return await bcrypt.hash(password, 10);
-        },
+        hash: hashPassword,
         verify: async ({ hash, password }) => {
-          return await bcrypt.compare(password, hash);
+          const { valid, needsRehash } = await verifyPassword(hash, password);
+          if (valid && needsRehash) {
+            // rehash is best effort: a failed write must never fail a correct sign-in.
+            try {
+              await replaceCredentialPasswordHash(
+                hash,
+                await hashPassword(password),
+              );
+            } catch {}
+          }
+          return valid;
         },
       },
     },
@@ -1117,6 +1130,8 @@ function createAuth(
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        // Per-account password and TOTP attempt budget, shared across replicas.
+        await accountThrottleBefore(ctx);
         if (ctx.path === "/update-user") {
           const current = await getAuthoritativeSessionFromCtx(ctx);
           if (
@@ -1408,6 +1423,7 @@ function createAuth(
         }
       }),
       after: createAuthMiddleware(async (ctx) => {
+        await accountThrottleAfter(ctx);
         const newSession = ctx.context.newSession;
         const previousSession = ctx.context.session;
         const completedEnrollment =

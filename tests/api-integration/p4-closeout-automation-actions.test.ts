@@ -189,6 +189,7 @@ describe("post_comment", () => {
       );
     expect(audit?.actorType).toBe("automation");
     expect(audit?.actorId).toBe(rule.id);
+    expect(JSON.stringify(audit?.after)).not.toContain("Printer on fire");
 
     // The produced event carries the loop-guard context (EV-3 / AM-5).
     const events = await db

@@ -137,6 +137,30 @@ describe("API integration: activity through the repository", () => {
     expect(rows[0]?.eventData).toBeNull();
   });
 
+  it("keeps the text of a legacy comment create and edit in the audit trail (no version rows to purge)", async () => {
+    const { member, seed } = await world();
+    const task = await seed(1, "Task");
+    mockAuthenticatedSession(member.user);
+    const created = await call("POST", "/api/activity/comment", {
+      taskId: task.id,
+      comment: "legacy-original",
+    });
+    const { id } = (await created.json()) as { id: string };
+    const updated = await call("PUT", "/api/activity/comment", {
+      activityId: id,
+      comment: "legacy-edited",
+    });
+    expect(updated.status).toBe(200);
+    await updated.text();
+    const rows = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, id));
+    const dump = JSON.stringify(rows.map((row) => [row.before, row.after]));
+    expect(dump).toContain("legacy-original");
+    expect(dump).toContain("legacy-edited");
+  });
+
   it("only the author can update a comment (others get 404), the retired delete route deletes nothing for anyone", async () => {
     const { member, project, seed } = await world();
     const other = await createWorkspaceMember({ role: "owner" });

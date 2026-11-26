@@ -6922,7 +6922,10 @@ async function installAuthenticatedFixture(page: Page) {
         metricsTokenRotatedAt: null,
       };
     } else if (path.endsWith("/api/instance/local-factor-policy")) {
-      body = { policy: { mode: "optional", requiredRoleId: null } };
+      body = {
+        policy: { mode: "optional", requiredRoleId: null },
+        staffSessionMaxDays: 30,
+      };
     }
 
     // Screens that read the server clock (lib/server-clock.ts) take "today" from the

@@ -14,6 +14,7 @@ import {
   loadCommentCaller,
   resolveCommentAuthors,
 } from "../work-item/comment-access";
+import { markCommentDeletionPreviewDone } from "../work-item/comment-purge.repository";
 import { deleteCommentInTransaction } from "../work-item/controllers/delete-comment";
 import {
   approveClickDeletion,
@@ -396,23 +397,10 @@ export async function approveCommentDeletion(
         row.workspaceId ?? "",
         input.userId,
       );
-      // The preview is no longer needed after the confirmed deletion. The immutable
-      // payload/hash and restricted comment audit remain unchanged.
-      const summary = row.payloadSummary;
-      await tx
-        .update(schema.pendingActionTable)
-        .set({
-          payloadSummary: {
-            ...(summary &&
-            typeof summary === "object" &&
-            !Array.isArray(summary)
-              ? summary
-              : {}),
-            commentBody: null,
-            alreadyDeleted: true,
-          },
-        })
-        .where(eq(schema.pendingActionTable.id, row.id));
+      // The preview is no longer needed after the confirmed deletion, unless an open hold covers this
+      // action's own requester, decider or organisation (same exemption as delete-comment.ts). The
+      // immutable payload/hash and restricted comment audit remain unchanged.
+      await markCommentDeletionPreviewDone(tx, row.id);
       return deleted;
     }),
   });

@@ -1554,6 +1554,18 @@ no account.
   Instance administrators read and update it through
   `GET/PATCH /api/instance/local-factor-policy`; writes validate the required role before
   committing and write an `instance.local_factor_policy_changed` audit action.
+  The same endpoint carries `staffSessionMaxDays` (1-90, default 30): an agent-portal
+  session older than that by its creation time is revoked on its next use, whatever
+  sliding refresh did to its expiry; customer-portal sessions are not capped. The check
+  runs where a session is resolved per request (`auth/session-lifetime.ts`); a replica
+  reads the cap at most 15 seconds stale.
+- **Per-account sign-in throttle:** besides the per-IP limit, password sign-in (keyed by
+  the normalised email, existing or not) and TOTP or backup-code verification (keyed by
+  the account) allow 10 attempts per 15 minutes. The 11th returns the same 429 as the
+  IP limiter, even with the right secret, until the window passes. A success resets that
+  counter; password and factor counters are separate. Counters use the shared auth
+  rate-limit store (Valkey, per-replica memory when it is down). The cost: anyone can
+  lock out a known email for 15 minutes with bad attempts.
 - **Enforcement:** `off` does not require enrollment and disables self-service enrollment; `optional` permits
   self-service enrollment and password-only login for unenrolled accounts. In either mode,
   an already-enrolled account must complete its factor challenge;

@@ -5,6 +5,7 @@ import { appendAuditLog } from "../../audit/audit-writer";
 import { commentTable, workItemTable } from "../../database/schema";
 import type { ApiKey } from "../../openapi";
 import type { PendingActionTransaction } from "../../pending-action/service";
+import { fenceLegalHolds } from "../../scheduler/soft-delete-purge.repository";
 import {
   assertProjectStillLive,
   assertWorkItemStillLive,
@@ -14,6 +15,7 @@ import {
   loadCommentCaller,
   resolveCommentAuthors,
 } from "../comment-access";
+import { purgeDeletedCommentText } from "../comment-purge.repository";
 
 /** Executor-only CA-18 tombstone, inside the locked and freshly authorized pending-action transaction.
  * Retains the row/history and existing user-ID deletedBy convention; repeated execution is write-free.
@@ -84,6 +86,15 @@ export async function deleteCommentInTransaction(
   assertWorkItemStillLive(workItem);
   await assertProjectStillLive(tx, workItem.projectId);
 
+  // Purge the retained text unless an open hold covers the item's people or organisations.
+  await fenceLegalHolds(tx);
+  const held = await purgeDeletedCommentText(tx, {
+    commentId,
+    workItemId: locked.workItemId,
+    workspaceId,
+    projectId: workItem.projectId,
+  });
+
   const [deleted] = await tx
     .update(commentTable)
     .set({
@@ -108,7 +119,9 @@ export async function deleteCommentInTransaction(
     entityType: "comment",
     entityId: deleted.id,
     before: {
-      body: (locked.body ?? null) as JsonValue,
+      // shortcut: audit rows written before this change keep comment text (chain is append-only); a redaction column needs a contract change
+      body: held ? ((locked.body ?? null) as JsonValue) : null,
+      bodyRedacted: !held,
       deletedAt: null,
     },
     after: {
