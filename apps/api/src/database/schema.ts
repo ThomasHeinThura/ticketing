@@ -1354,6 +1354,11 @@ export const instanceSettingTable = pgTable(
       .$type<{ mode: string; requiredRoleId: string | null }>()
       .notNull()
       .default(sql`'{"mode":"optional","requiredRoleId":null}'::jsonb`),
+    // Staff session absolute lifetime (days, 1-90): a staff session older than this by its
+    // creation time is revoked on use, whatever sliding refresh did to `expires_at`.
+    staffSessionMaxDays: integer("staff_session_max_days")
+      .notNull()
+      .default(30),
     observabilityLogLevels: jsonb("observability_log_levels")
       .$type<{ default: string; modules: Record<string, string> }>()
       .notNull()
@@ -1502,6 +1507,12 @@ export const instanceSettingTable = pgTable(
       "instance_setting_local_factor_policy_shape",
       sql.raw(
         "(jsonb_typeof(local_factor_policy) = 'object'::text) AND (local_factor_policy ?& ARRAY['mode'::text, 'requiredRoleId'::text]) AND ((local_factor_policy - ARRAY['mode'::text, 'requiredRoleId'::text]) = '{}'::jsonb) AND ((local_factor_policy ->> 'mode'::text) = ANY (ARRAY['off'::text, 'optional'::text, 'required_staff'::text, 'required_role'::text, 'required_everyone'::text])) AND ((((local_factor_policy ->> 'mode'::text) = 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'string'::text) AND (length((local_factor_policy ->> 'requiredRoleId'::text)) > 0)) OR (((local_factor_policy ->> 'mode'::text) <> 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'null'::text)))",
+      ),
+    ),
+    check(
+      "instance_setting_staff_session_max_days_range",
+      sql.raw(
+        "(staff_session_max_days >= 1) AND (staff_session_max_days <= 90)",
       ),
     ),
   ],

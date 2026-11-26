@@ -68,6 +68,12 @@ function ObservabilitySettings() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [factorPolicy, setFactorPolicy] = useState<FactorPolicy | null>(null);
   const [requiredRoleIdInput, setRequiredRoleIdInput] = useState("");
+  const [sessionMaxDaysInput, setSessionMaxDaysInput] = useState("30");
+  const sessionMaxDays = Number(sessionMaxDaysInput);
+  const sessionMaxDaysValid =
+    Number.isInteger(sessionMaxDays) &&
+    sessionMaxDays >= 1 &&
+    sessionMaxDays <= 90;
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [codeMethod, setCodeMethod] = useState<"totp" | "backup_code">("totp");
@@ -105,6 +111,11 @@ function ObservabilitySettings() {
     const policy = (localFactors as { policy: FactorPolicy }).policy;
     setFactorPolicy(policy);
     setRequiredRoleIdInput(policy.requiredRoleId ?? "");
+    setSessionMaxDaysInput(
+      String(
+        (localFactors as { staffSessionMaxDays: number }).staffSessionMaxDays,
+      ),
+    );
   }, [request]);
 
   useEffect(() => {
@@ -147,10 +158,15 @@ function ObservabilitySettings() {
           : null;
       const result = (await request("instance/local-factor-policy", {
         method: "PATCH",
-        body: JSON.stringify({ mode: factorPolicy.mode, requiredRoleId }),
-      })) as { policy: FactorPolicy };
+        body: JSON.stringify({
+          mode: factorPolicy.mode,
+          requiredRoleId,
+          staffSessionMaxDays: sessionMaxDays,
+        }),
+      })) as { policy: FactorPolicy; staffSessionMaxDays: number };
       setFactorPolicy(result.policy);
       setRequiredRoleIdInput(result.policy.requiredRoleId ?? "");
+      setSessionMaxDaysInput(String(result.staffSessionMaxDays));
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -328,10 +344,31 @@ function ObservabilitySettings() {
                   />
                 </label>
               ) : null}
+              <label
+                className="block space-y-2 text-sm font-medium"
+                htmlFor="staff-session-max-days"
+              >
+                {t("observability.sessionMaxDays")}
+                <Input
+                  id="staff-session-max-days"
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={sessionMaxDaysInput}
+                  onChange={(event) =>
+                    setSessionMaxDaysInput(event.target.value)
+                  }
+                  aria-invalid={!sessionMaxDaysValid}
+                />
+                <span className="block text-sm font-normal text-muted-foreground">
+                  {t("observability.sessionMaxDaysHelp")}
+                </span>
+              </label>
               <Button
                 disabled={
                   pending ||
                   !factorPolicy ||
+                  !sessionMaxDaysValid ||
                   (factorPolicy.mode === "required_role" &&
                     requiredRoleIdInput.trim().length === 0)
                 }

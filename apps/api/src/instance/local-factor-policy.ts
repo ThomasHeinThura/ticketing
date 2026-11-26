@@ -2,6 +2,11 @@ import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import { parseLocalFactorPolicy } from "../auth/local-factor-policy";
+import {
+  resetStaffSessionCapCache,
+  STAFF_SESSION_MAX_DAYS_MAX,
+  STAFF_SESSION_MAX_DAYS_MIN,
+} from "../auth/session-lifetime";
 import db, { schema } from "../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { lockPendingActionLifecycle } from "../pending-action/lifecycle-invalidation";
@@ -11,36 +16,55 @@ import { notifyCurrentInstanceAdminsOfAuditFailure } from "./observability/audit
 import { recordAuditWriteFailure } from "./observability/runtime";
 import { requireCurrentInstanceAdmin } from "./require-instance-admin";
 
-const policySchema = z
-  .object({
-    mode: z.enum([
-      "off",
-      "optional",
-      "required_staff",
-      "required_role",
-      "required_everyone",
-    ]),
-    requiredRoleId: z.string().min(1).nullable(),
-  })
-  .strict()
-  .superRefine((value, ctx) => {
-    if (value.mode === "required_role" && !value.requiredRoleId) {
-      ctx.addIssue({
-        code: "custom",
-        message: "requiredRoleId is required",
-        path: ["requiredRoleId"],
-      });
-    }
-    if (value.mode !== "required_role" && value.requiredRoleId !== null) {
-      ctx.addIssue({
-        code: "custom",
-        message: "requiredRoleId must be null",
-        path: ["requiredRoleId"],
-      });
-    }
-  });
+const policyFields = z.object({
+  mode: z.enum([
+    "off",
+    "optional",
+    "required_staff",
+    "required_role",
+    "required_everyone",
+  ]),
+  requiredRoleId: z.string().min(1).nullable(),
+});
 
-const responseSchema = z.object({ policy: policySchema });
+function refineRequiredRole(
+  value: { mode: string; requiredRoleId: string | null },
+  ctx: z.RefinementCtx,
+) {
+  if (value.mode === "required_role" && !value.requiredRoleId) {
+    ctx.addIssue({
+      code: "custom",
+      message: "requiredRoleId is required",
+      path: ["requiredRoleId"],
+    });
+  }
+  if (value.mode !== "required_role" && value.requiredRoleId !== null) {
+    ctx.addIssue({
+      code: "custom",
+      message: "requiredRoleId must be null",
+      path: ["requiredRoleId"],
+    });
+  }
+}
+
+const policySchema = policyFields.strict().superRefine(refineRequiredRole);
+
+// The staff session lifetime cap sits beside the MFA policy as one instance security setting;
+// a PATCH may omit it to leave it unchanged.
+const staffSessionMaxDaysSchema = z
+  .number()
+  .int()
+  .min(STAFF_SESSION_MAX_DAYS_MIN)
+  .max(STAFF_SESSION_MAX_DAYS_MAX);
+const patchBodySchema = policyFields
+  .extend({ staffSessionMaxDays: staffSessionMaxDaysSchema.optional() })
+  .strict()
+  .superRefine(refineRequiredRole);
+
+const responseSchema = z.object({
+  policy: policySchema,
+  staffSessionMaxDays: staffSessionMaxDaysSchema,
+});
 
 const getRoute = createRoute({
   method: "get",
@@ -64,7 +88,7 @@ const patchRoute = createRoute({
   request: {
     body: {
       required: true,
-      content: { "application/json": { schema: policySchema } },
+      content: { "application/json": { schema: patchBodySchema } },
     },
   },
   responses: {
@@ -88,13 +112,22 @@ const routes = apiRouter()
     setShadowLegacyAuthorization(c, "allowed");
     c.header("Cache-Control", "no-store");
     const [row] = await db
-      .select({ policy: schema.instanceSettingTable.localFactorPolicy })
+      .select({
+        policy: schema.instanceSettingTable.localFactorPolicy,
+        staffSessionMaxDays: schema.instanceSettingTable.staffSessionMaxDays,
+      })
       .from(schema.instanceSettingTable)
       .where(eq(schema.instanceSettingTable.id, "singleton"))
       .limit(1);
     if (!row) throw new HTTPException(503, { message: "Policy unavailable" });
     try {
-      return c.json({ policy: parseLocalFactorPolicy(row.policy) }, 200);
+      return c.json(
+        {
+          policy: parseLocalFactorPolicy(row.policy),
+          staffSessionMaxDays: row.staffSessionMaxDays,
+        },
+        200,
+      );
     } catch {
       throw new HTTPException(503, { message: "Policy unavailable" });
     }
@@ -106,7 +139,8 @@ const routes = apiRouter()
       "/api/instance/local-factor-policy",
     );
     c.header("Cache-Control", "no-store");
-    const requested = parseLocalFactorPolicy(c.req.valid("json"));
+    const { staffSessionMaxDays, ...policyInput } = c.req.valid("json");
+    const requested = parseLocalFactorPolicy(policyInput);
     const result = await db.transaction(async (tx) => {
       // Serialize this policy change with PA-15's final factor check and proof mint.
       await lockPendingActionLifecycle(tx);
@@ -122,25 +156,47 @@ const routes = apiRouter()
         if (!role) return { previous: null, updated: false };
       }
       const [row] = await tx
-        .select({ policy: schema.instanceSettingTable.localFactorPolicy })
+        .select({
+          policy: schema.instanceSettingTable.localFactorPolicy,
+          staffSessionMaxDays: schema.instanceSettingTable.staffSessionMaxDays,
+        })
         .from(schema.instanceSettingTable)
         .where(eq(schema.instanceSettingTable.id, "singleton"))
         .for("update")
         .limit(1);
       if (!row) throw new HTTPException(503, { message: "Policy unavailable" });
       const current = parseLocalFactorPolicy(row.policy);
-      if (JSON.stringify(current) === JSON.stringify(requested))
-        return { previous: current, updated: true };
+      const days = staffSessionMaxDays ?? row.staffSessionMaxDays;
+      if (
+        JSON.stringify(current) === JSON.stringify(requested) &&
+        days === row.staffSessionMaxDays
+      )
+        return {
+          previous: current,
+          previousDays: days,
+          days,
+          updated: true,
+        };
       await tx
         .update(schema.instanceSettingTable)
-        .set({ localFactorPolicy: requested })
+        .set({ localFactorPolicy: requested, staffSessionMaxDays: days })
         .where(eq(schema.instanceSettingTable.id, "singleton"));
-      return { previous: current, updated: true };
+      return {
+        previous: current,
+        previousDays: row.staffSessionMaxDays,
+        days,
+        updated: true,
+      };
     });
     if (!result.updated || !result.previous)
       return c.json({ message: "Unknown required role" }, 400);
 
-    if (JSON.stringify(result.previous) !== JSON.stringify(requested)) {
+    resetStaffSessionCapCache();
+
+    if (
+      JSON.stringify(result.previous) !== JSON.stringify(requested) ||
+      result.previousDays !== result.days
+    ) {
       await appendAuditLog(db, {
         action: "instance.local_factor_policy_changed",
         actorId: c.get("userId"),
@@ -152,10 +208,12 @@ const routes = apiRouter()
         before: {
           mode: result.previous.mode,
           requiredRoleId: result.previous.requiredRoleId,
+          staffSessionMaxDays: result.previousDays,
         },
         after: {
           mode: requested.mode,
           requiredRoleId: requested.requiredRoleId,
+          staffSessionMaxDays: result.days,
         },
       }).catch(async () => {
         recordAuditWriteFailure("mutation");
@@ -163,7 +221,7 @@ const routes = apiRouter()
       });
     }
     setShadowLegacyAuthorization(c, "allowed");
-    return c.json({ policy: requested }, 200);
+    return c.json({ policy: requested, staffSessionMaxDays: result.days }, 200);
   });
 
 export default routes;

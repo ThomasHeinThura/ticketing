@@ -1611,6 +1611,13 @@
 			"when": 1795527570958,
 			"tag": "0229_import_chunk_pending_publish",
 			"breakpoints": true
+		},
+		{
+			"idx": 230,
+			"version": "7",
+			"when": 1795628283931,
+			"tag": "0230_staff_session_max_days",
+			"breakpoints": true
 		}
 	]
 }

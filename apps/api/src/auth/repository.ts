@@ -1517,6 +1517,19 @@ export async function getIdentityConnectionConfigVersions() {
     .from(schema.identityConnectionTable);
 }
 
+export async function getStaffSessionMaxDaysSetting() {
+  const [row] = await db
+    .select({ days: schema.instanceSettingTable.staffSessionMaxDays })
+    .from(schema.instanceSettingTable)
+    .where(eq(schema.instanceSettingTable.id, "singleton"))
+    .limit(1);
+  return row?.days;
+}
+
+export async function deleteSessionById(id: string) {
+  await db.delete(schema.sessionTable).where(eq(schema.sessionTable.id, id));
+}
+
 /** Swaps one credential hash for another; matching the old hash makes a concurrent change win. */
 export async function replaceCredentialPasswordHash(
   oldHash: string,

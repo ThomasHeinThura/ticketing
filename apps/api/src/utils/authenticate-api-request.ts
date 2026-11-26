@@ -4,6 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import type { ApiKeyKind } from "../api-key/credential";
 import { clientIpForContext, enforceApiKeyRequest } from "../api-key/enforce";
 import { authForHost, hasCustomerPortalIdentity, portalForHost } from "../auth";
+import { enforceStaffSessionCap } from "../auth/session-lifetime";
 import { mcpFeatureEnabled } from "./mcp-feature-enabled";
 import { auditMcpRequest } from "./mcp-request-audit";
 import { verifyApiKey } from "./verify-api-key";
@@ -30,6 +31,9 @@ async function getSession(headers: Headers) {
     ) {
       throw new HTTPException(401, { message: "Unauthorized" });
     }
+    // A staff session past the instance lifetime cap is revoked and treated as signed out.
+    if (result?.session && (await enforceStaffSessionCap(result.session)))
+      return null;
     return result;
   } catch (error) {
     if (isAuthRejection(error)) {

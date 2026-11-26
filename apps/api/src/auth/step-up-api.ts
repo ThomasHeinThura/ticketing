@@ -46,6 +46,7 @@ import {
 } from "../pending-action/deletion-targets";
 import { isHardPurgePendingAction as isHardPurgeAction } from "../pending-action/hard-purge-executor";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import { buildAuthRequest } from "../utils/auth-request";
 import { dbNowUtc } from "../utils/db-time";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { findWebhookWorkspace } from "../webhook/repository";
@@ -819,6 +820,10 @@ const proveRoute = createRoute({
     ),
   },
 });
+
+// Normalised headers (proxy-resolved client IP) without re-reading the body the validator consumed.
+const factorHeaders = (c: Context) =>
+  buildAuthRequest(c, undefined, new Request(c.req.url)).headers;
 
 const routes = apiRouter()
   .openapi(challengeRoute, async (c) => {
@@ -2091,7 +2096,7 @@ const routes = apiRouter()
           const result = await withEnlistedLocalFactorVerification(async () =>
             auth.api.verifyTOTP({
               body: { code: proofInput.code ?? "", trustDevice: false },
-              headers: c.req.raw.headers,
+              headers: factorHeaders(c),
             }),
           );
           if (result.user.id !== c.get("userId")) return null;
@@ -2099,7 +2104,7 @@ const routes = apiRouter()
           const result = await withEnlistedLocalFactorVerification(async () =>
             auth.api.verifyBackupCode({
               body: { code: proofInput.code ?? "", disableSession: true },
-              headers: c.req.raw.headers,
+              headers: factorHeaders(c),
             }),
           );
           if (result.user.id !== c.get("userId")) return null;
