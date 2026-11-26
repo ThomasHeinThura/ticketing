@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -7,7 +13,10 @@ const mocks = vi.hoisted(() => ({
     ok: true,
     json: async () =>
       url.includes("local-factor-policy")
-        ? { policy: { mode: "optional", requiredRoleId: null } }
+        ? {
+            policy: { mode: "optional", requiredRoleId: null },
+            staffSessionMaxDays: 30,
+          }
         : {
             version: 1,
             logLevels: { default: "info", modules: {} },
@@ -86,5 +95,37 @@ describe("observability translations", () => {
       screen.getByText("new-language:observability.factorPolicy"),
     ).toBeInTheDocument();
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("loads the staff session lifetime and saves it with the factor policy", async () => {
+    const Component = Route as unknown as React.ComponentType;
+    render(<Component />);
+    const input = await screen.findByRole("spinbutton");
+    expect(input).toHaveValue(30);
+    fireEvent.change(input, { target: { value: "14" } });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "translated:observability.saveFactor",
+      }),
+    );
+    await waitFor(() =>
+      expect(mocks.fetch).toHaveBeenCalledWith(
+        "instance/local-factor-policy",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            mode: "optional",
+            requiredRoleId: null,
+            staffSessionMaxDays: 14,
+          }),
+        }),
+      ),
+    );
+    fireEvent.change(input, { target: { value: "91" } });
+    expect(
+      screen.getByRole("button", {
+        name: "translated:observability.saveFactor",
+      }),
+    ).toBeDisabled();
   });
 });

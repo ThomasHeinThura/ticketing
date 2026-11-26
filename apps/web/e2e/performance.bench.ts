@@ -746,9 +746,9 @@ async function collectG13WindowMeasurement(
 /**
  * The 500-row render metric measures the work route's table layout (`?layout=table`), the
  * feature-contracts-p1 "table with 500 rows", not the grouped list's interim fallback table.
- * Approved by Thomas on 27 Oct 2026: only the opened URL and the table's row selector changed.
+ * Approved by the product owner on 27 Oct 2026: only the opened URL and the table's row selector changed.
  *
- * Thomas decided on 28 Oct 2026 what is counted: the virtualized table's first painted
+ * The product owner decided on 28 Oct 2026 what is counted: the virtualized table's first painted
  * viewport with all 500 rows loaded (the table's `aria-rowcount`), recorded by
  * `installLastItemPaintRecorder`'s list kind. The virtualized table windows its rows and never
  * mounts 500 `tbody tr`, so nothing here counts them. The budget (< 500 ms), sampling, retries

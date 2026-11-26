@@ -24,6 +24,10 @@ import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
 import { and, eq, gt } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
+import {
+  accountThrottleAfter,
+  accountThrottleBefore,
+} from "./auth/account-throttle";
 import { authConfigurationVersion } from "./auth/configuration-version";
 import {
   IMPERSONATION_SESSION_SECONDS,
@@ -1126,6 +1130,8 @@ function createAuth(
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        // Per-account password and TOTP attempt budget, shared across replicas.
+        await accountThrottleBefore(ctx);
         if (ctx.path === "/update-user") {
           const current = await getAuthoritativeSessionFromCtx(ctx);
           if (
@@ -1417,6 +1423,7 @@ function createAuth(
         }
       }),
       after: createAuthMiddleware(async (ctx) => {
+        await accountThrottleAfter(ctx);
         const newSession = ctx.context.newSession;
         const previousSession = ctx.context.session;
         const completedEnrollment =

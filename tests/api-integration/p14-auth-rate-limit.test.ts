@@ -5,6 +5,7 @@ import {
   startAuthConfigRuntime,
   stopAuthConfigRuntime,
 } from "../../apps/api/src/auth";
+import { ACCOUNT_THROTTLE_RULE } from "../../apps/api/src/auth/account-throttle";
 import {
   resetAuthRateLimitWarningForTest,
   UNSHARED_AUTH_RATE_LIMIT_WARNING,
@@ -137,7 +138,13 @@ describe("P-14 HTTP auth rate limiting, reload persistence, and Valkey shared ba
     }
 
     expect(statuses).toEqual([401, 401, 401, 429]);
-    expect(evalSpy).toHaveBeenCalledTimes(4);
+    // The per-IP limiter makes one atomic call per request. The account throttle shares the store
+    // with a 15-minute window: two calls (email+IP, email) for each of the three attempts that
+    // reach the sign-in handler; the fourth is refused by the per-IP limiter first.
+    const accountWindowMs = ACCOUNT_THROTTLE_RULE.window * 1000;
+    const windows = evalSpy.mock.calls.map((call) => call[3]);
+    expect(windows.filter((w) => w !== accountWindowMs)).toHaveLength(4);
+    expect(windows.filter((w) => w === accountWindowMs)).toHaveLength(6);
 
     for (const key of valkeyBuckets.keys()) {
       expect(key).toMatch(/^taskdesk:auth-rate-limit:v1:[0-9a-f]{64}$/);

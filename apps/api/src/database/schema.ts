@@ -636,7 +636,7 @@ export const projectTable = pgTable(
       mode: "date",
       withTimezone: true,
     }),
-    // 0213, decision D1 (Thomas, 31 Oct 2026): lifecycle status, information only. It does not
+    // 0213, decision D1 (product decision, 31 Oct 2026): lifecycle status, information only. It does not
     // archive, freeze or hide the project; `archived_at`/`deleted_at` keep those meanings.
     status: text("status").notNull().default("active"),
   },
@@ -1136,7 +1136,7 @@ export const documentLinkTable = pgTable(
 );
 
 /**
- * 0213, decision D2 (Thomas, 31 Oct 2026): the project's contract and hour bank, at most one per
+ * 0213, decision D2 (product decision, 31 Oct 2026): the project's contract and hour bank, at most one per
  * project (the primary key is the project), deleted with the project. Written only by
  * `PUT /api/project/{id}/contract` (`project:manage_settings`, audited as `project_contract.set`).
  * Hours used are never stored: they are the billable `time_entry` minutes on the project dated
@@ -1354,6 +1354,11 @@ export const instanceSettingTable = pgTable(
       .$type<{ mode: string; requiredRoleId: string | null }>()
       .notNull()
       .default(sql`'{"mode":"optional","requiredRoleId":null}'::jsonb`),
+    // Staff session absolute lifetime (days, 1-90): a staff session older than this by its
+    // creation time is revoked on use, whatever sliding refresh did to `expires_at`.
+    staffSessionMaxDays: integer("staff_session_max_days")
+      .notNull()
+      .default(30),
     observabilityLogLevels: jsonb("observability_log_levels")
       .$type<{ default: string; modules: Record<string, string> }>()
       .notNull()
@@ -1502,6 +1507,12 @@ export const instanceSettingTable = pgTable(
       "instance_setting_local_factor_policy_shape",
       sql.raw(
         "(jsonb_typeof(local_factor_policy) = 'object'::text) AND (local_factor_policy ?& ARRAY['mode'::text, 'requiredRoleId'::text]) AND ((local_factor_policy - ARRAY['mode'::text, 'requiredRoleId'::text]) = '{}'::jsonb) AND ((local_factor_policy ->> 'mode'::text) = ANY (ARRAY['off'::text, 'optional'::text, 'required_staff'::text, 'required_role'::text, 'required_everyone'::text])) AND ((((local_factor_policy ->> 'mode'::text) = 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'string'::text) AND (length((local_factor_policy ->> 'requiredRoleId'::text)) > 0)) OR (((local_factor_policy ->> 'mode'::text) <> 'required_role'::text) AND (jsonb_typeof((local_factor_policy -> 'requiredRoleId'::text)) = 'null'::text)))",
+      ),
+    ),
+    check(
+      "instance_setting_staff_session_max_days_range",
+      sql.raw(
+        "(staff_session_max_days >= 1) AND (staff_session_max_days <= 90)",
       ),
     ),
   ],
@@ -6213,7 +6224,7 @@ export const auditLogTable = pgTable(
     userAgent: text("user_agent"),
     traceId: text("trace_id"),
     workspaceId: text("workspace_id"),
-    // AU-10 / #344 (Thomas, 2026-09-23): the project a project-scoped audit row belongs
+    // AU-10 / #344 (product decision, 2026-09-23): the project a project-scoped audit row belongs
     // to, so workspace audit READS can be reach-filtered without a per-entity_type join.
     // Nullable with no FK, following `workspace_id` directly above -- the entity the row
     // describes may outlive its project, and audit rows must never be deleted or
@@ -7514,7 +7525,7 @@ export const customerInvitationAuthContinuationTable = pgTable(
 );
 
 /**
- * D-D (Thomas, 12 Nov 2026): explicit per-person customer reach to an engagement. A customer's
+ * D-D (product decision, 12 Nov 2026): explicit per-person customer reach to an engagement. A customer's
  * authority remains their single organisation-scope `customer` role; reach requires both the
  * project's `organisation_id` matching the customer's organisation and a row here.
  */

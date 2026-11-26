@@ -17,7 +17,7 @@ export const WithImage: Story = {
     children: (
       <>
         <AvatarImage
-          alt="Thomas Hein Thura"
+          alt="Tina Harper"
           src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Ctext x=%2232%22 y=%2232%22 text-anchor=%22middle%22 dominant-baseline=%22central%22 font-size=%2228%22 font-weight=%22bold%22%3ETH%3C/text%3E%3C/svg%3E"
         />
         <AvatarFallback>TH</AvatarFallback>

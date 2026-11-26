@@ -10,7 +10,7 @@ import { useElementWidth } from "@/lib/use-element-width";
  * "Table" tab), so a chart alone is never the only way to read a number. A `null` point is a gap,
  * never a zero (`RP-1`).
  *
- * Fit (Thomas, 3 Nov): the chart is drawn at the width of its container, in real pixels, so its
+ * Fit (product decision, 3 Nov): the chart is drawn at the width of its container, in real pixels, so its
  * text never shrinks. When the categories need more room than the container has, the drawing is
  * wider and scrolls inside its own named frame, with a visible hint; the page never scrolls
  * sideways. Axis labels are never shortened: labels of several words wrap under their bar, and

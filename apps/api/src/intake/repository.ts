@@ -1756,7 +1756,7 @@ export async function loadPortalViewer(
 }
 
 /**
- * D-D (Thomas, 12 Nov 2026): a submission's effective project is its converted/linked work item's
+ * D-D (product decision, 12 Nov 2026): a submission's effective project is its converted/linked work item's
  * project when present, otherwise its request type version's or request type's default project.
  * Organisation-level submissions with no default project remain visible to the customer org; any
  * submission tied to a project requires current `customer_project_access` (even for the requester

@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://taskdesk.bimats.com/api",
+      "url": "https://taskdesk.test/api",
       "description": "TaskDesk API Server"
     }
   ],
@@ -82164,10 +82164,16 @@
                         "requiredRoleId"
                       ],
                       "additionalProperties": false
+                    },
+                    "staffSessionMaxDays": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 90
                     }
                   },
                   "required": [
-                    "policy"
+                    "policy",
+                    "staffSessionMaxDays"
                   ]
                 }
               }
@@ -82243,6 +82249,11 @@
                       "null"
                     ],
                     "minLength": 1
+                  },
+                  "staffSessionMaxDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 90
                   }
                 },
                 "required": [
@@ -82288,10 +82299,16 @@
                         "requiredRoleId"
                       ],
                       "additionalProperties": false
+                    },
+                    "staffSessionMaxDays": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 90
                     }
                   },
                   "required": [
-                    "policy"
+                    "policy",
+                    "staffSessionMaxDays"
                   ]
                 }
               }

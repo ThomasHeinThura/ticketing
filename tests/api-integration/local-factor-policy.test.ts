@@ -2032,6 +2032,104 @@ describe("instance local-factor policy API", () => {
     }
   });
 
+  it("step-up factor verification ignores a forged internal client-IP header, like the HTTP auth path", async () => {
+    const fixture = await prepareTotpEnrollmentFailureFixture(
+      "factor-totp-forged-ip-header",
+    );
+    const enrolled = await fixture.app.request(
+      "/api/auth/two-factor/verify-totp",
+      {
+        method: "POST",
+        headers: {
+          origin: getConfiguredAgentOrigin(),
+          cookie: fixture.cookie,
+          "content-type": "application/json",
+          "x-forwarded-for": nextTotpTestIp(),
+        },
+        body: JSON.stringify({
+          code: await createOTP(fixture.rawSecret).totp(),
+        }),
+      },
+    );
+    expect(enrolled.status).toBe(200);
+    const sessionCookie = enrolled.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    if (!sessionCookie) throw new Error("step-up session cookie is missing");
+    const [target] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-totp-forged-ip-target",
+        name: "Forged IP Target",
+        email: "factor-totp-forged-ip-target@example.test",
+        role: "user",
+        twoFactorEnabled: true,
+      })
+      .returning();
+    if (!target) throw new Error("forged-ip target was not created");
+    const verificationNote = "Verify forged client-ip header handling.";
+    const challengeResponse = await csrfRequest(
+      fixture.app,
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { cookie: sessionCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target.id,
+          verificationNote,
+        }),
+      },
+      sessionCookie,
+    );
+    expect(challengeResponse.status).toBe(200);
+    const binding = (await challengeResponse.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+
+    const forged = "203.0.113.99";
+    const seen: (string | null)[] = [];
+    const originalVerifyTOTP = auth.api.verifyTOTP;
+    const verifyTOTP = vi
+      .spyOn(auth.api, "verifyTOTP")
+      .mockImplementation(async (options) => {
+        seen.push(new Headers(options?.headers).get("x-taskdesk-client-ip"));
+        return originalVerifyTOTP(options);
+      });
+    try {
+      await csrfRequest(
+        fixture.app,
+        "/api/me/step-up",
+        {
+          method: "POST",
+          headers: {
+            cookie: sessionCookie,
+            "content-type": "application/json",
+            "x-taskdesk-client-ip": forged,
+          },
+          body: JSON.stringify({
+            kind: "operation",
+            operation: "mfa_reset",
+            userId: target.id,
+            verificationNote,
+            challengeId: binding.challengeId,
+            nonce: binding.nonce,
+            method: "totp",
+            code: "000000",
+          }),
+        },
+        sessionCookie,
+      );
+    } finally {
+      verifyTOTP.mockRestore();
+    }
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).not.toBe(forged);
+  });
+
   it("applies the same PA-9 boundary to Better Auth's direct verifyTOTP method", async () => {
     const fixture = await prepareTotpEnrollmentFailureFixture(
       "factor-totp-direct-api",
@@ -2250,6 +2348,7 @@ describe("instance local-factor policy API", () => {
     expect(initial.status, JSON.stringify(initialBody)).toBe(200);
     expect(initialBody).toEqual({
       policy: { mode: "optional", requiredRoleId: null },
+      staffSessionMaxDays: 30,
     });
 
     const updated = await app.request("/api/instance/local-factor-policy", {
@@ -2263,6 +2362,7 @@ describe("instance local-factor policy API", () => {
     expect(updated.status).toBe(200);
     expect(await updated.json()).toEqual({
       policy: { mode: "required_role", requiredRoleId: "factor-role" },
+      staffSessionMaxDays: 30,
     });
 
     const unknown = await app.request("/api/instance/local-factor-policy", {
@@ -2281,6 +2381,51 @@ describe("instance local-factor policy API", () => {
       mode: "required_role",
       requiredRoleId: "factor-role",
     });
+  });
+
+  it("validates staffSessionMaxDays and leaves it unchanged when omitted", async () => {
+    const [user] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-days-admin",
+        name: "Days Admin",
+        email: "factor-days-admin@example.test",
+        role: "admin",
+      })
+      .returning();
+    if (!user) throw new Error("admin fixture was not created");
+    await ensureStaffPersonForUser(user.id);
+    mockAuthenticatedSession(user);
+    const { app } = createApp();
+    const patch = (extra: Record<string, unknown>) =>
+      app.request("/api/instance/local-factor-policy", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          mode: "optional",
+          requiredRoleId: null,
+          ...extra,
+        }),
+      });
+    const storedDays = async () =>
+      (
+        await db
+          .select({ days: schema.instanceSettingTable.staffSessionMaxDays })
+          .from(schema.instanceSettingTable)
+      )[0]?.days;
+
+    for (const bad of [0, 91, 1.5, "30"])
+      expect((await patch({ staffSessionMaxDays: bad })).status).toBe(400);
+    expect(await storedDays()).toBe(30);
+
+    const set = await patch({ staffSessionMaxDays: 45 });
+    expect(set.status).toBe(200);
+    expect((await set.json()).staffSessionMaxDays).toBe(45);
+
+    const omitted = await patch({});
+    expect(omitted.status).toBe(200);
+    expect((await omitted.json()).staffSessionMaxDays).toBe(45);
+    expect(await storedDays()).toBe(45);
   });
 
   it("resets MFA only with a substantive verification note and revokes sessions and keys", async () => {

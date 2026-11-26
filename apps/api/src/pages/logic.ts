@@ -71,7 +71,7 @@ export function subtreeHeight(
 }
 
 /**
- * PG-4 autosave coalescing (Thomas, 31 Oct 2026): a save by the author of the page's latest
+ * PG-4 autosave coalescing (product decision, 31 Oct 2026): a save by the author of the page's latest
  * "edit" version, within this many minutes of that version's creation (database clock), updates
  * it instead of writing a new version. Measured from creation, so a long session still produces a
  * version at least every window. Migration 0212's trigger repeats this rule with the same literal

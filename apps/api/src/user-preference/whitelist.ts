@@ -11,7 +11,7 @@ import { z } from "../openapi";
  *
  * | `listGroups.<projectId>` | `project` | project id | `listGroups` | collapsed list group (state) ids, at most 50 (`VW-15`) |
  * | `columns.<projectId>`    | `project` | project id | `columns`    | the table's chosen columns in display order (`VW-19`) |
- * | `columnWidths.<projectId>` | `project` | project id | `columnWidths` | registered column IDs to 64–800 px integer widths, at most 100 entries (`VW-21`, Thomas approved 25 Oct) |
+ * | `columnWidths.<projectId>` | `project` | project id | `columnWidths` | registered column IDs to 64–800 px integer widths, at most 100 entries (`VW-21`, the product owner approved 25 Oct) |
  *
  * `theme` and `sidebar` are named by the spec but have no specified value domain, so they are
  * not whitelisted. Adding a key is a spec change first, then a change here.

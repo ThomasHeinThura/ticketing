@@ -39,7 +39,7 @@ import {
 } from "../schema";
 
 /**
- * D-D (Thomas, 12 Nov 2026): SQL predicate asserting `personId` currently holds explicit
+ * D-D (product decision, 12 Nov 2026): SQL predicate asserting `personId` currently holds explicit
  * `customer_project_access` to `projectId` AND `project` is live (`deleted_at IS NULL`) and
  * belongs to `organisationId`.
  */
@@ -447,7 +447,7 @@ export function currentProjectReachPredicate(
 /**
  * Current staff reach to a workspace: instance admin, a valid workspace-scope membership row,
  * or a single legacy `workspace_member` row whose key resolveIdentity admits, with its
- * precedence (Thomas, 4 November 2026: a custom role reaches exactly as its canonical row
+ * precedence (product decision, 4 November 2026: a custom role reaches exactly as its canonical row
  * grants, the rule #1035 applied to lead and manager):
  *
  * - `owner` is compiled-in and needs no role row;

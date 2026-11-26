@@ -1,6 +1,6 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "https://taskdesk.bimats.com/i18n/schema.json",
+	"$id": "https://taskdesk.example.com/i18n/schema.json",
 	"title": "TaskDesk locale schema",
 	"type": "object",
 	"additionalProperties": false,
@@ -29017,6 +29017,12 @@
 						"saveFactor": {
 							"type": "string"
 						},
+						"sessionMaxDays": {
+							"type": "string"
+						},
+						"sessionMaxDaysHelp": {
+							"type": "string"
+						},
 						"logLevels": {
 							"type": "string"
 						},
@@ -29133,6 +29139,8 @@
 						"requiredAudience",
 						"roleId",
 						"saveFactor",
+						"sessionMaxDays",
+						"sessionMaxDaysHelp",
 						"logLevels",
 						"defaultLevel",
 						"saveLevels",

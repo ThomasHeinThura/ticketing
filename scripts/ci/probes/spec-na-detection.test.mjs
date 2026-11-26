@@ -90,10 +90,10 @@ describe("one independent consolidated review per submitted phase", () => {
       /phase not submitted; no independent review or phase acceptance inferred/,
     );
   });
-  it("validates a real report structure and current source binding without claiming Thomas acceptance", () => {
+  it("validates a real report structure and current source binding without claiming owner acceptance", () => {
     const result = check(scenario());
     assert.equal(result.status, 0, result.output);
-    assert.match(result.output, /Thomas acceptance is recorded separately/);
+    assert.match(result.output, /owner acceptance is recorded separately/);
   });
   for (const args of [["--phase"], ["--phase", "P1"], ["--report"]])
     it(`fails closed for incomplete explicit submission ${args.join(" ")}`, () => {
@@ -301,7 +301,7 @@ describe("actual PR phase completion caller", () => {
       bodyFile(body),
     ]);
     assert.equal(result.status, 0, result.output);
-    assert.match(result.output, /Thomas acceptance remains separate/);
+    assert.match(result.output, /owner acceptance remains separate/);
   });
   it("a PR cannot declare a phase complete after changing reviewed source", () => {
     const f = scenario();

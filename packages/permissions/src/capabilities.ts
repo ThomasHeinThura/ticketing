@@ -121,7 +121,7 @@ export const CAPABILITIES = {
   },
   /**
    * The fix for the hidden second authorization model (issue #6, S5 follow-up,
-   * Thomas's decision 2026-09-08+).
+   * the product owner's decision 2026-09-08+).
    *
    * `POST /api/workspace/{workspaceId}/transfer-ownership` used to declare
    * `workspace:manage_members` — the closest existing match — while its ACTUAL runtime

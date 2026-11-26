@@ -13,7 +13,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * delete is immediate and a workflow rule has no pending-action target, so API and MCP keys are
  * refused (`requireSessionOnly`); GET and PUT stay open to keys as kaneo had them.
  *
- * **Capability: `project:manage_settings` on both mutations (A8-2, Thomas 8 Nov).** rbac.md's
+ * **Capability: `project:manage_settings` on both mutations (A8-2, product decision, 8 Nov).** rbac.md's
  * `project:manage_settings` is "Project states, features, labels, SLA and calendar assignment,
  * **automations**", and `data-model.md`'s `automation` table is the documented native successor
  * to this router's `workflow_rule` table. The project reach middleware

@@ -1,0 +1,2 @@
+ALTER TABLE "instance_setting" ADD COLUMN "staff_session_max_days" integer DEFAULT 30 NOT NULL;--> statement-breakpoint
+ALTER TABLE "instance_setting" ADD CONSTRAINT "instance_setting_staff_session_max_days_range" CHECK ((staff_session_max_days >= 1) AND (staff_session_max_days <= 90));
