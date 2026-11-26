@@ -188,9 +188,19 @@ function logChunkFailure(runId: string, error: unknown) {
       runId,
       outcome: "chunk_failed",
       error: error instanceof Error ? error.name : "unknown",
-      message: error instanceof Error ? error.message : undefined,
+      // Only a SQLSTATE: a query error's message carries the bound parameters (record contents).
+      sqlState: sqlStateOf(error),
     }),
   );
+}
+
+function sqlStateOf(error: unknown): string | undefined {
+  for (let current = error, depth = 0; current && depth < 3; depth += 1) {
+    const code = (current as { code?: unknown }).code;
+    if (typeof code === "string" && /^[0-9A-Z]{5}$/.test(code)) return code;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return undefined;
 }
 
 export function kickImportRun(runId: string) {
