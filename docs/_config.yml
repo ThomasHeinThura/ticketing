@@ -1,0 +1,34 @@
+title: TaskDesk
+description: Install, run and use TaskDesk, a self-hosted service desk and work-management platform.
+theme: jekyll-theme-primer
+plugins:
+  - jekyll-relative-links
+relative_links:
+  enabled: true
+  collections: false
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+# Internal working documents stay in the repository and off the public site.
+exclude:
+  - README.md
+  - agent-work.md
+  - alignment.md
+  - archive
+  - audit.md
+  - contracts.md
+  - features.md
+  - handover.md
+  - plan.md
+  - report
+  - requirements-index.json
+  - requirements.md
+  - roadmap.md
+  - screen-test-cases.md
+  - screens.md
+  - status.md
+  - technical
+  - testing.md
+  - uat-role-checklist.md

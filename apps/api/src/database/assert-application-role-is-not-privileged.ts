@@ -157,7 +157,7 @@ export async function assertApplicationRoleIsNotPrivileged(
             "role with this privilege, through any path (issue #296). Remove " +
             `"${role.rolname}"'s ${label.split(" ")[0]} attribute, or revoke ` +
             `the application role's membership in "${role.rolname}". See ` +
-            "docs/05-operations/configuration-reference.md.",
+            "docs/guide/install-and-deploy.md.",
         );
       }
     }
@@ -170,7 +170,7 @@ export async function assertApplicationRoleIsNotPrivileged(
           "capability no application role should hold (server-side file access, " +
           "arbitrary program execution, or backend termination, depending on the " +
           `role). Revoke membership in "${role.rolname}" (issue #296). See ` +
-          "docs/05-operations/configuration-reference.md.",
+          "docs/guide/install-and-deploy.md.",
       );
     }
   }

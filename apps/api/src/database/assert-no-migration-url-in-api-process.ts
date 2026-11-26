@@ -36,7 +36,7 @@ export function assertNoMigrationUrlInApiProcess(
         "— never the long-running process that serves requests (issue #296, S1). " +
         "Check compose/Helm/your own deploy overlay: only the migrate service or " +
         "Job should set this variable; the API and jobs services/Deployments must " +
-        "not. See docs/05-operations/configuration-reference.md.",
+        "not. See docs/guide/install-and-deploy.md.",
     );
   }
 }

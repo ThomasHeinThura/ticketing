@@ -17,7 +17,7 @@
  * list entirely, and #170 asked for it to be preferred if the repository's actual CI build
  * environment is confirmed to support it. It is not confirmable: neither `ci-fast.yml` nor
  * `ci-full.yml` contains a `docker build` / `docker buildx build` step at all — the "build
- * the container image" stage docs/04-engineering/ci-cd.md's Main pipeline describes is
+ * the container image" stage docs/technical/ci-gates.md's Main pipeline describes is
  * documented, not yet implemented as a workflow. There is no pinned BuildKit version to
  * check evidence against. Re-evaluate `COPY --parents` once an image-build CI job exists
  * and pins a real `docker`/`buildx` version.

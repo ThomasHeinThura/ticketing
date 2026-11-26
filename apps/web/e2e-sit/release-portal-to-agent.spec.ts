@@ -7,24 +7,25 @@ import {
   portalOrigin,
   type Session,
   signIn,
-  stamp,
 } from "./release-helpers";
 
 test.afterEach(({ browserName: _browserName }, testInfo) => {
   redactSecretErrorContext(testInfo);
 });
 
+/** The one submission this journey owns on a deployment; found again by this title every run. */
+const probeTitle = "release-suite probe";
+const question = "release-suite probe: which environment is affected?";
+const answer = "release-suite probe: production";
+
 /**
- * Release journey: portal to agent and back (service desk, portal and identity). A customer
- * raises a request on the portal host, an agent claims it, asks for clarification, the customer
- * answers, and the agent declines it with a reason the customer sees. The customer session is
- * refused every agent route.
- *
- * No route deletes a submission or its messages, and accepting one would leave a work item
- * whose scheduled purge the submission reference blocks. The journey therefore ends in the
- * terminal declined state (no work item is ever created) and fails loudly if it cannot get
- * there. The one declined SUB-n record per run is the only data left behind; accept-into-work-item
- * is listed as a gap in docs/testing.md.
+ * Release journey: portal to agent and back (service desk, portal and identity). No route
+ * deletes a submission, so the journey reuses ONE open submission titled "release-suite probe"
+ * (find-or-create) and never closes it: nothing accumulates between runs. Each step runs only
+ * if an earlier run has not already done it (claim, one question, one answer), so a rerun
+ * re-asserts what the customer and the agent see. The customer session is refused every agent
+ * route. Decline-with-reason and accept-into-work-item are covered in release-service-desk
+ * (accept) and listed in docs/testing.md (decline).
  */
 test("customer request is triaged by an agent and the customer sees the reply", async ({
   browser,
@@ -33,82 +34,92 @@ test("customer request is triaged by an agent and the customer sees the reply", 
   const customer = await signIn(browser, "customer");
   const lead = await signIn(browser, "lead");
   const sessions: Session[] = [customer, lead];
-  let ref: string | null = null;
-  let closed = false;
-  // A failure before triage must still close the request, and a failed close is loud.
-  async function cleanup() {
-    if (ref && !closed) {
-      const late = await lead.call("POST", `/submissions/${ref}/decline`, {
-        reason: "R929 release journey cleanup after a failed run.",
-      });
-      if (late.status !== 200)
-        throw new Error(
-          `Cleanup decline of ${ref} returned HTTP ${late.status}.`,
-        );
-    }
-    await Promise.all(sessions.map((session) => session.context.close()));
-  }
   try {
-    const summary = `R929 portal request ${stamp()}`;
-    const question = `R929 which environment is affected ${stamp()}`;
-    const answer = `R929 production ${stamp()}`;
-
-    const catalogue = await customer.call("GET", "/portal/catalogue");
-    expect(catalogue.status).toBe(200);
-    const requestType = (
-      catalogue.body.requestTypes as Array<{ key: string; name: string }>
-    ).find((type) => type.name === "Report a problem");
-    expect(requestType).toBeTruthy();
-    const submitted = await customer.call("POST", "/portal/submissions", {
-      key: requestType?.key,
-      formData: { summary, details: "Release suite journey.", impact: "Minor" },
-      customerVisibility: "private",
-    });
-    expect(submitted.status).toBe(200);
-    ref = submitted.body.ref as string;
+    // Find the open probe, else raise it.
+    const cases = await customer.call(
+      "GET",
+      `/portal/requests?q=${encodeURIComponent(probeTitle)}`,
+    );
+    expect(cases.status).toBe(200);
+    let ref: string | null = null;
+    for (const found of cases.body.cases as Array<{
+      ref: string;
+      title: string;
+      source: string;
+      isRequester: boolean;
+    }>) {
+      if (found.source !== "submission" || !found.isRequester) continue;
+      if (!found.title.includes(probeTitle)) continue;
+      const state = (
+        await customer.call("GET", `/portal/submissions/${found.ref}`)
+      ).body?.submission?.state;
+      if (state === "new" || state === "clarifying") {
+        ref = found.ref;
+        break;
+      }
+    }
+    if (!ref) {
+      const catalogue = await customer.call("GET", "/portal/catalogue");
+      expect(catalogue.status).toBe(200);
+      const requestType = (
+        catalogue.body.requestTypes as Array<{ key: string; name: string }>
+      ).find((type) => type.name === "Report a problem");
+      expect(requestType).toBeTruthy();
+      const submitted = await customer.call("POST", "/portal/submissions", {
+        key: requestType?.key,
+        formData: {
+          summary: probeTitle,
+          details: "Release suite journey.",
+          impact: "Minor",
+        },
+        customerVisibility: "private",
+      });
+      expect(submitted.status).toBe(200);
+      ref = submitted.body.ref as string;
+    }
 
     // The customer sees it in the portal; the agent finds it in the triage queue.
     const customerPage = await customer.context.newPage();
     await customerPage.goto(`${portalOrigin}/submissions/${ref}`);
-    await expect(customerPage.getByText(summary).first()).toBeVisible();
+    await expect(customerPage.getByText(probeTitle).first()).toBeVisible();
     const agentPage = await lead.context.newPage();
     await agentPage.goto(`${agentOrigin}/agent/triage?state=new&ref=${ref}`);
-    await expect(agentPage.getByText(summary).first()).toBeVisible();
+    await expect(agentPage.getByText(probeTitle).first()).toBeVisible();
 
-    // Agent claims and asks a question; the customer sees it on the portal and answers.
-    expect(
-      (await lead.call("POST", `/submissions/${ref}/claim`, {})).status,
-    ).toBe(200);
-    const asked = await lead.call("POST", `/submissions/${ref}/messages`, {
-      body: question,
-    });
-    expect(asked.status).toBe(200);
-    expect(asked.body.state).toBe("clarifying");
+    const staff = async () =>
+      (await lead.call("GET", `/submissions/${ref}`)).body;
+    const said = (
+      detail: { messages: Array<{ body: string }> },
+      text: string,
+    ) => detail.messages.some((message) => message.body === text);
+
+    // Agent claims once and asks the question once; the customer sees it and answers once.
+    let detail = await staff();
+    if (!detail.submission.claimedBy)
+      expect(
+        (await lead.call("POST", `/submissions/${ref}/claim`, {})).status,
+      ).toBe(200);
+    if (!said(detail, question))
+      expect(
+        (
+          await lead.call("POST", `/submissions/${ref}/messages`, {
+            body: question,
+          })
+        ).status,
+      ).toBe(200);
     await customerPage.reload();
     await expect(customerPage.getByText(question).first()).toBeVisible();
-    const replied = await customer.call(
-      "POST",
-      `/portal/submissions/${ref}/messages`,
-      { body: answer },
-    );
-    expect(replied.status).toBe(200);
+    detail = await staff();
+    if (!said(detail, answer))
+      expect(
+        (
+          await customer.call("POST", `/portal/submissions/${ref}/messages`, {
+            body: answer,
+          })
+        ).status,
+      ).toBe(200);
     await agentPage.reload();
     await expect(agentPage.getByText(answer).first()).toBeVisible();
-
-    // The agent declines with a customer-visible reason; the customer sees the closed request.
-    const reason = `R929 closing the release journey request ${stamp()}`;
-    // shortcut: one declined SUB-n per run stays on SIT (no submission delete route); add teardown when a delete route exists
-    const declined = await lead.call("POST", `/submissions/${ref}/decline`, {
-      reason,
-    });
-    expect(declined.status).toBe(200);
-    expect(declined.body.state).toBe("declined");
-    closed = true;
-    const seen = await customer.call("GET", `/portal/submissions/${ref}`);
-    expect(seen.status).toBe(200);
-    expect(seen.body.submission.state).toBe("declined");
-    await customerPage.reload();
-    await expect(customerPage.getByText(reason).first()).toBeVisible();
 
     // Customer is refused agent routes: the portal host does not serve them ...
     expect((await customer.call("GET", "/workspace")).status).toBe(404);
@@ -138,6 +149,6 @@ test("customer request is triaged by an agent and the customer sees the reply", 
       await replay.close();
     }
   } finally {
-    await cleanup();
+    await Promise.all(sessions.map((session) => session.context.close()));
   }
 });

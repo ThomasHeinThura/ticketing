@@ -2,11 +2,17 @@
 # TaskDesk thin release bootstrap. Full deployment logic remains in scripts/deploy.sh.
 set -Eeuo pipefail
 
-readonly REPOSITORY='ThomasHeinThura/ticketing'
+readonly UPSTREAM_REPOSITORY='ThomasHeinThura/ticketing'
+readonly REPOSITORY="${TASKDESK_REPOSITORY:-$UPSTREAM_REPOSITORY}"
 readonly RELEASE_BASE="https://github.com/${REPOSITORY}/releases/download"
 readonly STABLE_URL='https://get.taskdesk.dev/stable.txt'
 readonly COSIGN_ISSUER='https://token.actions.githubusercontent.com'
-readonly COSIGN_IDENTITY="https://github.com/${REPOSITORY}/.github/workflows/release.yml@refs/heads/main"
+# A fork signs with its own workflow identity; it must be named, never inferred.
+if [[ "$REPOSITORY" != "$UPSTREAM_REPOSITORY" && -z "${TASKDESK_COSIGN_IDENTITY:-}" ]]; then
+  printf "error: TASKDESK_REPOSITORY is set, so TASKDESK_COSIGN_IDENTITY (the exact workflow identity that signs its releases) must be set too\n" >&2
+  exit 1
+fi
+readonly COSIGN_IDENTITY="${TASKDESK_COSIGN_IDENTITY:-https://github.com/${UPSTREAM_REPOSITORY}/.github/workflows/release.yml@refs/heads/main}"
 
 say() { printf '==> %s\n' "$*"; }
 warn() { printf '!! %s\n' "$*" >&2; }
@@ -44,6 +50,8 @@ done
 [[ -n "$INSTALL_DIR" && "$INSTALL_DIR" != / ]] || die '--dir must be a non-root path'
 if [[ "$MODE" == local ]]; then
   ((PROFILE_S3 == 0 && SKIP_VERIFY == 0 && DOMAIN_SET == 0 && AGENT_HOST_SET == 0 && PORTAL_HOST_SET == 0 && FILES_HOST_SET == 0)) || die 'local SIT does not accept profile, verification bypass or host override flags'
+  # Local mode pins the upstream image and signer; refuse a fork rather than run upstream code.
+  [[ "$REPOSITORY" == "$UPSTREAM_REPOSITORY" && -z "${TASKDESK_IMAGE:-}" && -z "${TASKDESK_COSIGN_IDENTITY:-}" ]] || die 'local SIT supports only the upstream release; TASKDESK_REPOSITORY, TASKDESK_IMAGE and TASKDESK_COSIGN_IDENTITY apply to production installs'
   [[ "${SIT_COMPOSE_ENV:-}" == /* && -f "$SIT_COMPOSE_ENV" && ! -L "$SIT_COMPOSE_ENV" ]] || die 'local SIT requires an existing absolute SIT_COMPOSE_ENV regular file'
   [[ "${SIT_PRIVATE_DIR:-}" == /* && -d "$SIT_PRIVATE_DIR" && ! -L "$SIT_PRIVATE_DIR" ]] || die 'local SIT requires an existing absolute SIT_PRIVATE_DIR directory'
   for private_file in postgres.env migrate.env app.env valkey.env; do

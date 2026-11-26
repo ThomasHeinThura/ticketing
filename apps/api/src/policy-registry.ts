@@ -236,7 +236,7 @@ export const platformPolicies = {
       "liveness probe for the container runtime and load balancer; returns a constant",
   },
 
-  // Documented contract (docs/05-operations/deployment.md § Health and readiness):
+  // Documented contract (docs/guide/install-and-deploy.md):
   // liveness touches no dependency so a database blip never restarts a healthy
   // container; readiness checks the database so the proxy stops routing to a pod
   // that can't actually serve a request.

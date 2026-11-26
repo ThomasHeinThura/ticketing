@@ -14,7 +14,7 @@ import db, { type DatabaseInstance } from "./index";
  * });
  * ```
  *
- * Convention (same wording as docs/04-engineering/coding-standards.md, "Query ownership"):
+ * Convention (same wording as docs/technical/design-and-decisions.md, "Query ownership"):
  * a repository function that always runs inside a caller's transaction takes
  * `executor: Executor` as its FIRST parameter. A function that is callable both inside and
  * outside a transaction takes `executor?: Executor` as its LAST parameter and resolves it

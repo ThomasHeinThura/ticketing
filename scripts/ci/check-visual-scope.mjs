@@ -1323,7 +1323,7 @@ function isStoryReadinessCallback(callback) {
   return (
     ts.isArrowFunction(callback) &&
     normalizedCallbackText(callback) ===
-      'async()=>{conststoryRoot=page.locator("#storybook-root");conststoryRendered=awaitstoryRoot.evaluate((root)=>root.childElementCount>0||Boolean(root.textContent?.trim()));returnstoryRendered||(awaitpage.getByRole("dialog").isVisible());}'
+      'async()=>{conststoryRoot=page.locator("#storybook-root");conststoryRendered=awaitstoryRoot.evaluate((root)=>(root.childElementCount>0||Boolean(root.textContent?.trim()))&&root.querySelector("[data-suspense-pending]")===null);returnstoryRendered||(awaitpage.getByRole("dialog").isVisible());}'
   );
 }
 
@@ -1331,7 +1331,7 @@ function isStoryRootReadCallback(callback) {
   return (
     ts.isArrowFunction(callback) &&
     normalizedCallbackText(callback) ===
-      "(root)=>root.childElementCount>0||Boolean(root.textContent?.trim())"
+      '(root)=>(root.childElementCount>0||Boolean(root.textContent?.trim()))&&root.querySelector("[data-suspense-pending]")===null'
   );
 }
 

@@ -220,7 +220,7 @@ function storybookSpec({
   excessiveInlineThreshold = false,
   pageAliasNavigation = "",
   pageEvaluateCallback = "async () => { await document.fonts.ready; await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())); }",
-  storyRootReadCallback = "(root) => root.childElementCount > 0 || Boolean(root.textContent?.trim())",
+  storyRootReadCallback = '(root) => (root.childElementCount > 0 || Boolean(root.textContent?.trim())) && root.querySelector("[data-suspense-pending]") === null',
   additionalPageEvaluation = "",
   additionalLocatorEvaluation = "",
   outsideLoopMutation = "",

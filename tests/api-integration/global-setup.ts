@@ -1,5 +1,5 @@
 // #10: `integration on Testcontainers Postgres 18` is the documented shape
-// (docs/04-engineering/ci-cd.md, docs/04-engineering/testing-strategy.md,
+// (docs/technical/ci-gates.md, docs/testing.md,
 // docs/01-architecture/tech-stack.md all say "Testcontainers"). The inherited
 // suite instead relied on `.github/workflows/ci-full.yml`'s own plain
 // `services:` Postgres container -- that block's own comment admitted this

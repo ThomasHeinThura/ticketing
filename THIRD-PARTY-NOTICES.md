@@ -87,7 +87,7 @@ Detail, and the reasoning behind each: [licensing-and-attribution.md](docs/00-ov
 
 **To be completed when dependencies are installed in P0.** The list is generated from
 `pnpm-lock.yaml` rather than maintained by hand, published as an SBOM with every release
-([ci-cd.md](docs/04-engineering/ci-cd.md)), and checked in CI for licences incompatible
+([ci-gates.md](docs/technical/ci-gates.md)), and checked in CI for licences incompatible
 with AGPL-3.0. Fonts, icon sets and any bundled media are listed here too, because they
 carry their own terms: Geist and Geist Mono (SIL Open Font License 1.1) and lucide
 (ISC) are the ones the design system already assumes.
@@ -345,3 +345,7 @@ namespace mode in its cache identity, preventing stale translations when a
 provider changes while preserving component state. Source, ESM and CommonJS
 entries are patched consistently; the package version is unchanged. The upstream
 [copyright and MIT licence](patches/react-i18next.LICENSE) are retained.
+
+## Release suite accessibility dependency
+
+`@axe-core/playwright` 4.14.1 and its `axe-core` 4.14.1 dependency are MPL-2.0-licensed packages (Copyright Deque Systems, Inc.), sourced from <https://github.com/dequelabs/axe-core-npm>. Installed as a development dependency of `apps/web` for the screen sweep behind `pnpm test:release` (`RELEASE_SWEEP=1`); no source is copied and neither package ships in the application image. Thomas approved the dependency for issue #929. Exact resolved versions remain in `pnpm-lock.yaml`.

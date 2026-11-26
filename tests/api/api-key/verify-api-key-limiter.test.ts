@@ -49,4 +49,14 @@ describe("API key failure address buckets", () => {
       }),
     ).toBeNull();
   });
+
+  it("rejects junk keys with 429 once the address is over its failure limit", async () => {
+    const clientIp = "198.51.100.7";
+    for (let i = 0; i < 11; i++) {
+      expect(await verifyApiKey("invalid", { clientIp })).toBeNull();
+    }
+    await expect(verifyApiKey("invalid", { clientIp })).rejects.toMatchObject({
+      status: 429,
+    });
+  });
 });
