@@ -5,10 +5,10 @@ import {
   hasAccount,
   portalOrigin,
   removeWorkItem,
+  rowsOf,
   type Session,
   signIn,
   stamp,
-  taskTypeId,
 } from "./release-helpers";
 
 test.afterEach(({ browserName: _browserName }, testInfo) => {
@@ -31,7 +31,7 @@ test("customer request is accepted by an agent and stays private to its organisa
   const sessions: Session[] = [customer, lead];
   let workItemKey: string | null = null;
   try {
-    const { projectId } = await discoverTarget(lead);
+    const { workspaceId } = await discoverTarget(lead);
     const summary = `R929 service desk ${stamp()}`;
     const question = `R929 which environment ${stamp()}`;
 
@@ -60,11 +60,34 @@ test("customer request is accepted by an agent and stays private to its organisa
     await customerPage.goto(`${portalOrigin}/submissions/${ref}`);
     await expect(customerPage.getByText(question).first()).toBeVisible();
 
+    // Only a project of the customer's organisation is a valid destination: take the request
+    // type's default project, else the first project the customer's portal lists.
+    const triage = await lead.call("GET", `/submissions/${ref}`);
+    expect(triage.status).toBe(200);
+    const version = triage.body.version as {
+      defaultProjectId: string | null;
+      workItemTypeId: string;
+    };
+    let projectId = version.defaultProjectId;
+    if (!projectId) {
+      const portalProjects = await customer.call("GET", "/portal/projects");
+      const portalKey = rowsOf<{ key: string }>(portalProjects.body)[0]?.key;
+      const staffProjects = rowsOf<{ id: string; slug?: string; key?: string }>(
+        (await lead.call("GET", `/project?workspaceId=${workspaceId}`)).body,
+      );
+      projectId =
+        staffProjects.find(
+          (row) =>
+            (row.key ?? row.slug ?? "").toLowerCase() ===
+            portalKey?.toLowerCase(),
+        )?.id ?? null;
+    }
+    expect(projectId, "a project of the customer's organisation").toBeTruthy();
     const accepted = await lead.call("POST", `/submissions/${ref}/accept`, {
       projectId,
-      workItemTypeId: await taskTypeId(lead, projectId),
+      workItemTypeId: version.workItemTypeId,
     });
-    expect(accepted.status).toBe(200);
+    expect(accepted.status, JSON.stringify(accepted.body)).toBe(200);
     expect(accepted.body.state).toBe("accepted");
     workItemKey = accepted.body.workItem.key as string;
     const seen = await customer.call("GET", `/portal/submissions/${ref}`);

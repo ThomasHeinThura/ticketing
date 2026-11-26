@@ -75,7 +75,8 @@ test("a cycle is created, filled with an item and completed", async ({
     expect(added.status).toBe(200);
     const detail = await admin.call("GET", `/cycles/${cycleId}`);
     expect(detail.status).toBe(200);
-    expect(JSON.stringify(detail.body)).toContain(itemKey);
+    // Cycle detail carries a summary, not keys; this fresh cycle holds only the item added above.
+    expect(detail.body.summary.total.count).toBe(1);
 
     const completed = await admin.call(
       "POST",
