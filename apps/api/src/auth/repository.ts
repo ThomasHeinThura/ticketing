@@ -1529,3 +1529,19 @@ export async function getStaffSessionMaxDaysSetting() {
 export async function deleteSessionById(id: string) {
   await db.delete(schema.sessionTable).where(eq(schema.sessionTable.id, id));
 }
+
+/** Swaps one credential hash for another; matching the old hash makes a concurrent change win. */
+export async function replaceCredentialPasswordHash(
+  oldHash: string,
+  newHash: string,
+) {
+  await db
+    .update(schema.accountTable)
+    .set({ password: newHash })
+    .where(
+      and(
+        eq(schema.accountTable.providerId, "credential"),
+        eq(schema.accountTable.password, oldHash),
+      ),
+    );
+}

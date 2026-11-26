@@ -70,6 +70,7 @@ import {
   hasCustomerSidePerson,
   isPendingFirstAdministrator,
   promoteFirstAuthUser,
+  replaceCredentialPasswordHash,
   updateSessionActiveOrganizationId,
   updateSessionPortal,
 } from "./auth/repository";
@@ -617,15 +618,10 @@ function createAuth(
           if (valid && needsRehash) {
             // rehash is best effort: a failed write must never fail a correct sign-in.
             try {
-              await db
-                .update(schema.accountTable)
-                .set({ password: await hashPassword(password) })
-                .where(
-                  and(
-                    eq(schema.accountTable.providerId, "credential"),
-                    eq(schema.accountTable.password, hash),
-                  ),
-                );
+              await replaceCredentialPasswordHash(
+                hash,
+                await hashPassword(password),
+              );
             } catch {}
           }
           return valid;
