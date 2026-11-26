@@ -156,33 +156,60 @@ jobs:
           set -Eeuo pipefail
           # The required list comes from the live main ruleset, so it cannot drift from
           # what merging required. Reachability from main was proved by the previous step.
-          required="$(gh api "repos/${GITHUB_REPOSITORY}/rules/branches/main" \
-            --jq '[.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context] | unique | .[]')"
-          if [[ -z "$required" ]]; then
+          rules_pages="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/rules/branches/main")"
+          required="$(jq -c '[flatten[] | select(.type == "required_status_checks")
+            | .parameters.required_status_checks[]
+            | {context, integration_id: (.integration_id // null)}] | unique' <<< "$rules_pages")"
+          if [[ "$(jq 'length' <<< "$required")" == "0" ]]; then
             echo "::error::Could not read any required status check for main; refusing to release"
             exit 1
           fi
-          # A merge commit on main only carries the push-triggered checks; the PR-only checks
-          # ran on the merged branch head (second parent, up to date with main by ruleset).
-          candidates=("$SOURCE_SHA")
-          if parent="$(git rev-parse --verify --quiet "${SOURCE_SHA}^2")"; then
-            candidates+=("$parent")
-          fi
-          runs="[]"
-          for sha in "${candidates[@]}"; do
-            runs="$(jq -c --argjson more "$(gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/${sha}/check-runs?per_page=100" \
-              --jq '.check_runs[] | {name, id, conclusion}' | jq -s -c .)" '. + $more' <<< "$runs")"
-          done
-          failed=0
-          while IFS= read -r check; do
-            # Missing, pending, skipped, cancelled and failed runs all fail closed.
-            ok="$(jq -r --arg n "$check" 'any(.[]; .name == $n and .conclusion == "success")' <<< "$runs")"
-            if [[ "$ok" != "true" ]]; then
-              echo "::error::Required check '${check}' has no successful run on ${SOURCE_SHA}"
-              failed=1
+
+          # Check runs of one commit as a flat JSON array. A failed page fails the step.
+          fetch_runs() {
+            local pages
+            pages="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/commits/$1/check-runs?per_page=100")" || return 1
+            jq -c '[.[].check_runs[] | {name, id, conclusion, completed_at, app_id: .app.id}]' <<< "$pages" || return 1
+          }
+
+          # PR-only checks (ci-full) never run on the merge commit. They ran on the merged
+          # branch head, which counts only when it holds exactly the code that was released.
+          parent=""
+          if git rev-parse --verify --quiet "${SOURCE_SHA}^2" > /dev/null; then
+            if [[ "$(git rev-parse --is-shallow-repository)" == "true" ]]; then
+              echo "::error::Checkout is shallow; cannot compare the merged branch head's tree"
+              exit 1
             fi
-          done <<< "$required"
-          [[ "$failed" == "0" ]] || exit 1
+            if [[ "$(git rev-parse "${SOURCE_SHA}^{tree}")" == "$(git rev-parse "${SOURCE_SHA}^2^{tree}")" ]]; then
+              parent="$(git rev-parse "${SOURCE_SHA}^2")"
+            fi
+          fi
+
+          source_runs="$(fetch_runs "$SOURCE_SHA")"
+          parent_runs="[]"
+          if [[ -n "$parent" ]]; then
+            parent_runs="$(fetch_runs "$parent")"
+          fi
+
+          # Per required check: the source commit's latest run decides. Only a check with no
+          # run on the source commit may use the tree-identical parent's latest run. A run
+          # still in progress counts as the newest. Anything but success is a failure; when
+          # the ruleset pins an app (integration_id), only that app's runs count.
+          failures="$(jq -r --argjson src "$source_runs" --argjson par "$parent_runs" '
+            def latest($runs; $c):
+              [$runs[] | select(.name == $c.context
+                and ($c.integration_id == null or .app_id == $c.integration_id))]
+              | sort_by([(.completed_at // "9999"), .id]) | last;
+            .[] | . as $c
+            | (latest($src; $c) // latest($par; $c)) as $run
+            | select($run == null or $run.conclusion != "success")
+            | $c.context' <<< "$required")"
+          if [[ -n "$failures" ]]; then
+            while IFS= read -r check; do
+              echo "::error::Required check '${check}' has no successful latest run on ${SOURCE_SHA}"
+            done <<< "$failures"
+            exit 1
+          fi
           echo "All required checks succeeded for ${SOURCE_SHA}"
 
       - name: Set up QEMU with pinned binfmt image
