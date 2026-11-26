@@ -342,7 +342,7 @@ export function projectReachPredicate(userId: string, executor: Executor = db) {
       ),
     ),
   );
-  // D-E / #1152 (Thomas, 12 Nov 2026): validated system workspace owner/admin/manager grants
+  // D-E / #1152 (product decision, 12 Nov 2026): validated system workspace owner/admin/manager grants
   // retain additive workspace authority even when a narrower project or ancestor grant exists.
   const scopedAdditiveWorkspaceRole = exists(
     executor

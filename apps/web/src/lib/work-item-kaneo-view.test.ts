@@ -15,7 +15,7 @@ const item = {
   stateId: "state-1",
   priority: "high",
   assigneeId: "person-7",
-  assigneeName: "Thomas Example",
+  assigneeName: "Taylor Example",
   position: "9999999999.0000000001",
   description: {
     type: "doc",
@@ -51,7 +51,7 @@ describe("Kaneo work-item presentation", () => {
       status: "state-1",
       userId: null,
       assigneeId: "person-7",
-      assigneeName: "Thomas Example",
+      assigneeName: "Taylor Example",
       position: null,
       version: 4,
       description: "Access request",

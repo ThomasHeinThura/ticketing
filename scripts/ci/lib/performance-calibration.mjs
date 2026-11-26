@@ -172,7 +172,7 @@ export function calibrationOptionsSha256(options = CALIBRATION_OPTIONS) {
 
 /**
  * R0: the recorded reference medians of CALIBRATION_SOURCE, one per CPU-throttle state.
- * Owner decision (Thomas, 2026-10-10): the unchanged G11 budgets refer to the FAST hosted runner
+ * Owner decision (product decision, 2026-10-10): the unchanged G11 budgets refer to the FAST hosted runner
  * class, so R0 is the FAST-class reference. Each value is the median of ALL calibration set
  * medians (every metric, every set including retry sets) from the three FAST runs only:
  * unthrottled n = 6 (list, board; 3 runs), throttled n = 21 (7 metrics; 3 runs; retry sets

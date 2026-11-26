@@ -48,7 +48,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * route's continued absence from the registry would 500 it for everyone regardless.
  * Deleting it outright was the first plan, but `docs/01-architecture/api-design.md`'s
  * Versioning section forbids a breaking removal without a deprecation window once a stable
- * `v2.0.0`+ tag exists (one already does) -- so Thomas's actual decision (2026-09-28) was
+ * `v2.0.0`+ tag exists (one already does) -- so the product owner's actual decision (2026-09-28) was
  * to keep the OPERATION registered (`deprecated: true`, satisfying the versioning policy --
  * this is not a contract removal) but keep its own session, row-derived workspace,
  * membership and legacy authority gates before the handler refuses unconditionally, even

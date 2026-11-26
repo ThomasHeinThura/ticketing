@@ -216,7 +216,7 @@ it("keeps canonical links, person assignment and selection separate from legacy 
       task={{
         ...task,
         assigneeId: "person-1",
-        assigneeName: "Thomas Example",
+        assigneeName: "Taylor Example",
         externalLinks: [],
       }}
       projectSlug="WLP"

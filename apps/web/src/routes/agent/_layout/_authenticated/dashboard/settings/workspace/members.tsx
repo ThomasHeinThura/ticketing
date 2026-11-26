@@ -6,7 +6,7 @@ import { WorkspaceMembersSettings } from "@/components/team/workspace-members-sc
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { parseSettingsTextFilterSearch } from "@/lib/routes";
 
-// L-03 (Thomas, 30 Oct 2026): workspace members live in the workspace settings frame at this
+// L-03 (product decision, 30 Oct 2026): workspace members live in the workspace settings frame at this
 // canonical URL (docs/screens.md). The old /agent/settings/members and
 // /dashboard/workspace/{id}/members links land here. `q` (person search) stays in the URL.
 export const Route = createFileRoute(

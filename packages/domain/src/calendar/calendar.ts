@@ -9,13 +9,13 @@
  * **Timezone correctness (`CAL-6`/`CAL-7`) without a new dependency.** DST-correct
  * wall-clock ⇄ instant conversion needs a real IANA timezone database. Rather than add
  * one (`date-fns-tz` / `luxon` / `@js-temporal/polyfill` — all flagged as an open
- * question in the P2 plan, and AGENTS.md do-not 4 requires Thomas's yes for a new
+ * question in the P2 plan, and AGENTS.md do-not 4 requires the product owner's yes for a new
  * dependency), this module uses `Intl.DateTimeFormat`, which is built into Node/V8 and
  * ships the full ICU timezone database (verified: `process.config.variables.icu_small`
  * is `false` on this toolchain's Node 24.20.0, and `Intl.supportedValuesOf("timeZone")`
  * lists both zones this spec names). That is not a new package dependency — it is the
  * JavaScript runtime itself — so do-not 4 does not apply and there is nothing to ask
- * Thomas about. See the pull request description for the two-instant experiment that
+ * the product owner about. See the pull request description for the two-instant experiment that
  * validated this against the actual 2026 transition instants in both named zones before
  * any test was written.
  */

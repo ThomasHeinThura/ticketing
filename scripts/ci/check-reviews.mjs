@@ -290,7 +290,7 @@ async function main() {
   finish({
     name: NAME,
     failures,
-    ok: `${phase}: consolidated review evidence validated; Thomas acceptance is recorded separately`,
+    ok: `${phase}: consolidated review evidence validated; owner acceptance is recorded separately`,
   });
 }
 const invokedDirectly = (() => {

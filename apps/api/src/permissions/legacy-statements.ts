@@ -8,7 +8,7 @@ import {
  * The one translation between the inherited Better Auth `{ resource: action[] }` statement
  * vocabulary and the canonical `resource:action` capability vocabulary.
  *
- * WHY IT EXISTS. Custom-role capabilities live in the canonical `role` table (Thomas, 23 Oct).
+ * WHY IT EXISTS. Custom-role capabilities live in the canonical `role` table (product decision, 23 Oct).
  * About a hundred legacy gates still ask `requireWorkspacePermission({ ac: ["update"] })`, and
  * the role-editing API has always spoken statements. Every pair below is mapped to the
  * capability the route's registered policy declares, so the legacy gate and the policy gate

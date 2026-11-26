@@ -22,13 +22,14 @@ describe("avatar application adapter", () => {
 
     render(
       <Avatar>
-        <AvatarImage alt="Thomas Hein Thura" src="/api/user/avatar/abc123" />
+        <AvatarImage alt="Tina Harper" src="/api/user/avatar/abc123" />
         <AvatarFallback>TH</AvatarFallback>
       </Avatar>,
     );
 
-    expect(
-      screen.getByRole("img", { name: "Thomas Hein Thura" }),
-    ).toHaveAttribute("src", "https://api.example.com/api/user/avatar/abc123");
+    expect(screen.getByRole("img", { name: "Tina Harper" })).toHaveAttribute(
+      "src",
+      "https://api.example.com/api/user/avatar/abc123",
+    );
   });
 });

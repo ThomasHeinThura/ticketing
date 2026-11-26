@@ -74,7 +74,7 @@ const MagicLinkEmail = ({ magicLink, locale }: MagicLinkEmailProps) => {
 };
 
 MagicLinkEmail.PreviewProps = {
-  magicLink: "https://taskdesk.bimats.com",
+  magicLink: "https://taskdesk.example.com",
   locale: "en-US",
 } as MagicLinkEmailProps;
 

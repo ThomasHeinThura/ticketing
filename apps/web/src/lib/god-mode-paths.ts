@@ -1,6 +1,6 @@
 import { getSafeRedirectPath } from "./safe-redirect";
 
-/** God Mode lives at the agent host root (L-03, Thomas 30 Oct, option A). */
+/** God Mode lives at the agent host root (L-03, product decision, 30 Oct, option A). */
 export const GOD_MODE_HOME = "/god-mode";
 export const GOD_MODE_SIGN_IN = "/god-mode/sign-in";
 const LEGACY_PREFIX = "/agent/god-mode";

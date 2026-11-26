@@ -1487,7 +1487,7 @@ export const routes = {
     path: "/god-mode/notifications" as const,
     build: () => "/god-mode/notifications",
   },
-  /** God Mode home: the Health landing page, at the agent host root (L-03, Thomas 30 Oct). */
+  /** God Mode home: the Health landing page, at the agent host root (L-03, product decision, 30 Oct). */
   godModeHealth: {
     path: "/god-mode" as const,
     build: () => "/god-mode",

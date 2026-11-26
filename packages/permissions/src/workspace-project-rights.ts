@@ -1,4 +1,4 @@
-/** D-E, Thomas 12 Nov 2026: only validated system workspace roles use this rule. */
+/** D-E, product decision, 12 Nov 2026: only validated system workspace roles use this rule. */
 export const WORKSPACE_PROJECT_SEE_ALL_ROLES = [
   "owner",
   "admin",

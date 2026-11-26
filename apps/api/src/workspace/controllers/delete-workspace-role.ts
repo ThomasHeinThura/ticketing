@@ -1,7 +1,7 @@
 /**
  * Is `roleName` currently referenced by any of these `workspace_member.role` values?
  *
- * **A DELIBERATE, NARROW EXCEPTION TO ISSUE #82's "NEVER COMMA-SPLIT" RULE — Thomas's
+ * **A DELIBERATE, NARROW EXCEPTION TO ISSUE #82's "NEVER COMMA-SPLIT" RULE — the product owner's
  * decision, S7 blueprint Ambiguity Q2.** Comma-aware, matching better-auth's own
  * `deleteOrgRole` guard byte-for-byte (S7 blueprint §0): a member's stored role value is
  * split on `,`, each piece trimmed and lower-cased, and the target role name is refused if it

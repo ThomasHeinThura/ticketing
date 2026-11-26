@@ -53,7 +53,7 @@ import {
 import { projectParam } from "./schema";
 
 /**
- * The project Overview (S3/S3b; decisions D1 and D2, Thomas 31 Oct 2026):
+ * The project Overview (S3/S3b; decisions D1 and D2, product decision, 31 Oct 2026):
  *
  * - `GET /api/project/{id}/overview` (`project:read`): derived counts, milestones, facts and the
  *   effective service levels. Every number is computed at read time from the live tables.
