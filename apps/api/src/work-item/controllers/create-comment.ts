@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import type { JsonValue } from "@taskdesk/domain";
 import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import type { AuditRequestContext } from "../../audit/request-context";
@@ -185,7 +184,9 @@ export async function createComment(
         after: {
           workItemId,
           visibility: row.visibility,
-          body: (row.body ?? null) as JsonValue,
+          // Text is never copied into the append-only audit chain (purge on delete).
+          bodyRedacted: true,
+          authorId: row.authorId,
           ...(apiKey?.isMcp === true ? { origin: "mcp" as const } : {}),
         },
       });

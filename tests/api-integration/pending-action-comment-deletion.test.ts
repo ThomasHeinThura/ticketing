@@ -241,6 +241,181 @@ describe("canonical comment durable deletion", () => {
         ),
     ).toHaveLength(1);
   });
+  it("purges edit-history text and the audit before-body on delete", async () => {
+    const f = await fixture();
+    await db.insert(schema.commentVersionTable).values({
+      commentId: f.relation.id,
+      body: f.relation.body,
+      editedBy: f.member.user.id,
+      number: 1,
+    });
+    const action = await createPendingAction(f.request);
+    await approveCommentDeletion(f.approval(action.pendingActionId));
+    expect(
+      await db
+        .select()
+        .from(schema.commentVersionTable)
+        .where(eq(schema.commentVersionTable.commentId, f.relation.id)),
+    ).toHaveLength(0);
+    const audit = requireRow(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, f.relation.id),
+            eq(schema.auditLogTable.action, "comment.deleted"),
+          ),
+        ),
+      "audit",
+    );
+    expect(JSON.stringify(audit.before)).not.toContain("Exact comment");
+  });
+  it("keeps edit history and the audit before-body while an open legal hold covers the author", async () => {
+    const f = await fixture();
+    await db.insert(schema.legalHoldTable).values({
+      scope: "person",
+      scopeId: f.person.id,
+      placedBy: "integration-test",
+      reason: "comment purge hold test",
+    });
+    await db.insert(schema.commentVersionTable).values({
+      commentId: f.relation.id,
+      body: f.relation.body,
+      editedBy: f.member.user.id,
+      number: 1,
+    });
+    const action = await createPendingAction(f.request);
+    await approveCommentDeletion(f.approval(action.pendingActionId));
+    expect((await comment(f.relation.id)).body).toBeNull();
+    expect(
+      await db
+        .select()
+        .from(schema.commentVersionTable)
+        .where(eq(schema.commentVersionTable.commentId, f.relation.id)),
+    ).toHaveLength(1);
+    const audit = requireRow(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityId, f.relation.id),
+            eq(schema.auditLogTable.action, "comment.deleted"),
+          ),
+        ),
+      "audit",
+    );
+    expect(JSON.stringify(audit.before)).toContain("Exact comment");
+  });
+  it("clears the comment text from an earlier cancelled confirmation once deleted", async () => {
+    const f = await fixture();
+    const first = await createPendingAction(f.request);
+    await decideOwnPendingAction({
+      id: first.pendingActionId,
+      requesterPersonId: f.person.id,
+      outcome: "cancelled",
+      sessionId: f.session.id,
+    });
+    const second = await createPendingAction(f.request);
+    await approveCommentDeletion(f.approval(second.pendingActionId));
+    const rows = await db.select().from(schema.pendingActionTable);
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    expect(JSON.stringify(rows.map((row) => row.payloadSummary))).not.toContain(
+      "Exact comment",
+    );
+  });
+  it("keeps an earlier cancelled confirmation summary while a legal hold covers the author", async () => {
+    const f = await fixture();
+    await db.insert(schema.legalHoldTable).values({
+      scope: "person",
+      scopeId: f.person.id,
+      placedBy: "integration-test",
+      reason: "pending summary hold test",
+    });
+    const first = await createPendingAction(f.request);
+    await decideOwnPendingAction({
+      id: first.pendingActionId,
+      requesterPersonId: f.person.id,
+      outcome: "cancelled",
+      sessionId: f.session.id,
+    });
+    const second = await createPendingAction(f.request);
+    await approveCommentDeletion(f.approval(second.pendingActionId));
+    const [kept] = await db
+      .select()
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, first.pendingActionId));
+    expect(JSON.stringify(kept?.payloadSummary)).toContain("Exact comment");
+  });
+  it("keeps a cancelled confirmation summary while a legal hold covers its requester only", async () => {
+    const f = await fixture();
+    const moderator = await createWorkspaceMember({ role: "member" });
+    const moderatorPerson = requireRow(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, moderator.user.id)),
+      "moderator",
+    );
+    const first = await createPendingAction(f.request);
+    await decideOwnPendingAction({
+      id: first.pendingActionId,
+      requesterPersonId: f.person.id,
+      outcome: "cancelled",
+      sessionId: f.session.id,
+    });
+    await db
+      .update(schema.pendingActionTable)
+      .set({ requestedByPersonId: moderatorPerson.id })
+      .where(eq(schema.pendingActionTable.id, first.pendingActionId));
+    await db.insert(schema.legalHoldTable).values({
+      scope: "person",
+      scopeId: moderatorPerson.id,
+      placedBy: "integration-test",
+      reason: "moderator summary hold test",
+    });
+    const second = await createPendingAction(f.request);
+    await approveCommentDeletion(f.approval(second.pendingActionId));
+    const [kept] = await db
+      .select()
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, first.pendingActionId));
+    expect(JSON.stringify(kept?.payloadSummary)).toContain("Exact comment");
+    expect((await comment(f.relation.id)).body).toBeNull();
+  });
+  it("keeps the executed confirmation summary body while a legal hold covers its moderator requester only", async () => {
+    const f = await fixture();
+    const author = await createWorkspaceMember({ role: "member" });
+    const authorPerson = requireRow(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, author.user.id)),
+      "author",
+    );
+    await db
+      .update(schema.commentTable)
+      .set({ authorId: authorPerson.id })
+      .where(eq(schema.commentTable.id, f.relation.id));
+    await db.insert(schema.legalHoldTable).values({
+      scope: "person",
+      scopeId: f.person.id,
+      placedBy: "integration-test",
+      reason: "moderator executed summary hold test",
+    });
+    // Deleting another person's comment needs a workspace role with comment:delete_any.
+    await db
+      .update(schema.workspaceUserTable)
+      .set({ role: "admin" })
+      .where(eq(schema.workspaceUserTable.userId, f.member.user.id));
+    const action = await createPendingAction(f.request);
+    await approveCommentDeletion(f.approval(action.pendingActionId));
+    const summary = (await pending(action.pendingActionId)).payloadSummary;
+    expect(JSON.stringify(summary)).toContain("Exact comment");
+    expect(summary).toMatchObject({ alreadyDeleted: true });
+    expect((await comment(f.relation.id)).body).toBeNull();
+  });
   it("invalidates an edited comment and never deletes its newer body", async () => {
     const f = await fixture();
     const action = await createPendingAction(f.request);

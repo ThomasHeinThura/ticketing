@@ -1,4 +1,3 @@
-import type { JsonValue } from "@taskdesk/domain";
 import { and, count, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
@@ -139,8 +138,9 @@ export async function updateComment(
       action: "comment.updated",
       entityType: "comment",
       entityId: updated.id,
-      before: { body: (locked.body ?? null) as JsonValue },
-      after: { body: (updated.body ?? null) as JsonValue },
+      // Text is never copied into the append-only audit chain (purge on delete).
+      before: { bodyRedacted: true },
+      after: { bodyRedacted: true, authorId: updated.authorId },
     });
 
     return updated;
