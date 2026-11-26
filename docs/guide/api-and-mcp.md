@@ -24,6 +24,10 @@ The full key is shown once, at creation. Both kinds accept an expiry, an IP allo
 
 Deleting data with a key never happens in one step. A delete request returns `202` with a pending action id, and the key's owner approves it in the web app.
 
+## Webhooks
+
+Each delivery is signed with the webhook secret using HMAC-SHA256. Verify `X-TaskDesk-Signature-V2`, which signs `<X-TaskDesk-Timestamp>.<raw body>`, and reject deliveries whose timestamp is too old to stop replays. `X-TaskDesk-Signature` signs the body alone and is kept for existing consumers. During a secret rotation the `-Previous` headers carry the signature made with the old secret.
+
 ## OpenAPI document
 
 The API describes itself at `GET /api/openapi` on the agent host. The endpoint needs no credentials and serves only the schema. The document also covers the SCIM endpoints at `/scim/v2`, which use their own bearer token.
