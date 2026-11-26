@@ -127,7 +127,7 @@ set -euo pipefail
 out=''
 url=''
 while (($#)); do if [[ "$1" == -o ]]; then out="$2"; shift 2; else url="$1"; shift; fi; done
-if [[ "$url" == *stable.txt ]]; then printf 'v1.2.3\\n'; exit 0; fi
+if [[ "$url" == */releases/latest ]]; then [[ -z "\${FAKE_LATEST_FAIL:-}" ]] || exit 22; printf '{\\n  "tag_name": "v1.2.3",\\n  "prerelease": false\\n}\\n'; exit 0; fi
 name="$(basename "$url")"
 if [[ -n "$out" ]]; then cp "$FAKE_ASSETS/$name" "$out"; else cat "$FAKE_ASSETS/$name"; fi
 `,
@@ -413,7 +413,7 @@ test("production repeat install resolves and verifies the selected tag, not a ro
   assert.match(result.stdout, /no application port is published/);
   const env = await readFile(path.join(f.path, ".env"), "utf8");
   assert.match(env, /^TASKDESK_IMAGE_TAG=v1\.2\.3$/m);
-  assert.match(env, /^TASKDESK_IMAGE_DIGEST=$/m);
+  assert.match(env, /^TASKDESK_IMAGE_DIGEST=sha256:[0-9a-f]{64}$/m);
   assert.match(env, /^DOMAIN=example\.test$/m);
   const dockerLog = await readFile(path.join(f.temp, "docker.log"), "utf8");
   assert.match(
@@ -745,22 +745,29 @@ test("release tag and rollback digest commit atomically and retry after rename i
   assert.equal(retried.status, 0, retried.stderr);
   const envAfterRetry = await readFile(envPath, "utf8");
   assert.match(envAfterRetry, /^TASKDESK_IMAGE_TAG=v1\.2\.3$/m);
-  assert.match(envAfterRetry, /^TASKDESK_IMAGE_DIGEST=$/m);
+  assert.match(envAfterRetry, /^TASKDESK_IMAGE_DIGEST=sha256:[0-9a-f]{64}$/m);
   assert.match(envAfterRetry, /^TASKDESK_AUTH_SECRET=test-auth-secret$/m);
   const dockerLog = await readFile(injected.FAKE_DOCKER_LOG, "utf8");
   assert.doesNotMatch(dockerLog, new RegExp(oldDigest));
 });
 
-test("stable pointer is HTTPS-fetched and normalized to a validated versioned asset path", async (t) => {
+test("latest release is read from the GitHub API and normalized to a validated versioned asset path", async (t) => {
   const f = await fixture(t);
   const result = run(f, ["--dir", f.path, "--yes"]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /resolving the published stable release pointer/);
+  assert.match(result.stdout, /resolving the latest GitHub release/);
   assert.ok(
     (await readFile(path.join(f.temp, "cosign.log"), "utf8")).includes(
       "taskdesk-v1.2.3.tar.gz",
     ),
   );
+});
+
+test("a missing GitHub release tells the user to pass --version", async (t) => {
+  const f = await fixture(t);
+  const result = run(f, ["--dir", f.path, "--yes"], { FAKE_LATEST_FAIL: "1" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /pass --version TAG/);
 });
 
 test("dry-run prints the selected release plan without downloading or writing", async (t) => {

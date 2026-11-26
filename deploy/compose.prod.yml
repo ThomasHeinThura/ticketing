@@ -11,8 +11,9 @@
 # `ports:` across files. That is why the base file publishes nothing.
 #
 # Assumes Traefik already exists on the host, serving other applications, and
-# that TaskDesk attaches to its network and contributes only labels. A host with
-# no proxy of its own additionally loads deploy/compose.traefik.yml.
+# that TaskDesk attaches to its network and contributes only labels.
+# deploy/compose.traefik.yml is the local-only proxy and is not used here; a host
+# with no Traefik can follow the example in docs/guide/install-and-deploy.md.
 #
 # Specification: docs/guide/install-and-deploy.md
 

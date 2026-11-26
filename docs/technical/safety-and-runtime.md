@@ -4003,7 +4003,7 @@ Quotas ship with **real defaults** (storage 20 GB, portal users 500, webhooks 10
   every advisory ships with a patch release the same day per
   [release-plan.md](retained-constraints.md#release-plan).
 - Self-hosted operators learn they must upgrade through God Mode → Health's version check
-  (which compares against `stable.txt`) and the advisory feed — a stated obligation of
+  (which compares against the latest GitHub release) and the advisory feed — a stated obligation of
   distributing a container image, and a marketplace listing requirement.
 
 <a id="security-model-required-security-cases"></a>

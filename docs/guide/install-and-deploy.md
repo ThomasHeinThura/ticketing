@@ -10,8 +10,11 @@ TaskDesk ships as one container image. The Compose stack adds PostgreSQL and Val
 
 - Linux or macOS with Docker, the Compose plugin and `docker buildx`.
 - `cosign`, to verify the signed image.
+- A user who is in the `docker` group, or sudo. With sudo, run `sudo -E scripts/deploy.sh production` so `.env` values reach the script.
 - Two DNS names that point at the server, for example `ticket.example.com` for staff and `portal.example.com` for customers. Add `files.example.com` if you use the S3 profile.
 - A Traefik v3 proxy that already runs on the host. The production overlay `deploy/compose.prod.yml` joins an existing external Docker network named `proxy` and adds routing labels. It does not start a proxy. Your Traefik needs a `websecure` entrypoint, a certificate resolver named `letsencrypt`, and the middlewares in `deploy/traefik/dynamic/middlewares.yml` loaded through its file provider.
+
+If the host has no Traefik yet, see [A host with no Traefik](#a-host-with-no-traefik).
 
 The application port is never published. Only the proxy network reaches it, and `scripts/deploy.sh` stops if it finds a published port.
 
@@ -42,7 +45,7 @@ The script generates any missing secret and never replaces one that already has 
 
 On a first start the log prints a one-time setup URL. Open it to create the first administrator. See [Administration](administration.md).
 
-`install.sh` at the repository root wraps the same steps. It resolves a release, verifies the cosign bundles and checksum, unpacks into `~/taskdesk` (or `--dir`) and runs `scripts/deploy.sh`. Use `./install.sh --env production --domain example.com --dry-run` to see what it would do.
+`install.sh` at the repository root wraps the same steps. It resolves the latest stable GitHub release (pass `--version <tag>` to pick a pre-release), verifies the cosign bundles and checksum, unpacks into `~/taskdesk` (or `--dir`) and runs `scripts/deploy.sh`. Use `./install.sh --env production --domain example.com --dry-run` to see what it would do.
 
 For Kubernetes, `charts/taskdesk` holds a Helm chart for the same image.
 
@@ -71,6 +74,48 @@ The application reads five required variables and a few optional ones. Everythin
 
 Traefik terminates TLS with the `letsencrypt` resolver and applies the security-header, compression and rate-limit middlewares to both hosts. A wrong `DOMAIN` produces a 404 from Traefik, not an application error. If more than one proxy sits in front of TaskDesk, set `TASKDESK_TRUST_PROXY` to the real number of hops, because the client address is read from `X-Forwarded-For` at that hop.
 
+## A host with no Traefik
+
+`deploy/compose.traefik.yml` is the proxy for local testing only. For a real host, create the `proxy` network and run a minimal Traefik v3 beside TaskDesk. Replace the email, and copy `deploy/traefik/dynamic/middlewares.yml` to `./dynamic/` first.
+
+```sh
+docker network create proxy
+```
+
+```yaml
+# traefik/compose.yml
+services:
+  traefik:
+    image: traefik:v3.6
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=proxy
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.email=admin@example.com
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./dynamic:/etc/traefik/dynamic:ro
+      - ./letsencrypt:/letsencrypt
+    networks: [proxy]
+
+networks:
+  proxy:
+    external: true
+```
+
+Start it with `docker compose up -d`, then run the TaskDesk deploy. This setup does not watch `dynamic/` for changes, so restart Traefik after you edit anything there.
+
 ## Verify the signed image
 
 Each release image is signed with cosign from the project's release workflow. `scripts/deploy.sh` checks the signature on every `production`, `upgrade` and `rollback` run and refuses to pull an image that fails. To check by hand:
@@ -90,6 +135,7 @@ Copy the workflow identity from `COSIGN_IDENTITY` in `scripts/deploy.sh`, and th
 1. Take a backup (below) and note the running image digest.
 2. Run `scripts/deploy.sh upgrade <tag-or-digest>`. Without an argument it re-resolves the tag in `.env`.
 3. The script verifies the signature, pulls, runs migrations, replaces the container and probes the API. Expect a short outage, because a single-replica Compose stack replaces the container in place.
+4. If `deploy/traefik/dynamic/middlewares.yml` changed in the new release, copy it to your Traefik file-provider directory and restart Traefik. The file provider does not watch for changes.
 
 The script prints the exact rollback command when it finishes. To go back:
 
