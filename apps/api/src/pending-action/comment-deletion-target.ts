@@ -5,7 +5,6 @@ import { HTTPException } from "hono/http-exception";
 import type db from "../database";
 import { schema } from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
-import { openHoldOver } from "../utils/legal-hold-scope";
 import {
   projectAncestryFor,
   projectOwnerTeamFor,
@@ -15,6 +14,7 @@ import {
   loadCommentCaller,
   resolveCommentAuthors,
 } from "../work-item/comment-access";
+import { markCommentDeletionPreviewDone } from "../work-item/comment-purge.repository";
 import { deleteCommentInTransaction } from "../work-item/controllers/delete-comment";
 import {
   approveClickDeletion,
@@ -400,14 +400,7 @@ export async function approveCommentDeletion(
       // The preview is no longer needed after the confirmed deletion, unless an open hold covers this
       // action's own requester, decider or organisation (same exemption as delete-comment.ts). The
       // immutable payload/hash and restricted comment audit remain unchanged.
-      await tx.execute(
-        sql`UPDATE "pending_action" pa SET "payload_summary" = pa."payload_summary" || '{"alreadyDeleted": true}'::jsonb
-          || CASE WHEN ${openHoldOver(
-            sql`SELECT pa."requested_by_person_id" UNION ALL SELECT pa."decided_by_person_id"`,
-            sql`SELECT pa."organisation_id"`,
-          )} THEN '{}'::jsonb ELSE '{"commentBody": null}'::jsonb END
-          WHERE pa."id" = ${row.id}`,
-      );
+      await markCommentDeletionPreviewDone(tx, row.id);
       return deleted;
     }),
   });

@@ -1,16 +1,11 @@
 import type { JsonValue } from "@taskdesk/domain";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
-import {
-  commentTable,
-  commentVersionTable,
-  workItemTable,
-} from "../../database/schema";
+import { commentTable, workItemTable } from "../../database/schema";
 import type { ApiKey } from "../../openapi";
 import type { PendingActionTransaction } from "../../pending-action/service";
 import { fenceLegalHolds } from "../../scheduler/soft-delete-purge.repository";
-import { openHoldOver, workItemPeople } from "../../utils/legal-hold-scope";
 import {
   assertProjectStillLive,
   assertWorkItemStillLive,
@@ -20,6 +15,7 @@ import {
   loadCommentCaller,
   resolveCommentAuthors,
 } from "../comment-access";
+import { purgeDeletedCommentText } from "../comment-purge.repository";
 
 /** Executor-only CA-18 tombstone, inside the locked and freshly authorized pending-action transaction.
  * Retains the row/history and existing user-ID deletedBy convention; repeated execution is write-free.
@@ -92,29 +88,12 @@ export async function deleteCommentInTransaction(
 
   // Purge the retained text unless an open hold covers the item's people or organisations.
   await fenceLegalHolds(tx);
-  const heldRows = await tx.execute<{ held: boolean }>(
-    sql`SELECT ${openHoldOver(
-      workItemPeople(sql`SELECT ${locked.workItemId}::text`),
-      sql`SELECT w."organisation_id" FROM "workspace" w WHERE w."id" = ${workspaceId}
-      UNION ALL SELECT p."organisation_id" FROM "project" p WHERE p."id" = ${workItem.projectId}`,
-    )} AS held`,
-  );
-  const held = Boolean(heldRows.rows[0]?.held);
-  if (!held) {
-    await tx
-      .delete(commentVersionTable)
-      .where(eq(commentVersionTable.commentId, commentId));
-    // Earlier cancelled confirmations keep the full text in their preview summary, except those a hold
-    // covers through their own requester, decider or organisation (workItemPeople omits them).
-    await tx.execute(
-      sql`UPDATE "pending_action" pa SET "payload_summary" = pa."payload_summary" || '{"commentBody": null}'::jsonb
-        WHERE pa."payload_summary"->>'commentId' = ${commentId} AND pa."payload_summary" ? 'commentBody'
-        AND NOT ${openHoldOver(
-          sql`SELECT pa."requested_by_person_id" UNION ALL SELECT pa."decided_by_person_id"`,
-          sql`SELECT pa."organisation_id"`,
-        )}`,
-    );
-  }
+  const held = await purgeDeletedCommentText(tx, {
+    commentId,
+    workItemId: locked.workItemId,
+    workspaceId,
+    projectId: workItem.projectId,
+  });
 
   const [deleted] = await tx
     .update(commentTable)
