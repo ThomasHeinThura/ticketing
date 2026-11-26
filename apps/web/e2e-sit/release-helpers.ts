@@ -229,7 +229,10 @@ export async function discoverTarget(session: Session): Promise<Target> {
     );
     if (
       Array.isArray(types.body) &&
-      types.body.some((type: { isEpic: boolean }) => !type.isEpic)
+      types.body.some(
+        (type: { isEpic: boolean; isChange: boolean }) =>
+          !type.isEpic && !type.isChange,
+      )
     )
       return {
         workspaceId: workspace.id,
