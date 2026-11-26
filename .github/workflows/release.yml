@@ -169,7 +169,7 @@ jobs:
           fetch_runs() {
             local pages
             pages="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/commits/$1/check-runs?per_page=100")" || return 1
-            jq -c '[.[].check_runs[] | {name, id, conclusion, completed_at, app_id: .app.id}]' <<< "$pages" || return 1
+            jq -c '[.[].check_runs[] | {name, id, conclusion, completed_at, app_id: .app.id, suite_id: .check_suite.id}]' <<< "$pages" || return 1
           }
 
           # PR-only checks (ci-full) never run on the merge commit. They ran on the merged
@@ -191,18 +191,27 @@ jobs:
             parent_runs="$(fetch_runs "$parent")"
           fi
 
-          # Per required check: the source commit's latest run decides. Only a check with no
-          # run on the source commit may use the tree-identical parent's latest run. A run
-          # still in progress counts as the newest. Anything but success is a failure; when
-          # the ruleset pins an app (integration_id), only that app's runs count.
+          # Per required check, on one commit: take the latest run of each check suite (a
+          # rerun replaces its own suite's earlier run; a run still in progress counts as the
+          # newest). Every suite must end in success. Skipped suites are ignored when another
+          # suite succeeded; all-skipped or no run at all is "skipped"/"none". When the
+          # ruleset pins an app (integration_id), only that app's runs count.
+          # The source commit decides. Only "none" or "skipped" on the source falls back to
+          # the tree-identical parent's verdict; any other source verdict is final.
           failures="$(jq -r --argjson src "$source_runs" --argjson par "$parent_runs" '
-            def latest($runs; $c):
+            def verdict($runs; $c):
               [$runs[] | select(.name == $c.context
                 and ($c.integration_id == null or .app_id == $c.integration_id))]
-              | sort_by([(.completed_at // "9999"), .id]) | last;
+              | group_by([.app_id, .suite_id])
+              | map(sort_by([(.completed_at // "9999"), .id]) | last | .conclusion) as $latest
+              | if ($latest | length) == 0 then "none"
+                elif any($latest[]; . != "success" and . != "skipped") then "fail"
+                elif any($latest[]; . == "success") then "success"
+                else "skipped" end;
             .[] | . as $c
-            | (latest($src; $c) // latest($par; $c)) as $run
-            | select($run == null or $run.conclusion != "success")
+            | verdict($src; $c) as $s
+            | (if $s == "none" or $s == "skipped" then verdict($par; $c) else $s end) as $v
+            | select($v != "success")
             | $c.context' <<< "$required")"
           if [[ -n "$failures" ]]; then
             while IFS= read -r check; do

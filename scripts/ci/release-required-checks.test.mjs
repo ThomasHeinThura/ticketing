@@ -93,6 +93,7 @@ function setRuns(f, sha, runs, pages = 1) {
       conclusion,
       completed_at: conclusion ? "2026-11-26T00:00:00Z" : null,
       app: { id: 15368 },
+      check_suite: { id: 1 },
       ...extra,
     });
   });
@@ -203,6 +204,70 @@ describe("versioned release requires every required check before build/publicati
       ["build", "failure", at(2)],
     ]);
     assert.notEqual(check(f).status, 0);
+  });
+  it("falls back to the equal-tree parent when the source check only skipped", () => {
+    const f = fixture();
+    setRuns(f, f.merge, [
+      ["static", "success"],
+      ["build", "skipped"],
+    ]);
+    setRuns(f, f.head, [["build", "success"]]);
+    const r = check(f);
+    assert.equal(r.status, 0, output(r));
+  });
+  it("rejects a skipped source check when the trees differ", () => {
+    const f = fixture(["static", "build"], { divergent: true });
+    setRuns(f, f.merge, [
+      ["static", "success"],
+      ["build", "skipped"],
+    ]);
+    setRuns(f, f.head, [["build", "success"]]);
+    const r = check(f);
+    assert.notEqual(r.status, 0, output(r));
+    assert.match(output(r), /::error::Required check 'build'/);
+  });
+  it("rejects a skipped source check when the parent failed or has no run", () => {
+    const f = fixture();
+    setRuns(f, f.merge, [
+      ["static", "success"],
+      ["build", "skipped"],
+    ]);
+    setRuns(f, f.head, [["build", "failure"]]);
+    assert.notEqual(check(f).status, 0);
+    setRuns(f, f.head, []);
+    assert.notEqual(check(f).status, 0);
+  });
+  it("requires every check suite of the same name and app to succeed", () => {
+    const f = fixture();
+    const suite = (id, s) => ({ check_suite: { id }, ...at(s) });
+    for (const [okAt, badAt] of [
+      [1, 2],
+      [2, 1],
+    ]) {
+      setRuns(f, f.merge, [
+        ["static", "success"],
+        ["build", "success", suite(10, okAt)],
+        ["build", "failure", suite(20, badAt)],
+      ]);
+      assert.notEqual(check(f).status, 0, `ok@${okAt} bad@${badAt}`);
+    }
+    setRuns(f, f.merge, [
+      ["static", "success"],
+      ["build", "success", suite(10, 1)],
+      ["build", "success", suite(20, 2)],
+      ["build", "skipped", suite(30, 3)],
+    ]);
+    assert.equal(check(f).status, 0);
+  });
+  it("lets a rerun within one suite replace its earlier failure", () => {
+    const f = fixture();
+    const suite = (s) => ({ check_suite: { id: 10 }, ...at(s) });
+    setRuns(f, f.merge, [
+      ["static", "success"],
+      ["build", "failure", suite(1)],
+      ["build", "success", suite(2)],
+    ]);
+    assert.equal(check(f).status, 0);
   });
   it("fails closed when a required check has no run at all", () => {
     const f = fixture();
