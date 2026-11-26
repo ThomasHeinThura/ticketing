@@ -2,8 +2,8 @@
 /**
  * `pnpm test:all` — the local alias for every CI check.
  *
- * AGENTS.md and docs/04-engineering/testing-strategy.md both promise this command; kaneo
- * had no equivalent. docs/04-engineering/ci-cd.md is "the single list of CI checks", so
+ * AGENTS.md and docs/testing.md both promise this command; kaneo
+ * had no equivalent. docs/technical/ci-gates.md is "the single list of CI checks", so
  * the list below is reconciled against that document on every run: a gate declared there
  * with no entry here is reported as missing, and an entry here that the document does not
  * declare is reported as invented. Neither can drift quietly.
@@ -201,7 +201,7 @@ const manifest = [
     gate: "pnpm test:mcp",
     stage: "fast",
     run: null,
-    why: "tests/mcp/ does not exist yet (docs/04-engineering/testing-strategy.md § MCP server tests).",
+    why: "tests/mcp/ does not exist yet (docs/testing.md).",
   },
   { gate: "pnpm build", stage: "fast", run: ["pnpm", "build"] },
   {
@@ -221,7 +221,7 @@ const manifest = [
     stage: "fast",
     run: ["helm", "lint", "charts/taskdesk"],
     ciOnly: true,
-    note: "charts/taskdesk is inherited from kaneo and is #11's to reconcile with docs/05-operations/kubernetes.md.",
+    note: "charts/taskdesk is inherited from kaneo and is #11's to reconcile with docs/guide/install-and-deploy.md.",
   },
   {
     gate: "pnpm test:integration",
@@ -337,7 +337,7 @@ function aliasSources() {
  * also be satisfied by an occurrence in `ci-full.yml`, which is not the fast-stage context
  * the ruleset requires, so that gate would be enforced at the wrong stage or not at all.
  *
- * Stage membership is not invented here: `docs/04-engineering/ci-cd.md` already declares
+ * Stage membership is not invented here: `docs/technical/ci-gates.md` already declares
  * which gates belong to the fast stage and which to the full stage, and this binds each
  * stage to the ONE workflow authorized to satisfy it.
  *
@@ -630,7 +630,7 @@ async function main() {
   }
 
   process.stdout.write(
-    `\n${NAME}: ${selected.length} gate(s) from docs/04-engineering/ci-cd.md\n\n`,
+    `\n${NAME}: ${selected.length} gate(s) from docs/technical/ci-gates.md\n\n`,
   );
   const width = Math.max(...selected.map((entry) => entry.gate.length));
   for (const result of results) {

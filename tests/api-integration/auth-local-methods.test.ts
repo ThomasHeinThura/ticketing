@@ -10,6 +10,7 @@ import {
   portalAuth,
   reloadAuthConfiguration,
 } from "../../apps/api/src/auth";
+import { verifyPassword } from "../../apps/api/src/auth/password-hash";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import acceptInvitation from "../../apps/api/src/invitation/controllers/accept-invitation";
@@ -1347,17 +1348,15 @@ describe("signed-in portal password change", () => {
       .select()
       .from(schema.accountTable)
       .where(inArray(schema.accountTable.userId, [customer.id, other.id]));
-    const compare = apiRequire("bcryptjs") as {
-      compare(value: string, hash: string): Promise<boolean>;
-    };
     const own = accounts.find((account) => account.userId === customer.id);
     const untouched = accounts.find((account) => account.userId === other.id);
     expect(
-      await compare.compare("replacement-password-42", own?.password ?? ""),
+      (await verifyPassword(own?.password ?? "", "replacement-password-42"))
+        .valid,
     ).toBe(true);
-    expect(await compare.compare(PASSWORD, untouched?.password ?? "")).toBe(
-      true,
-    );
+    expect(
+      (await verifyPassword(untouched?.password ?? "", PASSWORD)).valid,
+    ).toBe(true);
     const audit = await db
       .select()
       .from(schema.auditLogTable)

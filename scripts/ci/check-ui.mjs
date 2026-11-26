@@ -24,7 +24,7 @@
  * **Import detection is a real parser, not a regex (issue #255).** Round 2 of #253's Opus
  * review found three resolvable evasions of the regex this used to use, all in the same
  * class as check-deps.mjs's own earlier fix (see that file's header and
- * docs/04-engineering/error-fix-loop.md): a Unicode escape inside the quoted specifier
+ * docs/testing.md): a Unicode escape inside the quoted specifier
  * (the regex saw the literal backslash-u source text, not the decoded string), a comment
  * between the `from`/`import` keyword and the quoted string (the regex's keyword anchor
  * doesn't skip trivia), and a template-literal dynamic import with no substitution

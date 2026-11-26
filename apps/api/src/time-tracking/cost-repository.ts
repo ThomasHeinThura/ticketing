@@ -407,6 +407,7 @@ export async function createCostEntry(input: {
     await assertTrackingEnabledForProject(
       input.workspaceId,
       input.projectId,
+      tx,
       TIME_TRACKING_FEATURE_KEY,
       COST_TRACKING_FEATURE_KEY,
     );
@@ -520,6 +521,7 @@ export async function updateCostEntry(input: {
     await assertTrackingEnabledForProject(
       input.workspaceId,
       before.projectId,
+      tx,
       TIME_TRACKING_FEATURE_KEY,
       COST_TRACKING_FEATURE_KEY,
     );

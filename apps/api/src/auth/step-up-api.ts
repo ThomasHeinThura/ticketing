@@ -2,7 +2,6 @@ import {
   type ScimAdminRequest,
   validateScimAdminRequest,
 } from "@taskdesk/domain";
-import bcrypt from "bcryptjs";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import type { Context } from "hono";
 import { setCookie } from "hono/cookie";
@@ -55,6 +54,7 @@ import {
   type LocalFactorState,
   loadLocalFactorState,
 } from "./local-factor-service";
+import { verifyPassword } from "./password-hash";
 import {
   getActiveSessionForStepUp,
   getIdentityConfigVersion,
@@ -2038,9 +2038,9 @@ const routes = apiRouter()
           executor,
         );
         if (!credential?.password) return null;
-        const passwordMatches = await bcrypt.compare(
-          proofInput.password ?? "",
+        const { valid: passwordMatches } = await verifyPassword(
           credential.password,
+          proofInput.password ?? "",
         );
         if (!passwordMatches) return null;
         const verifiedPasswordHash = credential.password;

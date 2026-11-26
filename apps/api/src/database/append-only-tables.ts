@@ -1,6 +1,6 @@
 /**
  * Tables that are append-only by grant, not only by the absence of an update/delete
- * endpoint (issue #296; `docs/04-engineering/migrations.md` § Append-only tables;
+ * endpoint (issue #296; `docs/technical/operations-and-distribution.md` § Append-only tables;
  * decision log 2026-09-23 "audit_log is append-only by trigger, not by grant").
  *
  * `ensureApplicationRole` (./ensure-application-role.ts) grants the application role

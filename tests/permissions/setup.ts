@@ -5,7 +5,7 @@
  * checklist of variables. Anything already set by the caller wins.
  *
  * These are bootstrap values only, and each is in
- * `docs/05-operations/configuration-reference.md`. Nothing here reaches a database: the app is
+ * `docs/guide/install-and-deploy.md`. Nothing here reaches a database: the app is
  * constructed, never started, because `index.ts` guards `startServer` behind an is-main check.
  */
 const DEFAULTS: Record<string, string> = {

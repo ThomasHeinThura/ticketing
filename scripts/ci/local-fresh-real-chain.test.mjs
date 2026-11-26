@@ -1231,10 +1231,17 @@ function createRealChainWorld(t) {
 
     if (argv[0] === "exec") {
       const hasStdin = argv[1] === "-i";
-      const containerId = hasStdin ? argv[2] : argv[1];
-      const sub = argv.slice(hasStdin ? 3 : 2);
+      const hasEnv = argv[1] === "-e";
+      const containerId = hasStdin ? argv[2] : hasEnv ? argv[3] : argv[1];
+      const sub = argv.slice(hasStdin ? 3 : hasEnv ? 4 : 2);
       const c = daemon.containers.get(containerId);
       if (!c) return { status: 1, stdout: "" };
+      // The seed guard refuses to run without the database confirmation.
+      if (
+        sub.includes("apps/api/dist/seed-uat.js") &&
+        !(hasEnv && /^TASKDESK_SEED_CONFIRM_DATABASE=.+/.test(argv[2]))
+      )
+        return { status: 1, stdout: "" };
       const joined = sub.join(" ");
 
       if (joined.includes("/sys/class/net/*")) {

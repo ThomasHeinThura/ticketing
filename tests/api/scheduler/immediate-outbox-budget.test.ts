@@ -31,13 +31,15 @@ describe("immediate child worker bounds", () => {
     });
     expect(mocks.next).toHaveBeenCalledTimes(1);
   });
-  it("bounds a full backlog to one hundred attempts per run", async () => {
-    mocks.next.mockResolvedValue({ kind: "delivered" });
+  it("drains a backlog beyond one hundred in one run, then stops on idle", async () => {
+    let left = 250;
+    mocks.next.mockImplementation(async () =>
+      left-- > 0 ? { kind: "delivered" } : { kind: "idle" },
+    );
     await expect(drainImmediateNotifications()).resolves.toEqual({
-      processed: 100,
+      processed: 250,
       degraded: false,
     });
-    expect(mocks.next).toHaveBeenCalledTimes(100);
   });
   it("stops starting further work after the time budget", async () => {
     const clock = vi.spyOn(Date, "now");

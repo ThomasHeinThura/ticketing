@@ -140,7 +140,7 @@ spec:
             - name: TASKDESK_PORTAL_URL
               value: "{{ .Values.taskdesk.env.portalUrl }}"
             {{- with .Values.taskdesk.env.trustProxy }}
-            # Measured, never guessed: docs/05-operations/proxy-topology-evidence.md
+            # Measured, never guessed: docs/guide/install-and-deploy.md
             - name: TASKDESK_TRUST_PROXY
               value: {{ . | quote }}
             {{- end }}
