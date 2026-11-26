@@ -93,6 +93,16 @@ Each connection has SCIM settings. The base URL is the agent origin plus `/scim/
 
 Users enrol a TOTP app and receive backup codes under Account, Security. Administrators set the requirement under God Mode, Observability, Local factor policy: off, optional, required for staff, required for one role, or required for everyone. Upstream MFA claimed by an identity provider is not accepted as proof for this policy.
 
+### Session lifetime and sign-in throttling
+
+The same Local factor policy card sets the staff session maximum lifetime, 1 to 90 days (default 30). A staff session older than that is signed out even if it is still in use. Customer portal sessions are not affected.
+
+Sign-in attempts are also limited per account, on top of the per-address limit: 10 attempts in 15 minutes for one email (or, for TOTP and backup codes, one account) from one address, and 100 in 15 minutes from all addresses together. Once a limit is reached, further attempts get HTTP 429 until the window passes. The limits hold across replicas. Password hashes use argon2id. Older bcrypt hashes still sign in and are upgraded at the next successful sign-in.
+
+## Deleted comments
+
+Deleting a comment removes its text from the comment history and from the work item's audit entries. When a legal hold applies, the text is kept until the hold is released. Audit rows written before this change keep their text.
+
 ## Email
 
 God Mode, Notifications sets the email provider: SMTP, or Amazon SES through its SMTP interface on port 587 with STARTTLS. The editor has a test action. Users also get an in-app inbox. They set their own preferences and quiet hours under Account, Notifications.

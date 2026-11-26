@@ -137,6 +137,8 @@ Copy the workflow identity from `COSIGN_IDENTITY` in `scripts/deploy.sh`, and th
 3. The script verifies the signature, pulls, runs migrations, replaces the container and probes the API. Expect a short outage, because a single-replica Compose stack replaces the container in place.
 4. If `deploy/traefik/dynamic/middlewares.yml` changed in the new release, copy it to your Traefik file-provider directory and restart Traefik. The file provider does not watch for changes.
 
+`upgrade` refuses to start unless it finds a backup of this deployment from the last 24 hours whose files match their `SHA256SUMS`. A backup taken with `scripts/backup-maintenance.sh` qualifies. If your backup lives somewhere else, pass `--i-have-a-backup`.
+
 The script prints the exact rollback command when it finishes. To go back:
 
 ```sh

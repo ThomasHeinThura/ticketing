@@ -1,5 +1,7 @@
 # Handover — 12 November 2026 (Codex → Claude, fleet in Orca)
 
+> **26 Nov:** the hardening batch (#1244–#1262) is merged; local SIT, a fresh-install SIT 2 and UAT run the same signed release and pass the release suite; current state and open items are in [status](status.md).
+
 > **25 Nov:** local SIT and UAT run `62f067564` (train k #1239 plus #1240 and the #929 release suite #1241). Smoke passes 125/125 on both and `pnpm test:release` passes on SIT. Current state is in [status](status.md).
 
 > **20 Nov (Thomas):** Claude coordinates again under [plan section 0](plan.md#0-plan-of-20-nov-thomas-approved-all-phases) and the AGENTS.md fleet rules (Sonnet-only Claude subagents; Codex Terra/Luna/Sol via Orca; up to six review rounds). No hourly report. #1195, #1196, #1197 and #1201 are merged; #1098 merged 12 Nov and #1089 closed 13 Nov. The 13 Nov worktree list below is history: 108 merged or closed-PR remote branches and 25 local ones were removed on 20 Nov. Older notes below may contradict this; this note wins.
