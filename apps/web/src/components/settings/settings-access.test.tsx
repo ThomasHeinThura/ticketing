@@ -33,6 +33,7 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("@taskdesk/libs", () => ({
   client: { capabilities: { $get: mocks.capabilitiesGet } },
+  onUnauthorized: vi.fn(),
 }));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "ws-1" }, isLoading: false }),

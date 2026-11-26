@@ -148,6 +148,33 @@ export function onFactorEnrollmentRequired(listener: () => void): () => void {
   };
 }
 
+const unauthorizedListeners = new Set<() => void>();
+
+/**
+ * Calls `listener` on every first-party API `401` outside the sign-in routes, so the app can
+ * lead the user to sign-in whatever error the caller throws afterwards. Returns the unsubscribe.
+ */
+export function onUnauthorized(listener: () => void): () => void {
+  unauthorizedListeners.add(listener);
+  return () => {
+    unauthorizedListeners.delete(listener);
+  };
+}
+
+/** Notifies the listeners of a 401 and returns the response untouched. */
+function watchUnauthorized(response: Response): Response {
+  if (response.status === 401) {
+    for (const listener of [...unauthorizedListeners]) {
+      try {
+        listener();
+      } catch {
+        // One listener's failure must not stop the others or the caller.
+      }
+    }
+  }
+  return response;
+}
+
 /** The refusal message of a 403: a JSON `{message}` body or a plain-text body. */
 async function refusalMessage(response: Response): Promise<string | undefined> {
   let text: string;
@@ -283,6 +310,13 @@ export function createApiFetch(
     const isBetterAuthRoute =
       target.pathname === authBasePath ||
       target.pathname.startsWith(`${authBasePath}/`);
+    // A wrong password answers 401 on the sign-in routes; that is not an expired session.
+    const watch = (response: Response) =>
+      notifyServerError(
+        watchFactorEnrollment(
+          isBetterAuthRoute ? response : watchUnauthorized(response),
+        ),
+      );
     const needsCsrf =
       agentCsrfToken && !safeMethods.has(method) && !isBetterAuthRoute;
 
@@ -290,8 +324,7 @@ export function createApiFetch(
       ? { ...init, redirect: "error" as const }
       : init;
     const request = requestWithHeaders(input, requestInit, headers, "include");
-    if (!needsCsrf)
-      return notifyServerError(watchFactorEnrollment(await fetchImpl(request)));
+    if (!needsCsrf) return watch(await fetchImpl(request));
 
     // Keep the request body replayable for the single, narrowly-scoped retry.
     const retryBase = request.clone();
@@ -299,7 +332,7 @@ export function createApiFetch(
     const response = await fetchImpl(request);
     const failureMessage = await csrfFailureMessage(response);
     if (!failureMessage || !csrfFailureMessages.has(failureMessage)) {
-      return notifyServerError(watchFactorEnrollment(response));
+      return watch(response);
     }
 
     const retryHeaders = new Headers(retryBase.headers);
@@ -307,11 +340,9 @@ export function createApiFetch(
       "X-TaskDesk-CSRF",
       await readCsrfToken(fetchImpl, csrfEndpoint),
     );
-    return notifyServerError(
-      watchFactorEnrollment(
-        await fetchImpl(
-          requestWithHeaders(retryBase, undefined, retryHeaders, "include"),
-        ),
+    return watch(
+      await fetchImpl(
+        requestWithHeaders(retryBase, undefined, retryHeaders, "include"),
       ),
     );
   };

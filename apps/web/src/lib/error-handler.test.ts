@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseApiError } from "./error-handler";
+import { HttpError } from "./http-error";
 
 describe("parseApiError", () => {
   it("treats a failed lazy chunk as a reloadable load failure, not a CORS error", () => {
@@ -47,5 +48,16 @@ describe("parseApiError", () => {
     expect(result.message).toBe("common:error.messages.network");
     expect(result.originalError).toBe(error);
     expect(result.originalError?.message).toBe(originalMessage);
+  });
+});
+
+describe("parseApiError refusals", () => {
+  it("shows a 403 or 404 read as permission or not-found, not as a CORS problem", () => {
+    expect(
+      parseApiError(new HttpError(403, "Failed to fetch CORS")).message,
+    ).toBe("common:error.messages.forbidden");
+    expect(parseApiError(new HttpError(404, "network")).message).toBe(
+      "common:error.messages.notFound",
+    );
   });
 });

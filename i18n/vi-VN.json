@@ -97,7 +97,9 @@
 				"network": "Network error. Please check your internet connection and try again.",
 				"server": "Server error. Please try again later.",
 				"unknown": "An unexpected error occurred.",
-				"chunkLoad": "Part of this page didn't load, possibly because TaskDesk was updated. Select Try again to reload the page."
+				"chunkLoad": "Part of this page didn't load, possibly because TaskDesk was updated. Select Try again to reload the page.",
+				"forbidden": "You do not have permission to view this.",
+				"notFound": "This could not be found. It may have been moved or removed."
 			},
 			"troubleshootingSteps": {
 				"cors": {

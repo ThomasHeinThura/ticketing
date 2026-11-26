@@ -93,7 +93,9 @@
 				"auth": "Nie udało się uwierzytelnić. Zaloguj się ponownie.",
 				"server": "Błąd serwera. Spróbuj ponownie później.",
 				"unknown": "Wystąpił nieoczekiwany błąd.",
-				"chunkLoad": "Part of this page didn't load, possibly because TaskDesk was updated. Select Try again to reload the page."
+				"chunkLoad": "Part of this page didn't load, possibly because TaskDesk was updated. Select Try again to reload the page.",
+				"forbidden": "You do not have permission to view this.",
+				"notFound": "This could not be found. It may have been moved or removed."
 			},
 			"troubleshootingSteps": {
 				"cors": {

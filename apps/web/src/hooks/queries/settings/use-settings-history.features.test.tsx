@@ -7,7 +7,10 @@ import { useSettingsHistory } from "./use-settings-history";
 
 // Only the HTTP layer is mocked: the real fetcher and the real hook check run on the response.
 const get = vi.hoisted(() => vi.fn());
-vi.mock("@taskdesk/libs", () => ({ client: { audit: { $get: get } } }));
+vi.mock("@taskdesk/libs", () => ({
+  client: { audit: { $get: get } },
+  onUnauthorized: vi.fn(),
+}));
 vi.mock("@/fetchers/time-tracking", () => ({ getTimeSettings: vi.fn() }));
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
