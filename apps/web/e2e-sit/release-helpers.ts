@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { Browser, BrowserContext } from "@playwright/test";
 import { privateRequest } from "../../../tests/e2e/helpers/fill-sensitive";
+import { totpForUri } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 import {
   sitAccountsFile,
   sitAgentOrigin,
@@ -14,7 +15,8 @@ import {
  * Shared sign-in and API plumbing for the release journeys (`pnpm test:release`).
  *
  * Accounts come from SIT_ACCOUNTS_FILE, a private JSON array (or { accounts }) of
- * { role, host: "agent" | "portal", email, password }. Passwords never leave this module and
+ * { role, host: "agent" | "portal", email, password, totpUri? }. An account with TOTP (every
+ * instance administrator has it after setup) also needs its otpauth:// totpUri. Secrets never leave this module and
  * every request that carries them or a session cookie runs through privateRequest, so a
  * failure message cannot echo them. Journeys create their own fixtures and remove them again.
  */
@@ -42,7 +44,13 @@ export type Role =
   /** Instance administrator (optional account; enables the import apply journey). */
   | "instance-admin";
 
-type Account = { role: string; host: string; email: string; password: string };
+type Account = {
+  role: string;
+  host: string;
+  email: string;
+  password: string;
+  totpUri?: string;
+};
 
 function findAccount(role: Role): Account | undefined {
   const file = sitAccountsFile;
@@ -100,7 +108,24 @@ export async function signIn(browser: Browser, role: Role): Promise<Session> {
           data: { email: who.email, password: who.password },
         },
       );
-      return response.status();
+      if (response.status() !== 200) return response.status();
+      const reply = (await response.json().catch(() => ({}))) as {
+        twoFactorRedirect?: boolean;
+      };
+      if (!reply.twoFactorRedirect) return 200;
+      // The password step only opened a two-factor challenge; finish it with the account's TOTP.
+      if (!who.totpUri)
+        throw new Error(
+          `${role} has TOTP; add its totpUri to SIT_ACCOUNTS_FILE.`,
+        );
+      const verified = await context.request.post(
+        `${origin}/api/auth/two-factor/verify-totp`,
+        {
+          headers: { Origin: origin },
+          data: { code: totpForUri(who.totpUri) },
+        },
+      );
+      return verified.status();
     });
     if (status === 200) break;
     if (status !== 429 || attempt >= 5)
