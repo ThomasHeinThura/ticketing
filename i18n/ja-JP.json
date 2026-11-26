@@ -93,7 +93,9 @@
 				"auth": "認証に失敗しました。再度サインインしてください。",
 				"server": "サーバーエラーが発生しました。しばらくしてからもう一度お試しください。",
 				"unknown": "予期しないエラーが発生しました。",
-				"chunkLoad": "Part of this page didn't load, possibly because TaskDesk was updated. Select Try again to reload the page."
+				"chunkLoad": "Part of this page didn't load, possibly because TaskDesk was updated. Select Try again to reload the page.",
+				"forbidden": "You do not have permission to view this.",
+				"notFound": "This could not be found. It may have been moved or removed."
 			},
 			"troubleshootingSteps": {
 				"cors": {
