@@ -79,4 +79,20 @@ console.log(r.valid);`;
     );
     expect(out.trim()).toBe("true");
   }, 20_000);
+  it("verifies a legacy bcrypt hash when the parent runs with --input-type=module", async () => {
+    // The e2e fixtures start the API with `node --input-type=module -e`; workers must not inherit that flag.
+    const root = resolve(import.meta.dirname, "../../..");
+    const script = `import { verifyPassword } from ${JSON.stringify(pathToFileURL(resolve(root, "apps/api/src/auth/password-hash.ts")).href)};
+const r = await verifyPassword("$2b$04$7cfG74vxZplSc30onlI4UORjWx2BORgfFtrANP44k/E61FX1N04CW", "old secret");
+console.log(r.valid);`;
+    const out = await new Promise<string>((done, fail) =>
+      execFile(
+        process.execPath,
+        ["--import", "tsx", "--input-type=module", "-e", script],
+        { cwd: resolve(root, "apps/api"), timeout: 15_000 },
+        (err, stdout, stderr) => (err ? fail(err) : done(stdout || stderr)),
+      ),
+    );
+    expect(out.trim()).toBe("true");
+  }, 20_000);
 });

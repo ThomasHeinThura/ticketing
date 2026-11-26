@@ -36,6 +36,8 @@ function spawn(): Slot {
   const bcryptUrl = import.meta.resolve("bcryptjs");
   const worker = new Worker(WORKER_SOURCE, {
     eval: true,
+    // Without this the worker inherits flags like --input-type=module, and the CommonJS source above crashes.
+    execArgv: [],
     workerData: { bcryptUrl },
   });
   const slot: Slot = { worker, pending: new Map() };
@@ -51,7 +53,11 @@ function spawn(): Slot {
     // An idle worker must not keep the process alive (CLI and seed scripts).
     if (slot.pending.size === 0) worker.unref();
   });
-  worker.on("error", drop);
+  worker.on("error", (error) => {
+    // A crashed worker turns every legacy sign-in into "wrong password", so say why.
+    console.error("bcrypt verify worker failed", error);
+    drop();
+  });
   worker.on("exit", drop);
   // After the listeners: attaching "message" re-refs the worker.
   worker.unref();
