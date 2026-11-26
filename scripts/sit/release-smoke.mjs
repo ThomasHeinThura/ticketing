@@ -218,7 +218,9 @@ async function apiChecks(account, base, cookies) {
   const workspaces = await getJson(base, cookies, "/api/workspace");
   check(
     `${name}: workspaces`,
-    workspaces.status === 200 && length(workspaces.body) > 0,
+    // An instance administrator need not belong to any workspace (setup creates none for it).
+    workspaces.status === 200 &&
+      (account.role === "instance-admin" || length(workspaces.body) > 0),
     `${workspaces.status} n=${length(workspaces.body)}`,
   );
   const workspaceId = workspaces.body?.[0]?.id;
