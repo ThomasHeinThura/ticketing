@@ -1,9 +1,11 @@
+import { randomBytes, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createPersonalApiKey } from "../../../apps/api/src/api-key/service";
-import db, { schema } from "../../../apps/api/src/database";
+import db, { getDatabasePool, schema } from "../../../apps/api/src/database";
+import { ensureApplicationRole } from "../../../apps/api/src/database/ensure-application-role";
 import {
   importLossTable,
   importSourceConnectionTable,
@@ -457,5 +459,85 @@ describe("csv import end to end", () => {
         .from(importSourceConnectionTable)
         .where(and(eq(importSourceConnectionTable.name, "x"))),
     ).toHaveLength(0);
+  });
+});
+
+// #1261: `activity` is append-only for the application role, so an import must INSERT its `created`
+// rows already stamped. The other suites connect as the owner and cannot see an UPDATE on it fail.
+describe("csv import as the least-privilege application role", () => {
+  it("completes and writes the created activity as imported at insert time", async () => {
+    const f = await engineFixture();
+    const { app } = createApp();
+    const small = csvText.split(/\r?\n/).slice(0, 3).join("\n");
+    const { run, mapping } = await startCsvRun(app, f, { csvText: small });
+    await confirmMapping(
+      app,
+      f,
+      run.id,
+      mapping as Parameters<typeof confirmMapping>[3],
+    );
+    const dry = await dryRunAndExecuteBody(app, f.key, run.id);
+    await call(
+      app,
+      f.key,
+      `/api/imports/${run.id}/execute`,
+      post(dry.body),
+      202,
+    );
+
+    const roleName = `taskdesk_app_${randomUUID().replaceAll("-", "").slice(0, 20)}`;
+    const ownerUrl = process.env.TASKDESK_DATABASE_URL as string;
+    const roleUrl = new URL(ownerUrl);
+    roleUrl.username = roleName;
+    roleUrl.password = randomBytes(32).toString("hex");
+    process.env.TASKDESK_DATABASE_URL = roleUrl.toString();
+    try {
+      await ensureApplicationRole(db);
+    } finally {
+      process.env.TASKDESK_DATABASE_URL = ownerUrl;
+    }
+    // Every pooled connection (current and future) now acts as the application role.
+    const pool = getDatabasePool();
+    const onConnect = (client: { query: (q: string) => Promise<unknown> }) =>
+      void client.query(`SET ROLE "${roleName}"`);
+    const setRoleOnPooled = async (statement: string) => {
+      const held = await Promise.all(
+        Array.from({ length: Math.max(pool.totalCount, 1) }, () =>
+          pool.connect(),
+        ),
+      );
+      for (const client of held) await client.query(statement);
+      for (const client of held) client.release();
+    };
+    try {
+      await setRoleOnPooled(`SET ROLE "${roleName}"`);
+      pool.on("connect", onConnect);
+      await expect(
+        db.execute(sql`UPDATE activity SET origin = 'imported'`),
+      ).rejects.toThrow();
+
+      expect(await runImportRun(run.id)).toMatchObject({
+        status: "completed",
+      });
+    } finally {
+      pool.off("connect", onConnect);
+      await setRoleOnPooled("RESET ROLE");
+      await db.execute(sql.raw(`DROP OWNED BY "${roleName}"`));
+      await db.execute(sql.raw(`DROP ROLE IF EXISTS "${roleName}"`));
+    }
+
+    const created = await db
+      .select()
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.verb, "created"));
+    expect(created).toHaveLength(2);
+    for (const row of created) {
+      expect(row.origin).toBe("imported");
+      expect(row.importedAt).toBeInstanceOf(Date);
+    }
+    expect(created.map((row) => row.createdAt.toISOString()).sort()).toEqual([
+      "2026-02-02T09:30:00.000Z",
+      "2026-02-03T09:30:00.000Z",
+    ]);
   });
 });

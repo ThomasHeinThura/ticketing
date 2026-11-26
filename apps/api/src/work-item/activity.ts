@@ -45,6 +45,9 @@ export type NewActivityInput = {
   visibility?: ActivityVisibility;
   /** Overrides the writer's application clock, e.g. with the database clock under a lock. */
   createdAt?: Date | SQL;
+  /** Import marker (IM-6): `importedAt` is the real write time; `createdAt` is then the source time. */
+  origin?: "imported";
+  importedAt?: Date;
 };
 
 // D1 (BLOCKING regression at 635fd29), PR #275's mandatory Opus 5.5 delta-confirmation
@@ -220,6 +223,9 @@ export async function recordWorkItemActivity(
         workflowVersionId: input.workflowVersionId ?? null,
         visibility: resolveVisibility(input),
         createdAt: input.createdAt ?? now,
+        ...(input.origin
+          ? { origin: input.origin, importedAt: input.importedAt }
+          : {}),
       })),
     )
     .returning({

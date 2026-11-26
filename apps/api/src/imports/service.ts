@@ -64,6 +64,7 @@ import {
   MAX_REPORTED_LOSSES,
   pendingAttachmentKeysByChunk,
   processImportAttachmentJobs,
+  resolveCreatedActivityImport,
   resolveDeferredImportLinks,
   resolveImportedAssigneeId,
   settleChunkAttachments,
@@ -1439,7 +1440,9 @@ export async function commitImportChunk(
       throw new HTTPException(409, {
         message: "Import link changed after preview",
       });
+    const createdActivity = await resolveCreatedActivityImport(writer, record);
     const created = await createWorkItemInTransaction(tx, {
+      createdActivity,
       workspaceId: run.workspaceId,
       projectId: run.projectId,
       typeId: record.item.typeId,
