@@ -106,8 +106,9 @@ test("an instance administrator previews and applies a CSV import and the item i
     expect(executed.status, "one row needs no approval").toBe(202);
     for (let attempt = 0; attempt < 60; attempt += 1) {
       const state = await root.call("GET", `/imports/${runId}`);
-      if (state.body?.status === "completed") break;
-      expect(state.body?.status).not.toBe("failed");
+      // The run reports `state` (running, paused, completed, failed); stop at the first final one.
+      if (state.body?.state === "completed") break;
+      expect(["failed", "paused"]).not.toContain(state.body?.state);
       await new Promise((resolve) => setTimeout(resolve, 2_000));
     }
 
