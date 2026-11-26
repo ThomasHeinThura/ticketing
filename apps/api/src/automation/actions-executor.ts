@@ -324,7 +324,7 @@ async function postComment(
             workItemId: item.id,
             visibility: action.visibility,
             automation: { id: ctx.automation.id, name: ctx.automation.name },
-            body: plainTextDocument(text),
+            bodyRedacted: true,
           },
         });
         const event = await recordWorkItemEvent(tx, {

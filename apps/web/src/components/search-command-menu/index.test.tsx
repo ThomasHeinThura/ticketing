@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -160,7 +161,7 @@ afterEach(() => {
 });
 
 describe("SearchCommandMenu (#407)", () => {
-  it("requests a two-character CJK prefix instead of applying a three-character gate", () => {
+  it("requests a two-character CJK prefix instead of applying a three-character gate", async () => {
     render(
       <KeyboardShortcutsProvider>
         <SearchCommandMenu open setOpen={vi.fn()} />
@@ -171,9 +172,42 @@ describe("SearchCommandMenu (#407)", () => {
       target: { value: "性能" },
     });
 
-    expect(mocks.search).toHaveBeenLastCalledWith(
-      expect.objectContaining({ q: "性能", workspaceId: "w1" }),
+    await waitFor(() =>
+      expect(mocks.search).toHaveBeenLastCalledWith(
+        expect.objectContaining({ q: "性能", workspaceId: "w1" }),
+      ),
     );
+  });
+
+  it("sends one search for five fast keystrokes", () => {
+    mocks.search.mockClear();
+    vi.useFakeTimers();
+    try {
+      render(
+        <KeyboardShortcutsProvider>
+          <SearchCommandMenu open setOpen={vi.fn()} />
+        </KeyboardShortcutsProvider>,
+      );
+      const input = screen.getByLabelText("search query");
+      for (const value of ["a", "ab", "abc", "abcd", "abcde"]) {
+        fireEvent.change(input, { target: { value } });
+        act(() => {
+          vi.advanceTimersByTime(50);
+        });
+      }
+      expect(mocks.search).not.toHaveBeenCalledWith(
+        expect.objectContaining({ q: expect.stringMatching(/./) }),
+      );
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      const queries = mocks.search.mock.calls
+        .map(([params]) => params.q)
+        .filter(Boolean);
+      expect(queries).toEqual(["abcde"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps the dialog and query open with a toast when workspace activation is refused or rejects, and closes after activation succeeds", async () => {
@@ -204,7 +238,9 @@ describe("SearchCommandMenu (#407)", () => {
     });
 
     fireEvent.click(
-      screen.getByRole("button", { name: "workspace: Denied Workspace" }),
+      await screen.findByRole("button", {
+        name: "workspace: Denied Workspace",
+      }),
     );
     await waitFor(() => {
       expect(mocks.toastError).toHaveBeenCalledWith(

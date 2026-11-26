@@ -1,4 +1,5 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
+import { onUnauthorized } from "@taskdesk/libs";
 import {
   HttpError,
   handleUnauthorized,
@@ -9,6 +10,18 @@ import { configureNotifyScheduler } from "./notify-scheduler";
 import { SETTINGS_HISTORY_KEY } from "./settings-history-key";
 
 configureNotifyScheduler();
+
+// Many fetchers throw a plain Error for a 401, and mutations have no 401 handling, so every
+// 401 path funnels here: one redirect, never from the sign-in page (that would loop).
+let signInRedirectStarted = false;
+function redirectToSignIn() {
+  if (signInRedirectStarted) return;
+  if (/^\/(auth\/)?sign-in(\/|$)/.test(window.location.pathname)) return;
+  signInRedirectStarted = true;
+  handleUnauthorized();
+}
+// The portal keeps its own query-level handling below; only agent routes watch every response.
+if (import.meta.env.MODE !== "portal") onUnauthorized(redirectToSignIn);
 
 // TanStack raises these before any fetcher-level message exists; CORS rejections
 // from the browser also surface here. Used to limit auto-retry to online tabs and
@@ -185,7 +198,13 @@ export function createQueryClient() {
             data,
           );
       },
-      onError: (error) => captureCacheError(error, "mutation"),
+      onError: (error) => {
+        if (isUnauthorizedError(error)) {
+          redirectToSignIn();
+          return;
+        }
+        captureCacheError(error, "mutation");
+      },
     }),
     defaultOptions: {
       queries: {

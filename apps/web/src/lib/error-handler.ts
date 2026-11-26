@@ -3,7 +3,14 @@ import { isChunkLoadError } from "@/lib/lazy-retry";
 
 export type ApiError = {
   message: string;
-  type: "network" | "cors" | "auth" | "server" | "unknown";
+  type:
+    | "network"
+    | "cors"
+    | "auth"
+    | "forbidden"
+    | "notFound"
+    | "server"
+    | "unknown";
   status?: number;
   originalError?: Error;
 };
@@ -13,6 +20,18 @@ export function parseApiError(error: unknown): ApiError {
     return {
       message: "common:error.messages.server",
       type: "server",
+      status: error.status,
+      originalError: error,
+    };
+  }
+  // A refusal carries its own status; its message text must not be read as a network failure.
+  if (
+    error instanceof HttpError &&
+    (error.status === 403 || error.status === 404)
+  ) {
+    return {
+      message: `common:error.messages.${error.status === 403 ? "forbidden" : "notFound"}`,
+      type: error.status === 403 ? "forbidden" : "notFound",
       status: error.status,
       originalError: error,
     };
