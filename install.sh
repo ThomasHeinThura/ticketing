@@ -5,7 +5,7 @@ set -Eeuo pipefail
 readonly UPSTREAM_REPOSITORY='ThomasHeinThura/ticketing'
 readonly REPOSITORY="${TASKDESK_REPOSITORY:-$UPSTREAM_REPOSITORY}"
 readonly RELEASE_BASE="https://github.com/${REPOSITORY}/releases/download"
-readonly STABLE_URL='https://get.taskdesk.dev/stable.txt'
+readonly LATEST_URL="https://api.github.com/repos/${REPOSITORY}/releases/latest"
 readonly COSIGN_ISSUER='https://token.actions.githubusercontent.com'
 # A fork signs with its own workflow identity; it must be named, never inferred.
 if [[ "$REPOSITORY" != "$UPSTREAM_REPOSITORY" && -z "${TASKDESK_COSIGN_IDENTITY:-}" ]]; then
@@ -136,7 +136,7 @@ sha256_file() {
 
 if ((DRY_RUN)); then
   say "platform: ${PLATFORM}; mode: ${MODE}; install directory: ${INSTALL_DIR}"
-  say 'would resolve a stable release tag, fetch the signed release archive, verify its cosign bundles and SHA-256, unpack to a private temporary directory, preserve existing .env/runtime data, and invoke scripts/deploy.sh'
+  say 'would resolve the latest GitHub release tag, fetch the signed release archive, verify its cosign bundles and SHA-256, unpack to a private temporary directory, preserve existing .env/runtime data, and invoke scripts/deploy.sh'
   if ((PROFILE_S3)); then say "would deploy with: scripts/deploy.sh ${MODE} --profile s3"; else say "would deploy with: scripts/deploy.sh ${MODE}"; fi
   if [[ "$MODE" == production ]]; then say "would preflight DNS for: ${AGENT_HOST} ${PORTAL_HOST}${FILES_HOST:+$( ((PROFILE_S3 || FILES_HOST_SET)) && printf " %s" "$FILES_HOST")} and verify TCP port 5173 is free"; fi
   if [[ -n "$VERSION" ]]; then
@@ -149,7 +149,7 @@ if ((DRY_RUN)); then
     fi
     say "would check the signed checksum, reject unsafe archive paths, preserve existing runtime data in ${INSTALL_DIR}, then run ./scripts/deploy.sh ${MODE}"
   else
-    say "would fetch the stable tag from ${STABLE_URL}, then verify and install its signed GitHub release archive"
+    say "would fetch the latest non-prerelease tag from ${LATEST_URL}, then verify and install its signed GitHub release archive"
   fi
   if ! command -v docker >/dev/null 2>&1; then say 'if Docker is absent, offer a package-manager installation after verified download and before writing files'; fi
   ((SKIP_VERIFY)) && warn '--skip-verify explicitly disables release signature verification'
@@ -180,8 +180,11 @@ if [[ "$MODE" == production ]]; then
 fi
 
 if [[ -z "$VERSION" ]]; then
-  say 'resolving the published stable release pointer'
-  VERSION="$(curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --tlsv1.2 --max-time 30 "$STABLE_URL")" || die 'could not resolve stable.txt over HTTPS'
+  say 'resolving the latest GitHub release (pre-releases need --version TAG)'
+  # The releases/latest endpoint never returns drafts or pre-releases.
+  release_json="$(curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --tlsv1.2 --max-time 30 --header 'Accept: application/vnd.github+json' "$LATEST_URL")" || die "no stable release found for ${REPOSITORY}; pass --version TAG (for example --version v2.1.0-beta.1)"
+  VERSION="$(printf '%s' "$release_json" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+  [[ -n "$VERSION" ]] || die "no stable release found for ${REPOSITORY}; pass --version TAG (for example --version v2.1.0-beta.1)"
 fi
 VERSION="${VERSION#v}"
 valid_release_tag "$VERSION" || die 'release version must be a SemVer tag such as 2.22.0 or 2.22.0-rc.1'

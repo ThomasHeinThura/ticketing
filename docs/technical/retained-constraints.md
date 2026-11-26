@@ -770,7 +770,7 @@ The external test is a real procurement/provider dependency, not a simulated pas
 <a id="release-plan"></a>
 ## Distribution, support and upgrade promises
 
-TaskDesk's version lineage starts at `2.0.0-alpha.1` and follows SemVer separately from Kaneo. A maintainer selects a SemVer value and exact full SHA reachable from protected main; release binds its tag/assets/signed multi-architecture image to that source. It does not manufacture a version-bump commit or rewrite package/chart/changelog versions. Edge builds use `edge` and `sha-<gitsha>`; prereleases use stage-appropriate alpha/beta/rc identifiers. `latest` and installer `stable.txt` mean verified stable, never latest merge. Stable promotion follows verification and smoke tests of the exact digest; date alone is insufficient.
+TaskDesk's version lineage starts at `2.0.0-alpha.1` and follows SemVer separately from Kaneo. A maintainer selects a SemVer value and exact full SHA reachable from protected main; release binds its tag/assets/signed multi-architecture image to that source. It does not manufacture a version-bump commit or rewrite package/chart/changelog versions. Edge builds use `edge` and `sha-<gitsha>`; prereleases use stage-appropriate alpha/beta/rc identifiers. `latest` and the installer's latest-release lookup mean verified stable, never latest merge. Stable promotion follows verification and smoke tests of the exact digest; date alone is insufficient.
 
 **Publication destination:** use GHCR, GitHub releases/tags/assets/packages. Docker Hub publication was cancelled by the owner on 8 October. Public installer/docs hosting and Marketplace acceptance are separate deployment obligations; source availability does not prove either is hosted.
 

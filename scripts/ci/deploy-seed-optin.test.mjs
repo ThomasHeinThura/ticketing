@@ -30,6 +30,29 @@ test("seed_if_permitted returns before touching the container unless --seed is s
   );
 });
 
+test("first uat and production deploys record the verified digest like upgrade does", () => {
+  for (const mode of ["uat", "production"]) {
+    const start = script.indexOf(`\n  ${mode})\n`);
+    const end = script.indexOf("\n    ;;", start);
+    const body = script.slice(start, end);
+    const persist = body.indexOf(
+      'persist_image_selection "${TASKDESK_IMAGE_TAG',
+    );
+    assert.ok(
+      body.includes("resolve_and_verify_image") &&
+        persist > body.indexOf("probe_api"),
+      `${mode} must persist the digest after the API probe`,
+    );
+  }
+});
+
+test("first-run output prints the one-time setup URL, not the bare token", () => {
+  const body = script.slice(script.indexOf("print_setup_token() {"));
+  const urlLine = body.indexOf("grep -iE 'setup url'");
+  const tokenLine = body.indexOf("grep -iE 'setup token'");
+  assert.ok(urlLine > 0 && tokenLine > urlLine, "URL must be preferred");
+});
+
 test("the opt-in uses the current demo and reuses its private credentials", () => {
   assert.match(
     script,
