@@ -192,4 +192,25 @@ describe("import.bundle adapter", () => {
     expect(byKey.has("type|bug")).toBe(false);
     expect([...byKey.keys()].some((k) => k.startsWith("label|"))).toBe(false);
   });
+
+  it("counts the converter's header warnings and refuses a malformed one", async () => {
+    const warned = bundleText.replace(
+      '"exportedAt":"2026-11-27T08:00:00.000Z"}',
+      '"exportedAt":"2026-11-27T08:00:00.000Z"},"warnings":[{"code":"attachments_truncated","item":"w1","omitted":1},{"code":"endpoint_not_supported","endpoint":"cycles"}]',
+    );
+    expect(warned).not.toBe(bundleText);
+    const found = await adapter.discover(conn({ bundleText: warned }));
+    expect(found.counts.converter_warnings).toBe(2);
+    expect((await adapter.discover(conn())).counts).not.toHaveProperty(
+      "converter_warnings",
+    );
+    const bad = bundleText.replace(
+      '"exportedAt":"2026-11-27T08:00:00.000Z"}',
+      '"exportedAt":"2026-11-27T08:00:00.000Z"},"warnings":[{"code":"x","extra":1}]',
+    );
+    expect(await adapter.connect(conn({ bundleText: bad }))).toEqual({
+      ok: false,
+      reason: "invalid_export",
+    });
+  });
 });

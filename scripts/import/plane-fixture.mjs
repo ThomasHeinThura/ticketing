@@ -2,7 +2,12 @@
  * A small fake Plane REST API (v1) for tests: `fakePlane({ token })` returns a `fetch` replacement
  * and the list of requests it saw. Two projects, paginated lists, one rate-limited first call.
  */
-export function fakePlane({ token, workspace = "acme", failPath } = {}) {
+export function fakePlane({
+  token,
+  workspace = "acme",
+  failPath,
+  overrides = {},
+} = {}) {
   const requests = [];
   let limited = false;
   const page = (results, next) => ({
@@ -104,6 +109,7 @@ export function fakePlane({ token, workspace = "acme", failPath } = {}) {
     requests.push({ path, query: parsed.search, init });
     if (init.headers?.["x-api-key"] !== token)
       return json({ detail: "bad key" }, 401);
+    if (overrides[path]) return overrides[path]();
     if (failPath && path.startsWith(failPath))
       return json({ detail: "boom" }, 500);
     if (path === "/projects/" && !limited) {

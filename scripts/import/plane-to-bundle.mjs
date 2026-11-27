@@ -12,7 +12,7 @@
  * HTTP status and the request path. Redirects are refused (a redirect would forward the header).
  * Each project file is self-contained (people, states, labels and items), so it loads as one source.
  */
-import { mkdir, open, readFile } from "node:fs/promises";
+import { mkdir, open, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -58,7 +58,12 @@ const HISTORY_FIELDS = {
 };
 
 /** Failure with a fixed message: a status and a path, never a header, a token or a response body. */
-export class ConvertError extends Error {}
+export class ConvertError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+}
 
 const isRecord = (v) =>
   typeof v === "object" && v !== null && !Array.isArray(v);
@@ -152,6 +157,7 @@ export function createClient({
       if (!response.ok)
         throw new ConvertError(
           `HTTP ${response.status} on ${path.split("?")[0]}`,
+          response.status,
         );
       try {
         return await response.json();
@@ -271,8 +277,29 @@ export async function convert({
       continue;
     }
     const file = join(out, `${project.identifier}.ndjson`);
-    const handle = await open(file, "w");
+    // The header carries this project's warnings, which are only known at the end: the body is
+    // written first and the final file is header + body.
+    const bodyFile = `${file}.body`;
+    const handle = await open(bodyFile, "w");
     let bytes = 0;
+    const warnings = [];
+    const unsupported = new Set();
+    /** A 404 on an optional endpoint is "not supported by this Plane": reported, never swallowed. */
+    const optional = async (kind, fn, fallback) => {
+      try {
+        return await fn();
+      } catch (error) {
+        if (!(error instanceof ConvertError) || error.status !== 404)
+          throw error;
+        if (!unsupported.has(kind)) {
+          unsupported.add(kind);
+          warnings.push({ code: "endpoint_not_supported", endpoint: kind });
+        }
+        return fallback;
+      }
+    };
+    const warn = (code, item, omitted) =>
+      warnings.push({ code, item, omitted });
     const emit = async (line) => {
       const text = `${JSON.stringify(line)}\n`;
       bytes += Buffer.byteLength(text, "utf8");
@@ -288,7 +315,6 @@ export async function convert({
     };
     try {
       const base_ = `/projects/${encodeURIComponent(project.id)}`;
-      await emit(header);
       for (const m of members.values()) await emit(personLine(m));
       await emit({
         t: "project",
@@ -300,9 +326,11 @@ export async function convert({
           : {}),
       });
       let membershipCount = 0;
-      for (const entry of await client
-        .all(`${base_}/members/`)
-        .catch(() => [])) {
+      for (const entry of await optional(
+        "members",
+        () => client.all(`${base_}/members/`),
+        [],
+      )) {
         const m = parseMember(entry);
         if (!m) continue;
         const role = ROLE[m.role];
@@ -350,26 +378,38 @@ export async function convert({
       }
       const named = async (path) => {
         const map = new Map();
-        for (const e of await client.all(path).catch(() => []))
+        for (const e of await optional(
+          path.split("/").filter(Boolean).pop(),
+          () => client.all(path),
+          [],
+        ))
           if (isRecord(e) && str(e.id) && str(e.name)) map.set(e.id, e.name);
         return map;
       };
       const types = await named(`${base_}/issue-types/`);
       const cycleOf = new Map();
       for (const [cycleId, cycleName] of await named(`${base_}/cycles/`))
-        for (const e of await client
-          .all(`${base_}/cycles/${encodeURIComponent(cycleId)}/cycle-issues/`)
-          .catch(() => [])) {
+        for (const e of await optional(
+          "cycle-issues",
+          () =>
+            client.all(
+              `${base_}/cycles/${encodeURIComponent(cycleId)}/cycle-issues/`,
+            ),
+          [],
+        )) {
           const issue = isRecord(e) ? (str(e.issue) ?? str(e.id)) : undefined;
           if (issue && !cycleOf.has(issue)) cycleOf.set(issue, cycleName);
         }
       const modulesOf = new Map();
       for (const [moduleId, moduleName] of await named(`${base_}/modules/`))
-        for (const e of await client
-          .all(
-            `${base_}/modules/${encodeURIComponent(moduleId)}/module-issues/`,
-          )
-          .catch(() => [])) {
+        for (const e of await optional(
+          "module-issues",
+          () =>
+            client.all(
+              `${base_}/modules/${encodeURIComponent(moduleId)}/module-issues/`,
+            ),
+          [],
+        )) {
           const issue = isRecord(e) ? (str(e.issue) ?? str(e.id)) : undefined;
           if (!issue) continue;
           const list = modulesOf.get(issue) ?? [];
@@ -396,10 +436,22 @@ export async function convert({
         const [comments, files, relations, activities] = await Promise.all([
           client.all(`${issuePath}/comments/`),
           attachments
-            ? client.all(`${issuePath}/issue-attachments/`).catch(() => [])
+            ? optional(
+                "issue-attachments",
+                () => client.all(`${issuePath}/issue-attachments/`),
+                [],
+              )
             : [],
-          client.get(`${issuePath}/relations/`).catch(() => ({})),
-          client.all(`${issuePath}/activities/`).catch(() => []),
+          optional(
+            "relations",
+            () => client.get(`${issuePath}/relations/`),
+            {},
+          ),
+          optional(
+            "activities",
+            () => client.all(`${issuePath}/activities/`),
+            [],
+          ),
         ]);
         await emit(
           toItem({
@@ -420,19 +472,31 @@ export async function convert({
             base,
             workspace,
             skip,
+            warn,
           }),
         );
         items += 1;
       }
       for (const id of extraPeople) await emit({ t: "person", id });
+      await handle.close();
+      const head = `${JSON.stringify({
+        ...header,
+        ...(warnings.length ? { warnings } : {}),
+      })}\n`;
+      bytes += Buffer.byteLength(head, "utf8");
+      await writeFile(file, head + (await readFile(bodyFile, "utf8")));
+      await rm(bodyFile, { force: true });
       summary.projects.push({
         key: project.identifier,
         items,
         memberships: membershipCount,
         bytes,
+        warnings,
       });
-    } finally {
-      await handle.close();
+    } catch (error) {
+      await handle.close().catch(() => {});
+      await rm(bodyFile, { force: true });
+      throw error;
     }
     if (bytes > MAX_BUNDLE_BYTES) skip("project_file_over_8mb");
   }
@@ -440,7 +504,18 @@ export async function convert({
 }
 
 function toItem(c) {
-  const { issue, id, title, stateId, project, types, labels, person, skip } = c;
+  const {
+    issue,
+    id,
+    title,
+    stateId,
+    project,
+    types,
+    labels,
+    person,
+    skip,
+    warn,
+  } = c;
   const priority = ["low", "medium", "high", "urgent"].includes(issue.priority)
     ? issue.priority
     : "medium"; // Plane "none" is Medium by contract
@@ -516,7 +591,8 @@ function toItem(c) {
     });
   }
   if (comments.length) item.comments = comments.slice(0, CAPS.comments);
-  if (comments.length > CAPS.comments) skip("comments_over_limit");
+  if (comments.length > CAPS.comments)
+    warn("comments_truncated", id, comments.length - CAPS.comments);
 
   const attachments = [];
   for (const raw of c.files) {
@@ -552,6 +628,8 @@ function toItem(c) {
   }
   if (attachments.length)
     item.attachments = attachments.slice(0, CAPS.attachments);
+  if (attachments.length > CAPS.attachments)
+    warn("attachments_truncated", id, attachments.length - CAPS.attachments);
 
   const relations = [];
   const rel = isRecord(c.relations) ? c.relations : {};
@@ -567,6 +645,8 @@ function toItem(c) {
         relations.push({ type, target: targetId });
     }
   if (relations.length) item.relations = relations.slice(0, CAPS.relations);
+  if (relations.length > CAPS.relations)
+    warn("relations_truncated", id, relations.length - CAPS.relations);
 
   const history = [];
   for (const raw of c.activities) {
@@ -589,6 +669,8 @@ function toItem(c) {
     });
   }
   if (history.length) item.history = history.slice(0, CAPS.history);
+  if (history.length > CAPS.history)
+    warn("history_truncated", id, history.length - CAPS.history);
   return item;
 }
 

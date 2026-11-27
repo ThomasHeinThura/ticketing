@@ -188,6 +188,10 @@ function discoverView(view: BundleView): DiscoveryResult {
       membership_not_written: own(bundle.memberships),
       state_not_written: own(bundle.states.values()),
       label_not_written: own(bundle.labels.values()),
+      // Converter warnings from the file header (unsupported endpoints, truncated lists).
+      ...(bundle.header?.warnings?.length
+        ? { converter_warnings: bundle.header.warnings.length }
+        : {}),
     },
     totalRecords: view.items.length,
   };

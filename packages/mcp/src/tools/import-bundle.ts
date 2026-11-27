@@ -1,6 +1,6 @@
 import { constants } from "node:fs";
 import { open, realpath } from "node:fs/promises";
-import { basename, isAbsolute, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
@@ -63,10 +63,11 @@ export type ImportBundleDeps = {
 };
 
 /**
- * Reads one bundle file. The path must resolve under the import directory; a symbolic link (the file
- * itself, or any directory on the way out of the import directory), a non-regular file and a file
- * over the bundle limit are refused. The file is opened with O_NOFOLLOW and checked on the open
- * descriptor, so a swap after the check cannot change what is read.
+ * Reads one bundle file. Node has no `openat`, so the provably safe variant is used: the file must
+ * sit DIRECTLY in the import directory (no sub-directory component), so the only link that could be
+ * swapped in is the final one, and `O_NOFOLLOW` refuses exactly that. The open descriptor is then
+ * checked (regular file, size) and read at most `MAX_BUNDLE_BYTES + 1` bytes, so a file that grows
+ * after the check cannot exhaust memory. Messages are fixed text: no file name or path is echoed.
  */
 export async function readBundleFile(
   path: string,
@@ -76,7 +77,6 @@ export async function readBundleFile(
     throw new BundleToolError(
       "TASKDESK_IMPORT_DIR is not set. Set it to the directory that holds your bundle files in the MCP server's environment.",
     );
-  const name = basename(path);
   let base: string;
   try {
     base = await realpath(importDir);
@@ -85,54 +85,54 @@ export async function readBundleFile(
   }
   // The import dir may be given through a link (macOS /var -> /private/var): accept either spelling.
   const configured = resolve(importDir);
-  const candidate = isAbsolute(path)
-    ? resolve(path)
-    : resolve(configured, path);
-  const root = [configured, base].find((r) => candidate.startsWith(r + sep));
-  if (!root)
+  const target = isAbsolute(path) ? resolve(path) : resolve(configured, path);
+  const name = basename(target);
+  if (!name || ![configured, base].includes(dirname(target)))
     throw new BundleToolError(
-      `${name}: the file must be inside TASKDESK_IMPORT_DIR.`,
-    );
-  const expected = resolve(base, relative(root, candidate));
-  let real: string;
-  try {
-    real = await realpath(candidate);
-  } catch {
-    throw new BundleToolError(`${name}: file not found.`);
-  }
-  // realpath resolves links: a different result means a link somewhere under the import directory.
-  if (real !== expected)
-    throw new BundleToolError(
-      `${name}: symbolic links are not allowed in the bundle path.`,
+      "The bundle file must sit directly in TASKDESK_IMPORT_DIR (no sub-directories, no path outside it).",
     );
   let handle: Awaited<ReturnType<typeof open>>;
   try {
-    handle = await open(candidate, constants.O_RDONLY | constants.O_NOFOLLOW);
+    handle = await open(
+      join(base, name),
+      constants.O_RDONLY | constants.O_NOFOLLOW,
+    );
   } catch {
-    throw new BundleToolError(`${name}: the file could not be opened.`);
+    throw new BundleToolError(
+      "The bundle file could not be opened (missing, a symbolic link or unreadable).",
+    );
   }
   try {
     const info = await handle.stat();
     if (!info.isFile())
-      throw new BundleToolError(`${name}: not a regular file.`);
-    if (info.size > MAX_BUNDLE_BYTES) throw tooLarge(name);
-    const text = await handle.readFile("utf8");
-    if (Buffer.byteLength(text, "utf8") > MAX_BUNDLE_BYTES)
-      throw tooLarge(name);
-    return text;
+      throw new BundleToolError("The bundle path is not a regular file.");
+    if (info.size > MAX_BUNDLE_BYTES) throw tooLarge();
+    const buffer = Buffer.alloc(MAX_BUNDLE_BYTES + 1);
+    let length = 0;
+    while (length < buffer.length) {
+      const { bytesRead } = await handle.read(
+        buffer,
+        length,
+        buffer.length - length,
+        null,
+      );
+      if (bytesRead === 0) break;
+      length += bytesRead;
+    }
+    if (length > MAX_BUNDLE_BYTES) throw tooLarge();
+    return buffer.subarray(0, length).toString("utf8");
   } catch (error) {
-    // Node's own messages carry the full path; only fixed text leaves this function.
     throw error instanceof BundleToolError
       ? error
-      : new BundleToolError(`${name}: the file could not be read.`);
+      : new BundleToolError("The bundle file could not be read.");
   } finally {
     await handle.close();
   }
 }
 
-const tooLarge = (name: string) =>
+const tooLarge = () =>
   new BundleToolError(
-    `${name}: larger than the ${MAX_BUNDLE_BYTES / 1_000_000} MB bundle limit.`,
+    `The bundle file is larger than the ${MAX_BUNDLE_BYTES / 1_000_000} MB limit.`,
   );
 
 function summarize(bundle: ParsedBundle) {
@@ -262,6 +262,7 @@ export function registerImportBundleTools(deps: ImportBundleDeps): void {
         return {
           valid: bundle.errorCount === 0,
           source: bundle.header?.source ?? null,
+          converterWarnings: bundle.header?.warnings ?? [],
           ...summarize(bundle),
           errorCount: bundle.errorCount,
           errors: bundle.errors,
@@ -273,7 +274,7 @@ export function registerImportBundleTools(deps: ImportBundleDeps): void {
   registerTool(
     "import_bundle_start",
     {
-      description: `Start an import of one project of a bundle file (POST /api/import-sources, /api/import-sources/{id}/runs, /api/imports/{id}/discover). ${IMPORT_BUNDLE_WRITE_NOTICE} projectId is an existing TaskDesk project (nothing is created); a bundle with several projects needs one run per projectKey. sourceRef defaults to "<system>:<instance>:<workspace>" from the file header, so a re-run of the same source updates the records it created instead of duplicating them. Returns the runId and the mapping that still needs a decision.`,
+      description: `Start an import of one project of a bundle file (POST /api/import-sources, /api/import-sources/{id}/runs, /api/imports/{id}/discover). ${IMPORT_BUNDLE_WRITE_NOTICE} projectId is an existing TaskDesk project (nothing is created); a bundle with several projects needs one run per projectKey. sourceRef defaults to "<system>:<instance>:<workspace>:<projectKey>" from the file header, so a re-run of the same source project updates the records it created instead of duplicating them. Returns the runId and the mapping that still needs a decision.`,
       inputSchema: z
         .object({
           idempotencyKey,
@@ -313,9 +314,11 @@ export function registerImportBundleTools(deps: ImportBundleDeps): void {
               : "The bundle holds several projects: pass projectKey (one run per project). Nothing was sent to TaskDesk.",
           );
         const source = bundle.header?.source;
+        // Per source project: the engine's stale sweep is per sourceRef, so a shared one would mark
+        // another project's records stale when this project's run completes.
         const sourceRef =
           args.sourceRef ??
-          `${source?.system}:${source?.instance}:${source?.workspace}`;
+          `${source?.system}:${source?.instance}:${source?.workspace}:${project.key}`;
         if (sourceRef.length > 200)
           throw new BundleToolError(
             "The default sourceRef is longer than 200 characters. Pass a shorter sourceRef.",

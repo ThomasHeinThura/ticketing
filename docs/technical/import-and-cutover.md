@@ -166,7 +166,7 @@ For a whole source (projects, comments, attachments, relations, history) the age
 to a [TaskDesk bundle](#field-mapping-taskdesk-bundle) and loads it with six tools that wrap the
 engine routes below: `validate_import_bundle`, `import_bundle_start`, `import_bundle_mapping`,
 `import_bundle_dry_run`, `import_bundle_apply` and `import_bundle_status`. They read the file from
-`TASKDESK_IMPORT_DIR` on the machine that runs `@taskdesk/mcp`, so the contents never pass through
+`TASKDESK_IMPORT_DIR` (a file directly in that directory, no sub-directories, no symbolic links) on the machine that runs `@taskdesk/mcp`, so the contents never pass through
 the model, and they never approve a pending action. `bulk_create_work_items` stays the small
 ad-hoc path.
 
@@ -501,7 +501,7 @@ links the writer downloads through the SSRF-guarded fetch; there is no inline fi
 
 **Runs.** A run is bound to one existing TaskDesk project, so a bundle with several projects needs one
 source and one run per `projectKey` (`config.bundleText`, `config.projectKey`; the key may be left out
-when the file holds one project). The source's `sourceRef` is `<system>:<instance>:<workspace>` from the
+when the file holds one project). The source's `sourceRef` is `<system>:<instance>:<workspace>:<projectKey>` from the
 header and each item's id is its source id, so a second run of the same bundle updates what the first
 created instead of duplicating it (IM-1).
 
@@ -537,7 +537,7 @@ plane-to-bundle.mjs  ->  validate_import_bundle  ->  import_bundle_start
 It runs where Plane is reachable, so the key never leaves that machine and the server's SSRF rules do
 not apply to the fetch. It writes `<KEY>.ndjson` per project (self-contained) and `people.ndjson`, and
 prints counts only. The key is read from the file, sent only as `X-API-Key`, and never printed, logged or
-written; errors name a status and a path. Redirects are refused and a 429 is retried with backoff.
+written; errors name a status and a path. Redirects are refused and a 429 is retried with backoff. Any other failed request fails the conversion with its status and path; only a 404 on an optional endpoint (members, issue types, cycles, modules, attachments, relations, activities) is tolerated, and it is reported. Unsupported endpoints and every truncated list (comments, attachments, relations, history: item and omitted count) are printed in the summary and recorded in the project file's header `warnings`; the adapter counts them as `converter_warnings` at discovery.
 Plane `none` priority becomes `medium`, `triage` states become `backlog` (counted), and attachments
 point at Plane's asset URLs, so a download that needs the key fails and is reported.
 

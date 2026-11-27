@@ -322,6 +322,51 @@ describe("import.bundle end to end", () => {
     ).toBe(true);
   });
 
+  it("importing a second project never marks the first project's records stale (one sourceRef per project)", async () => {
+    const staleAfter = async (refs: { web: string; ops: string }) => {
+      await resetTestDatabase();
+      const f = await engineFixture();
+      const { app } = createApp();
+      const text = bundleFor(f);
+      for (const [key, sourceRef] of [
+        ["WEB", refs.web],
+        ["OPS", refs.ops],
+      ] as const) {
+        const r = await startBundleRun(app, f, {
+          bundleText: text,
+          projectKey: key,
+          projectId: f.project.id,
+          sourceRef,
+        });
+        await decide(app, f, r.run.id, r.mapping, f.type.id, {
+          persons: "placeholder",
+        });
+        await execute(app, f, r.run.id);
+      }
+      const links = await db.select().from(schema.importRecordLinkTable);
+      return {
+        total: links.length,
+        stale: links.filter((l) => l.staleAt !== null).length,
+      };
+    };
+    // The MCP default: "<system>:<instance>:<workspace>:<projectKey>".
+    expect(
+      await staleAfter({
+        web: "plane:plane.lan:acme:WEB",
+        ops: "plane:plane.lan:acme:OPS",
+      }),
+    ).toEqual({ total: 6, stale: 0 });
+    // The shared reference the first version defaulted to: the second run stales the first.
+    expect(
+      (
+        await staleAfter({
+          web: "plane:plane.lan:acme",
+          ops: "plane:plane.lan:acme",
+        })
+      ).stale,
+    ).toBeGreaterThan(0);
+  });
+
   it("a placeholder person has no login, no membership and is not assignable", async () => {
     const f = await engineFixture();
     const { app } = createApp();

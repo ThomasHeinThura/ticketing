@@ -102,6 +102,20 @@ export const bundleHeaderLine = z
         exportedAt: isoDateTime.optional(),
       })
       .strict(),
+    /** What the converter could not carry (an unsupported endpoint, a truncated list): never silent. */
+    warnings: z
+      .array(
+        z
+          .object({
+            code: opaque(64),
+            endpoint: opaque(80).optional(),
+            item: id.optional(),
+            omitted: z.number().int().nonnegative().safe().optional(),
+          })
+          .strict(),
+      )
+      .max(5000)
+      .optional(),
   })
   .strict();
 export const bundlePersonLine = z

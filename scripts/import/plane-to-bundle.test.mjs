@@ -316,3 +316,116 @@ test("htmlToText decodes entities before stripping tags", () => {
   );
   assert.equal(htmlToText("<ul><li>one</li><li>two</li></ul>"), "- one\n- two");
 });
+
+const run = (out, tokenFile, fake) =>
+  main([...base, "--token-file", tokenFile, "--out", out, "--project", "WEB"], {
+    fetchImpl: fake.fetchImpl,
+    sleep: async () => {},
+    stdout: sink(),
+  });
+const json = (body, status = 200) =>
+  new Response(JSON.stringify(body), { status });
+const page = (results) => ({ results, next_page_results: false });
+
+test("a failing endpoint fails the conversion with status and path, never a silent gap", async () => {
+  for (const [path, label] of [
+    ["/projects/p1/issues/w1/issue-attachments/", "attachments"],
+    ["/projects/p1/issues/w1/relations/", "relations"],
+    ["/projects/p1/issues/w1/activities/", "history"],
+    ["/projects/p1/members/", "memberships"],
+    ["/projects/p1/cycles/", "cycles"],
+    ["/projects/p1/modules/", "modules"],
+  ])
+    await sandbox(async ({ tokenFile, out }) => {
+      const fake = fakePlane({
+        token: TOKEN,
+        overrides: { [path]: () => json({}, 500) },
+      });
+      await assert.rejects(run(out, tokenFile, fake), (e) => {
+        assert.equal(e.message, `HTTP 500 on ${path}`, label);
+        return true;
+      });
+      // No half-written bundle is left behind.
+      assert.ok(!(await readdir(out)).some((f) => f.startsWith("WEB")), label);
+    });
+});
+
+test("a 404 on an optional endpoint is reported in the header and the summary", async () => {
+  await sandbox(async ({ tokenFile, out }) => {
+    const fake = fakePlane({
+      token: TOKEN,
+      overrides: {
+        "/projects/p1/issues/w1/issue-attachments/": () => json({}, 404),
+      },
+    });
+    const stdout = sink();
+    await main(
+      [...base, "--token-file", tokenFile, "--out", out, "--project", "WEB"],
+      {
+        fetchImpl: fake.fetchImpl,
+        sleep: async () => {},
+        stdout,
+      },
+    );
+    const web = await lines(join(out, "WEB.ndjson"));
+    assert.equal(web[0].t, "header");
+    // The fixture has no issue-types endpoint either (404): both are reported.
+    assert.deepEqual(web[0].warnings, [
+      { code: "endpoint_not_supported", endpoint: "issue-types" },
+      { code: "endpoint_not_supported", endpoint: "issue-attachments" },
+    ]);
+    assert.deepEqual(
+      JSON.parse(stdout.text()).projects[0].warnings,
+      web[0].warnings,
+    );
+    assert.ok(!(await readdir(out)).some((f) => f.endsWith(".body")));
+  });
+});
+
+test("every truncation is reported with the item and the omitted count", async () => {
+  await sandbox(async ({ tokenFile, out }) => {
+    const many = (n, make) => Array.from({ length: n }, (_, i) => make(i));
+    const fake = fakePlane({
+      token: TOKEN,
+      overrides: {
+        "/projects/p1/issues/w1/issue-attachments/": () =>
+          json(
+            page(
+              many(101, (i) => ({
+                id: `a${i}`,
+                asset: `/assets/${i}.png`,
+                attributes: { name: `f${i}.png` },
+              })),
+            ),
+          ),
+        "/projects/p1/issues/w1/relations/": () =>
+          json({ relates_to: many(203, (i) => `t${i}`) }),
+        "/projects/p1/issues/w1/activities/": () =>
+          json(
+            page(
+              many(1002, (i) => ({
+                id: `h${i}`,
+                field: "state",
+                created_at: "2026-01-08T10:00:00Z",
+              })),
+            ),
+          ),
+        "/projects/p1/issues/w1/comments/": () =>
+          json(
+            page(many(503, (i) => ({ id: `c${i}`, comment_stripped: "x" }))),
+          ),
+      },
+    });
+    await run(out, tokenFile, fake);
+    const [head] = await lines(join(out, "WEB.ndjson"));
+    assert.deepEqual(
+      head.warnings.filter((w) => w.code.endsWith("_truncated")),
+      [
+        { code: "comments_truncated", item: "w1", omitted: 3 },
+        { code: "attachments_truncated", item: "w1", omitted: 1 },
+        { code: "relations_truncated", item: "w1", omitted: 3 },
+        { code: "history_truncated", item: "w1", omitted: 2 },
+      ],
+    );
+  });
+});
