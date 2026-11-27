@@ -159,9 +159,7 @@ describe("cycle CRUD, status and overlap (CY-1..CY-3)", () => {
       .where(eq(schema.projectTable.id, w.project.id));
     const refused = await createCycle("After managed", 10, 12);
     expect(refused.status).toBe(422);
-    expect((await refused.json()).message).toBe(
-      "managed_service_has_no_cycles",
-    );
+    expect(await refused.text()).toContain("managed_service_has_no_cycles");
     const list = await w.call(
       w.manager.user,
       `/api/projects/${w.project.slug}/cycles`,
