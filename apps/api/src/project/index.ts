@@ -465,7 +465,7 @@ const updateProjectRoute = createRoute({
       "Project doesn't exist or doesn't belong to the specified workspace",
     ),
     422: errorResponse(
-      "PR-9, same-workspace service calendar, manager or default assignee not an active roster member, or end date before start date",
+      "PR-9, same-workspace service calendar, manager or default assignee not an active roster member, end date before start date, or managed_service_has_no_end_date (a managed service takes no new end date)",
     ),
     409: errorResponse("That project slug is already taken"),
   },

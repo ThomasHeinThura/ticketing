@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"managedServiceUnused": "Cycli en een einddatum worden niet gebruikt voor managed services. Bestaande blijven hier zichtbaar en worden nooit verwijderd.",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "Annuleren",
@@ -156,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, such as an implementation or a migration.",
+				"kindDeliveryHint": "Geplande werkzaamheden met een overeengekomen scope, cycli en een einddatum, zoals een implementatie of een migratie.",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and service hours.",
+				"kindManagedHint": "Doorlopende ondersteuning voor een klant, met een supportniveau en een servicekalender. Loopt continu, zonder cycli of einddatum.",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1025,10 +1026,8 @@
 				"health": "Health",
 				"kind": "{{term_project_one}} kind",
 				"loadError": "Could not load the engagement settings.",
-				"managedService": "Managed service",
 				"noCalendars": "No service calendars exist in this workspace yet.",
 				"none": "None",
-				"project": "{{term_project_one}}",
 				"readOnly": "You can view these settings but need the {{term_project_one}} update permission to change them.",
 				"red": "Red",
 				"retry": "Retry",
@@ -1058,6 +1057,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
+					"managedEndDate": "Een managed service loopt continu en krijgt daarom geen nieuwe einddatum. Wis in plaats daarvan de einddatum.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -3535,7 +3535,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "{{column}} omhoog verplaatsen",
+			"moveColumnDown": "{{column}} omlaag verplaatsen"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3751,7 +3753,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Actieve filters",
+			"addFilter": "Filter",
+			"searchFields": "Velden zoeken",
+			"searchValues": "Waarden zoeken",
+			"advanced": "Geavanceerd",
+			"advancedFilter": "Geavanceerd filter",
+			"me": "Ik"
 		},
 		"properties": {
 			"clearDate": "Clear date",
@@ -4674,7 +4683,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Project"
+				"project": "Leveringsproject"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10485,6 +10494,7 @@
 			"plugins": {
 				"azureDevops": "Azure DevOps",
 				"azureDevopsHint": "REST API with a personal access token. Read-only.",
+				"bundle": "TaskDesk bundle",
 				"csv": "Generic CSV",
 				"csvHint": "Upload a CSV file (up to 5 MB). The universal fallback.",
 				"jira": "Jira",
@@ -10688,6 +10698,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
+			"runsContinuously": "Loopt continu",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

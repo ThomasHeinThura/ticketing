@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"managedServiceUnused": "Cycles and an end date are not used for managed services. Any that already exist stay visible here and are never removed.",
 		"pageLoading": "Loading page",
 		"audit": {
 			"columns": {
@@ -170,9 +171,9 @@
 				"organisationHint": "Optional. Chosen now: it cannot be changed after the {{term_project_one}} is created.",
 				"kindLabel": "Kind",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, such as an implementation or a migration.",
+				"kindDeliveryHint": "Planned work with an agreed scope, cycles and an end date, such as an implementation or a migration.",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and service hours.",
+				"kindManagedHint": "Ongoing support for a customer, with a support level and a service calendar. It runs continuously, with no cycles or end date.",
 				"supportLevelLabel": "Support level",
 				"supportLevelPlaceholder": "Choose a level",
 				"supportLevelOption": "{{level}} support",
@@ -1284,8 +1285,6 @@
 				"title": "Engagement and service",
 				"description": "Set the {{term_project_one}} kind, health, support level, and service calendar.",
 				"kind": "{{term_project_one}} kind",
-				"project": "{{term_project_one}}",
-				"managedService": "Managed service",
 				"health": "Health",
 				"unset": "Not set",
 				"red": "Red",
@@ -1358,6 +1357,7 @@
 					"notFound": "This {{term_project_one}} could not be found.",
 					"personNotEligible": "The manager and the default assignee must be active members of the {{term_project_one}}.",
 					"datesOrdered": "The end date cannot be before the start date.",
+					"managedEndDate": "A managed service runs continuously, so it takes no new end date. Clear the end date instead.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
 					"keyTaken": "That key is already taken.",
 					"generic": "Could not save the planning settings."
@@ -3528,7 +3528,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "Move {{column}} up",
+			"moveColumnDown": "Move {{column}} down"
 		},
 		"create": {
 			"trigger": "Create {{term_work_item_one}}",
@@ -3751,7 +3753,14 @@
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Active filters",
+			"addFilter": "Filter",
+			"searchFields": "Search fields",
+			"searchValues": "Search values",
+			"advanced": "Advanced",
+			"advancedFilter": "Advanced filter",
+			"me": "Me"
 		},
 		"properties": {
 			"title": "Properties",
@@ -4594,7 +4603,7 @@
 				"outstanding": "Outstanding"
 			},
 			"kind": {
-				"project": "Project",
+				"project": "Delivery project",
 				"managed_service": "Managed service"
 			},
 			"status": {
@@ -9007,6 +9016,7 @@
 			"internal": "Internal",
 			"start": "Start",
 			"end": "Target end",
+			"runsContinuously": "Runs continuously",
 			"manager": "Manager",
 			"defaultAssignee": "New work lands on",
 			"supportLevel": "Support level",
@@ -10595,6 +10605,7 @@
 				"plane": "Plane",
 				"planeHint": "REST API with a workspace API token. Read-only.",
 				"mcp": "MCP agent",
+				"bundle": "TaskDesk bundle",
 				"unknown": "Unknown source"
 			},
 			"fields": {

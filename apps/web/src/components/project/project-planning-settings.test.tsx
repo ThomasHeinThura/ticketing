@@ -267,6 +267,16 @@ describe("ProjectPlanningSettings", () => {
     ).toBe("none");
   });
 
+  it("hides the end date of a managed service unless one is already stored", () => {
+    mocks.project = { ...mocks.project, kind: "managed_service" };
+    const { unmount } = renderIt();
+    expect(document.querySelector("#project-planning-end")).toBeNull();
+    unmount();
+    mocks.project = { ...mocks.project, endDate: "2026-12-31" };
+    renderIt();
+    expect(document.querySelector("#project-planning-end")).not.toBeNull();
+  });
+
   it("labels every control with the library Label, not a native label", () => {
     renderIt();
     for (const id of [

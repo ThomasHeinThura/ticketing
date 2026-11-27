@@ -1,0 +1,22 @@
+{"t":"header","bundleVersion":1,"source":{"system":"plane","version":"1.3.1","instance":"plane.lan","workspace":"acme","exportedAt":"2026-11-27T08:00:00.000Z"}}
+{"t":"person","id":"u1","email":"ana.lopez@example.test","name":"Ana Lopez"}
+{"t":"person","id":"u2","email":"ben.ito@example.test","name":"Ben Ito"}
+{"t":"person","id":"u3","name":"Casey No-Email"}
+{"t":"project","id":"p1","key":"WEB","name":"Web","url":"https://plane.lan/acme/projects/p1"}
+{"t":"project","id":"p2","key":"OPS","name":"Operations"}
+{"t":"membership","project":"p1","person":"u1","role":"lead","sourceRole":"20"}
+{"t":"membership","project":"p1","person":"u2","role":"viewer","sourceRole":"5"}
+{"t":"state","project":"p1","id":"s1","name":"Todo","group":"unstarted"}
+{"t":"state","project":"p1","id":"s2","name":"In Review","group":"started"}
+{"t":"state","project":"p1","id":"s3","name":"Done","group":"completed"}
+{"t":"state","project":"p2","id":"s4","name":"Open","group":"unstarted"}
+{"t":"state","project":"p2","id":"s5","name":"Closed","group":"cancelled"}
+{"t":"label","project":"p1","id":"l1","name":"bug","color":"#ff0000"}
+{"t":"label","project":"p1","id":"l2","name":"frontend"}
+{"t":"label","project":"p2","id":"l3","name":"infra"}
+{"t":"item","project":"p1","id":"w1","url":"https://plane.lan/acme/projects/p1/issues/w1","type":"task","title":"Fix the login redirect","description":"Users land on a blank page.","priority":"high","state":"s2","assignee":"u1","requester":"u2","createdBy":"u2","createdAt":"2026-01-05T09:00:00.000Z","updatedAt":"2026-02-01T10:00:00.000Z","startDate":"2026-01-06T00:00:00.000Z","dueDate":"2026-02-15T00:00:00.000Z","labels":["l1","l2"],"estimate":5,"cycle":"Sprint 4","modules":["Auth"],"comments":[{"id":"c1","author":"u1","createdAt":"2026-01-06T11:30:00.000Z","body":"Reproduced on staging."},{"id":"c2","author":"u3","createdAt":"2026-01-07T08:15:00.000Z","body":"Same here."}],"attachments":[{"id":"a1","url":"https://plane.lan/assets/a1.png","filename":"screenshot.png","mimeType":"image/png","size":1234,"author":"u1","createdAt":"2026-01-06T11:31:00.000Z"}],"history":[{"id":"h1","at":"2026-01-08T10:00:00.000Z","author":"u1","field":"state","from":"Todo","to":"In Review"}],"links":[{"url":"https://example.test/docs","title":"Spec"}]}
+{"t":"item","project":"p1","id":"w2","title":"Child task of the redirect fix","state":"s1","parent":"w1","assignee":"u3","createdBy":"u1","relations":[{"type":"blocks","target":"w1"}]}
+{"t":"item","project":"p1","id":"w3","title":"Release notes","state":"s3","priority":"low","assignee":"u2","resolvedAt":"2026-03-01T12:00:00.000Z"}
+{"t":"item","project":"p1","id":"w4","type":"bug","title":"Typo on the pricing page","state":"s1","labels":["l1"]}
+{"t":"item","project":"p2","id":"o1","title":"Rotate the TLS certificates","state":"s4","labels":["l3"],"assignee":"u2"}
+{"t":"item","project":"p2","id":"o2","title":"Retire the old VPN","state":"s5","relations":[{"type":"relates","target":"w1"}]}

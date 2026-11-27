@@ -283,7 +283,7 @@ describe("Portal dashboard", () => {
     ).toHaveAttribute("href", "/projects/ROLL");
     const card = within(screen.getByRole("region", { name: "Your projects" }));
     expect(card.getByText("ROLL")).toBeVisible();
-    expect(card.getByText("Project")).toBeVisible();
+    expect(card.getByText("Delivery project")).toBeVisible();
     expect(card.getByText("Active")).toBeVisible();
     expect(card.getByText("At risk")).toBeVisible();
     expect(card.getByText("2")).toBeVisible();

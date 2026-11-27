@@ -108,6 +108,9 @@ describe("failure classification", () => {
     expect(
       classifyPlanningFailure(422, "manager_must_be_active_project_member"),
     ).toBe("personNotEligible");
+    expect(
+      classifyPlanningFailure(422, "managed_service_has_no_end_date"),
+    ).toBe("managedEndDate");
     expect(classifyPlanningFailure(500, "boom")).toBe("generic");
   });
 

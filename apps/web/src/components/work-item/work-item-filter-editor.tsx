@@ -10,6 +10,7 @@ import {
   printWorkItemFilterText,
   type WorkItemFilter,
 } from "@/lib/work-item-filter";
+import { FILTER_FIELDS, operatorKey } from "@/lib/work-item-filter-fields";
 
 /**
  * The visual rendering of the one filter AST (`SV-11`); the text rendering is
@@ -18,75 +19,6 @@ import {
  * list is shown, kept and removable rather than dropped, so nothing the URL or a saved view
  * carries is silently lost (`SV-12`).
  */
-type FilterField = {
-  id: string;
-  /** Key under `workItems:filter.fields`. */
-  labelKey: string;
-  operators: readonly FilterOperator[];
-  values?: readonly string[];
-  fixedValue?: string;
-};
-
-const OPERATORS = ["eq", "in", "contains", "lt", "lte", "gt", "gte"] as const;
-type FilterOperator = (typeof OPERATORS)[number];
-
-function operatorKey(operator: string): FilterOperator | undefined {
-  return (OPERATORS as readonly string[]).includes(operator)
-    ? (operator as FilterOperator)
-    : undefined;
-}
-
-const FILTER_FIELDS: readonly FilterField[] = [
-  {
-    id: "state.group",
-    labelKey: "stateGroup",
-    operators: ["eq", "in"],
-    values: ["backlog", "unstarted", "started", "completed", "cancelled"],
-  },
-  {
-    id: "priority",
-    labelKey: "priority",
-    operators: ["eq", "in", "gt", "gte", "lt", "lte"],
-    values: ["low", "medium", "high", "urgent"],
-  },
-  {
-    id: "assignee",
-    labelKey: "assignee",
-    operators: ["eq"],
-    fixedValue: "@me",
-  },
-  {
-    id: "requester",
-    labelKey: "requester",
-    operators: ["eq"],
-    fixedValue: "@me",
-  },
-  {
-    id: "watcher",
-    labelKey: "watcher",
-    operators: ["contains"],
-    fixedValue: "@me",
-  },
-  {
-    id: "dueDate",
-    labelKey: "dueDate",
-    operators: ["lt", "lte", "gt", "gte"],
-  },
-  {
-    id: "createdAt",
-    labelKey: "createdAt",
-    operators: ["lt", "lte", "gt", "gte"],
-  },
-  { id: "project", labelKey: "project", operators: ["eq"] },
-  { id: "type", labelKey: "type", operators: ["eq"] },
-  {
-    id: "lifecycle",
-    labelKey: "lifecycle",
-    operators: ["eq"],
-    values: ["active", "archived", "deleted"],
-  },
-];
-
 const DEFAULT_FILTER_LEAF: WorkItemFilter = {
   field: "state.group",
   op: "eq",

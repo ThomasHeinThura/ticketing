@@ -1618,6 +1618,13 @@
 			"when": 1795628283931,
 			"tag": "0230_staff_session_max_days",
 			"breakpoints": true
+		},
+		{
+			"idx": 231,
+			"version": "7",
+			"when": 1795764210539,
+			"tag": "0231_import_bundle_plugin",
+			"breakpoints": true
 		}
 	]
 }

@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"managedServiceUnused": "प्रबंधित सेवाओं के लिए साइकिल और समाप्ति तिथि का उपयोग नहीं होता। जो पहले से मौजूद हैं वे यहाँ दिखते रहेंगे और कभी हटाए नहीं जाएँगे।",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "रद्द करें",
@@ -156,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, such as an implementation or a migration.",
+				"kindDeliveryHint": "सहमत दायरे, साइकिल और समाप्ति तिथि वाला नियोजित कार्य, जैसे कोई कार्यान्वयन या माइग्रेशन।",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and service hours.",
+				"kindManagedHint": "ग्राहक के लिए सतत सहायता, जिसमें सहायता स्तर और सेवा कैलेंडर होता है। यह लगातार चलती है, इसमें कोई साइकिल या समाप्ति तिथि नहीं होती।",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1302,10 +1303,8 @@
 				"health": "Health",
 				"kind": "{{term_project_one}} kind",
 				"loadError": "Could not load the engagement settings.",
-				"managedService": "Managed service",
 				"noCalendars": "No service calendars exist in this workspace yet.",
 				"none": "None",
-				"project": "{{term_project_one}}",
 				"readOnly": "You can view these settings but need the {{term_project_one}} update permission to change them.",
 				"red": "Red",
 				"retry": "Retry",
@@ -1335,6 +1334,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
+					"managedEndDate": "प्रबंधित सेवा लगातार चलती है, इसलिए इसमें नई समाप्ति तिथि नहीं जोड़ी जा सकती। इसके बजाय समाप्ति तिथि साफ़ करें।",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -3535,7 +3535,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "{{column}} को ऊपर ले जाएँ",
+			"moveColumnDown": "{{column}} को नीचे ले जाएँ"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3751,7 +3753,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "सक्रिय फ़िल्टर",
+			"addFilter": "फ़िल्टर",
+			"searchFields": "फ़ील्ड खोजें",
+			"searchValues": "मान खोजें",
+			"advanced": "उन्नत",
+			"advancedFilter": "उन्नत फ़िल्टर",
+			"me": "मैं"
 		},
 		"properties": {
 			"clearDate": "Clear date",
@@ -4674,7 +4683,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Project"
+				"project": "डिलीवरी प्रोजेक्ट"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10485,6 +10494,7 @@
 			"plugins": {
 				"azureDevops": "Azure DevOps",
 				"azureDevopsHint": "REST API with a personal access token. Read-only.",
+				"bundle": "TaskDesk bundle",
 				"csv": "Generic CSV",
 				"csvHint": "Upload a CSV file (up to 5 MB). The universal fallback.",
 				"jira": "Jira",
@@ -10688,6 +10698,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
+			"runsContinuously": "लगातार चलती है",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

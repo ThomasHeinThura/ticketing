@@ -10971,7 +10971,7 @@
             }
           },
           "422": {
-            "description": "PR-9, same-workspace service calendar, manager or default assignee not an active roster member, or end date before start date",
+            "description": "PR-9, same-workspace service calendar, manager or default assignee not an active roster member, end date before start date, or managed_service_has_no_end_date (a managed service takes no new end date)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -89653,6 +89653,12 @@
                                     "create_work_item",
                                     "bulk_create_work_items",
                                     "create_import_link",
+                                    "validate_import_bundle",
+                                    "import_bundle_start",
+                                    "import_bundle_mapping",
+                                    "import_bundle_dry_run",
+                                    "import_bundle_apply",
+                                    "import_bundle_status",
                                     "update_work_item",
                                     "set_custom_field",
                                     "add_label",
@@ -89853,7 +89859,8 @@
                         "import.plane",
                         "import.planner",
                         "import.power-apps",
-                        "import.mcp"
+                        "import.mcp",
+                        "import.bundle"
                       ]
                     },
                     "sourceRef": {
@@ -90123,7 +90130,8 @@
                               "import.plane",
                               "import.planner",
                               "import.power-apps",
-                              "import.mcp"
+                              "import.mcp",
+                              "import.bundle"
                             ]
                           },
                           "sourceRef": {
@@ -90321,7 +90329,8 @@
                         "import.plane",
                         "import.planner",
                         "import.power-apps",
-                        "import.mcp"
+                        "import.mcp",
+                        "import.bundle"
                       ]
                     },
                     "sourceRef": {
@@ -92061,7 +92070,8 @@
                       "import.plane",
                       "import.planner",
                       "import.power-apps",
-                      "import.mcp"
+                      "import.mcp",
+                      "import.bundle"
                     ]
                   },
                   "name": {
@@ -94818,6 +94828,12 @@
                       "create_work_item",
                       "bulk_create_work_items",
                       "create_import_link",
+                      "validate_import_bundle",
+                      "import_bundle_start",
+                      "import_bundle_mapping",
+                      "import_bundle_dry_run",
+                      "import_bundle_apply",
+                      "import_bundle_status",
                       "update_work_item",
                       "set_custom_field",
                       "add_label",
@@ -102141,7 +102157,7 @@
             }
           },
           "422": {
-            "description": "Invalid dates",
+            "description": "Invalid dates, or managed_service_has_no_cycles",
             "content": {
               "text/plain": {
                 "schema": {

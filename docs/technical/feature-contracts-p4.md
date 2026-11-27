@@ -2789,6 +2789,8 @@ Import-oriented:
 
 ```
 bulk_create_work_items   create_import_link    get_import_link
+validate_import_bundle   import_bundle_start   import_bundle_mapping
+import_bundle_dry_run    import_bundle_apply   import_bundle_status
 ```
 
 <a id="mcp-server-behaviour"></a>
@@ -2932,6 +2934,8 @@ The MCP server exposes no HTTP API of its own. The tool → route table below is
 | `delete_work_item` | `DELETE /api/work-items/{key}` → `202` pending action | `work_item:delete`; approved by the owner in the UI (`PA-1`–`PA-6`) |
 | `bulk_create_work_items` | `POST /api/imports/{id}/records` | `instance:admin` — opens an `import_run` with `plugin_id = 'import.mcp'` |
 | `create_import_link` / `get_import_link` | `POST/GET /api/imports/{id}/links` | `instance:admin` |
+| `validate_import_bundle` | none (reads a file under `TASKDESK_IMPORT_DIR`) | none |
+| `import_bundle_start` / `import_bundle_mapping` / `import_bundle_dry_run` / `import_bundle_apply` / `import_bundle_status` | `/api/import-sources`, `/api/imports/{id}/discover`, `/mapping`, `/dry-run-all`, `/execute`, `/engine`, `/losses` | `instance:admin` plus `work_item:create` on the project; over 50 writes is a pending action the owner approves (see [bundle](import-and-cutover.md#field-mapping-taskdesk-bundle)) |
 
 <a id="mcp-server-data"></a>
 ### Data

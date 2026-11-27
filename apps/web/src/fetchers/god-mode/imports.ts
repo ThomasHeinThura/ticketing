@@ -11,6 +11,7 @@ export const IMPORT_PLUGIN_IDS = [
   "import.planner",
   "import.power-apps",
   "import.mcp",
+  "import.bundle",
 ] as const;
 export type ImportPluginId = (typeof IMPORT_PLUGIN_IDS)[number];
 

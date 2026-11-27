@@ -135,6 +135,17 @@ async function updateProject(
           "PR-9: managed services require a support level and service calendar",
       });
 
+    // A managed service runs continuously: refuse setting or changing an end date. Clearing it
+    // and re-sending the stored value stay allowed, so existing data is never forced out.
+    if (
+      nextKind === "managed_service" &&
+      configuration.endDate != null &&
+      configuration.endDate !== existingProject.endDate
+    )
+      throw new HTTPException(422, {
+        message: "managed_service_has_no_end_date",
+      });
+
     // PR-13: only a CHANGED key must match 2-15 uppercase letters (see `PROJECT_KEY_PATTERN`):
     // a project created before the rule keeps its legacy key and stays editable. A request that
     // sends no slug never touches the key, its claim or the clash checks.

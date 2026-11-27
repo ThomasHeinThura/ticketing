@@ -78,6 +78,10 @@ const manyImportRecords = (count: number) =>
 const WRITE_TOOLS = [
   "bulk_create_work_items",
   "create_import_link",
+  "import_bundle_start",
+  "import_bundle_mapping",
+  "import_bundle_dry_run",
+  "import_bundle_apply",
   "create_work_item",
   "update_work_item",
   "set_custom_field",
@@ -113,6 +117,8 @@ describe("canonical tool set", () => {
       "decide_approval",
       "list_saved_views",
       "get_import_link",
+      "validate_import_bundle",
+      "import_bundle_status",
       ...WRITE_TOOLS,
     ])
       expect(tools.has(name), name).toBe(true);
@@ -623,6 +629,12 @@ describe("canonical tool set", () => {
       action: "approve",
     };
     for (const name of tools.keys()) {
+      // Covered by import-bundle.test.ts (strict inputs, file access).
+      if (
+        name === "validate_import_bundle" ||
+        name.startsWith("import_bundle_")
+      )
+        continue;
       if (name === "bulk_create_work_items") {
         await call(name, {
           action: "preview",
