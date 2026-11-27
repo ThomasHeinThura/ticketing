@@ -121,9 +121,57 @@ describe("namespace boundary loading", () => {
     expect(seen.every((visible) => !visible)).toBe(true);
     await tick(2);
     expect(screen.getByTestId("placeholder")).toHaveTextContent("true");
+    // The strings land right after the placeholder appeared: it stays for the house minimum
+    // (300 ms from when it was shown) instead of flashing for a frame, and content waits for it.
     await act(async () => resolve());
+    await tick(100);
+    expect(screen.getByTestId("placeholder")).toHaveTextContent("true");
+    expect(screen.queryByText("content")).toBeNull();
+    await tick(250);
     expect(screen.queryByTestId("placeholder")).toBeNull();
     expect(screen.getByText("content")).toBeVisible();
+  });
+
+  it("keeps a shown placeholder for at least 300 ms even when the load ends at 160 ms", async () => {
+    const { default: NamespaceBoundary } = await import("./namespace-boundary");
+    render(
+      <NamespaceBoundary
+        fallback={(visible) =>
+          visible ? <p data-testid="placeholder">loading</p> : null
+        }
+      >
+        <p>content</p>
+      </NamespaceBoundary>,
+      { wrapper: Wrapper },
+    );
+    await tick(160);
+    expect(screen.getByTestId("placeholder")).toBeVisible();
+    await act(async () => resolve());
+    await tick(10);
+    // Ten milliseconds after the load, the placeholder is still there (no single-frame flash).
+    expect(screen.getByTestId("placeholder")).toBeVisible();
+    expect(screen.queryByText("content")).toBeNull();
+    await tick(300);
+    expect(screen.queryByTestId("placeholder")).toBeNull();
+    expect(screen.getByText("content")).toBeVisible();
+  });
+
+  it("shows an error at once, without waiting for the placeholder minimum", async () => {
+    const { default: NamespaceBoundary } = await import("./namespace-boundary");
+    loader.mockImplementation(() => Promise.reject(new Error("offline")));
+    render(
+      <NamespaceBoundary
+        fallback={(visible) =>
+          visible ? <p data-testid="placeholder">loading</p> : null
+        }
+      >
+        <p>content</p>
+      </NamespaceBoundary>,
+      { wrapper: Wrapper },
+    );
+    await tick(0);
+    expect(screen.getByRole("alert")).toBeVisible();
+    expect(screen.queryByText("content")).toBeNull();
   });
 
   it("never shows the placeholder when the strings land inside the delay", async () => {
@@ -181,7 +229,8 @@ describe("context menu placeholder", () => {
     await tick(40);
     const popup = screen.getByTestId("work-item-context-menu-loading");
     const rows = screen.getAllByTestId("work-item-context-menu-loading-row");
-    expect(rows).toHaveLength(5);
+    // The controller's own loading menu (copy link + status) is two rows; so is the skeleton.
+    expect(rows).toHaveLength(2);
     // Same width and row height tokens as the real menu, so nothing resizes on arrival.
     expect(popup.className).toContain("w-46");
     for (const placeholder of rows) {
@@ -206,9 +255,50 @@ describe("context menu placeholder", () => {
     expect(itemSource).toContain("min-h-8");
     expect(itemSource).toContain("sm:min-h-7");
     await act(async () => resolve());
+    await tick(350);
     expect(screen.queryByTestId("work-item-context-menu-loading")).toBeNull();
-    await tick(0);
     expect(screen.getByText("real menu")).toBeVisible();
+  });
+
+  it("has the geometry of the controller's loading menu, so the handoff neither resizes nor moves the popup", async () => {
+    const { default: Presentation } = await import(
+      "@/components/kanban-board/task-card-context-menu/task-context-menu-presentation"
+    );
+    const { default: Skeleton } = await import(
+      "@/components/work-item/work-item-context-menu-skeleton"
+    );
+    const { ContextMenuItem } = await import("@taskdesk/ui");
+    const real = render(
+      <ContextMenu open>
+        <Presentation
+          onCopyLink={() => undefined}
+          status={<ContextMenuItem disabled>Loading</ContextMenuItem>}
+        />
+      </ContextMenu>,
+      { wrapper: Wrapper },
+    );
+    const realPopup = document.querySelector(
+      "[data-slot=context-menu-content]",
+    );
+    const realItems = document.querySelectorAll(
+      "[data-slot=context-menu-item]",
+    );
+    const realWidth = realPopup?.className.match(/\bw-\d+\b/)?.[0];
+    expect(realItems).toHaveLength(2);
+    real.unmount();
+    render(
+      <ContextMenu open>
+        <Skeleton visible />
+      </ContextMenu>,
+      { wrapper: Wrapper },
+    );
+    const popup = screen.getByTestId("work-item-context-menu-loading");
+    expect(popup.className).toContain(realWidth);
+    expect(
+      screen.getAllByTestId("work-item-context-menu-loading-row"),
+    ).toHaveLength(realItems.length);
+    // No separator: the controller's loading menu has none either.
+    expect(popup.querySelector("[class*='h-px']")).toBeNull();
   });
 
   it("is unmounted cleanly: the skeleton popup is a real ContextMenuContent of the same width", async () => {
@@ -252,6 +342,7 @@ describe("deletion approval placeholder", () => {
     expect(approval).toContain('className="h-32 w-full"');
     expect(screen.getByRole("dialog")).toBe(dialogBefore);
     await act(async () => resolve());
+    await tick(350);
     expect(screen.queryByTestId("pending-action-approval-loading")).toBeNull();
     expect(screen.getByText("real approval")).toBeVisible();
     // Same dialog element: the shell never remounted.
@@ -276,7 +367,7 @@ describe("deep link straight into a pane", () => {
     expect(screen.getByTestId("work-item-detail-loading")).toBeVisible();
     expect(document.body.textContent).not.toMatch(/\w+:[\w.]+/);
     await act(async () => resolve());
-    await tick(0);
+    await tick(350);
     expect(screen.getByText("real pane body")).toBeVisible();
   });
 });

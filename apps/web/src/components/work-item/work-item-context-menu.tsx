@@ -109,11 +109,7 @@ export default function WorkItemContextMenu({
             />
           )}
         >
-          <Suspense
-            fallback={
-              <WorkItemContextMenuSkeleton keyboardAnchor={keyboardAnchor} />
-            }
-          >
+          <Suspense fallback={null}>
             <CanonicalTaskMenu
               key={`${intent.workspaceId}:${intent.projectId}:${intent.key}`}
               workspaceId={intent.workspaceId}

@@ -201,14 +201,16 @@ let languageSwitch = 0;
 /**
  * Switches the base instance to `localeInput` only once the complete new locale (eager and
  * deferred namespaces) is in its store, so the page never shows a mix of two languages. Until
- * then everything stays in the current language. If the fetch fails the switch still happens and
- * the namespace boundaries keep gating deferred surfaces. Returns false when a newer switch
- * superseded this one.
+ * then everything stays in the current language. Every call is a new request that cancels any
+ * switch still loading, including a request for the language already shown (a quick
+ * English, German, English never ends in German). If the complete locale cannot be loaded the
+ * language is NOT switched and this returns false, so the caller can retry later. Also returns
+ * false when a newer request superseded this one.
  */
 export async function switchLanguage(localeInput: string): Promise<boolean> {
   const locale = resolveLocale(localeInput, getBrowserLocale());
-  if (i18n.language === locale) return true;
   const request = ++languageSwitch;
+  if (i18n.language === locale) return true;
   try {
     const resources: Record<string, unknown> = useNamespaceGroups
       ? {
@@ -216,11 +218,12 @@ export async function switchLanguage(localeInput: string): Promise<boolean> {
           ...(await loadRestResources(locale)),
         }
       : await loadLocaleResources(locale);
+    if (request !== languageSwitch) return false;
     for (const [namespace, bundle] of Object.entries(resources))
       if (!i18n.hasResourceBundle(locale, namespace))
         i18n.addResourceBundle(locale, namespace, bundle, false, false);
   } catch {
-    // changeLanguage below fetches what it can; deferred surfaces stay behind their boundary.
+    return false;
   }
   if (request !== languageSwitch) return false;
   await i18n.changeLanguage(locale);
