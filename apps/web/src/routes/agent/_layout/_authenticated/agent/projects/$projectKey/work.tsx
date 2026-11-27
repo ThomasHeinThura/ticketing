@@ -33,7 +33,9 @@ import loadWorkItemBoardView, {
   preloadWorkItemBoardView,
 } from "@/components/work-item/load-work-item-board-view";
 import { preloadWorkItemList } from "@/components/work-item/load-work-item-list";
-import loadWorkItemSidePane from "@/components/work-item/load-work-item-side-pane";
+import loadWorkItemSidePane, {
+  warmWorkItemSidePane,
+} from "@/components/work-item/load-work-item-side-pane";
 import { preloadWorkItemTable } from "@/components/work-item/load-work-item-table";
 import { loadedModuleThenable } from "@/components/work-item/loaded-module-thenable";
 import { useModuleReady } from "@/components/work-item/use-module-ready";
@@ -384,7 +386,12 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     afterPrimaryContent({
       signal: abort.signal,
       onPrimaryContentReady: preloadSidePane,
-    }).then(preloadSidePane, () => undefined);
+    })
+      .then(preloadSidePane, () => undefined)
+      // Once the list has settled (rows painted, main thread idle) the pane's body, detail code
+      // and deferred strings follow, unless the user is on Save-Data or a slow link or has
+      // left. Item data is never fetched here: it loads on intent (hover, focus, mouse press).
+      .then(() => warmWorkItemSidePane(abort.signal));
     return () => abort.abort();
   }, []);
   const focusRestoreGenerationRef = useRef(0);
@@ -1284,6 +1291,9 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
               itemKey={item}
               onClose={handleCloseSidePane}
               onReady={handleSidePaneReady}
+              listRow={
+                item ? visibleItems?.find((row) => row.key === item) : undefined
+              }
             />
           </Suspense>
         ) : null}

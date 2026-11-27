@@ -1,8 +1,17 @@
 import { closestCorners, DndContext, DragOverlay } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Alert, AlertDescription, Button } from "@taskdesk/ui";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import {
+  type FocusEvent,
+  lazy,
+  type PointerEvent,
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { ListColumnSection } from "@/components/list-view/list-column-section";
@@ -30,6 +39,7 @@ import loadWorkItemInlineFields, {
 } from "./load-work-item-inline-fields";
 import useWorkItemDragDrop from "./use-work-item-drag-drop";
 import type { VirtualizedSortableItem } from "./virtualization/virtualized-sortable-list";
+import { warmWorkItemDetailOnIntent } from "./warm-work-item-detail-on-intent";
 import WorkItemContextMenu from "./work-item-context-menu";
 import WorkItemLightList, {
   canPreviewWorkItemList,
@@ -50,6 +60,14 @@ const rowModulesLoaded = () =>
 // biome-ignore format: the contrast gate reads the lazy loader binding from a one-line `lazy(loader)`
 const VirtualizedSortableList = lazy(loadVirtualizedSortableList) as unknown as typeof import("./virtualization/virtualized-sortable-list").default;
 const WorkItemInlineFields = lazy(loadWorkItemInlineFields);
+
+function isKeyboardFocus(target: EventTarget) {
+  try {
+    return target instanceof Element && target.matches(":focus-visible");
+  } catch {
+    return true; // shortcut: an engine without :focus-visible warms on any focus
+  }
+}
 
 /** True once the row modules are loaded, or their download failed (the lazy path retries). */
 function useRowModulesSettled() {
@@ -85,6 +103,7 @@ export default function WorkItemKaneoList({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const rowModulesSettled = useRowModulesSettled();
   const states = useGetProjectStates(projectId);
   const permission = useWorkspacePermission(workspaceId, projectId);
@@ -195,6 +214,34 @@ export default function WorkItemKaneoList({
       }) satisfies ProjectWithTasks["columns"][number],
   );
   const rowsById = new Map(workItems.map((item) => [item.id, item]));
+  // Intent only: a mouse over the row, keyboard focus on it, or a mouse press starts reading its
+  // item so the pane opens with data on the way. Touch and idle never do (G11 side pane).
+  const warmRowDetail = (target: EventTarget | null) => {
+    if (!props.onOpenItem || !(target instanceof Element)) return;
+    const row = target.closest<HTMLElement>("[data-task-id]");
+    const item = row?.dataset.taskId
+      ? rowsById.get(row.dataset.taskId)
+      : undefined;
+    if (item && !item.unavailableFields.includes("key"))
+      warmWorkItemDetailOnIntent(queryClient, item.key);
+  };
+  const handleRowPointerOver = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "mouse") return;
+    const row = (event.target as Element).closest("[data-task-id]");
+    if (
+      row &&
+      event.relatedTarget instanceof Node &&
+      row.contains(event.relatedTarget)
+    )
+      return;
+    warmRowDetail(event.target);
+  };
+  const handleRowPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse") warmRowDetail(event.target);
+  };
+  const handleRowFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (isKeyboardFocus(event.target)) warmRowDetail(event.target);
+  };
   const renderTaskRow = (
     task: ProjectWithTasks["columns"][number]["tasks"][number],
     column: ProjectWithTasks["columns"][number],
@@ -284,7 +331,12 @@ export default function WorkItemKaneoList({
           {drag.notice?.kind === "status" ? drag.notice.text : ""}
         </p>
         <WorkItemContextMenu items={props.workItems}>
-          <div className="divide-y divide-border/50">
+          <div
+            className="divide-y divide-border/50"
+            onPointerOver={handleRowPointerOver}
+            onPointerDown={handleRowPointerDown}
+            onFocusCapture={handleRowFocus}
+          >
             {columns.map((column) => (
               <ListColumnSection
                 key={column.id}

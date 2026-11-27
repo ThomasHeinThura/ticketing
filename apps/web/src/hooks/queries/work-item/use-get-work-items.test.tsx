@@ -577,3 +577,44 @@ describe("canonical unfiltered cursor traversal", () => {
     },
   );
 });
+
+describe("useGetWorkItems: stable select (G11 side pane)", () => {
+  beforeEach(() => {
+    mocks.getWorkItems.mockReset();
+  });
+
+  it("does not re-derive the rows when the hook re-renders without a data change", async () => {
+    let reads = 0;
+    const page = makeResult(["a", "b"]);
+    const rows = page.items;
+    // Counts every pass the select makes over the page's rows.
+    Object.defineProperty(page, "items", {
+      get: () => {
+        reads += 1;
+        return rows;
+      },
+    });
+    mocks.getWorkItems.mockResolvedValue(page);
+    const { result, rerender } = renderHook(
+      ({ tick }: { tick: number }) => {
+        void tick;
+        return useGetWorkItems({
+          projectId: "project-1",
+          sort: "key",
+          dir: "asc",
+        });
+      },
+      { wrapper: createWrapper(), initialProps: { tick: 0 } },
+    );
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
+    const settled = result.current.data;
+    const readsWhenSettled = reads;
+
+    // Opening the side pane re-renders the route; the rows must not be derived again.
+    rerender({ tick: 1 });
+    rerender({ tick: 2 });
+
+    expect(result.current.data).toBe(settled);
+    expect(reads).toBe(readsWhenSettled);
+  });
+});

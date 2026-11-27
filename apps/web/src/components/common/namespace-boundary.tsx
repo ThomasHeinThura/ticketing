@@ -57,7 +57,8 @@ export default function NamespaceBoundary({
   // Started during the first render, not after the commit: the import is cached, so a repeat call
   // (StrictMode, remount) is free, and it runs a frame earlier than an effect would.
   useState(() => {
-    if (!revealed) void preload?.().catch(() => undefined);
+    // `Promise.resolve`: a loaded module's loader answers with a bare synchronous thenable.
+    if (!revealed) void Promise.resolve(preload?.()).catch(() => undefined);
   });
   // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` re-runs the load on retry.
   useEffect(() => {

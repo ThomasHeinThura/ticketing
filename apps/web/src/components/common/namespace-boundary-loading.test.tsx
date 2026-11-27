@@ -103,6 +103,22 @@ describe("namespace boundary loading", () => {
     expect(preload).toHaveBeenCalledTimes(1);
   });
 
+  it("accepts a preload that answers with a bare synchronous thenable (an already loaded module)", async () => {
+    const { default: NamespaceBoundary } = await import("./namespace-boundary");
+    // A warmed loader returns a thenable without `catch`, as `loadedModuleThenable` does.
+    const { loadedModuleThenable } = await import(
+      "@/components/work-item/loaded-module-thenable"
+    );
+    render(
+      <NamespaceBoundary preload={() => loadedModuleThenable({})}>
+        <p>content</p>
+      </NamespaceBoundary>,
+      { wrapper: Wrapper },
+    );
+    await act(async () => resolve());
+    expect(screen.getByText("content")).toBeVisible();
+  });
+
   it("shows no placeholder for a load shorter than the 150 ms delay, then one", async () => {
     const { default: NamespaceBoundary } = await import("./namespace-boundary");
     const seen: boolean[] = [];

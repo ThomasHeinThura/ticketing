@@ -20000,6 +20000,34 @@
 					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
+			},
+			{
+				"backdropLayers": [
+					"bg-muted/60",
+					"bg-accent/35",
+					"bg-muted/20",
+					"bg-background"
+				],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -20029,6 +20057,34 @@
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
+			},
+			{
+				"backdropLayers": [
+					"bg-muted/60",
+					"bg-accent/35",
+					"bg-muted/20",
+					"bg-background"
+				],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -20295,6 +20351,34 @@
 					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
+			},
+			{
+				"backdropLayers": [
+					"bg-muted/60",
+					"bg-accent/35",
+					"bg-muted/20",
+					"bg-background"
+				],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -20324,6 +20408,34 @@
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]::hover:text-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
+			},
+			{
+				"backdropLayers": [
+					"bg-muted/60",
+					"bg-accent/35",
+					"bg-muted/20",
+					"bg-background"
+				],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]>hover:bg-accent",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/div[0]/ActionTooltip[0]/Button[0]",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -21860,6 +21972,21 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -21876,6 +22003,21 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -24793,6 +24935,21 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -24809,6 +24966,21 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -28033,6 +28205,23 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/Button[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -28051,6 +28240,23 @@
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/Button[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -28122,6 +28328,23 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/Button[0]::hover:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -28140,6 +28363,23 @@
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/Button[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -29649,6 +29889,7 @@
 			"apps/web/src/components/work-item/work-item-parent-control.tsx::WorkItemParentControl::Popover[0]/PopoverContent[0]/form[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::DateControl::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/Button[0]/span[0]::text-foreground#0",
+			"apps/web/src/components/work-item/work-item-side-pane-body.tsx::ListRowHeader::div[0]/p[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx::RouteComponent::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/Select[0]/SelectContent[0]/SelectItem[0]/span[0]::text-foreground#0",
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
 			"packages/ui/src/components/autocomplete.tsx::AutocompletePopup::AutocompletePrimitive.Portal[0]/AutocompletePrimitive.Positioner[0]/span[0]/AutocompletePrimitive.Popup[0]::text-foreground#0",
@@ -30195,6 +30436,19 @@
 				"id": "apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/Button[0]/span[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-relations.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-side-pane-body.tsx::ListRowHeader::div[0]/p[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-side-pane-body.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -30349,6 +30603,7 @@
 			"apps/web/src/components/work-item/work-item-parent-control.tsx::WorkItemParentControl::Popover[0]/PopoverContent[0]/form[0]/p[0]::text-foreground#0",
 			"apps/web/src/components/work-item/work-item-properties.tsx::DateControl::Popover[0]/PopoverContent[0]/div[0]/Button[0]::hover:text-foreground#0",
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/Button[0]/span[0]::text-foreground#0",
+			"apps/web/src/components/work-item/work-item-side-pane-body.tsx::ListRowHeader::div[0]/p[0]::text-foreground#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects.tsx::RouteComponent::div[0]/SettingsSidebar[0]/div[0]/SidebarGroup[0]/SidebarGroupContent[0]/Select[0]/SelectContent[0]/SelectItem[0]/span[0]::text-foreground#0",
 			"packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
 			"packages/ui/src/components/autocomplete.tsx::AutocompletePopup::AutocompletePrimitive.Portal[0]/AutocompletePrimitive.Positioner[0]/span[0]/AutocompletePrimitive.Popup[0]::text-foreground#0",
@@ -30895,6 +31150,19 @@
 				"id": "apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/Button[0]/span[0]::text-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-relations.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-side-pane-body.tsx::ListRowHeader::div[0]/p[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-side-pane-body.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -46708,6 +46976,21 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:/_layout/_authenticated/agent/my-work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -46738,6 +47021,21 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -60050,6 +60348,21 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-light-list.tsx::WorkItemLightList::div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-light-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/my-work.tsx:/_layout/_authenticated/agent/my-work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -60080,6 +60393,21 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::LazyActionTooltip[0]/Button[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -81418,6 +81746,23 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -82507,6 +82852,25 @@
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/Alert[0]/AlertDescription[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-muted/20", "bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/Alert[0]/AlertDescription[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -86955,6 +87319,23 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -88044,6 +88425,25 @@
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/Alert[0]/AlertDescription[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-muted/20", "bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/Alert[0]/AlertDescription[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -92695,6 +93095,23 @@
 				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
 			}
 		],
 		"backdropLayers": ["bg-background"]
@@ -92740,6 +93157,23 @@
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/list-view/list-column-section.tsx::ListColumnSection::div[0]/div[0]/Button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/list-view/list-column-section.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -93818,6 +94252,27 @@
 					"jsx:div[0]/div[0]/Button[0]/div[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/column.tsx"
+			},
+			{
+				"backdropLayers": ["bg-accent/35", "bg-muted/20", "bg-background"],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -93840,6 +94295,27 @@
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/column.tsx"
+			},
+			{
+				"backdropLayers": ["bg-accent/35", "bg-muted/20", "bg-background"],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -93882,6 +94358,27 @@
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/column.tsx"
+			},
+			{
+				"backdropLayers": ["bg-accent/35", "bg-muted/20", "bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -93966,6 +94463,27 @@
 					"jsx:div[0]/div[0]/Button[0]/div[0]",
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/column.tsx"
+			},
+			{
+				"backdropLayers": ["bg-accent/35", "bg-muted/20", "bg-background"],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles_.$cycleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles_/$cycleId",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
@@ -93988,6 +94506,27 @@
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/column.tsx"
+			},
+			{
+				"backdropLayers": ["bg-accent/35", "bg-muted/20", "bg-background"],
+				"category": "non-text",
+				"chain": [
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -94030,6 +94569,27 @@
 					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
 					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/lib/column.tsx"
+			},
+			{
+				"backdropLayers": ["bg-accent/35", "bg-muted/20", "bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/list-view/list-column-section.tsx:ListColumnSection",
+					"jsx:div[0]/div[0]/Button[0]/div[0]",
+					"apps/web/src/components/work-item/work-item-kaneo-list.tsx:WorkItemKaneoList",
+					"jsx:div[0]/DndContext[0]/WorkItemContextMenu[0]/div[0]/ListColumnSection[0]",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -97393,6 +97953,7 @@
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/work-item/work-item-side-pane-body.tsx::ListRowHeader::div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#2",
@@ -101291,6 +101852,19 @@
 				"id": "apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-relations.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-side-pane-body.tsx::ListRowHeader::div[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-side-pane-body.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -103280,6 +103854,7 @@
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/p[0]::text-muted-foreground#1",
+			"apps/web/src/components/work-item/work-item-side-pane-body.tsx::ListRowHeader::div[0]/div[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#1",
 			"apps/web/src/components/work-item/work-item-sla.tsx::WorkItemSla::section[0]/p[0]::text-muted-foreground#2",
@@ -107178,6 +107753,19 @@
 				"id": "apps/web/src/components/work-item/work-item-relations.tsx::WorkItemRelations::RelationsSection[0]/p[0]::text-muted-foreground#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/work-item/work-item-relations.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
+					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
+					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
+				],
+				"id": "apps/web/src/components/work-item/work-item-side-pane-body.tsx::ListRowHeader::div[0]/div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-side-pane-body.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -112837,6 +113425,23 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -112890,6 +113495,20 @@
 					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-items-panel.tsx:WorkItemsPanel",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/work-item/work-items-panel.tsx:WorkItemsPanel",
+					"jsx:div[0]/div[0]/Alert[0]/AlertDescription[0]",
 					"opaque-backdrop:bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -114395,6 +115014,23 @@
 				"chain": [
 					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-item-list.tsx:WorkItemListPresentation",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -114448,6 +115084,20 @@
 					"jsx:div[0]/DelayedSuspense[0]/TaskPageFrame[0]/WorkItemDetail[0]",
 					"component-slot:apps/web/src/components/common/task-layout.tsx:TaskPageFrame.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/work-item/work-items-panel.tsx:WorkItemsPanel",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/work-item/work-items-panel.tsx:WorkItemsPanel",
+					"jsx:div[0]/div[0]/Alert[0]/AlertDescription[0]",
 					"opaque-backdrop:bg-background"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -115731,6 +116381,21 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::div[0]/a[0]::text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/triage.tsx:/_layout/_authenticated/agent/triage",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
@@ -115858,6 +116523,21 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/modules_.$moduleId.tsx:/_layout/_authenticated/agent/projects/$projectKey/modules_/$moduleId",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/work-item/work-item-list.tsx::WorkItemListPresentation::div[0]/a[0]::text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/work-item/work-item-list.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx:/_layout/_authenticated/agent/projects/$projectKey/work",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
 					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",

@@ -53,3 +53,18 @@ describe("loadWorkItemDetail", () => {
     expect(importDetail).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("loadWorkItemDetail once warm", () => {
+  it("answers with a synchronous thenable so React.lazy reads it in the same render", async () => {
+    const detail = { default: () => null };
+    importDetail.mockResolvedValue(detail);
+    const { default: loadWorkItemDetail } = await import(
+      "./load-work-item-detail"
+    );
+    await loadWorkItemDetail();
+    const seen = vi.fn();
+    loadWorkItemDetail().then(seen);
+    expect(seen).toHaveBeenCalledWith(detail);
+    expect(importDetail).toHaveBeenCalledTimes(1);
+  });
+});

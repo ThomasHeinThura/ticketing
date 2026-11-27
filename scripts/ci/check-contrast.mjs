@@ -1484,6 +1484,20 @@ export function observeInheritedForegroundSurfaces(
         if (file) target = { file, symbol: "default" };
       } else if (lazy[2]) {
         const loader = imported.get(lazy[2]);
+        // A loader declared in this file (`function load() { ... import("./x") }`, kept beside
+        // its boundary so it can answer synchronously once loaded) binds the same way.
+        const declared = loader
+          ? undefined
+          : source.match(
+              new RegExp(
+                `(?:function\\s+${lazy[2]}\\s*\\(|(?:const|let)\\s+${lazy[2]}\\s*=)[^{]*\\{[^}]*?import\\(\\s*["']([^"']+)["']\\s*\\)`,
+                "u",
+              ),
+            )?.[1];
+        if (declared) {
+          const file = resolveDynamicModule(declared);
+          if (file) target = { file, symbol: "default" };
+        }
         if (loader) {
           const loaderSource = requireFromWeb("node:fs").readFileSync(
             path.join(repoRoot, loader.file),

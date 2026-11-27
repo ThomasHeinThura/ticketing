@@ -171,6 +171,22 @@ describe("work route render graph guard", () => {
     ).toBe(false);
   });
 
+  it("recognises a declared loader that answers synchronously once loaded", () => {
+    const declared = (body: string) =>
+      `let done;\nfunction load() {\n  if (done) return done;\n  return import("./surface");\n}\nconst Surface = lazy(load);\n${body}`;
+    expect(
+      isContainedInBoundary(
+        declared(
+          "<NamespaceBoundary preload={load}><Surface /></NamespaceBoundary>",
+        ),
+        "./surface",
+      ),
+    ).toBe(true);
+    expect(isContainedInBoundary(declared("<Surface />"), "./surface")).toBe(
+      false,
+    );
+  });
+
   it("follows dynamic imports and stops only at the boundary component", () => {
     // The form and its label picker are only reached through `lazy(() => import(...))`.
     expect(

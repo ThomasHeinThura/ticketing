@@ -117,7 +117,17 @@ function boundNames(source: string, specifier: string): string[] {
     `([A-Za-z_$][\\w$]*)\\s*=\\s*\\(\\)\\s*=>\\s*import\\(\\s*["']${quoted}["']`,
     "g",
   );
-  for (const [, loader] of source.matchAll(loaders)) {
+  // `function load() { if (done) return done; return import("spec")... }`: a loader that answers
+  // synchronously once loaded, so `React.lazy` never suspends for a warmed surface. Only the
+  // binding is recognised here; the boundary containment check below is unchanged.
+  const declared = new RegExp(
+    `function\\s+([A-Za-z_$][\\w$]*)\\s*\\([^)]*\\)[^{]*\\{[^}]*?import\\(\\s*["']${quoted}["']`,
+    "g",
+  );
+  for (const [, loader] of [
+    ...source.matchAll(loaders),
+    ...source.matchAll(declared),
+  ]) {
     const lazyOf = new RegExp(
       `([A-Za-z_$][\\w$]*)\\s*=\\s*lazy\\(\\s*${loader.replace(/\$/g, "\\$")}\\s*\\)`,
       "g",
