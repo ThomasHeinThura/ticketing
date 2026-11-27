@@ -182,7 +182,7 @@ function TaskRelations({
     return [
       {
         value: "tasks",
-        label: t("tasks:relations.tasksInProject"),
+        label: t("tasksExtra:relations.tasksInProject"),
         items: filteredTasks,
       },
     ];
@@ -198,7 +198,7 @@ function TaskRelations({
       setCommandOpen(false);
       setSearchQuery("");
     } catch {
-      toast.error(t("tasks:relations.linkError"));
+      toast.error(t("tasksExtra:relations.linkError"));
     }
   };
 
@@ -265,15 +265,15 @@ function TaskRelations({
         open={isOpen}
         onOpenChange={setIsOpen}
         count={totalCount}
-        title={t("tasks:relations.title")}
+        title={t("tasksExtra:relations.title")}
         canEdit={canEdit}
-        addLabel={t("tasks:relations.selectTask")}
+        addLabel={t("tasksExtra:relations.selectTask")}
         onAdd={() => setCommandOpen(true)}
       >
         {Object.entries(groupedRelations).map(([type, items]) => (
           <div key={type} className="mt-1.5">
             <span className="text-[11px] text-muted-foreground px-2">
-              {t(`tasks:relations.types.${type}`, {
+              {t(`tasksExtra:relations.types.${type}`, {
                 defaultValue: type.replace(/_/g, " "),
               })}
             </span>
@@ -338,7 +338,9 @@ function TaskRelations({
                             ) : (
                               <div
                                 className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-border/70"
-                                title={t("tasks:popover.assignee.unassigned")}
+                                title={t(
+                                  "tasksExtra:popover.assignee.unassigned",
+                                )}
                               >
                                 <span className="text-[9px] font-medium text-muted-foreground">
                                   ?
@@ -354,7 +356,7 @@ function TaskRelations({
                       <ContextMenuItem
                         onClick={() => handleNavigateToTask(item.task.id)}
                       >
-                        <span>{t("tasks:relations.openTask")}</span>
+                        <span>{t("tasksExtra:relations.openTask")}</span>
                       </ContextMenuItem>
                       {canEdit && (
                         <>
@@ -363,7 +365,9 @@ function TaskRelations({
                             className="text-destructive"
                             onClick={() => void handleRemoveRelation(item.id)}
                           >
-                            <span>{t("tasks:relations.removeRelation")}</span>
+                            <span>
+                              {t("tasksExtra:relations.removeRelation")}
+                            </span>
                           </ContextMenuItem>
                         </>
                       )}
@@ -377,7 +381,7 @@ function TaskRelations({
 
         {totalCount === 0 && (
           <p className="text-xs text-muted-foreground px-2 py-1">
-            {t("tasks:relations.empty")}
+            {t("tasksExtra:relations.empty")}
           </p>
         )}
       </RelationsSection>
@@ -386,7 +390,7 @@ function TaskRelations({
         <CommandDialogPopup>
           <Command items={commandGroups}>
             <CommandInput
-              placeholder={t("tasks:relations.searchPlaceholder")}
+              placeholder={t("tasksExtra:relations.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -395,7 +399,7 @@ function TaskRelations({
                 <div className="text-center py-6">
                   <Search className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    {t("tasks:relations.noTasksFound")}
+                    {t("tasksExtra:relations.noTasksFound")}
                   </p>
                 </div>
               </CommandEmpty>
@@ -443,7 +447,7 @@ function TaskRelations({
                   onClick={() => setSelectedRelationType("related")}
                 >
                   <Link2 className="size-3" />
-                  {t("tasks:relations.related")}
+                  {t("tasksExtra:relations.related")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -452,11 +456,11 @@ function TaskRelations({
                   onClick={() => setSelectedRelationType("blocks")}
                 >
                   <X className="size-3" />
-                  {t("tasks:relations.blocks")}
+                  {t("tasksExtra:relations.blocks")}
                 </Button>
               </div>
               <span className="text-muted-foreground">
-                {t("tasks:relations.selectTask")}
+                {t("tasksExtra:relations.selectTask")}
               </span>
             </CommandFooter>
           </Command>

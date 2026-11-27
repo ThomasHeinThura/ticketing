@@ -183,15 +183,15 @@ describe("canonical Kaneo relations section", () => {
     };
     mount();
     const trigger = await screen.findByRole("button", {
-      name: new RegExp(`^${translate("workItems:relations.type")}(:|$)`),
+      name: new RegExp(`^${translate("workItemsExtra:relations.type")}(:|$)`),
     });
     expect(trigger).toHaveTextContent(
-      translate("workItems:relations.types.relates"),
+      translate("workItemsExtra:relations.types.relates"),
     );
     fireEvent.click(trigger);
     fireEvent.click(
       await screen.findByRole("button", {
-        name: translate("workItems:relations.types.blocks"),
+        name: translate("workItemsExtra:relations.types.blocks"),
       }),
     );
     const next = mocks.navigate.mock.calls.at(-1)?.[0];
@@ -341,7 +341,7 @@ describe("canonical Kaneo relations section", () => {
     fireEvent.contextMenu(await screen.findByText("Linked work"));
     expect(
       await screen.findByRole("menuitem", {
-        name: translate("tasks:relations.openTask"),
+        name: translate("tasksExtra:relations.openTask"),
       }),
     ).toBeVisible();
     expect(

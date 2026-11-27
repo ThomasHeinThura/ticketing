@@ -270,14 +270,14 @@ export default function ProjectCalendarView({
         <ProjectTaskSearchHeader
           value={search.q ?? ""}
           onValueChange={updateQuery}
-          placeholder={t("tasks:boardSearchPlaceholder")}
+          placeholder={t("tasksExtra:boardSearchPlaceholder")}
           clearLabel={t("common:actions.clearAll")}
-          activeLabel={t("tasks:boardSearchActive")}
+          activeLabel={t("tasksExtra:boardSearchActive")}
         />
       }
     >
       <PageTitle
-        title={t("tasks:calendar.pageTitle", { name: project?.name })}
+        title={t("tasksExtra:calendar.pageTitle", { name: project?.name })}
         hideAppName
       />
       <div className="flex h-full min-h-0 flex-col bg-background">

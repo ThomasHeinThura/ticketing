@@ -82,7 +82,7 @@ export default function TaskContextMenuPresentation({
       anchor={keyboardAnchor}
     >
       <ContextMenuItem onClick={onCopyLink}>
-        <span>{t("tasks:contextMenu.copyLink")}</span>
+        <span>{t("tasksExtra:contextMenu.copyLink")}</span>
       </ContextMenuItem>
       {status}
       {priority || states || dueDate || assignee ? (
@@ -225,7 +225,7 @@ export default function TaskContextMenuPresentation({
         <>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={onArchive} disabled={disabled}>
-            <span>{t("tasks:actions.archive")}</span>
+            <span>{t("tasksExtra:actions.archive")}</span>
           </ContextMenuItem>
           {extraArchiveAction}
         </>
@@ -241,7 +241,7 @@ export default function TaskContextMenuPresentation({
               onDelete();
             }}
           >
-            <span>{t("tasks:actions.delete")}</span>
+            <span>{t("tasksExtra:actions.delete")}</span>
           </ContextMenuItem>
         </>
       ) : null}

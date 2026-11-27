@@ -98,7 +98,7 @@ export default function WorkItemContextMenuContent(props: Props) {
           window.location.origin,
         ).href,
       );
-      toast.success(t("tasks:contextMenu.copyLinkSuccess"));
+      toast.success(t("tasksExtra:contextMenu.copyLinkSuccess"));
     } catch {
       toast.error(t("common:error.description"));
     }
@@ -211,7 +211,8 @@ function CanonicalMenuActions({
   );
   const deletion = useWorkItemDeletion(item, onAccessLost);
   useEffect(() => {
-    if (deletion.failed) toast.error(t("workItems:deletion.requestFailed"));
+    if (deletion.failed)
+      toast.error(t("workItemsExtra:deletion.requestFailed"));
   }, [deletion.failed, t]);
   const mutation = useMutation({
     scope: workItemMutationScope(item.key),
@@ -329,7 +330,7 @@ function CanonicalMenuActions({
       await mutation.mutateAsync(command);
       if (lifecycle.isCurrent(intent)) {
         setConfirmation(undefined);
-        toast.success(t("tasks:update.success"));
+        toast.success(t("tasksExtra:update.success"));
       }
     } catch (error) {
       if (!lifecycle.isCurrent(intent)) return;
@@ -483,7 +484,7 @@ function CanonicalMenuActions({
                     setMoveOpen(true);
                   }}
                 >
-                  <span>{t("workItems:move.action")}</span>
+                  <span>{t("workItemsExtra:move.action")}</span>
                 </ContextMenuItem>
               ) : null}
               {canEdit && scopedMembership?.canEdit ? (
@@ -513,7 +514,7 @@ function CanonicalMenuActions({
             <ContextMenuItem disabled>
               {t(
                 deletion.failed
-                  ? "workItems:deletion.requestFailed"
+                  ? "workItemsExtra:deletion.requestFailed"
                   : offers.isError
                     ? "workItems:journey.transitionsError"
                     : "workItems:journey.peopleError",

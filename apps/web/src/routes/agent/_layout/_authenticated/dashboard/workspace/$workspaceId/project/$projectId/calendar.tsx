@@ -106,7 +106,7 @@ function RouteComponent() {
       <Layout.Content>
         <Alert>
           <AlertDescription>
-            {t("workItems:legacyView.unavailable")}
+            {t("workItemsExtra:legacyView.unavailable")}
           </AlertDescription>
         </Alert>
       </Layout.Content>
@@ -120,7 +120,7 @@ function RouteComponent() {
   )
     return (
       <Layout.Content>
-        <p>{t("workItems:legacyView.opening")}</p>
+        <p>{t("workItemsExtra:legacyView.opening")}</p>
       </Layout.Content>
     );
 

@@ -128,7 +128,7 @@ describe("canonical Kaneo task sheet", () => {
     );
     expect(
       await screen.findByRole("link", {
-        name: "workItems:sidePane.openFullPage",
+        name: "workItemsExtra:sidePane.openFullPage",
       }),
     ).toHaveAttribute("href", "/agent/work-items/HELP-1");
     expect(mocks.detail).toHaveBeenLastCalledWith(

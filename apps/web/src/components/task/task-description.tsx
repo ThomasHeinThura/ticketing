@@ -380,7 +380,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
         shikiSupportedLanguages.has(toShikiLanguage(value)),
       ).map(({ value, label }) => ({
         value,
-        label: t(`tasks:detail.editor.languages.${value}`, {
+        label: t(`tasksExtra:detail.editor.languages.${value}`, {
           defaultValue: label,
         }),
       })),
@@ -451,13 +451,13 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
       const activeEditor = targetEditor || lastEditorRef.current;
 
       if (!activeEditor) {
-        toast.error(t("tasks:detail.editor.upload.failed"));
+        toast.error(t("tasksExtra:detail.editor.upload.failed"));
         return;
       }
 
       const uploadTaskId = taskIdRef.current;
       const loadingToast = toast.loading(
-        t("tasks:detail.editor.upload.loading"),
+        t("tasksExtra:detail.editor.upload.loading"),
       );
 
       try {
@@ -477,15 +477,15 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
         toast.dismiss(loadingToast);
         toast.success(
           uploadedAsset.kind === "image"
-            ? t("tasks:detail.editor.upload.imageSuccess")
-            : t("tasks:detail.editor.upload.fileSuccess"),
+            ? t("tasksExtra:detail.editor.upload.imageSuccess")
+            : t("tasksExtra:detail.editor.upload.fileSuccess"),
         );
       } catch (error) {
         toast.dismiss(loadingToast);
         toast.error(
           error instanceof Error
             ? error.message
-            : t("tasks:detail.editor.upload.failed"),
+            : t("tasksExtra:detail.editor.upload.failed"),
         );
       }
     },
@@ -556,13 +556,13 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
     () => [
       ...SLASH_COMMANDS.map((command) => ({
         ...command,
-        label: t(`tasks:detail.editor.slash.commands.${command.id}`, {
+        label: t(`tasksExtra:detail.editor.slash.commands.${command.id}`, {
           defaultValue: command.label,
         }),
       })),
       {
         id: "file",
-        label: t("tasks:detail.editor.slash.commands.file"),
+        label: t("tasksExtra:detail.editor.slash.commands.file"),
         group: "insert" as const,
         search: "file attachment image photo picture upload",
         run: (activeEditor: Editor, range: SlashRange) => {
@@ -656,7 +656,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
           nested: true,
         }),
         Placeholder.configure({
-          placeholder: t("tasks:detail.editor.placeholder"),
+          placeholder: t("tasksExtra:detail.editor.placeholder"),
         }),
         Table.configure({
           resizable: true,
@@ -884,7 +884,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
       event.preventDefault();
       setPreviewImage({
         src: target.currentSrc || target.src,
-        alt: target.alt || t("tasks:detail.editor.previewImage"),
+        alt: target.alt || t("tasksExtra:detail.editor.previewImage"),
       });
     };
 
@@ -931,19 +931,19 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
   const groupedSlashCommands = useMemo(
     () => [
       {
-        title: t("tasks:detail.editor.slash.groups.text"),
+        title: t("tasksExtra:detail.editor.slash.groups.text"),
         items: filteredSlashCommands.filter(
           (command) => command.group === "text",
         ),
       },
       {
-        title: t("tasks:detail.editor.slash.groups.lists"),
+        title: t("tasksExtra:detail.editor.slash.groups.lists"),
         items: filteredSlashCommands.filter(
           (command) => command.group === "lists",
         ),
       },
       {
-        title: t("tasks:detail.editor.slash.groups.insert"),
+        title: t("tasksExtra:detail.editor.slash.groups.insert"),
         items: filteredSlashCommands.filter(
           (command) => command.group === "insert",
         ),
@@ -1074,7 +1074,9 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
       if (!canEditRef.current || !editor || !embedComposer) return;
       const url = normalizeUrl(embedComposer.url);
       if (!url) {
-        setEmbedComposerError(t("tasks:detail.editor.embed.errors.invalidUrl"));
+        setEmbedComposerError(
+          t("tasksExtra:detail.editor.embed.errors.invalidUrl"),
+        );
         return;
       }
 
@@ -1109,7 +1111,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
       } else {
         if (!isYouTubeUrl(url)) {
           setEmbedComposerError(
-            t("tasks:detail.editor.embed.errors.onlyYoutube"),
+            t("tasksExtra:detail.editor.embed.errors.onlyYoutube"),
           );
           return;
         }
@@ -1309,7 +1311,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
   const activeCodeLanguageLabel =
     codeLanguages.find(
       (language) => language.value === hoveredCodeBlock?.language,
-    )?.label || t("tasks:detail.editor.autoDetect");
+    )?.label || t("tasksExtra:detail.editor.autoDetect");
 
   useEffect(() => {
     return () => {
@@ -1391,7 +1393,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
   return (
     <TaskDescriptionPresentation
       ref={editorShellRef}
-      aria-label={t("tasks:detail.editor.ariaLabel")}
+      aria-label={t("tasksExtra:detail.editor.ariaLabel")}
       className={cn(
         "taskdesk-tiptap-shell group",
         isDragActive && "is-drag-active",
@@ -1440,8 +1442,8 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
             className="taskdesk-codeblock-language-trigger taskdesk-codeblock-copy-trigger"
             aria-label={
               isCodeCopied
-                ? t("tasks:detail.editor.copied")
-                : t("tasks:detail.editor.copyCode")
+                ? t("tasksExtra:detail.editor.copied")
+                : t("tasksExtra:detail.editor.copyCode")
             }
             onMouseDown={(event) => {
               event.preventDefault();
@@ -1457,8 +1459,8 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
             )}
             <span>
               {isCodeCopied
-                ? t("tasks:detail.editor.copied")
-                : t("tasks:detail.editor.copy")}
+                ? t("tasksExtra:detail.editor.copied")
+                : t("tasksExtra:detail.editor.copy")}
             </span>
           </Button>
           {canEdit && (
@@ -1487,7 +1489,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
                   onValueChange={setCodeLanguage}
                 >
                   <DropdownMenuRadioItem value="auto">
-                    {t("tasks:detail.editor.autoDetect")}
+                    {t("tasksExtra:detail.editor.autoDetect")}
                   </DropdownMenuRadioItem>
                   <DropdownMenuSeparator />
                   {codeLanguages.map(({ value, label }) => (
@@ -1673,7 +1675,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
               "taskdesk-tiptap-bubble-btn",
               editor.isActive("link") && "bg-accent text-accent-foreground",
             )}
-            aria-label={t("tasks:detail.editor.enterUrl")}
+            aria-label={t("tasksExtra:detail.editor.enterUrl")}
             onClick={() => setLink()}
           >
             <Link2 className="size-3.5" />
@@ -1691,7 +1693,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
           }
         >
           <ActionTooltip
-            label={t("tasks:editor.table.addColumnBefore", {
+            label={t("tasksExtra:editor.table.addColumnBefore", {
               defaultValue: "Insert column left",
             })}
           >
@@ -1700,7 +1702,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
               variant="ghost"
               size="xs"
               className="taskdesk-tiptap-bubble-btn"
-              aria-label={t("tasks:editor.table.addColumnBefore", {
+              aria-label={t("tasksExtra:editor.table.addColumnBefore", {
                 defaultValue: "Insert column left",
               })}
               onClick={() => editor.chain().focus().addColumnBefore().run()}
@@ -1709,7 +1711,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
             </Button>
           </ActionTooltip>
           <ActionTooltip
-            label={t("tasks:editor.table.addColumnAfter", {
+            label={t("tasksExtra:editor.table.addColumnAfter", {
               defaultValue: "Insert column right",
             })}
           >
@@ -1718,7 +1720,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
               variant="ghost"
               size="xs"
               className="taskdesk-tiptap-bubble-btn"
-              aria-label={t("tasks:editor.table.addColumnAfter", {
+              aria-label={t("tasksExtra:editor.table.addColumnAfter", {
                 defaultValue: "Insert column right",
               })}
               onClick={() => editor.chain().focus().addColumnAfter().run()}
@@ -1727,7 +1729,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
             </Button>
           </ActionTooltip>
           <ActionTooltip
-            label={t("tasks:editor.table.deleteColumn", {
+            label={t("tasksExtra:editor.table.deleteColumn", {
               defaultValue: "Delete column",
             })}
           >
@@ -1736,7 +1738,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
               variant="ghost"
               size="xs"
               className={cn("taskdesk-tiptap-bubble-btn", "text-destructive")}
-              aria-label={t("tasks:editor.table.deleteColumn", {
+              aria-label={t("tasksExtra:editor.table.deleteColumn", {
                 defaultValue: "Delete column",
               })}
               onClick={() => editor.chain().focus().deleteColumn().run()}
@@ -1746,7 +1748,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
           </ActionTooltip>
           <span className="taskdesk-tiptap-bubble-separator" />
           <ActionTooltip
-            label={t("tasks:editor.table.addRowBefore", {
+            label={t("tasksExtra:editor.table.addRowBefore", {
               defaultValue: "Insert row above",
             })}
           >
@@ -1755,7 +1757,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
               variant="ghost"
               size="xs"
               className="taskdesk-tiptap-bubble-btn"
-              aria-label={t("tasks:editor.table.addRowBefore", {
+              aria-label={t("tasksExtra:editor.table.addRowBefore", {
                 defaultValue: "Insert row above",
               })}
               onClick={() => editor.chain().focus().addRowBefore().run()}
@@ -1764,7 +1766,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
             </Button>
           </ActionTooltip>
           <ActionTooltip
-            label={t("tasks:editor.table.addRowAfter", {
+            label={t("tasksExtra:editor.table.addRowAfter", {
               defaultValue: "Insert row below",
             })}
           >
@@ -1773,7 +1775,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
               variant="ghost"
               size="xs"
               className="taskdesk-tiptap-bubble-btn"
-              aria-label={t("tasks:editor.table.addRowAfter", {
+              aria-label={t("tasksExtra:editor.table.addRowAfter", {
                 defaultValue: "Insert row below",
               })}
               onClick={() => editor.chain().focus().addRowAfter().run()}
@@ -1782,7 +1784,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
             </Button>
           </ActionTooltip>
           <ActionTooltip
-            label={t("tasks:editor.table.deleteRow", {
+            label={t("tasksExtra:editor.table.deleteRow", {
               defaultValue: "Delete row",
             })}
           >
@@ -1791,7 +1793,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
               variant="ghost"
               size="xs"
               className={cn("taskdesk-tiptap-bubble-btn", "text-destructive")}
-              aria-label={t("tasks:editor.table.deleteRow", {
+              aria-label={t("tasksExtra:editor.table.deleteRow", {
                 defaultValue: "Delete row",
               })}
               onClick={() => editor.chain().focus().deleteRow().run()}
@@ -1801,7 +1803,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
           </ActionTooltip>
           <span className="taskdesk-tiptap-bubble-separator" />
           <ActionTooltip
-            label={t("tasks:editor.table.deleteTable", {
+            label={t("tasksExtra:editor.table.deleteTable", {
               defaultValue: "Delete table",
             })}
           >
@@ -1810,7 +1812,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
               variant="ghost"
               size="xs"
               className={cn("taskdesk-tiptap-bubble-btn", "text-destructive")}
-              aria-label={t("tasks:editor.table.deleteTable", {
+              aria-label={t("tasksExtra:editor.table.deleteTable", {
                 defaultValue: "Delete table",
               })}
               onClick={() => editor.chain().focus().deleteTable().run()}
@@ -1879,7 +1881,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
             })
           ) : (
             <div className="taskdesk-tiptap-slash-empty">
-              {t("tasks:detail.editor.slash.empty")}
+              {t("tasksExtra:detail.editor.slash.empty")}
             </div>
           )}
         </div>
@@ -1905,7 +1907,9 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
                   submitEmbedComposer("embed");
                 }}
               >
-                <span>{t("tasks:detail.editor.embed.choice.embedVideo")}</span>
+                <span>
+                  {t("tasksExtra:detail.editor.embed.choice.embedVideo")}
+                </span>
                 <span className="taskdesk-embed-choice-hint">Tab</span>
               </Button>
               <Button
@@ -1918,7 +1922,9 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
                   setEmbedComposerError("");
                 }}
               >
-                <span>{t("tasks:detail.editor.embed.choice.keepAsLink")}</span>
+                <span>
+                  {t("tasksExtra:detail.editor.embed.choice.keepAsLink")}
+                </span>
                 <span className="taskdesk-embed-choice-hint">Esc</span>
               </Button>
             </div>
@@ -1939,7 +1945,9 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
                   );
                   if (embedComposerError) setEmbedComposerError("");
                 }}
-                placeholder={t("tasks:detail.editor.embed.inputPlaceholder")}
+                placeholder={t(
+                  "tasksExtra:detail.editor.embed.inputPlaceholder",
+                )}
                 autoFocus
               />
               <div className="taskdesk-embed-composer-actions">
@@ -1949,10 +1957,10 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
                   variant="ghost"
                   onClick={() => submitEmbedComposer("link")}
                 >
-                  {t("tasks:detail.editor.embed.asLink")}
+                  {t("tasksExtra:detail.editor.embed.asLink")}
                 </Button>
                 <Button type="submit" size="xs">
-                  {t("tasks:detail.editor.embed.submit")}
+                  {t("tasksExtra:detail.editor.embed.submit")}
                 </Button>
                 <Button
                   type="button"
@@ -1991,14 +1999,14 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
             event.preventDefault();
           }}
           onClick={() => openImagePicker(editor)}
-          aria-label={t("tasks:detail.editor.attachFile")}
+          aria-label={t("tasksExtra:detail.editor.attachFile")}
         >
           <Paperclip className="size-3.5" />
         </Button>
       )}
       {canEdit && isDragActive && (
         <div className="taskdesk-editor-drop-indicator">
-          <span>{t("tasks:detail.editor.dropToUpload")}</span>
+          <span>{t("tasksExtra:detail.editor.dropToUpload")}</span>
         </div>
       )}
       {linkUrl !== null && editor && !editor.isDestroyed && (
@@ -2007,7 +2015,7 @@ function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
           scopeKey={taskId}
           editable={canEdit}
           initialUrl={linkUrl}
-          label={t("tasks:detail.editor.enterUrl")}
+          label={t("tasksExtra:detail.editor.enterUrl")}
           onClose={() => setLinkUrl(null)}
         />
       )}

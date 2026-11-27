@@ -40,13 +40,13 @@ export default function TaskDueDatePopover({
         ...currentTask,
         dueDate: date?.toISOString() || null,
       });
-      toast.success(t("tasks:popover.dueDate.updateSuccess"));
+      toast.success(t("tasksExtra:popover.dueDate.updateSuccess"));
       setOpen(false);
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : t("tasks:popover.dueDate.updateError"),
+          : t("tasksExtra:popover.dueDate.updateError"),
       );
     }
   };
@@ -76,7 +76,7 @@ export default function TaskDueDatePopover({
               onClick={() => handleDateChange(undefined)}
             >
               <X className="h-4 w-4" />
-              {t("tasks:popover.dueDate.clear")}
+              {t("tasksExtra:popover.dueDate.clear")}
             </Button>
           </div>
         )}

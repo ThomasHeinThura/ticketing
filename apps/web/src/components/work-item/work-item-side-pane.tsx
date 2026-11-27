@@ -29,7 +29,7 @@ export default function WorkItemSidePane({
     <TaskDetailsSheetFrame
       itemId={itemKey}
       onClose={onClose}
-      ariaLabel={t("workItems:sidePane.ariaLabel", { key: itemKey ?? "" })}
+      ariaLabel={t("workItemsExtra:sidePane.ariaLabel", { key: itemKey ?? "" })}
     >
       {(visibleItemKey) => (
         <DelayedSuspense

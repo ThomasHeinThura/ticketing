@@ -59,7 +59,7 @@ export function TaskDeskIssueLinkView({ node }: NodeViewProps) {
   const resolvedIssueKey =
     issueKey ||
     (projectSlug && task?.number ? `${projectSlug}-${task.number}` : "");
-  const title = task?.title || issueKey || t("tasks:entity.task");
+  const title = task?.title || issueKey || t("tasksExtra:entity.task");
   const status = task?.status
     ? t(`tasks:status.${task.status}`)
     : t("tasks:status.to-do");
@@ -100,7 +100,7 @@ export function TaskDeskIssueLinkView({ node }: NodeViewProps) {
         >
           <div className="taskdesk-issue-link-preview-top">
             <span className="taskdesk-issue-link-preview-key">
-              {resolvedIssueKey || t("tasks:entity.task")}
+              {resolvedIssueKey || t("tasksExtra:entity.task")}
             </span>
             <span className="taskdesk-issue-link-preview-assignee">
               {assignee}

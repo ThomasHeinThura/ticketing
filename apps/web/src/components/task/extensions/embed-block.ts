@@ -109,7 +109,7 @@ export const EmbedBlock = Node.create({
               "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
             allowfullscreen: "true",
             referrerpolicy: "strict-origin-when-cross-origin",
-            title: i18n.t("tasks:detail.editor.embed.embeddedContent"),
+            title: i18n.t("tasksExtra:detail.editor.embed.embeddedContent"),
           },
         ],
       ];
@@ -122,7 +122,7 @@ export const EmbedBlock = Node.create({
         [
           "div",
           { class: "taskdesk-embed-unsupported" },
-          i18n.t("tasks:detail.editor.embed.onlyYoutubeInline"),
+          i18n.t("tasksExtra:detail.editor.embed.onlyYoutubeInline"),
         ],
       ];
     }

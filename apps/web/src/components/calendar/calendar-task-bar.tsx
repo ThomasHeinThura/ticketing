@@ -114,7 +114,7 @@ export default function CalendarTaskBar({
         aria-label={
           selectionMode
             ? t("workItems:bulk.selectItem", { key: taskKey ?? task.title })
-            : t("tasks:calendar.taskAriaLabel", {
+            : t("tasksExtra:calendar.taskAriaLabel", {
                 title: task.title,
                 range,
               })

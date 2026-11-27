@@ -503,12 +503,12 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
         ) : flatBacklogItems.length === 0 ? (
           <Alert data-testid="backlog-empty">
             <AlertTitle>
-              {t("workItems:backlog.emptyTitle", {
+              {t("workItemsExtra:backlog.emptyTitle", {
                 defaultValue: "No backlog items",
               })}
             </AlertTitle>
             <AlertDescription>
-              {t("workItems:backlog.emptyDescription", {
+              {t("workItemsExtra:backlog.emptyDescription", {
                 defaultValue:
                   "Items in backlog or unstarted states appear here for manual ranking.",
               })}
@@ -544,7 +544,7 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
                       </TableHead>
                       {canRank ? (
                         <TableHead className="w-28 text-right">
-                          {t("workItems:backlog.rankColumn", {
+                          {t("workItemsExtra:backlog.rankColumn", {
                             defaultValue: "Order",
                           })}
                         </TableHead>
@@ -604,7 +604,7 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
                         <TableCell>
                           <Badge variant="outline" size="sm">
                             {row.priority
-                              ? t(`workItems:priority.${row.priority}`)
+                              ? t(`workItemsExtra:priority.${row.priority}`)
                               : t("workItems:list.noPriority")}
                           </Badge>
                         </TableCell>

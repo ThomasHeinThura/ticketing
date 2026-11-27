@@ -107,7 +107,7 @@ describe("canonical comment deletion intent", () => {
     );
     fireEvent.click(screen.getByRole("button"));
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "workItems:deletion.requestFailed",
+      "workItemsExtra:deletion.requestFailed",
     );
     expect(mocks.openPending).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button"));

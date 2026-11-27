@@ -72,12 +72,12 @@ function setup() {
 }
 function open() {
   fireEvent.click(
-    screen.getByRole("button", { name: /^workItems:parent\.label(:|$)/ }),
+    screen.getByRole("button", { name: /^workItemsExtra:parent\.label(:|$)/ }),
   );
 }
 function typeKey(key: string) {
   fireEvent.change(
-    screen.getByRole("textbox", { name: "workItems:parent.key" }),
+    screen.getByRole("textbox", { name: "workItemsExtra:parent.key" }),
     { target: { value: key } },
   );
 }
@@ -115,7 +115,9 @@ describe("Kaneo parent control", () => {
     setup();
     expect(fake.permission).toHaveBeenCalledWith("ws", "project");
     expect(
-      screen.getByRole("button", { name: /^workItems:parent\.label(:|$)/ }),
+      screen.getByRole("button", {
+        name: /^workItemsExtra:parent\.label(:|$)/,
+      }),
     ).toBeDisabled();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
@@ -129,7 +131,7 @@ describe("Kaneo parent control", () => {
       version: 8,
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:parent.set" }),
+      screen.getByRole("button", { name: "workItemsExtra:parent.set" }),
     );
     await waitFor(() =>
       expect(fake.save).toHaveBeenCalledWith({
@@ -154,7 +156,7 @@ describe("Kaneo parent control", () => {
     await screen.findByRole("alert");
     expect(screen.queryByText(/Private other project/)).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "workItems:parent.set" }),
+      screen.getByRole("button", { name: "workItemsExtra:parent.set" }),
     ).toBeDisabled();
   });
   it("does not look up self or malformed keys", () => {
@@ -164,7 +166,7 @@ describe("Kaneo parent control", () => {
     typeKey("../invalid");
     expect(fake.candidate).not.toHaveBeenCalled();
     expect(
-      screen.getByRole("button", { name: "workItems:parent.set" }),
+      screen.getByRole("button", { name: "workItemsExtra:parent.set" }),
     ).toBeDisabled();
   });
   it("keeps the subject visible when the candidate is unavailable", async () => {
@@ -182,9 +184,9 @@ describe("Kaneo parent control", () => {
     typeKey("OPS-2");
     await screen.findByText("OPS-2 · Candidate");
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:parent.set" }),
+      screen.getByRole("button", { name: "workItemsExtra:parent.set" }),
     );
-    await screen.findByText("workItems:parent.conflict");
+    await screen.findByText("workItemsExtra:parent.conflict");
     expect(screen.getByRole("textbox")).toHaveValue("OPS-2");
     expect(fake.save).toHaveBeenCalledTimes(1);
   });
@@ -192,17 +194,17 @@ describe("Kaneo parent control", () => {
     fake.ancestors = [{ key: "OPS-2" }];
     setup();
     const trigger = screen.getByRole("button", {
-      name: /^workItems:parent\.label(:|$)/,
+      name: /^workItemsExtra:parent\.label(:|$)/,
     });
     expect(trigger).toHaveTextContent("OPS-2");
-    expect(trigger).toHaveAccessibleName("workItems:parent.label: OPS-2");
+    expect(trigger).toHaveAccessibleName("workItemsExtra:parent.label: OPS-2");
   });
   it("detaches with the same versioned mutation path", async () => {
     fake.ancestors = [{ key: "OPS-2" }];
     setup();
     open();
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:parent.remove" }),
+      screen.getByRole("button", { name: "workItemsExtra:parent.remove" }),
     );
     await waitFor(() =>
       expect(fake.save).toHaveBeenCalledWith({
@@ -219,7 +221,9 @@ describe("Kaneo parent control", () => {
     await waitFor(() => expect(onAccessLost).toHaveBeenCalled());
     expect(screen.queryByText("OPS-900")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /^workItems:parent\.label(:|$)/ }),
+      screen.getByRole("button", {
+        name: /^workItemsExtra:parent\.label(:|$)/,
+      }),
     ).toBeDisabled();
   });
 });

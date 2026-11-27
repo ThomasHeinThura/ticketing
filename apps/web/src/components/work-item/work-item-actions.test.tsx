@@ -44,11 +44,11 @@ function mount(onAccessLost = vi.fn(), variant: "menu" | "delete" = "menu") {
 }
 async function chooseDelete() {
   const trigger = screen.getByRole("button", {
-    name: "workItems:deletion.actions",
+    name: "workItemsExtra:deletion.actions",
   });
   fireEvent.click(trigger);
   fireEvent.click(
-    await screen.findByRole("menuitem", { name: "tasks:actions.delete" }),
+    await screen.findByRole("menuitem", { name: "tasksExtra:actions.delete" }),
   );
   return trigger;
 }
@@ -91,7 +91,7 @@ it("hides destructive actions for an archived work item even when the actor can 
     </QueryClientProvider>,
   );
   expect(
-    screen.queryByRole("button", { name: "workItems:deletion.actions" }),
+    screen.queryByRole("button", { name: "workItemsExtra:deletion.actions" }),
   ).toBeNull();
 });
 it("handles reach loss without opening a confirmation", async () => {
@@ -125,9 +125,11 @@ it("uses the same persisted pending-action request from the Kaneo sheet trash bu
   mocks.request.mockResolvedValue({ pendingActionId: "pa-sheet" });
   mount(vi.fn(), "delete");
   expect(
-    screen.queryByRole("button", { name: "workItems:deletion.actions" }),
+    screen.queryByRole("button", { name: "workItemsExtra:deletion.actions" }),
   ).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "tasks:actions.delete" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "tasksExtra:actions.delete" }),
+  );
   await waitFor(() =>
     expect(mocks.openPending).toHaveBeenCalledWith({
       pendingActionId: "pa-sheet",
@@ -138,7 +140,7 @@ it("uses the same persisted pending-action request from the Kaneo sheet trash bu
     | (() => HTMLElement | false)
     | undefined;
   expect(finalFocus?.()).toBe(
-    screen.getByRole("button", { name: "tasks:actions.delete" }),
+    screen.getByRole("button", { name: "tasksExtra:actions.delete" }),
   );
   expect(mocks.request).toHaveBeenCalledWith("HELP-4", expect.anything());
 });

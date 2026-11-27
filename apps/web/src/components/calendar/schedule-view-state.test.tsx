@@ -69,7 +69,7 @@ describe("ScheduleViewState", () => {
       />,
     );
     expect(screen.getByTestId("calendar-empty")).toHaveTextContent(
-      translate("tasks:calendar.noTasks"),
+      translate("tasksExtra:calendar.noTasks"),
     );
     rerender(
       <ScheduleViewState

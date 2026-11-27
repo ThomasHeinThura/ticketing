@@ -46,22 +46,22 @@ describe("MoveWorkItemDialog", () => {
   it("states what happens to sub-items before confirming, and starts with moving them", () => {
     mount();
     expect(
-      screen.getByText(translate("workItems:move.childrenMoveHelp")),
+      screen.getByText(translate("workItemsExtra:move.childrenMoveHelp")),
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("checkbox", {
-        name: translate("workItems:move.children"),
+        name: translate("workItemsExtra:move.children"),
       }),
     );
     expect(
       screen.getByText(
-        translate("workItems:move.childrenDetachHelp", {
+        translate("workItemsExtra:move.childrenDetachHelp", {
           project: "Help desk",
         }),
       ),
     ).toBeTruthy();
     expect(
-      screen.getByText(translate("workItems:move.consequences")),
+      screen.getByText(translate("workItemsExtra:move.consequences")),
     ).toBeTruthy();
   });
 
@@ -69,7 +69,7 @@ describe("MoveWorkItemDialog", () => {
     mount();
     expect(
       screen.getByRole("button", {
-        name: translate("workItems:move.confirm"),
+        name: translate("workItemsExtra:move.confirm"),
       }),
     ).toBeDisabled();
     expect(mocks.move).not.toHaveBeenCalled();

@@ -45,7 +45,7 @@ export default function WorkItemActions({
           variant="ghost"
           size="sm"
           className="text-foreground"
-          aria-label={t("tasks:actions.delete")}
+          aria-label={t("tasksExtra:actions.delete")}
           disabled={isPending}
           onClick={() =>
             void requestDeletion(connectedFocusTarget(deleteButtonRef.current))
@@ -61,7 +61,7 @@ export default function WorkItemActions({
                 ref={menuTriggerRef}
                 variant="ghost"
                 size="sm"
-                aria-label={t("workItems:deletion.actions")}
+                aria-label={t("workItemsExtra:deletion.actions")}
                 disabled={isPending}
               />
             }
@@ -77,14 +77,14 @@ export default function WorkItemActions({
               }
             >
               <Trash2 className="size-4" />
-              {t("tasks:actions.delete")}
+              {t("tasksExtra:actions.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
       {failed && (
         <p role="alert" className="text-xs text-destructive">
-          {t("workItems:deletion.requestFailed")}
+          {t("workItemsExtra:deletion.requestFailed")}
         </p>
       )}
     </div>

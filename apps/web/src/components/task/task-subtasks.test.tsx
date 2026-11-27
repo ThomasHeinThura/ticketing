@@ -100,15 +100,15 @@ describe("TaskSubtasks", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "tasks:subtasks.addAction tasks:subtasks.title",
+        name: "tasksExtra:subtasks.addAction tasksExtra:subtasks.title",
       }),
     );
     fireEvent.change(
-      screen.getByPlaceholderText("tasks:subtasks.inputPlaceholder"),
+      screen.getByPlaceholderText("tasksExtra:subtasks.inputPlaceholder"),
       { target: { value: "Design login form" } },
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "tasks:subtasks.addAction" }),
+      screen.getByRole("button", { name: "tasksExtra:subtasks.addAction" }),
     );
 
     await waitFor(() => expect(mocks.createTask).toHaveBeenCalledTimes(1));
@@ -132,15 +132,15 @@ describe("TaskSubtasks", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "tasks:subtasks.addAction tasks:subtasks.title",
+        name: "tasksExtra:subtasks.addAction tasksExtra:subtasks.title",
       }),
     );
     fireEvent.change(
-      screen.getByPlaceholderText("tasks:subtasks.inputPlaceholder"),
+      screen.getByPlaceholderText("tasksExtra:subtasks.inputPlaceholder"),
       { target: { value: "Implement login form" } },
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "tasks:subtasks.addAction" }),
+      screen.getByRole("button", { name: "tasksExtra:subtasks.addAction" }),
     );
 
     await waitFor(() => expect(mocks.createTask).toHaveBeenCalledTimes(1));
@@ -163,7 +163,7 @@ describe("TaskSubtasks", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "tasks:subtasks.addAction tasks:subtasks.title",
+        name: "tasksExtra:subtasks.addAction tasksExtra:subtasks.title",
       }),
     ).toBeDisabled();
   });
@@ -182,7 +182,7 @@ describe("TaskSubtasks", () => {
 
     expect(
       screen.queryByRole("button", {
-        name: "tasks:subtasks.addAction tasks:subtasks.title",
+        name: "tasksExtra:subtasks.addAction tasksExtra:subtasks.title",
       }),
     ).not.toBeInTheDocument();
   });
