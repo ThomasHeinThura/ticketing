@@ -8,10 +8,17 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import packageJson from "../../package.json";
 import {
+  SPLIT_OUT_NAMESPACES,
+  WORK_ROUTE_BOUNDARY_FREE_MODULES,
+  WORK_ROUTE_GATED_SURFACES,
+  WORK_ROUTE_RENDER_ROOTS,
+} from "./src/lib/i18n/work-route-namespaces";
+import {
   collectRowPaintAssets,
   findDeferredNamespaceUsers,
   i18nNamespaceGroups,
 } from "./vite/i18n-namespace-groups";
+import { findUngatedDeferredReads } from "./vite/namespace-render-graph";
 
 function preloadWorkRouteForDirectVisits(): Plugin {
   return {
@@ -180,6 +187,20 @@ function preloadWorkRouteForDirectVisits(): Plugin {
           ),
         ))
           addStaticClosure(file);
+        // The board layout and the side-pane shell are reached through loader helpers in the
+        // entry and the shared route chunk, so their chunks are not dynamic imports of the route
+        // or panel chunk. Both render on `/work` before any namespace boundary: cover them.
+        for (const item of Object.values(bundle)) {
+          if (
+            item.type === "chunk" &&
+            Object.keys(item.modules).some((moduleId) =>
+              WORK_ROUTE_BOUNDARY_FREE_MODULES.some((suffix) =>
+                moduleId.replaceAll("\\", "/").endsWith(suffix),
+              ),
+            )
+          )
+            addStaticClosure(item.fileName);
+        }
         const paintSources = new Map<string, string>();
         for (const fileName of paintChunks) {
           const chunk = bundle[fileName];
@@ -216,6 +237,25 @@ function preloadWorkRouteForDirectVisits(): Plugin {
           throw new Error(
             "These modules can paint on the work route but use a namespace that loads after first paint:\n" +
               deferredUsers
+                .map(
+                  ({ file, namespace }) =>
+                    `  ${path.relative(__dirname, file)} -> ${namespace}`,
+                )
+                .join("\n"),
+          );
+        // Every render dependency of the work route and shell, following dynamic imports, may read
+        // the split-out namespaces only behind the shared namespace boundary.
+        const ungatedReads = findUngatedDeferredReads({
+          srcDir: path.resolve(__dirname, "src"),
+          roots: WORK_ROUTE_RENDER_ROOTS,
+          gated: WORK_ROUTE_GATED_SURFACES,
+          known: catalogNamespaces,
+          only: SPLIT_OUT_NAMESPACES,
+        });
+        if (ungatedReads.length > 0)
+          throw new Error(
+            "These modules render on the work route or shell outside a namespace boundary but read a split-out namespace:\n" +
+              ungatedReads
                 .map(
                   ({ file, namespace }) =>
                     `  ${path.relative(__dirname, file)} -> ${namespace}`,

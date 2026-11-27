@@ -3,6 +3,7 @@ import { lazy, useLayoutEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { TaskDetailsSheetFrame } from "@/components/task/task-details-sheet";
 import WorkItemDetailLoading from "@/components/work-item/work-item-detail-loading";
+import WorkItemNamespaceBoundary from "./work-item-namespace-boundary";
 
 const WorkItemSidePaneBody = lazy(() => import("./work-item-side-pane-body"));
 
@@ -35,11 +36,13 @@ export default function WorkItemSidePane({
         <DelayedSuspense
           fallback={(visible) => <WorkItemDetailLoading visible={visible} />}
         >
-          <WorkItemSidePaneBody
-            key={visibleItemKey}
-            itemKey={visibleItemKey}
-            onClose={onClose}
-          />
+          <WorkItemNamespaceBoundary>
+            <WorkItemSidePaneBody
+              key={visibleItemKey}
+              itemKey={visibleItemKey}
+              onClose={onClose}
+            />
+          </WorkItemNamespaceBoundary>
         </DelayedSuspense>
       )}
     </TaskDetailsSheetFrame>

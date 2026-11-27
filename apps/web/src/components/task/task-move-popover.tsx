@@ -184,14 +184,14 @@ export default function TaskMovePopover({
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
-      <ActionTooltip label={t("tasks:move.title")}>
+      <ActionTooltip label={t("tasksExtra:move.title")}>
         <PopoverTrigger asChild>
           <Button
             type="button"
             variant="outline"
             size="sm"
             className={cn("text-foreground", triggerClassName)}
-            aria-label={t("tasks:move.title")}
+            aria-label={t("tasksExtra:move.title")}
           >
             <ArrowRightLeft className="size-4" />
           </Button>
@@ -200,12 +200,12 @@ export default function TaskMovePopover({
       <PopoverContent className="w-80 p-3" align="end" sideOffset={4}>
         <div className="flex flex-col gap-3">
           <p className="text-sm font-medium text-foreground">
-            {t("tasks:move.title")}
+            {t("tasksExtra:move.title")}
           </p>
 
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs text-muted-foreground">
-              {t("tasks:move.projectLabel")}
+              {t("tasksExtra:move.projectLabel")}
             </Label>
             <Select
               value={selectedProjectId}
@@ -214,7 +214,9 @@ export default function TaskMovePopover({
               }
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder={t("tasks:move.projectPlaceholder")}>
+                <SelectValue
+                  placeholder={t("tasksExtra:move.projectPlaceholder")}
+                >
                   {selectedProject?.name}
                 </SelectValue>
               </SelectTrigger>
@@ -242,14 +244,16 @@ export default function TaskMovePopover({
                   }}
                 >
                   <span className="text-xs text-muted-foreground">
-                    {t("tasks:move.statusLabel")}…
+                    {t("tasksExtra:move.statusLabel")}…
                   </span>
                 </div>
               </LoadingStatus>
             )}
 
           {selectedProjectId && isProjectError && (
-            <p className="text-xs text-destructive">{t("tasks:move.error")}</p>
+            <p className="text-xs text-destructive">
+              {t("tasksExtra:move.error")}
+            </p>
           )}
 
           {selectedProjectId &&
@@ -259,7 +263,7 @@ export default function TaskMovePopover({
             destinationColumns.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs text-muted-foreground">
-                  {t("tasks:move.statusLabel")}
+                  {t("tasksExtra:move.statusLabel")}
                 </Label>
                 <Select
                   value={effectiveStatus || undefined}
@@ -281,8 +285,8 @@ export default function TaskMovePopover({
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   {canKeepCurrentStatus
-                    ? t("tasks:move.statusHintKeep")
-                    : t("tasks:move.statusHintAdjust")}
+                    ? t("tasksExtra:move.statusHintKeep")
+                    : t("tasksExtra:move.statusHintAdjust")}
                 </p>
               </div>
             )}
@@ -301,7 +305,7 @@ export default function TaskMovePopover({
             }
             className="w-full font-medium"
           >
-            {t("tasks:move.action")}
+            {t("tasksExtra:move.action")}
           </Button>
         </div>
       </PopoverContent>

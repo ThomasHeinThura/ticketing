@@ -30,6 +30,7 @@ import ProjectCrumbSelect from "@/components/common/header/project-crumb-select"
 // measurement that shows it, so the header never settles without it and shifts afterwards.
 import ProjectViewOverflowMenu from "@/components/common/header/project-view-overflow-menu";
 import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
+import useCycleCount from "@/hooks/queries/agile/use-cycle-count";
 import useProjectPagesFeature, {
   useProjectFeature,
 } from "@/hooks/queries/feature-flag/use-project-pages-feature";
@@ -239,6 +240,18 @@ export default function ProjectLayoutControls({
     !permissions.isCheckingPermissions && permissions.canCreateProjects();
   const addProject = canCreateProject ? onAddProject : undefined;
   const { features: agileFeatures } = useAgileFeatures(projectId);
+  // A managed service gets no cycles: its Cycles tab shows only while old cycles still exist.
+  const currentProject = workspaceProjects?.find(
+    (candidate) => candidate.id === projectId,
+  );
+  const managedCycleCount = useCycleCount(
+    candidateSlugForCurrentProject,
+    currentProject?.kind === "managed_service" && agileFeatures.cycles,
+  );
+  const cyclesOn =
+    agileFeatures.cycles &&
+    (currentProject?.kind !== "managed_service" ||
+      (managedCycleCount ?? 0) > 0);
   const pagesOn = useProjectPagesFeature(projectId);
   // P4R1-M2: Calendar and Gantt are offered only while their flags are on (features.md).
   const calendarOn = useProjectFeature(projectId, "feature.calendar");
@@ -248,7 +261,7 @@ export default function ProjectLayoutControls({
   useLayoutEffect(() => {
     if (
       !showViewSwitcher ||
-      (resolvedView === "cycles" && !agileFeatures.cycles) ||
+      (resolvedView === "cycles" && !cyclesOn) ||
       (resolvedView === "modules" && !agileFeatures.modules) ||
       (resolvedView === "pages" && !pagesOn) ||
       (resolvedView === "calendar" && !calendarOn) ||
@@ -275,7 +288,7 @@ export default function ProjectLayoutControls({
   }, [
     resolvedView,
     showViewSwitcher,
-    agileFeatures.cycles,
+    cyclesOn,
     agileFeatures.modules,
     pagesOn,
     calendarOn,
@@ -628,7 +641,7 @@ export default function ProjectLayoutControls({
           },
         ]
       : []),
-    ...(agileFeatures.cycles
+    ...(cyclesOn
       ? [
           {
             view: "cycles" as const,
@@ -723,9 +736,7 @@ export default function ProjectLayoutControls({
                 calendarOn ? handleNavigateToCalendar : undefined
               }
               onSelectGantt={ganttOn ? handleNavigateToGantt : undefined}
-              onSelectCycles={
-                agileFeatures.cycles ? handleNavigateToCycles : undefined
-              }
+              onSelectCycles={cyclesOn ? handleNavigateToCycles : undefined}
               onSelectModules={
                 agileFeatures.modules ? handleNavigateToModules : undefined
               }

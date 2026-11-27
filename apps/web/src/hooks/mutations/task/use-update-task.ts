@@ -95,8 +95,8 @@ export function useUpdateTask() {
     onError: (error) => {
       toast.error(
         error instanceof TaskUpdateError && error.status === 409
-          ? t("tasks:update.conflict")
-          : t("tasks:update.error"),
+          ? t("tasksExtra:update.conflict")
+          : t("tasksExtra:update.error"),
       );
     },
     onSettled: (_data, _error, variables) => {

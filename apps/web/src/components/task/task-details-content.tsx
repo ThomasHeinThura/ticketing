@@ -110,7 +110,7 @@ function TaskDetailsContent({
             >
               <ArrowUpRight className="size-3" />
               <span>
-                {t("tasks:detail.subtaskOf")}{" "}
+                {t("tasksExtra:detail.subtaskOf")}{" "}
                 <span className="font-medium">{parentTask.title}</span>
               </span>
             </Button>
@@ -162,7 +162,9 @@ function TaskActivitySection({ taskId }: { taskId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-md font-semibold">{t("tasks:detail.activity")}</h1>
+      <h1 className="text-md font-semibold">
+        {t("tasksExtra:detail.activity")}
+      </h1>
       {user?.id && <CommentInput taskId={taskId} />}
       {activities.length > 0 ? (
         <Timeline>
@@ -185,7 +187,7 @@ function TaskActivitySection({ taskId }: { taskId: string }) {
         </Timeline>
       ) : (
         <p className="text-sm font-medium text-muted-foreground">
-          {t("tasks:detail.noActivity")}
+          {t("tasksExtra:detail.noActivity")}
         </p>
       )}
     </div>

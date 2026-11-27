@@ -55,7 +55,7 @@ export default function TaskPriorityPopover({
         toast.error(
           error instanceof Error
             ? error.message
-            : t("tasks:popover.priority.updateError"),
+            : t("tasksExtra:popover.priority.updateError"),
         );
       }
     },

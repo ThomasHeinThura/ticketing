@@ -13,6 +13,7 @@ import {
   cycleSnapshotTable,
   cycleTable,
 } from "../../apps/api/src/database/schema-p5-agile";
+import { createCalendar } from "../../apps/api/src/service-calendar/repository";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -130,6 +131,41 @@ describe("cycle CRUD, status and overlap (CY-1..CY-3)", () => {
       },
     );
     expect(rubbish.status).toBe(422);
+  });
+
+  it("refuses a new cycle on a managed service and keeps the existing ones", async () => {
+    const existing = await makeCycle("Before managed", -2, 5);
+    // A managed service needs a support level and an effective service calendar (PR-9).
+    const calendar = await createCalendar({
+      workspaceId: w.project.workspaceId,
+      name: "Support coverage",
+      timezone: "UTC",
+      windows: { mon: [{ from: 540, to: 1020 }] },
+      holidays: [],
+      actor: {
+        actorId: w.manager.user.id,
+        actorType: "person",
+        apiKeyId: null,
+      },
+    });
+    await db
+      .update(schema.projectTable)
+      .set({
+        kind: "managed_service",
+        supportLevel: "L1",
+        serviceCalendarId: calendar.id,
+        serviceCalendarMode: "override",
+      })
+      .where(eq(schema.projectTable.id, w.project.id));
+    const refused = await createCycle("After managed", 10, 12);
+    expect(refused.status).toBe(422);
+    expect(await refused.text()).toContain("managed_service_has_no_cycles");
+    const list = await w.call(
+      w.manager.user,
+      `/api/projects/${w.project.slug}/cycles`,
+    );
+    expect(list.status).toBe(200);
+    expect(JSON.stringify(await list.json())).toContain(existing.id);
   });
 
   it("refuses an overlapping cycle and names the conflicting one (CY-2)", async () => {

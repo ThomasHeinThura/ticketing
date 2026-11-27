@@ -95,15 +95,17 @@ async function holdDeferredGroup(page: Page) {
  * (`layout=list`) opens the side pane on the same route, and its "Open full page" link is the
  * in-app navigation off the work list.
  */
-async function openFirstWorkItem(page: Page) {
+async function openFirstWorkItemPane(page: Page) {
   await page
     .getByTestId("work-item-list-populated")
     .getByRole("link", { name: "WLP-1 Seeded work item 1", exact: true })
     .click();
-  await page
-    .getByRole("dialog", { name: "Work item WLP-1" })
-    .getByRole("link", { name: "Open full page", exact: true })
-    .click();
+  return page.getByRole("dialog", { name: "Work item WLP-1" });
+}
+
+async function openFirstWorkItem(page: Page) {
+  const pane = await openFirstWorkItemPane(page);
+  await pane.getByRole("link", { name: "Open full page", exact: true }).click();
 }
 
 async function navigateInApp(page: Page, path: string) {
@@ -139,11 +141,18 @@ test("opening a work item while the deferred namespaces are held waits for them,
   const release = await holdDeferredGroup(page);
   await page.goto(WORK_LIST_PATH);
   await expect(page.getByTestId("create-work-item-trigger")).toBeVisible();
-  await openFirstWorkItem(page);
+  const pane = await openFirstWorkItemPane(page);
+  await expect(pane).toBeVisible();
   await page.waitForTimeout(1_000);
-  // Still on the list: navigation is gated on the catalog, not rendered with raw keys.
+  // The pane (header actions and detail) is held by the shared namespace boundary: a translated
+  // loading state, no controls and no raw keys until the catalog lands.
+  await expect(pane.getByTestId("work-item-detail-loading")).toBeVisible();
+  await expect(
+    pane.getByRole("link", { name: "Open full page", exact: true }),
+  ).toHaveCount(0);
   expect(await rawKeys(page)).toEqual([]);
   release();
+  await pane.getByRole("link", { name: "Open full page", exact: true }).click();
   await expect(page).toHaveURL(/\/agent\/work-items\/WLP-1/);
   await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   await page.waitForTimeout(500);
@@ -196,7 +205,9 @@ test("when the deferred group and the full catalog both fail, an error is shown 
   await page.route(/\/assets\/en-US-[\w-]+\.js/, (route) => route.abort());
   await page.goto(WORK_LIST_PATH);
   await expect(page.getByTestId("create-work-item-trigger")).toBeVisible();
-  await openFirstWorkItem(page);
-  await expect(page.getByRole("button", { name: "Try Again" })).toBeVisible();
+  const pane = await openFirstWorkItemPane(page);
+  await expect(
+    pane.getByRole("button", { name: "Retry", exact: true }),
+  ).toBeVisible();
   expect(await rawKeys(page)).toEqual([]);
 });

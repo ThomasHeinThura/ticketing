@@ -12,7 +12,6 @@ import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
 import WorkItemActions from "./work-item-actions";
-import WorkItemNamespaceBoundary from "./work-item-namespace-boundary";
 
 const WorkItemDetail = lazy(loadWorkItemDetail);
 
@@ -101,9 +100,6 @@ export default function WorkItemSidePaneBody({
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {/* The item's own loading state sits outside the boundary: inside it, a boundary that
-            had already shown it kept it mounted (hidden) beside its fallback while the detail
-            code loaded, so the pane carried two loading regions at once. */}
         {!isNotFound && !isError && (!item || placeholderVisible) ? (
           <div
             style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
@@ -111,40 +107,36 @@ export default function WorkItemSidePaneBody({
             <WorkItemDetailLoading visible={placeholderVisible} />
           </div>
         ) : (
-          <WorkItemNamespaceBoundary>
-            <DelayedSuspense
-              immediate={isNotFound || isError}
-              fallback={(visible) => (
-                <WorkItemDetailLoading visible={visible} />
-              )}
-            >
-              {item ? (
-                <SidePaneDetailWithProject
-                  item={item}
-                  workItemKey={itemKey}
-                  activityFilter={activityFilter}
-                  onActivityFilterChange={setActivityFilter}
-                  isError={isError}
-                  onRetry={refetch}
-                  onAccessLost={onAccessLost}
-                />
-              ) : (
-                <WorkItemDetail
-                  variant="pane"
-                  item={undefined}
-                  workItemKey={itemKey}
-                  activityFilter={activityFilter}
-                  onActivityFilterChange={setActivityFilter}
-                  project={undefined}
-                  isLoading={isLoading}
-                  isNotFound={isNotFound}
-                  isError={isError && !isNotFound}
-                  onRetry={refetch}
-                  onAccessLost={onAccessLost}
-                />
-              )}
-            </DelayedSuspense>
-          </WorkItemNamespaceBoundary>
+          <DelayedSuspense
+            immediate={isNotFound || isError}
+            fallback={(visible) => <WorkItemDetailLoading visible={visible} />}
+          >
+            {item ? (
+              <SidePaneDetailWithProject
+                item={item}
+                workItemKey={itemKey}
+                activityFilter={activityFilter}
+                onActivityFilterChange={setActivityFilter}
+                isError={isError}
+                onRetry={refetch}
+                onAccessLost={onAccessLost}
+              />
+            ) : (
+              <WorkItemDetail
+                variant="pane"
+                item={undefined}
+                workItemKey={itemKey}
+                activityFilter={activityFilter}
+                onActivityFilterChange={setActivityFilter}
+                project={undefined}
+                isLoading={isLoading}
+                isNotFound={isNotFound}
+                isError={isError && !isNotFound}
+                onRetry={refetch}
+                onAccessLost={onAccessLost}
+              />
+            )}
+          </DelayedSuspense>
         )}
       </div>
     </div>

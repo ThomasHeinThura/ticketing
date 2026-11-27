@@ -14,6 +14,7 @@ import {
   setWorkItemModule,
 } from "@/fetchers/agile";
 import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
+import { useCyclesOffered } from "@/hooks/queries/agile/use-cycle-count";
 import useProjectEstimate from "@/hooks/queries/agile/use-project-estimate";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
@@ -247,12 +248,17 @@ function ModuleRow({ item, compact }: RowProps) {
  */
 export default function WorkItemAgileRows({ item, compact }: RowProps) {
   const { features } = useAgileFeatures(item.projectId);
+  const cyclesOffered = useCyclesOffered(
+    item.projectId,
+    item.workspaceId,
+    features.cycles,
+  );
   return (
     <>
       {features.estimates ? (
         <EstimateRow item={item} compact={compact} />
       ) : null}
-      {features.cycles ? <CycleRow item={item} compact={compact} /> : null}
+      {cyclesOffered ? <CycleRow item={item} compact={compact} /> : null}
       {features.modules ? <ModuleRow item={item} compact={compact} /> : null}
     </>
   );

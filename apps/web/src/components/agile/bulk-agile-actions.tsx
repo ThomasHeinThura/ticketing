@@ -3,6 +3,7 @@ import { Repeat2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import useAgileFeatures from "@/hooks/queries/agile/use-agile-features";
+import { useCyclesOffered } from "@/hooks/queries/agile/use-cycle-count";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { BulkAgileDialog } from "./bulk-agile-dialog";
 
@@ -28,7 +29,15 @@ export function BulkAgileActions({
 }) {
   const { t } = useTranslation("agile");
   const [open, setOpen] = useState(false);
-  const { features } = useAgileFeatures(canUpdate ? projectId : undefined);
+  const { features: resolved } = useAgileFeatures(
+    canUpdate ? projectId : undefined,
+  );
+  const cyclesOffered = useCyclesOffered(
+    canUpdate ? projectId : undefined,
+    workspaceId,
+    resolved.cycles,
+  );
+  const features = { ...resolved, cycles: cyclesOffered };
   const { data: projects } = useGetProjects({ workspaceId });
   const project = projects?.find((candidate) => candidate.id === projectId);
   if (!canUpdate || !project || (!features.cycles && !features.modules))

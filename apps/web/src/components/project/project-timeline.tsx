@@ -464,7 +464,7 @@ export default function ProjectTimeline({
   return (
     <>
       <PageTitle
-        title={t("tasks:gantt.pageTitle", { name: project?.name })}
+        title={t("tasksExtra:gantt.pageTitle", { name: project?.name })}
         hideAppName
       />
       <div className="flex h-full min-h-0 flex-col bg-background">
@@ -472,14 +472,14 @@ export default function ProjectTimeline({
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-1">
               <h1 className="text-sm font-semibold text-foreground">
-                {t("tasks:gantt.title")}
+                {t("tasksExtra:gantt.title")}
               </h1>
             </div>
 
             <ProjectTaskSearchInput
               value={searchQuery}
               onValueChange={(q) => updateViewState({ q: q || undefined })}
-              placeholder={t("tasks:gantt.searchPlaceholder")}
+              placeholder={t("tasksExtra:gantt.searchPlaceholder")}
               clearLabel={t("common:actions.clearAll")}
             />
 
@@ -505,10 +505,10 @@ export default function ProjectTimeline({
               onPressedChange={(pressed) =>
                 updateViewState({ deps: pressed ? "1" : undefined })
               }
-              aria-label={t("tasks:gantt.dependencies.toggle")}
+              aria-label={t("tasksExtra:gantt.dependencies.toggle")}
             >
               <Workflow className="size-3.5" aria-hidden="true" />
-              {t("tasks:gantt.dependencies.toggle")}
+              {t("tasksExtra:gantt.dependencies.toggle")}
             </Toggle>
 
             <ScheduleSelectionToggle
@@ -525,7 +525,7 @@ export default function ProjectTimeline({
               disabled={!todayInRange || scheduledTasks.length === 0}
             >
               <Calendar className="size-3.5" />
-              {t("tasks:gantt.jumpToToday")}
+              {t("tasksExtra:gantt.jumpToToday")}
             </Button>
 
             <Button
@@ -540,8 +540,8 @@ export default function ProjectTimeline({
                 <ChevronRight className="size-3.5" />
               )}
               {showTaskRail
-                ? t("tasks:gantt.hideTasks")
-                : t("tasks:gantt.showTasks")}
+                ? t("tasksExtra:gantt.hideTasks")
+                : t("tasksExtra:gantt.showTasks")}
             </Button>
           </div>
         </div>
@@ -576,10 +576,10 @@ export default function ProjectTimeline({
           <div className="flex flex-1 items-center justify-center px-6">
             <div className="max-w-sm text-center">
               <h2 className="text-sm font-semibold text-foreground">
-                {t("tasks:gantt.noTasksFound")}
+                {t("tasksExtra:gantt.noTasksFound")}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {t("tasks:gantt.noTasksMatch", { query: searchQuery })}
+                {t("tasksExtra:gantt.noTasksMatch", { query: searchQuery })}
               </p>
             </div>
           </div>
@@ -599,7 +599,7 @@ export default function ProjectTimeline({
                     }}
                   >
                     <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      {t("tasks:gantt.taskHeader")}
+                      {t("tasksExtra:gantt.taskHeader")}
                     </p>
                   </div>
                 ) : null}
@@ -679,7 +679,7 @@ export default function ProjectTimeline({
                         paths={arrowLayout.paths}
                         width={arrowLayout.width}
                         height={arrowLayout.height}
-                        label={t("tasks:gantt.dependencies.label")}
+                        label={t("tasksExtra:gantt.dependencies.label")}
                       />
                     </div>
                   ) : null}
@@ -711,12 +711,12 @@ export default function ProjectTimeline({
                                 {row.name ??
                                   t(
                                     row.by === "module"
-                                      ? "tasks:gantt.noModule"
+                                      ? "tasksExtra:gantt.noModule"
                                       : row.by === "epic"
                                         ? row.unavailable
-                                          ? "tasks:gantt.epicUnavailable"
-                                          : "tasks:gantt.noEpic"
-                                        : "tasks:gantt.unassigned",
+                                          ? "tasksExtra:gantt.epicUnavailable"
+                                          : "tasksExtra:gantt.noEpic"
+                                        : "tasksExtra:gantt.unassigned",
                                   )}
                               </h2>
                               <span className="rounded-md bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">

@@ -192,13 +192,15 @@ export default function ScheduleFilterChips({
             />
           );
         }
-        const subject = t(`tasks:boardFilters.subjects.${chip.facet}`);
+        const subject = t(`tasksExtra:boardFilters.subjects.${chip.facet}`);
         return (
           <ActiveFilterChip
             key={chip.id}
             subject={subject}
-            operator={t("tasks:boardFilters.operators.isAnyOf")}
-            value={t("tasks:boardFilters.selectedCount", { count: chip.count })}
+            operator={t("tasksExtra:boardFilters.operators.isAnyOf")}
+            value={t("tasksExtra:boardFilters.selectedCount", {
+              count: chip.count,
+            })}
             clearLabel={t("workItems:filter.removeFilter", { field: subject })}
             onClear={() => onChange({ [chip.facet]: undefined })}
           />

@@ -62,16 +62,18 @@ describe("CalendarToolbar range (VW-25)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select items" }));
     for (const mode of ["month", "week", "day"])
       fireEvent.click(
-        screen.getByRole("button", { name: `tasks:calendar.view.${mode}` }),
+        screen.getByRole("button", {
+          name: `tasksExtra:calendar.view.${mode}`,
+        }),
       );
     fireEvent.click(
-      screen.getByRole("button", { name: "tasks:calendar.previousMonth" }),
+      screen.getByRole("button", { name: "tasksExtra:calendar.previousMonth" }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "tasks:calendar.today" }),
+      screen.getByRole("button", { name: "tasksExtra:calendar.today" }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "tasks:calendar.nextMonth" }),
+      screen.getByRole("button", { name: "tasksExtra:calendar.nextMonth" }),
     );
     expect(select).toHaveBeenCalledOnce();
     expect(changeView).toHaveBeenCalledTimes(3);
@@ -82,13 +84,13 @@ describe("CalendarToolbar range (VW-25)", () => {
   it("marks the active range pressed and reports a change", () => {
     const onViewChange = renderToolbar("week");
     expect(
-      screen.getByRole("button", { name: "tasks:calendar.view.week" }),
+      screen.getByRole("button", { name: "tasksExtra:calendar.view.week" }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(
-      screen.getByRole("button", { name: "tasks:calendar.view.month" }),
+      screen.getByRole("button", { name: "tasksExtra:calendar.view.month" }),
     ).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(
-      screen.getByRole("button", { name: "tasks:calendar.view.day" }),
+      screen.getByRole("button", { name: "tasksExtra:calendar.view.day" }),
     );
     expect(onViewChange).toHaveBeenCalledWith("day");
   });
@@ -96,20 +98,20 @@ describe("CalendarToolbar range (VW-25)", () => {
   it("names the previous and next controls for the active range", () => {
     renderToolbar("week");
     expect(
-      screen.getByRole("button", { name: "tasks:calendar.previousWeek" }),
+      screen.getByRole("button", { name: "tasksExtra:calendar.previousWeek" }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "tasks:calendar.nextWeek" }),
+      screen.getByRole("button", { name: "tasksExtra:calendar.nextWeek" }),
     ).toBeTruthy();
     cleanup();
     renderToolbar("day");
     expect(
-      screen.getByRole("button", { name: "tasks:calendar.previousDay" }),
+      screen.getByRole("button", { name: "tasksExtra:calendar.previousDay" }),
     ).toBeTruthy();
     cleanup();
     renderToolbar("month");
     expect(
-      screen.getByRole("button", { name: "tasks:calendar.nextMonth" }),
+      screen.getByRole("button", { name: "tasksExtra:calendar.nextMonth" }),
     ).toBeTruthy();
   });
 
@@ -128,7 +130,7 @@ describe("CalendarToolbar range (VW-25)", () => {
   it("uses a page heading by default and permits a section heading for an existing page", () => {
     renderToolbar("month");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "tasks:calendar.title",
+      "tasksExtra:calendar.title",
     );
     cleanup();
     render(
@@ -142,7 +144,7 @@ describe("CalendarToolbar range (VW-25)", () => {
     );
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
-      "tasks:calendar.title",
+      "tasksExtra:calendar.title",
     );
   });
 });

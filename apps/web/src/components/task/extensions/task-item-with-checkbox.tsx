@@ -25,8 +25,8 @@ function TaskItemNodeView({ editor, node, updateAttributes }: NodeViewProps) {
           disabled={!isEditable}
           aria-label={
             checked
-              ? t("tasks:detail.editor.checkbox.markIncomplete")
-              : t("tasks:detail.editor.checkbox.markComplete")
+              ? t("tasksExtra:detail.editor.checkbox.markIncomplete")
+              : t("tasksExtra:detail.editor.checkbox.markComplete")
           }
           onCheckedChange={(value) => {
             if (!isEditable) return;

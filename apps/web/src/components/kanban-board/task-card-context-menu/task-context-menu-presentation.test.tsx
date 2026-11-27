@@ -50,7 +50,7 @@ it("does not invent planned/archive-state aliases or unauthorized options", () =
   fireEvent.contextMenu(screen.getByText("Task"));
   expect(screen.getAllByRole("menuitem")).toHaveLength(1);
   expect(screen.getByRole("menuitem")).toHaveTextContent(
-    translate("tasks:contextMenu.copyLink"),
+    translate("tasksExtra:contextMenu.copyLink"),
   );
 });
 
