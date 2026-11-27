@@ -91,4 +91,12 @@ describe("Button", () => {
       styles.cleanup();
     }
   });
+
+  it("renders outline as a borderless tonal button", () => {
+    render(<Button variant="outline">Filter</Button>);
+    const button = screen.getByRole("button", { name: "Filter" });
+
+    expect(button).toHaveClass("border-transparent", "bg-secondary");
+    expect(button).not.toHaveClass("border-input", "shadow-xs/5");
+  });
 });

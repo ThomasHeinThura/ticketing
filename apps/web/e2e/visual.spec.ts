@@ -8516,7 +8516,10 @@ test("project page detail screen @visual", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Before you start", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Version 3", { exact: true })).toBeVisible();
+  // History moved into a sheet opened from the header (27 Nov 2026).
+  await expect(
+    page.getByRole("button", { name: "History", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByText("All changes saved", { exact: true }),
   ).toBeVisible();

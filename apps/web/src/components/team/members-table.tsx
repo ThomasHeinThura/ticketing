@@ -495,47 +495,53 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                 <TableCell className="max-sm:hidden py-3 text-sm text-muted-foreground tabular-nums">
                   {member.joinedAt ? formatDateMedium(member.joinedAt) : "–"}
                 </TableCell>
-                <TableCell className="pe-6 py-3 text-right">
-                  {validHistoryId(member.workspaceMemberId) ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={t("settings:history.memberHistory", {
-                        name: member.name || member.email,
-                        number: sortedUsers.indexOf(member) + 1,
-                      })}
-                      onClick={() =>
-                        setHistory({
-                          id: member.workspaceMemberId,
-                          targetUserId: member.id,
-                        })
-                      }
-                    >
-                      {t("settings:history.title")}
-                    </Button>
-                  ) : null}
-                  {!isSelf && canRemove ? (
-                    <Menu>
-                      <MenuTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground"
-                            aria-label={t("team:membersTable.ariaRemoveMember")}
-                          />
+                <TableCell className="w-44 pe-6 py-3">
+                  <div className="flex items-center justify-end">
+                    {validHistoryId(member.workspaceMemberId) ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={t("settings:history.memberHistory", {
+                          name: member.name || member.email,
+                          number: sortedUsers.indexOf(member) + 1,
+                        })}
+                        onClick={() =>
+                          setHistory({
+                            id: member.workspaceMemberId,
+                            targetUserId: member.id,
+                          })
                         }
                       >
-                        <EllipsisIcon className="size-4" />
-                      </MenuTrigger>
-                      <MenuPopup align="end">
-                        <MenuItem onClick={() => setMemberToDelete(member)}>
-                          <TrashIcon className="size-4" />
-                          {t("team:membersTable.removeMember")}
-                        </MenuItem>
-                      </MenuPopup>
-                    </Menu>
-                  ) : null}
+                        {t("settings:history.title")}
+                      </Button>
+                    ) : null}
+                    {!isSelf && canRemove ? (
+                      <Menu>
+                        <MenuTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground"
+                              aria-label={t(
+                                "team:membersTable.ariaRemoveMember",
+                              )}
+                            />
+                          }
+                        >
+                          <EllipsisIcon className="size-4" />
+                        </MenuTrigger>
+                        <MenuPopup align="end">
+                          <MenuItem onClick={() => setMemberToDelete(member)}>
+                            <TrashIcon className="size-4" />
+                            {t("team:membersTable.removeMember")}
+                          </MenuItem>
+                        </MenuPopup>
+                      </Menu>
+                    ) : (
+                      <span className="size-8 shrink-0" aria-hidden="true" />
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             );

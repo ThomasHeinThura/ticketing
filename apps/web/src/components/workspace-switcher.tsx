@@ -19,6 +19,7 @@ import NotificationDropdown from "@/components/notification/notification-dropdow
 import { UserAvatar } from "@/components/user-avatar";
 import { shortcuts } from "@/constants/shortcuts";
 import activateWorkspace from "@/fetchers/workspace/activate-workspace";
+import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import useCanCreateWorkspace from "@/hooks/use-can-create-workspace";
@@ -54,6 +55,8 @@ export function WorkspaceSwitcher() {
   const [isCreateWorkspaceModalOpen, setIsCreateWorkspaceModalOpen] =
     React.useState(false);
   const [isSwitching, setIsSwitching] = React.useState(false);
+  const { data: invitations = [] } = usePendingInvitations();
+  const pendingInvitations = invitations.length;
 
   const handleWorkspaceChange = React.useCallback(
     async (selectedWorkspace: Workspace) => {
@@ -140,6 +143,18 @@ export function WorkspaceSwitcher() {
                   >
                     {workspace.name}
                   </span>
+                  {pendingInvitations > 0 && (
+                    <span
+                      className="ml-1.5 size-1.5 shrink-0 rounded-full bg-primary"
+                      role="img"
+                      aria-label={t(
+                        "navigation:workspaceSwitcher.pendingInvitations",
+                        {
+                          count: pendingInvitations,
+                        },
+                      )}
+                    />
+                  )}
                 </div>
                 <ChevronDown
                   className={`ml-1 size-3.5 text-foreground opacity-90 group-hover:opacity-100 data-[state=open]:opacity-100 data-[state=open]:rotate-180 transition-[rotate,opacity] duration-base ease-out ${isSwitching ? "animate-spin" : ""}`}
@@ -195,6 +210,24 @@ export function WorkspaceSwitcher() {
                   >
                     {t("navigation:workspaceSwitcher.workspaceSettings")}
                   </DropdownMenuItem>
+                  {/* Invitations the signed-in user received to other workspaces; offered only
+                      while one is pending (it left the sidebar, 27 Nov 2026). */}
+                  {pendingInvitations > 0 && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate({ to: "/dashboard/invitations" });
+                      }}
+                      className="h-7 text-sm data-highlighted:bg-sidebar-accent data-highlighted:text-sidebar-accent-foreground"
+                    >
+                      <span className="flex-1 text-left">
+                        {t("navigation:sidebar.invitations")}
+                      </span>
+                      <DropdownMenuShortcut>
+                        {pendingInvitations}
+                      </DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  )}
                   {isAdmin && (
                     <DropdownMenuItem
                       onClick={() => {

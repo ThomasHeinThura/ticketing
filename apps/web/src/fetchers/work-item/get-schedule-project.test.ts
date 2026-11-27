@@ -101,6 +101,24 @@ describe("canonical Kaneo schedule adapter", () => {
       cursor: "search-page-2",
     });
   });
+  it("keeps the state category so cancelled is not shown as completed", async () => {
+    mock.get.mockResolvedValueOnce(
+      response(
+        ["completed", "cancelled", "started"].map((stateCategory, i) => ({
+          ...item(i + 1),
+          stateCategory,
+        })) as never,
+        null,
+      ),
+    );
+    const data = await getScheduleProject("p1", "w1");
+    expect(data.columns[0].tasks.map((t) => t.stateCategory)).toEqual([
+      "completed",
+      "cancelled",
+      "open",
+    ]);
+  });
+
   it("fails closed when pagination repeats instead of silently truncating", async () => {
     mock.get.mockImplementation(async () => response([item(1)], "same"));
     await expect(getScheduleProject("p1", "w1")).rejects.toThrow(

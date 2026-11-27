@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   assignableRoles,
+  groupRosterRoles,
   isAuthorityReplacingWorkspaceRole,
   projectMemberErrorKey,
+  roleDescriptionText,
   rosterRoleItems,
 } from "./project-members-model";
 
@@ -63,6 +65,58 @@ describe("project members model", () => {
       assignableRoles(roles, 20, "project-lead").map((r) => r.roleKey),
     ).toEqual(["project-viewer", "project-lead"]);
     expect(assignableRoles(roles, undefined)).toHaveLength(3);
+  });
+
+  it("puts built-in roles first as lead, member, viewer, then custom roles", () => {
+    const role = (roleKey: string, roleRank: number, isSystem: boolean) => ({
+      roleKey,
+      roleName: roleKey,
+      roleRank,
+      roleId: null,
+      isSystem,
+    });
+    const { builtIn, custom } = groupRosterRoles([
+      role("uat-agent", 1, false),
+      role("project-viewer", 20, true),
+      role("project-member", 40, true),
+      role("project-lead", 50, true),
+    ]);
+    expect(builtIn.map((r) => r.roleKey)).toEqual([
+      "project-lead",
+      "project-member",
+      "project-viewer",
+    ]);
+    expect(custom.map((r) => r.roleKey)).toEqual(["uat-agent"]);
+  });
+
+  it("describes built-in roles by key and custom roles from the API", () => {
+    const t = (key: string) => `t:${key}`;
+    const base = { roleName: "x", roleRank: 1, roleId: null };
+    expect(
+      roleDescriptionText(
+        {
+          ...base,
+          roleKey: "project-lead",
+          isSystem: true,
+          roleDescription: "English",
+        },
+        t,
+      ),
+    ).toBe("t:settings:projectMembers.roleDescriptionLead");
+    expect(
+      roleDescriptionText(
+        {
+          ...base,
+          roleKey: "uat-agent",
+          isSystem: false,
+          roleDescription: "Custom text",
+        },
+        t,
+      ),
+    ).toBe("Custom text");
+    expect(
+      roleDescriptionText({ ...base, roleKey: "uat-agent" }, t),
+    ).toBeNull();
   });
 
   it("maps server refusals to i18n keys without exposing server text", () => {

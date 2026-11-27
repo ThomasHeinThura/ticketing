@@ -120,17 +120,49 @@ describe("portal sign-in", () => {
     vi.unstubAllGlobals();
   });
 
-  it("links to password recovery", () => {
-    renderSignIn();
+  it("offers password recovery only on the password stage, after the field in tab order", async () => {
+    const view = renderSignIn();
     expect(
-      screen.getByRole("link", { name: "auth:passwordRecovery.forgot" }),
-    ).toHaveAttribute("href", "/forgot-password");
+      screen.queryByRole("link", { name: "auth:passwordRecovery.forgot" }),
+    ).toBeNull();
+    view.unmount();
+
+    window.sessionStorage.setItem(
+      "taskdesk:portal-sign-in-email",
+      "customer@example.test",
+    );
+    mocks.search = { ...mocks.search, stage: "password" };
+    renderSignIn();
+    const link = await screen.findByRole("link", {
+      name: "auth:passwordRecovery.forgot",
+    });
+    expect(link).toHaveAttribute("href", "/forgot-password");
+    const password = screen.getByLabelText("auth:forms.password");
+    expect(
+      password.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("puts email code and magic link under an or divider", async () => {
+    mocks.authMethods.mockResolvedValue({
+      password: true,
+      magicLink: true,
+      emailOtp: true,
+    });
+    renderSignIn();
+    expect(await screen.findByText("auth:forms.or")).toBeInTheDocument();
+  });
+
+  it("shows no divider when only the password is enabled", async () => {
+    renderSignIn();
+    await waitFor(() => expect(mocks.authMethods).toHaveBeenCalled());
+    expect(screen.queryByText("auth:forms.or")).toBeNull();
   });
 
   it("exposes one page heading on the standalone portal sign-in screen", () => {
     renderSignIn();
     expect(
-      screen.getByRole("heading", { level: 1, name: "auth:signIn.pageTitle" }),
+      screen.getByRole("heading", { level: 1, name: "auth:signIn.title" }),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
@@ -536,7 +568,7 @@ describe("portal sign-in", () => {
     };
     renderSignIn();
 
-    // The confirmed address is wrapping text (never a clipped input) with the label.
+    // The confirmed address is a wrapping chip (never a clipped input) with a Change action.
     const confirmed = await screen.findByLabelText("auth:forms.email");
     expect(confirmed.tagName).toBe("OUTPUT");
     expect(confirmed).toHaveTextContent("customer@example.test");

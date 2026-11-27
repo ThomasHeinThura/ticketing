@@ -1981,7 +1981,12 @@
 				"roleExceedsAuthority": "You cannot grant, change or remove a role above your own.",
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
-			}
+			},
+			"roleGroupBuiltIn": "Ενσωματωμένοι",
+			"roleGroupCustom": "Προσαρμοσμένοι ρόλοι",
+			"roleDescriptionLead": "Διαχειρίζεται το {{term_project_one}}: ελέγχει μέλη και ρυθμίσεις, αναθέτει και διαλέγει {{term_work_item_other}}.",
+			"roleDescriptionMember": "Δημιουργεί και ενημερώνει {{term_work_item_other}}, σχολιάζει εσωτερικά και αναλαμβάνει εργασία.",
+			"roleDescriptionViewer": "Πρόσβαση μόνο για ανάγνωση στο {{term_project_one}}."
 		},
 		"workflows": {
 			"add": {
@@ -2391,7 +2396,8 @@
 			"workspaceSettings": "Ρυθμίσεις χώρου εργασίας",
 			"instanceUsers": "Χρήστες στιγμιοτύπου",
 			"selectWorkspace": "Επιλέξτε χώρο εργασίας",
-			"switchFailed": "Could not switch workspace. Check your access and try again."
+			"switchFailed": "Could not switch workspace. Check your access and try again.",
+			"pendingInvitations": "Εκκρεμείς προσκλήσεις: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3178,7 +3184,10 @@
 				"month": "Month",
 				"week": "Week"
 			},
-			"viewGroup": "Calendar range"
+			"viewGroup": "Calendar range",
+			"stateDone": "Ολοκληρώθηκε",
+			"stateOpen": "Ανοιχτό",
+			"stateCancelled": "Ακυρώθηκε"
 		},
 		"group": {
 			"by": "Group by",
@@ -3269,7 +3278,9 @@
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
 			"archived": "Archived",
-			"completion": "{{name}} completion"
+			"completion": "{{name}} completion",
+			"joinNamed": "Συμμετοχή στο {{name}}",
+			"joinShort": "Συμμετοχή"
 		},
 		"search": {
 			"pageTitle": "Αναζήτηση",

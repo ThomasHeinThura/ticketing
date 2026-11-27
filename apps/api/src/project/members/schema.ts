@@ -81,6 +81,11 @@ export const projectRosterRoleSchema = z.object({
   roleKey: z.string(),
   roleName: z.string(),
   roleRank: z.number().int(),
+  roleDescription: z.string().nullable(),
+  isSystem: z.boolean().openapi({
+    description:
+      "True for the built-in project roles (shown before custom roles).",
+  }),
   roleId: z.string().nullable().openapi({
     description:
       "Null for a canonical role not yet created in this workspace (created on first use).",

@@ -100,6 +100,7 @@ export function buildTasks(
       title: freeze.name,
       number: null,
       status: "freeze",
+      changeKind: "freeze" as const,
       ...span(freeze.startsAt, freeze.endsAt),
     })),
     ...changes.map((change) => ({
@@ -107,6 +108,14 @@ export function buildTasks(
       title: `${change.key} ${change.title}`,
       number: null,
       status: taskStatus(change),
+      changeKind: change.frozen
+        ? ("frozen" as const)
+        : change.conflict
+          ? ("conflict" as const)
+          : undefined,
+      stateCategory: change.retrospective
+        ? ("completed" as const)
+        : ("open" as const),
       ...span(change.windowStart, change.windowEnd),
     })),
   ];

@@ -1981,7 +1981,12 @@
 				"roleExceedsAuthority": "You cannot grant, change or remove a role above your own.",
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
-			}
+			},
+			"roleGroupBuiltIn": "अंतर्निहित",
+			"roleGroupCustom": "कस्टम भूमिकाएँ",
+			"roleDescriptionLead": "{{term_project_one}} का संचालन करता है: सदस्यों और सेटिंग्स का प्रबंधन, {{term_work_item_other}} का असाइन और ट्राइएज।",
+			"roleDescriptionMember": "{{term_work_item_other}} बनाता और अपडेट करता है, आंतरिक टिप्पणी करता है और काम उठाता है।",
+			"roleDescriptionViewer": "{{term_project_one}} तक केवल-पढ़ने की पहुँच।"
 		},
 		"workflows": {
 			"add": {
@@ -2391,7 +2396,8 @@
 			"workspaceSettings": "वर्कस्पेस सेटिंग",
 			"instanceUsers": "इंस्टेंस उपयोगकर्ता",
 			"selectWorkspace": "वर्कस्पेस चुनें",
-			"switchFailed": "Could not switch workspace. Check your access and try again."
+			"switchFailed": "Could not switch workspace. Check your access and try again.",
+			"pendingInvitations": "लंबित आमंत्रण: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3178,7 +3184,10 @@
 				"month": "Month",
 				"week": "Week"
 			},
-			"viewGroup": "Calendar range"
+			"viewGroup": "Calendar range",
+			"stateDone": "पूर्ण",
+			"stateOpen": "खुला",
+			"stateCancelled": "रद्द"
 		},
 		"group": {
 			"by": "Group by",
@@ -3269,7 +3278,9 @@
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
 			"archived": "Archived",
-			"completion": "{{name}} completion"
+			"completion": "{{name}} completion",
+			"joinNamed": "{{name}} से जुड़ें",
+			"joinShort": "जुड़ें"
 		},
 		"search": {
 			"pageTitle": "खोजें",
