@@ -485,11 +485,10 @@ test("workspace and project membership role History persists with closed metadat
         );
         void changedProject.catch(() => {});
         await projectRow
-          .getByRole("button", { name: "Change role for Team Matrix member" })
+          .getByRole("combobox", { name: "Change role for Team Matrix member" })
           .click();
-        await page
-          .getByRole("button", { name: "Project viewer", exact: true })
-          .click();
+        // Each role option carries its description under the name.
+        await page.getByRole("option", { name: /^Project viewer/ }).click();
         expect((await changedProject).status()).toBe(200);
         const projectHistory = await history(
           page,
@@ -848,7 +847,7 @@ test("workspace and project membership role History persists with closed metadat
               )
             ) {
               await expect(
-                row.getByRole("button", {
+                row.getByRole("combobox", {
                   name: "Change role for Team Matrix member",
                 }),
               ).toHaveCount(0);

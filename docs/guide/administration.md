@@ -18,6 +18,18 @@ Open the URL and create the account. That account becomes the instance administr
 
 After the first sign-in, onboarding asks for a workspace name and an owner for it. Creating a workspace is an instance-administrator action, done in a browser session, and the owner must be an existing active staff user. Workspace creators are not added as members unless they name themselves.
 
+## Open God Mode
+
+Only instance administrators can open God Mode. They see a "God Mode" item in the workspace switcher menu at the top of the sidebar. Everyone else does not see it, and a non-admin who types the URL is denied. You can also go straight to `/god-mode` on the agent host. If you are not signed in, it shows its own sign-in page, which takes a password and a TOTP code if you enrolled one. It uses the same session as normal sign-in.
+
+Opening God Mode needs no extra verification. Sensitive actions inside it, such as saving sign-in settings, approving a user deactivation or running an import above 50 records, ask for fresh verification first.
+
+Owning a workspace does not make you an instance administrator. An existing instance administrator grants it under God Mode, Users. If no administrator can sign in, run this on the server, which needs access to the container. It is audited and takes no session:
+
+```sh
+docker compose exec taskdesk node /app/apps/api/dist/cli.js grant-instance-admin <email>
+```
+
 ## Instance settings
 
 God Mode has one page for each area:
@@ -110,3 +122,18 @@ God Mode, Notifications sets the email provider: SMTP, or Amazon SES through its
 ## Storage
 
 Attachments use the filesystem volume by default. God Mode, Storage shows usage and lets you prepare and test an S3-compatible configuration, either external S3 or the bundled SeaweedFS from the Compose `s3` profile. Saving or testing that draft does not switch the active backend or move existing files. Set the maximum file size, files per work item and allowed extensions in God Mode, General.
+
+## Import from Plane
+
+Only instance administrators can import. Open God Mode, Imports, create a Plane source and start a run. Turn `feature.import` off to disable imports (it is on by default).
+
+What comes in: projects (all, or one you name), work items with state, priority, labels, type, estimate and parent, cycle and module membership, relations, comments and attachments. Comments are imported as internal.
+
+What does not come in: members and project roles. Assignees and authors are matched to existing TaskDesk users by email, and unmatched ones become placeholders. Invite staff and add project members yourself.
+
+1. Create an API key in Plane and enter it with the workspace slug. The key is never shown again.
+2. The importer reads Plane over its REST API. The Plane API address must be a public `https` URL. Plain `http` and private or internal addresses are refused. If yours is private, export from Plane and use the CSV import instead.
+3. Discover, review the mapping, then run the dry run. Fix what it reports.
+4. Apply. A run that writes more than 50 records needs an approval with fresh verification in the browser, bound to the dry run you reviewed.
+
+The [technical contract](../technical/import-and-cutover.md#plane) has the full field mapping and edge cases.

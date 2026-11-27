@@ -9,7 +9,7 @@
 # on purpose. `pnpm test:all --list` prints each one with the reason and the issue that unblocks it. A job that passed
 # because it found nothing to check would look like coverage and be worth less than
 # nothing. (`check:ui` is enabled, in the `registers` job below — G1's raw-element and
-# primitive-import boundaries, plus the empty legacy UI directory. `check:tokens` is enabled too, in the `static`
+# primitive-import boundaries, plus the empty legacy UI directory. `check:tokens` is enabled too, in the `static-tokens`
 # job below — #9's theme-parity and hard-coded-color slice of G2 only; see
 # scripts/ci/check-tokens.mjs's own header for exactly what it does not yet cover.)
 #
@@ -105,8 +105,10 @@ jobs:
         # route-policy context. The full permissions suite above also exercises this file.
         run: pnpm test:no-inherited-routes
 
-  static:
-    name: static
+  # `static` is three jobs plus an aggregator that keeps the required check name. Every step
+  # that used to run in the single job still runs, in exactly one of the three.
+  static-typecheck:
+    name: static - lint + typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -126,6 +128,20 @@ jobs:
       - name: pnpm typecheck
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm typecheck
+
+  static-tokens:
+    name: static - design tokens
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: Normalize Ubuntu APT mirror for Chromium dependencies
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
@@ -137,15 +153,49 @@ jobs:
         # Token parity/literals plus density-slot enforcement and built-CSS Chromium contrast.
         # The checker builds the web CSS and reuses the app's pinned Playwright tooling.
         run: pnpm check:tokens
+
+  static-checks:
+    name: static - i18n, deps, queries
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
       - name: pnpm check:i18n
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:i18n
       - name: pnpm check:deps
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:deps
+      - name: Build the workspace packages the query check resolves types through
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        # The single static job got these builds from `pnpm typecheck` (turbo `^build`). Without
+        # them check:queries resolves no cross-package types and reports 4947 stale baseline entries.
+        run: pnpm build --filter=@taskdesk/api^...
       - name: pnpm check:queries
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: pnpm check:queries
+
+  static:
+    name: static
+    needs: [static-typecheck, static-tokens, static-checks]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Require every static job to succeed
+        run: node scripts/ci/assert-integration-shards.mjs
+        env:
+          GATE_LABEL: static
+          GATE_EXPECTED_JOBS: static-typecheck,static-tokens,static-checks
+          GATE_JOB_RESULTS: ${{ toJSON(needs) }}
 
   registers:
     # DO NOT RENAME THIS JOB. The `protect-main` ruleset binds its required status checks
@@ -252,8 +302,8 @@ jobs:
         # user.name/user.email, so no ambient git identity is needed.
         run: pnpm test:ci-scripts
 
-  test:
-    name: unit + component
+  unit-1:
+    name: unit shard 1/3
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -265,9 +315,58 @@ jobs:
         uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
         if: ${{ steps.scope.outputs.full != 'false' }}
-      - name: pnpm test
+      - name: pnpm test shard 1/3
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: pnpm test
+        run: pnpm test -- --shard=1/3
+
+  unit-2:
+    name: unit shard 2/3
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: pnpm test shard 2/3
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test -- --shard=2/3
+
+  unit-3:
+    name: unit shard 3/3
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: pnpm test shard 3/3
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test -- --shard=3/3
+
+  test:
+    name: unit + component
+    needs: [unit-1, unit-2, unit-3]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Require every unit job to succeed
+        run: node scripts/ci/assert-integration-shards.mjs
+        env:
+          GATE_LABEL: unit
+          GATE_EXPECTED_JOBS: unit-1,unit-2,unit-3
+          GATE_JOB_RESULTS: ${{ toJSON(needs) }}
 
   coverage:
     name: domain coverage (90%)

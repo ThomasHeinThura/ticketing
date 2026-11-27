@@ -3,10 +3,17 @@ import { describe, expect, it } from "vitest";
 import {
   buildMonthWeeks,
   DAYS_PER_WEEK,
-  packWeekLanes,
+  packMonthLanes,
   tasksInWeeks,
   type WeekStartsOn,
 } from "./month-grid-model";
+
+/** One row of the grid, for the per-week assertions. */
+function packWeekLanes<
+  TTask extends { id: string; scheduleStart: Date; scheduleEnd: Date },
+>(week: Date[], tasks: TTask[], maxLanes: number) {
+  return packMonthLanes([week], tasks, maxLanes)[0];
+}
 
 /** Local-time dates keep the assertions independent of the runner timezone. */
 function day(year: number, monthIndex: number, dayOfMonth: number) {
@@ -296,5 +303,42 @@ describe("packWeekLanes for a one-day row (VW-25 day view)", () => {
       continuesAfter: true,
     });
     expect(layout.hiddenCountByDay).toEqual([1]);
+  });
+});
+
+describe("packMonthLanes lane stability", () => {
+  const weeks = buildMonthWeeks(AUGUST_2026, 1);
+
+  it("keeps a multi-week bar on one lane in every week", () => {
+    // Short bar ends mid week 1; the long bar starts on the same day but is longer, so it
+    // takes lane 0. A bar starting in week 2 must not pull the long bar up or down.
+    const long = scheduled("b-long", day(2026, 7, 5), day(2026, 7, 12));
+    const short = scheduled("a-short", day(2026, 7, 5), day(2026, 7, 6));
+    const second = scheduled("c-week2", day(2026, 7, 10), day(2026, 7, 11));
+    const layouts = packMonthLanes(weeks, [short, second, long], 4);
+    const lanes = layouts.flatMap((layout) =>
+      layout.segments
+        .filter((segment) => segment.task.id === "b-long")
+        .map((segment) => segment.lane),
+    );
+
+    expect(lanes).toHaveLength(2);
+    expect(new Set(lanes).size).toBe(1);
+  });
+
+  it("keeps a task beyond maxLanes hidden for its whole span", () => {
+    const a = scheduled("a", day(2026, 7, 5), day(2026, 7, 12));
+    const b = scheduled("b", day(2026, 7, 5), day(2026, 7, 12));
+    const layouts = packMonthLanes(weeks, [a, b], 1);
+    const visible = layouts.flatMap((layout) =>
+      layout.segments.map((segment) => segment.task.id),
+    );
+
+    expect(visible).toEqual(["a", "a"]);
+    const hidden = layouts.map((layout) =>
+      layout.hiddenCountByDay.reduce((sum, count) => sum + count, 0),
+    );
+
+    expect(hidden).toEqual([0, 5, 3, 0, 0, 0]);
   });
 });

@@ -1475,6 +1475,21 @@
 					"packages/ui/src/components/menu-content.tsx:MenuItem",
 					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/team/members-table.tsx:MembersTable",
+					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Menu[0]/MenuPopup[0]/MenuItem[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/menu-content.tsx:MenuItem",
+					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/team/members-table.tsx:MembersTable",
 					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuPopup[0]/MenuItem[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -2481,7 +2496,22 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/project/members/project-members-settings.tsx:AddMemberDialog",
-					"jsx:Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[1]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/project/members/project-members-settings.tsx:ProjectMembersSettings",
+					"jsx:section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -4499,6 +4529,21 @@
 					"packages/ui/src/components/menu-content.tsx:MenuItem",
 					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/team/members-table.tsx:MembersTable",
+					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Menu[0]/MenuPopup[0]/MenuItem[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/menu-content.tsx:MenuItem",
+					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/team/members-table.tsx:MembersTable",
 					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuPopup[0]/MenuItem[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -5505,7 +5550,22 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/project/members/project-members-settings.tsx:AddMemberDialog",
-					"jsx:Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[1]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/select.tsx:SelectItem",
+					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/project/members/project-members-settings.tsx:ProjectMembersSettings",
+					"jsx:section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -7973,6 +8033,21 @@
 					"packages/ui/src/components/menu-content.tsx:MenuItem",
 					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/team/members-table.tsx:MembersTable",
+					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Menu[0]/MenuPopup[0]/MenuItem[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/menu-content.tsx:MenuItem",
+					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/team/members-table.tsx:MembersTable",
 					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuPopup[0]/MenuItem[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -8250,6 +8325,21 @@
 					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/project/overview/team-page.tsx:TeamPage",
 					"jsx:div[0]/Panel[0]/ol[0]/li[0]/Menu[0]/MenuPopup[0]/MenuItem[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "packages/ui/src/components/menu-content.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/menu-content.tsx:MenuItem",
+					"jsx:MenuPrimitive.Item[0]>data-highlighted:bg-accent",
+					"apps/web/src/components/team/members-table.tsx:MembersTable",
+					"jsx:Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Menu[0]/MenuPopup[0]/MenuItem[0]",
 					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -22620,6 +22710,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:ProjectMembersSettings",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/project/overview/overview-shared.tsx:OptionSelect",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
@@ -25532,6 +25633,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/members/project-members-settings.tsx:AddMemberDialog",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:ProjectMembersSettings",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
@@ -38056,8 +38168,8 @@
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[1]/div[1]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#1",
+			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
-			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/time-tracking/cost-types-settings.tsx::CostTypesSection::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/cost-types-settings.tsx::CostTypesSection::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/project-budget.tsx::ProjectBudget::div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -38278,6 +38390,7 @@
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/nav[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/sign-in.tsx::PortalSignIn::div[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#1",
@@ -44267,7 +44380,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/team/members-table.tsx"
 			},
@@ -44280,7 +44393,7 @@
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
-				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/team/members-table.tsx"
 			},
@@ -44296,7 +44409,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/team/members-table.tsx"
 			},
@@ -44309,7 +44422,7 @@
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
-				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/team/members-table.tsx"
 			},
@@ -48547,6 +48660,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/portal/sign-in.tsx:/sign-in",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/routes/portal/sign-in.tsx::PortalSignIn::div[0]::text-muted-foreground#0",
+				"surfaceContext": "route-layout-body",
+				"usage": "apps/web/src/routes/portal/sign-in.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
@@ -49684,6 +49808,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/members/project-members-settings.tsx:AddMemberDialog",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:ProjectMembersSettings",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -51239,8 +51374,8 @@
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[1]/div[1]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#1",
+			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
-			"apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#1",
 			"apps/web/src/components/time-tracking/cost-types-settings.tsx::CostTypesSection::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/cost-types-settings.tsx::CostTypesSection::section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/time-tracking/project-budget.tsx::ProjectBudget::div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -51461,6 +51596,7 @@
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/div[0]/Table[0]/TableBody[0]/Fragment[0]/TableRow[0]/TableCell[1]/span[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/requests.tsx::PortalRequestsPage::PageContainer[0]/nav[0]/span[0]::text-muted-foreground#0",
+			"apps/web/src/routes/portal/sign-in.tsx::PortalSignIn::div[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/header[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/routes/portal/submissions/$ref.tsx::PortalSubmissionContent::PageContainer[0]/section[0]/p[0]::text-muted-foreground#1",
@@ -57451,7 +57587,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/team/members-table.tsx"
 			},
@@ -57464,7 +57600,7 @@
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
-				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/div[0]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/team/members-table.tsx"
 			},
@@ -57480,7 +57616,7 @@
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
-				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/team/members-table.tsx"
 			},
@@ -57493,7 +57629,7 @@
 					"component-slot:apps/web/src/components/common/workspace-layout.tsx:default.children",
 					"component-slot:apps/web/src/components/common/layout.tsx:default.children"
 				],
-				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#1",
+				"id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/team/members-table.tsx"
 			},
@@ -61731,6 +61867,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/routes/portal/sign-in.tsx:/sign-in",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/routes/portal/sign-in.tsx::PortalSignIn::div[0]::text-muted-foreground#0",
+				"surfaceContext": "route-layout-body",
+				"usage": "apps/web/src/routes/portal/sign-in.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/portal/submissions/$ref.tsx:/submissions/$ref",
 					"apps/web/src/index.css:body>@apply bg-background"
 				],
@@ -62963,6 +63110,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/project/members/project-members-settings.tsx:AddMemberDialog",
+					"Select->packages/ui/src/components/select.tsx:Select"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:ProjectMembersSettings",
 					"Select->packages/ui/src/components/select.tsx:Select"
 				],
 				"id": "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
@@ -96644,6 +96802,7 @@
 			"apps/web/src/components/portal/portal-search-dialog.tsx::PortalSearchDialog::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-user-menu.tsx::PortalUserMenu::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::AddMemberDialog::Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/project/members/project-members-settings.tsx::RoleSelectOptions::SelectGroup[0]/SelectItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::PersonList::div[0]/ul[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::ReparentPreviewDialog::AlertDialog[0]/AlertDialogContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::ReparentPreviewDialog::AlertDialog[0]/AlertDialogContent[0]/div[0]/p[0]::text-muted-foreground#1",
@@ -96840,6 +96999,7 @@
 			"packages/ui/src/components/form.tsx::FormDescription::p[0]::text-muted-foreground#0",
 			"packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/menu-content.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+			"packages/ui/src/components/select.tsx::SelectGroupLabel::SelectPrimitive.GroupLabel[0]::text-muted-foreground#0",
 			"packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
 			"packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
@@ -98470,6 +98630,30 @@
 				],
 				"id": "apps/web/src/components/project/members/project-members-settings.tsx::AddMemberDialog::Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/project/members/project-members-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:AddMemberDialog",
+					"jsx:Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children"
+				],
+				"id": "apps/web/src/components/project/members/project-members-settings.tsx::RoleSelectOptions::SelectGroup[0]/SelectItem[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/project/members/project-members-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:ProjectMembersSettings",
+					"jsx:section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children"
+				],
+				"id": "apps/web/src/components/project/members/project-members-settings.tsx::RoleSelectOptions::SelectGroup[0]/SelectItem[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/members/project-members-settings.tsx"
 			},
 			{
@@ -102238,6 +102422,30 @@
 				"id": "packages/ui/src/components/menu-content.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:AddMemberDialog",
+					"jsx:Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectGroupLabel::SelectPrimitive.GroupLabel[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:ProjectMembersSettings",
+					"jsx:section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectGroupLabel::SelectPrimitive.GroupLabel[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -102509,6 +102717,7 @@
 			"apps/web/src/components/portal/portal-search-dialog.tsx::PortalSearchDialog::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/portal/portal-user-menu.tsx::PortalUserMenu::DropdownMenu[0]/DropdownMenuContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/project-members-settings.tsx::AddMemberDialog::Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/project/members/project-members-settings.tsx::RoleSelectOptions::SelectGroup[0]/SelectItem[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::PersonList::div[0]/ul[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::ReparentPreviewDialog::AlertDialog[0]/AlertDialogContent[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/members/reparent-preview-dialog.tsx::ReparentPreviewDialog::AlertDialog[0]/AlertDialogContent[0]/div[0]/p[0]::text-muted-foreground#1",
@@ -102705,6 +102914,7 @@
 			"packages/ui/src/components/form.tsx::FormDescription::p[0]::text-muted-foreground#0",
 			"packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/menu-content.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+			"packages/ui/src/components/select.tsx::SelectGroupLabel::SelectPrimitive.GroupLabel[0]::text-muted-foreground#0",
 			"packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
 			"packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
 			"packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0",
@@ -104335,6 +104545,30 @@
 				],
 				"id": "apps/web/src/components/project/members/project-members-settings.tsx::AddMemberDialog::Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "imported-opaque-wrapper",
+				"usage": "apps/web/src/components/project/members/project-members-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:AddMemberDialog",
+					"jsx:Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children"
+				],
+				"id": "apps/web/src/components/project/members/project-members-settings.tsx::RoleSelectOptions::SelectGroup[0]/SelectItem[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/project/members/project-members-settings.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:ProjectMembersSettings",
+					"jsx:section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children"
+				],
+				"id": "apps/web/src/components/project/members/project-members-settings.tsx::RoleSelectOptions::SelectGroup[0]/SelectItem[0]/span[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/members/project-members-settings.tsx"
 			},
 			{
@@ -108127,6 +108361,30 @@
 				"id": "packages/ui/src/components/menu-content.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "packages/ui/src/components/menu-content.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:AddMemberDialog",
+					"jsx:Dialog[0]/DialogPopup[0]/DialogPanel[0]/div[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectGroupLabel::SelectPrimitive.GroupLabel[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/members/project-members-settings.tsx:ProjectMembersSettings",
+					"jsx:section[0]/div[1]/Table[0]/TableBody[0]/TableRow[0]/TableCell[1]/Select[0]/SelectContent[0]/RoleSelectOptions[0]",
+					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children"
+				],
+				"id": "packages/ui/src/components/select.tsx::SelectGroupLabel::SelectPrimitive.GroupLabel[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/select.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -118120,6 +118378,7 @@
 		"occurrenceIds": [
 			"apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#0",
 			"apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#1",
+			"apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#2",
 			"apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#0",
 			"apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#1"
 		],
@@ -118151,6 +118410,21 @@
 					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/workspace-switcher.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/workspace-switcher.tsx:WorkspaceSwitcher",
+					"jsx:div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]>data-highlighted:bg-sidebar-accent",
+					"apps/web/src/components/workspace-switcher.tsx:WorkspaceSwitcher",
+					"jsx:div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#2",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/workspace-switcher.tsx"
 			},
@@ -118203,6 +118477,7 @@
 		"occurrenceIds": [
 			"apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#0",
 			"apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#1",
+			"apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#2",
 			"apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#0",
 			"apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#1"
 		],
@@ -118234,6 +118509,21 @@
 					"opaque-backdrop:bg-popover"
 				],
 				"id": "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/workspace-switcher.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/workspace-switcher.tsx:WorkspaceSwitcher",
+					"jsx:div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]>data-highlighted:bg-sidebar-accent",
+					"apps/web/src/components/workspace-switcher.tsx:WorkspaceSwitcher",
+					"jsx:div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]",
+					"component-slot:packages/ui/src/components/menu-content.tsx:MenuPopup.children",
+					"opaque-backdrop:bg-popover"
+				],
+				"id": "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuGroup[1]/DropdownMenuItem[0]::data-highlighted:text-sidebar-accent-foreground#2",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/workspace-switcher.tsx"
 			},

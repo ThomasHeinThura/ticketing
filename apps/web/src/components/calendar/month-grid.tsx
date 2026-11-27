@@ -18,7 +18,7 @@ import { formatDate } from "@/lib/format";
 import { resolveCalendarMove } from "./calendar-reschedule";
 import CalendarTaskBar, { type CalendarTask } from "./calendar-task-bar";
 import DayOverflowPopover from "./day-overflow-popover";
-import { DAYS_PER_WEEK, packWeekLanes } from "./month-grid-model";
+import { DAYS_PER_WEEK, packMonthLanes } from "./month-grid-model";
 
 type MonthGridProps = {
   weeks: Date[][];
@@ -147,7 +147,7 @@ export default function MonthGrid({
     gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))`,
   };
   const layouts = useMemo(
-    () => weeks.map((week) => packWeekLanes(week, tasks, maxLanes)),
+    () => packMonthLanes(weeks, tasks, maxLanes),
     [weeks, tasks, maxLanes],
   );
 

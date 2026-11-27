@@ -13847,6 +13847,16 @@
                           "roleRank": {
                             "type": "integer"
                           },
+                          "roleDescription": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "isSystem": {
+                            "type": "boolean",
+                            "description": "True for the built-in project roles (shown before custom roles)."
+                          },
                           "roleId": {
                             "type": [
                               "string",
@@ -13859,6 +13869,8 @@
                           "roleKey",
                           "roleName",
                           "roleRank",
+                          "roleDescription",
+                          "isSystem",
                           "roleId"
                         ]
                       }

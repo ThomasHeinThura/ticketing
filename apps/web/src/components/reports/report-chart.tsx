@@ -246,6 +246,23 @@ export function niceMax(value: number): number {
   return 10 * exponent;
 }
 
+/**
+ * Whole-number axis ticks for counts: a step of 1, 2 or 5 times a power of ten, at most four
+ * intervals, topped by a tick at or above `peak`. Zero or no data gives 0 and 1.
+ */
+export function integerTicks(peak: number): number[] {
+  const top = Number.isFinite(peak) ? Math.ceil(peak) : 0;
+  if (top <= 0) return [0, 1];
+  const exponent = 10 ** Math.max(0, Math.floor(Math.log10(top / 4)));
+  const step =
+    [1, 2, 5, 10].map((m) => m * exponent).find((st) => top / st <= 4) ??
+    10 * exponent;
+  return Array.from(
+    { length: Math.ceil(top / step) + 1 },
+    (_, index) => index * step,
+  );
+}
+
 /** Runs of consecutive non-null points: a gap in the data breaks the line. */
 export function lineSegments(
   values: ReadonlyArray<number | null>,
@@ -304,8 +321,12 @@ export function ReportChart({
   const present = chart.series.flatMap((series) =>
     series.values.filter((value): value is number => value !== null),
   );
-  const max = niceMax(Math.max(0, ...present));
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((fraction) => fraction * max);
+  const peak = Math.max(0, ...present);
+  const ticks =
+    chart.unit === "count"
+      ? integerTicks(peak)
+      : [0, 0.25, 0.5, 0.75, 1].map((fraction) => fraction * niceMax(peak));
+  const max = ticks[ticks.length - 1] ?? 1;
   const tickText = (tick: number) =>
     formatChartValue(Math.round(tick * 10) / 10, chart.unit);
   const layout = chartLayout({
@@ -421,21 +442,38 @@ export function ReportChart({
                       (slot - groupWidth) / 2 +
                       barWidth * seriesIndex;
                     const top = y(value);
+                    const valueText = formatChartValue(value, chart.unit);
+                    const width = Math.max(1, barWidth - 2);
                     return (
-                      <rect
-                        // biome-ignore lint/suspicious/noArrayIndexKey: positional marks
-                        key={`${series.key}-${index}`}
-                        x={x}
-                        y={top}
-                        width={Math.max(1, barWidth - 2)}
-                        height={Math.max(0, plotBottom - top)}
-                        rx={2}
-                        className={classes.fill}
-                      >
-                        <title>
-                          {`${seriesLabel(series)}, ${chart.categories[index]}: ${formatChartValue(value, chart.unit)}`}
-                        </title>
-                      </rect>
+                      // biome-ignore lint/suspicious/noArrayIndexKey: positional marks
+                      <g key={`${series.key}-${index}`}>
+                        <rect
+                          x={x}
+                          y={top}
+                          width={width}
+                          height={Math.max(0, plotBottom - top)}
+                          rx={2}
+                          className={classes.fill}
+                        >
+                          <title>
+                            {`${seriesLabel(series)}, ${chart.categories[index]}: ${valueText}`}
+                          </title>
+                        </rect>
+                        {/* Skipped when it would not fit over its bar; the Table tab has every value. */}
+                        {textWidth(valueText) <= barWidth ? (
+                          // biome-ignore lint/a11y/noAriaHiddenOnFocusable: SVG text is not focusable; the table and hover title carry the value
+                          <text
+                            x={x + width / 2}
+                            y={top - 4}
+                            textAnchor="middle"
+                            aria-hidden="true"
+                            data-testid="bar-value"
+                            className="fill-foreground text-[10px] tabular-nums"
+                          >
+                            {valueText}
+                          </text>
+                        ) : null}
+                      </g>
                     );
                   });
                 })

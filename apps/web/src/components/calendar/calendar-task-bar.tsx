@@ -13,21 +13,18 @@ export type CalendarTask = PackableTask & {
   title: string;
   number: number | null;
   status: string;
+  /** The state category; drives the tint and the spoken state. */
+  stateCategory?: "open" | "completed" | "cancelled";
+  /** Set only by the change calendar; never inferred from a user-named state. */
+  changeKind?: "frozen" | "conflict" | "freeze";
   /** Stored dates and version, so a drag can write them back (`VW-26`). */
   startDate?: string | null;
   dueDate?: string | null;
   version?: number;
 };
 
-const STATUS_CLASSES: Record<string, string> = {
-  "to-do":
-    "border-slate-500/35 bg-slate-500/15 hover:border-slate-500/50 hover:bg-slate-500/20",
-  "in-progress":
-    "border-blue-500/35 bg-blue-500/15 hover:border-blue-500/50 hover:bg-blue-500/20",
-  "in-review":
-    "border-amber-500/40 bg-amber-500/15 hover:border-amber-500/55 hover:bg-amber-500/20",
-  done: "border-emerald-500/35 bg-emerald-500/15 hover:border-emerald-500/50 hover:bg-emerald-500/20",
-  // Change calendar (P5 `CH-4`, `CH-5`): a window inside a freeze, a same-service conflict, a freeze.
+// Change calendar (P5 `CH-4`, `CH-5`): a window inside a freeze, a same-service conflict, a freeze.
+const SPECIAL_CLASSES: Record<string, string> = {
   frozen:
     "border-red-500/45 bg-red-500/15 hover:border-red-500/60 hover:bg-red-500/20",
   conflict:
@@ -36,12 +33,28 @@ const STATUS_CLASSES: Record<string, string> = {
     "border-slate-500/45 bg-slate-500/20 hover:border-slate-500/60 hover:bg-slate-500/25",
 };
 
-export function getCalendarTaskStatusClass(status: string): string {
-  return (
-    STATUS_CLASSES[status] ??
-    "border-primary/25 bg-primary/12 hover:border-primary/40 hover:bg-primary/18"
-  );
+// States are user-configurable, so colour follows the state category, never its name.
+const CANCELLED_CLASS =
+  "border-muted-foreground/30 bg-muted/60 hover:border-muted-foreground/45 hover:bg-muted dark:bg-muted/40";
+const DONE_CLASS =
+  "border-success/35 bg-success/15 hover:border-success/50 hover:bg-success/25 dark:bg-success/20";
+const OPEN_CLASS =
+  "border-info/35 bg-info/15 hover:border-info/50 hover:bg-info/25 dark:bg-info/20";
+
+export function getCalendarTaskStatusClass(
+  task: Pick<CalendarTask, "stateCategory" | "changeKind">,
+): string {
+  if (task.changeKind) return SPECIAL_CLASSES[task.changeKind];
+  if (task.stateCategory === "completed") return DONE_CLASS;
+  if (task.stateCategory === "cancelled") return CANCELLED_CLASS;
+  return OPEN_CLASS;
 }
+
+const STATE_LABEL_KEYS = {
+  open: "tasks:calendar.stateOpen",
+  completed: "tasks:calendar.stateDone",
+  cancelled: "tasks:calendar.stateCancelled",
+} as const;
 
 type CalendarTaskBarProps = {
   segment: WeekSegment<CalendarTask>;
@@ -91,13 +104,21 @@ export default function CalendarTaskBar({
     task.scheduleEnd,
   )}`;
 
+  // Colour is never the only cue: the state is also in the tooltip and accessible name.
+  const stateLabel =
+    task.stateCategory === undefined || task.changeKind
+      ? null
+      : t(STATE_LABEL_KEYS[task.stateCategory]);
+  const withState = (label: string) =>
+    stateLabel ? `${label}, ${stateLabel}` : label;
+
   return (
     <ActionTooltip
-      label={
+      label={withState(
         taskKey
           ? `${taskKey} · ${task.title} · ${range}`
-          : `${task.title} · ${range}`
-      }
+          : `${task.title} · ${range}`,
+      )}
     >
       <Button
         variant="ghost"
@@ -111,26 +132,27 @@ export default function CalendarTaskBar({
           gridRow: lane + 2,
           transform: CSS.Translate.toString(transform),
         }}
-        aria-label={
+        aria-label={withState(
           selectionMode
             ? t("workItems:bulk.selectItem", { key: taskKey ?? task.title })
             : t("tasks:calendar.taskAriaLabel", {
                 title: task.title,
                 range,
-              })
-        }
+              }),
+        )}
         aria-pressed={selectionMode ? isSelected : undefined}
         data-task-status={task.status}
         onClick={() => onOpenTask(task.id)}
         className={cn(
           isDragging ? "z-30 cursor-grabbing shadow-md" : "z-10",
           "mb-0.5 flex h-6 min-w-0 items-center overflow-hidden border px-1.5 text-left text-[11px] font-medium leading-none text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-5",
-          getCalendarTaskStatusClass(task.status),
+          getCalendarTaskStatusClass(task),
           isSelected && "ring-2 ring-ring",
-          // Bars that run past a week edge lose their cap there so the two halves
-          // read as one continuous span across rows.
-          continuesBefore ? "rounded-l-none border-l-0" : "ml-1 rounded-l-md",
-          continuesAfter ? "rounded-r-none border-r-0" : "mr-1 rounded-r-md",
+          // Bars stay inset from the cell borders; a side that continues into the next
+          // week row is square, a real start or end is rounded.
+          "mx-1",
+          continuesBefore ? "rounded-l-none" : "rounded-l-md",
+          continuesAfter ? "rounded-r-none" : "rounded-r-md",
         )}
       >
         {isSelected ? (

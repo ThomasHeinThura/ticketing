@@ -177,6 +177,16 @@ describe("CreateProjectModal customer organisation selector", () => {
     expect(lastCreateArgs().organisationId).toBeNull();
   });
 
+  it("never shows the native required bubble: the form skips browser validation but keeps required semantics", () => {
+    mocks.organisations.mockReturnValue(loaded([]));
+    render(<CreateProjectModal open onClose={vi.fn()} />);
+    const name = screen.getByPlaceholderText(
+      "common:modals.createProject.projectName",
+    );
+    expect(name.closest("form")?.noValidate).toBe(true);
+    expect((name as HTMLInputElement).required).toBe(true);
+  });
+
   it("shows the selector and fetches with the capability", () => {
     mocks.organisations.mockReturnValue(
       loaded([{ id: "org-1", name: "Acme Ltd" }]),

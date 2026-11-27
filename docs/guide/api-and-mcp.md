@@ -61,3 +61,34 @@ Two areas follow the same pattern as deletion. Approvals are requested with `POS
    | `TASKDESK_API_URL` | Origin of your agent host. Defaults to `http://localhost:1337`, so set it for any real install. |
 
 `taskdesk-mcp serve` runs the server directly when you want to test stdio. Tools cover projects, work items, states, comments, labels, relations, time logging, approvals, saved views and imports. Deleting tools only ask TaskDesk to open a pending deletion, and the key's owner approves it in the web app. See `packages/mcp/README.md` for the full package notes.
+
+### Connect Claude Code
+
+The server speaks stdio only. There is no remote URL and no OAuth, so Claude Code starts it as a local process.
+
+1. An instance administrator turns on `feature.mcp` in God Mode, Features.
+2. Create a key under Account, Developer with "Use with an AI agent". Grant the narrowest capabilities that work. The key is read-only unless you add write capabilities, and it never exceeds your own access. Copy it once.
+3. Register the server. `serve` matters: without it, the package starts the installer when run in a terminal.
+
+   ```sh
+   claude mcp add taskdesk --scope user \
+     --env TASKDESK_API_URL=https://<agent-host> \
+     --env TASKDESK_API_KEY=<tdk_key> \
+     -- npx -y @taskdesk/mcp serve
+   ```
+
+   Use `--scope user` so the key stays out of a committed `.mcp.json`.
+
+4. Check it. Run `claude mcp list`, then `/mcp` inside Claude Code and call the `whoami` tool. A 403 usually means `feature.mcp` is off or the key lacks the capability.
+
+The `@taskdesk/mcp` package is not published to the npm registry yet, so `npx` fails with a 404. Run it from a checkout instead. The runtime image does not include it.
+
+```sh
+pnpm install && pnpm --filter @taskdesk/mcp build
+claude mcp add taskdesk --scope user \
+  --env TASKDESK_API_URL=https://<agent-host> \
+  --env TASKDESK_API_KEY=<tdk_key> \
+  -- node <checkout>/packages/mcp/dist/index.js serve
+```
+
+Switch to the `npx` form once the package is published.

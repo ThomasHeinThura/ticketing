@@ -42,6 +42,32 @@ describe("Join project", () => {
       expect(Boolean(screen.queryByRole("button"))).toBe(eligible);
     });
   }
+  it("compact: ghost Join button with a named label and no membership text", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <JoinProject
+          projectId="p"
+          workspaceId="w"
+          canJoin
+          compact
+          projectName="Customer Support"
+        />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByText("projects.notMember")).toBeNull();
+    const button = screen.getByRole("button", {
+      name: "projects.joinNamed",
+    });
+    expect(button.textContent).toBe("projects.joinShort");
+  });
+  it("compact: renders nothing when the caller cannot join", () => {
+    const { container } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <JoinProject projectId="p" workspaceId="w" compact />
+      </QueryClientProvider>,
+    );
+    expect(container.textContent).toBe("");
+  });
   it("shows pending feedback and removes both hint and button after success", async () => {
     let finish: (() => void) | undefined;
     join.mockImplementation(

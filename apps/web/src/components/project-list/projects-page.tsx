@@ -730,6 +730,8 @@ export default function ProjectsPage({
                                 projectId={project.id}
                                 workspaceId={project.workspaceId}
                                 canJoin={project?.canJoin === true}
+                                projectName={project.name}
+                                compact
                               />
                             ) : null}
                             <Badge
