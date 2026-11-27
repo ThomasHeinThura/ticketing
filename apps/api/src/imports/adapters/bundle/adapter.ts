@@ -220,6 +220,12 @@ export function createBundleAdapter(
       }
     },
 
+    // One sourceRef per bundle source (relations resolve across projects); the stale sweep is per project.
+    staleScope(connection) {
+      const key = connection.config.projectKey;
+      return typeof key === "string" ? { projectKey: key } : null;
+    },
+
     async discover(connection): Promise<DiscoveryResult> {
       return discoverView(readBundle(connection.config));
     },

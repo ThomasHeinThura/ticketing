@@ -501,9 +501,9 @@ links the writer downloads through the SSRF-guarded fetch; there is no inline fi
 
 **Runs.** A run is bound to one existing TaskDesk project, so a bundle with several projects needs one
 source and one run per `projectKey` (`config.bundleText`, `config.projectKey`; the key may be left out
-when the file holds one project). The source's `sourceRef` is `<system>:<instance>:<workspace>:<projectKey>` from the
+when the file holds one project). The source's `sourceRef` is `<system>:<instance>:<workspace>` from the
 header and each item's id is its source id, so a second run of the same bundle updates what the first
-created instead of duplicating it (IM-1).
+created instead of duplicating it (IM-1). Every project of a source shares that one `sourceRef`, so a relation or parent in one project's file resolves to an item imported from another's. The end-of-run stale sweep is scoped by the adapter's `staleScope` (the run's `projectKey`): importing one project never marks another project's records stale, and a record dropped from a project's file still goes stale on that project's next run.
 
 **Mapping.** Facets are `type`, `state` (`<name> (<group>)`), `priority`, `person` (email) and
 `label`. The adapter proposes only exact matches: the declared state group, the four priorities, a

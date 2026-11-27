@@ -322,49 +322,50 @@ describe("import.bundle end to end", () => {
     ).toBe(true);
   });
 
-  it("importing a second project never marks the first project's records stale (one sourceRef per project)", async () => {
-    const staleAfter = async (refs: { web: string; ops: string }) => {
-      await resetTestDatabase();
-      const f = await engineFixture();
-      const { app } = createApp();
-      const text = bundleFor(f);
-      for (const [key, sourceRef] of [
-        ["WEB", refs.web],
-        ["OPS", refs.ops],
-      ] as const) {
-        const r = await startBundleRun(app, f, {
-          bundleText: text,
-          projectKey: key,
-          projectId: f.project.id,
-          sourceRef,
-        });
-        await decide(app, f, r.run.id, r.mapping, f.type.id, {
-          persons: "placeholder",
-        });
-        await execute(app, f, r.run.id);
-      }
-      const links = await db.select().from(schema.importRecordLinkTable);
-      return {
-        total: links.length,
-        stale: links.filter((l) => l.staleAt !== null).length,
-      };
+  it("one source identity for every project: OPS resolves its relation to WEB and never stales WEB", async () => {
+    const f = await engineFixture();
+    const { app } = createApp();
+    const text = bundleFor(f);
+    const sourceRef = "plane:plane.lan:acme";
+    const run = async (key: string, bundleText = text) => {
+      const r = await startBundleRun(app, f, {
+        bundleText,
+        projectKey: key,
+        projectId: f.project.id,
+        sourceRef,
+      });
+      await decide(app, f, r.run.id, r.mapping, f.type.id, {
+        persons: "placeholder",
+      });
+      await execute(app, f, r.run.id);
     };
-    // The MCP default: "<system>:<instance>:<workspace>:<projectKey>".
+    const links = () => db.select().from(schema.importRecordLinkTable);
+    await run("WEB");
+    await run("OPS");
     expect(
-      await staleAfter({
-        web: "plane:plane.lan:acme:WEB",
-        ops: "plane:plane.lan:acme:OPS",
-      }),
-    ).toEqual({ total: 6, stale: 0 });
-    // The shared reference the first version defaulted to: the second run stales the first.
+      (await links()).map((l) => [l.sourceId, l.staleAt !== null]).sort(),
+    ).toEqual(["o1", "o2", "w1", "w2", "w3", "w4"].map((id) => [id, false]));
+    // OPS o2 relates to WEB w1: it resolved across projects instead of becoming a loss.
+    const byId = new Map((await links()).map((l) => [l.sourceId, l.targetId]));
+    const relations = await db.select().from(schema.workItemRelationTable);
     expect(
-      (
-        await staleAfter({
-          web: "plane:plane.lan:acme",
-          ops: "plane:plane.lan:acme",
-        })
-      ).stale,
-    ).toBeGreaterThan(0);
+      relations.some(
+        (r) =>
+          [r.sourceId, r.targetId].includes(byId.get("o2") as string) &&
+          [r.sourceId, r.targetId].includes(byId.get("w1") as string),
+      ),
+    ).toBe(true);
+
+    // A record dropped from a project's own file still goes stale on that project's next run.
+    const without = text
+      .split("\n")
+      .filter((l) => !l.includes('"id":"w4"'))
+      .join("\n");
+    await run("WEB", without);
+    const stale = (await links())
+      .filter((l) => l.staleAt !== null)
+      .map((l) => l.sourceId);
+    expect(stale).toEqual(["w4"]);
   });
 
   it("a placeholder person has no login, no membership and is not assignable", async () => {

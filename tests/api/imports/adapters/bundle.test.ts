@@ -213,4 +213,11 @@ describe("import.bundle adapter", () => {
       reason: "invalid_export",
     });
   });
+
+  it("scopes the stale sweep to the run's project key, and to nothing when no key is set", () => {
+    expect(adapter.staleScope?.(conn())).toEqual({ projectKey: "WEB" });
+    expect(
+      adapter.staleScope?.(connection("import.bundle", { bundleText })),
+    ).toBeNull();
+  });
 });

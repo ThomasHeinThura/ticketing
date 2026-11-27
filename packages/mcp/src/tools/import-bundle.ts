@@ -274,7 +274,7 @@ export function registerImportBundleTools(deps: ImportBundleDeps): void {
   registerTool(
     "import_bundle_start",
     {
-      description: `Start an import of one project of a bundle file (POST /api/import-sources, /api/import-sources/{id}/runs, /api/imports/{id}/discover). ${IMPORT_BUNDLE_WRITE_NOTICE} projectId is an existing TaskDesk project (nothing is created); a bundle with several projects needs one run per projectKey. sourceRef defaults to "<system>:<instance>:<workspace>:<projectKey>" from the file header, so a re-run of the same source project updates the records it created instead of duplicating them. Returns the runId and the mapping that still needs a decision.`,
+      description: `Start an import of one project of a bundle file (POST /api/import-sources, /api/import-sources/{id}/runs, /api/imports/{id}/discover). ${IMPORT_BUNDLE_WRITE_NOTICE} projectId is an existing TaskDesk project (nothing is created); a bundle with several projects needs one run per projectKey. sourceRef defaults to "<system>:<instance>:<workspace>" from the file header, shared by every project of the source so relations resolve across projects, and a re-run of the same source project updates the records it created instead of duplicating them. Returns the runId and the mapping that still needs a decision.`,
       inputSchema: z
         .object({
           idempotencyKey,
@@ -314,11 +314,11 @@ export function registerImportBundleTools(deps: ImportBundleDeps): void {
               : "The bundle holds several projects: pass projectKey (one run per project). Nothing was sent to TaskDesk.",
           );
         const source = bundle.header?.source;
-        // Per source project: the engine's stale sweep is per sourceRef, so a shared one would mark
-        // another project's records stale when this project's run completes.
+        // One identity per bundle source: relations and parents resolve by sourceRef, so they can
+        // cross projects. The stale sweep is scoped to the project by the adapter (`staleScope`).
         const sourceRef =
           args.sourceRef ??
-          `${source?.system}:${source?.instance}:${source?.workspace}:${project.key}`;
+          `${source?.system}:${source?.instance}:${source?.workspace}`;
         if (sourceRef.length > 200)
           throw new BundleToolError(
             "The default sourceRef is longer than 200 characters. Pass a shorter sourceRef.",

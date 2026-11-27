@@ -713,11 +713,24 @@ async function finalizeRun(
             writer.losses,
           );
         // Reached only after the cursor is exhausted: the source was enumerated in full.
+        const scope =
+          run.sourceConnectionId === null
+            ? null
+            : (getImportAdapter(run.pluginId)?.staleScope?.(
+                toAdapterConnection(
+                  await loadConnection(
+                    tx,
+                    run.workspaceId,
+                    run.sourceConnectionId,
+                  ),
+                ),
+              ) ?? null);
         await markMissingImportSourcesStale(tx, {
           workspaceId: run.workspaceId,
           pluginId: run.pluginId,
           sourceRef: run.sourceRef,
           currentRunId: run.id,
+          scope,
         });
         const stats = run.stats;
         await tx

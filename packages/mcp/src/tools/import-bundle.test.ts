@@ -288,7 +288,7 @@ describe("import_bundle_start", () => {
     });
     expect(run?.body).toEqual({
       projectId: "p-1",
-      sourceRef: "plane:plane.lan:acme:WEB",
+      sourceRef: "plane:plane.lan:acme",
     });
     for (const c of calls.filter((c) => c.method === "POST"))
       expect(c.key, c.path).toMatch(/^mcp-import-[a-f0-9]{64}$/);
@@ -303,7 +303,7 @@ describe("import_bundle_start", () => {
     });
   });
 
-  it("gives each project of a bundle its own default sourceRef, so one run cannot stale another", async () => {
+  it("gives every project of a bundle the same default sourceRef, so relations resolve across projects", async () => {
     jobKind = "discover";
     const refs: string[] = [];
     for (const projectKey of ["WEB", "OPS"]) {
@@ -313,10 +313,7 @@ describe("import_bundle_start", () => {
         (calls[1]?.body as { sourceRef?: string } | undefined)?.sourceRef ?? "",
       );
     }
-    expect(refs).toEqual([
-      "plane:plane.lan:acme:WEB",
-      "plane:plane.lan:acme:OPS",
-    ]);
+    expect(refs).toEqual(["plane:plane.lan:acme", "plane:plane.lan:acme"]);
   });
 
   it("sends the same keys on a retry so the API can replay", async () => {

@@ -265,6 +265,14 @@ export interface ImportSourceAdapter {
    * source's own configured host; the download keeps the SSRF, size and type guards.
    */
   attachmentAuth?(connection: AdapterConnection): ImportAttachmentAuth | null;
+  /**
+   * Connection `config` entries that name the slice of the source this run enumerates (for example
+   * `{ projectKey: "WEB" }`). The end-of-run stale sweep then only considers records last seen by
+   * earlier runs of the same slice, so importing one slice never marks another slice's records
+   * stale while every slice keeps one `sourceRef` (relations and parents resolve across slices).
+   * Absent or `null`: the sweep covers the whole `sourceRef`, as before.
+   */
+  staleScope?(connection: AdapterConnection): Record<string, string> | null;
 }
 
 const registry = new Map<string, () => ImportSourceAdapter>();

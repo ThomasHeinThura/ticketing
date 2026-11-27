@@ -1,11 +1,17 @@
-import { and, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { schema } from "../../database";
 import type { Transaction } from "../../database/executor";
+import {
+  importRunTable,
+  importSourceConnectionTable,
+} from "../../database/schema-imports";
 import type { ImportRecord } from "../schema";
 import { type ImportWriterContext, recordLoss } from "./types";
 
 const LINK = schema.importProvenanceTable;
 const RECORD_LINK = schema.importRecordLinkTable;
+const RUN = importRunTable;
+const CONNECTION = importSourceConnectionTable;
 
 /**
  * The provenance namespace (P6-R1-09): workspace, plugin, source reference (`system`), entity type
@@ -235,10 +241,24 @@ export async function markMissingImportSourcesStale(
     pluginId: string;
     sourceRef: string;
     currentRunId: string;
+    /**
+     * Config entries naming the slice of the source this run covers (adapter `staleScope`). Only
+     * records last seen by an earlier run of the same slice are eligible; absent means every run.
+     */
+    scope?: Record<string, string> | null;
     now?: Date;
   },
 ): Promise<{ links: number; provenance: number }> {
   const now = input.now ?? new Date();
+  const sameSlice = (
+    runIdColumn: typeof RECORD_LINK.importRunId | typeof LINK.importRunId,
+  ) =>
+    input.scope && Object.keys(input.scope).length > 0
+      ? inArray(
+          runIdColumn,
+          sql`(select ${RUN.id} from ${RUN} inner join ${CONNECTION} on ${CONNECTION.id} = ${RUN.sourceConnectionId} where ${RUN.workspaceId} = ${input.workspaceId} and ${RUN.pluginId} = ${input.pluginId} and ${RUN.sourceRef} = ${input.sourceRef} and ${CONNECTION.config} @> ${JSON.stringify(input.scope)}::jsonb)`,
+        )
+      : undefined;
   const links = await tx
     .update(RECORD_LINK)
     .set({ staleAt: now })
@@ -249,6 +269,7 @@ export async function markMissingImportSourcesStale(
         eq(RECORD_LINK.sourceRef, input.sourceRef),
         ne(RECORD_LINK.importRunId, input.currentRunId),
         isNull(RECORD_LINK.staleAt),
+        sameSlice(RECORD_LINK.importRunId),
       ),
     )
     .returning({ id: RECORD_LINK.id });
@@ -264,6 +285,7 @@ export async function markMissingImportSourcesStale(
         ne(LINK.importRunId, input.currentRunId),
         isNull(LINK.staleAt),
         isNotNull(LINK.importRunId),
+        sameSlice(LINK.importRunId),
       ),
     )
     .returning({ id: LINK.id });
