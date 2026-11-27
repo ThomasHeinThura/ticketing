@@ -227,7 +227,7 @@ function CreateProjectModal({
 
         {/* The fields scroll inside the panel so the footer stays reachable when the
             managed-service fields make the form taller than a phone screen. */}
-        <form onSubmit={handleSubmit} className="contents">
+        <form onSubmit={handleSubmit} className="contents" noValidate>
           <DialogPanel className="space-y-4 p-0 pb-4 in-[[data-slot=dialog-popup]:has([data-slot=dialog-header])]:pt-0">
             <div className="space-y-6 px-3 pt-2">
               <Popover

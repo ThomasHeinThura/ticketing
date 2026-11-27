@@ -64,110 +64,88 @@ export function buildMonthWeeks(
 }
 
 /**
- * Clips every task overlapping the week to that week's seven columns, then
- * greedily packs the clipped segments into lanes so overlapping tasks stack
- * instead of colliding. Segments past `maxLanes` are reported per day so the
- * cell can render an overflow hint.
+ * Packs every task of the visible grid into lanes once, so a multi-week bar keeps
+ * the same lane in every week row. Tasks are placed in global order (start day,
+ * longer first, then id) at the first lane that is free on every day they span.
+ * Tasks past `maxLanes` stay hidden for their whole span and are counted per day
+ * so each cell can render an overflow hint.
  */
-export function packWeekLanes<TTask extends PackableTask>(
-  week: Date[],
+export function packMonthLanes<TTask extends PackableTask>(
+  weeks: Date[][],
   tasks: TTask[],
   maxLanes: number,
-): WeekLayout<TTask> {
-  // Month and week rows have seven day columns; the day view has one. The row's own length
-  // is the column count so every view shares this packing.
-  const dayCount = week.length || DAYS_PER_WEEK;
-  const hiddenCountByDay = new Array<number>(dayCount).fill(0);
-  const tasksByDay: TTask[][] = Array.from({ length: dayCount }, () => []);
-  const weekStart = week[0];
+): Array<WeekLayout<TTask>> {
+  const gridStart = weeks[0]?.[0];
+  const dayCount = weeks[0]?.length || DAYS_PER_WEEK;
+  const lastGridDay = weeks.length * dayCount - 1;
 
-  if (!weekStart) {
-    return { segments: [], hiddenCountByDay, tasksByDay };
-  }
-
-  const lastDayIndex = dayCount - 1;
-
-  const candidates = tasks
+  const placed = (gridStart ? tasks : [])
     .map((task) => {
-      const startOffset = differenceInCalendarDays(
+      const start = differenceInCalendarDays(
         task.scheduleStart,
-        weekStart,
+        gridStart as Date,
       );
-      const endOffset = differenceInCalendarDays(task.scheduleEnd, weekStart);
-
-      if (endOffset < 0 || startOffset > lastDayIndex) return null;
-
-      const clippedStart = Math.max(0, startOffset);
-      const clippedEnd = Math.min(lastDayIndex, endOffset);
-
-      return {
-        task,
-        clippedStart,
-        clippedEnd,
-        columnStart: clippedStart + 1,
-        columnEnd: clippedEnd + 2,
-        continuesBefore: startOffset < 0,
-        continuesAfter: endOffset > lastDayIndex,
-      };
+      const end = differenceInCalendarDays(task.scheduleEnd, gridStart as Date);
+      return { task, start, end };
     })
-    .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
-    // Longest bar first within a start column, then by id so the layout does
-    // not shuffle between renders of the same data.
-    .sort((left, right) => {
-      if (left.columnStart !== right.columnStart) {
-        return left.columnStart - right.columnStart;
-      }
-      const leftSpan = left.columnEnd - left.columnStart;
-      const rightSpan = right.columnEnd - right.columnStart;
-      if (leftSpan !== rightSpan) return rightSpan - leftSpan;
-      return left.task.id.localeCompare(right.task.id);
-    });
-
-  const segments: Array<WeekSegment<TTask>> = [];
-  const laneNextFreeColumn: number[] = [];
-
-  for (const candidate of candidates) {
-    for (
-      let dayIndex = candidate.clippedStart;
-      dayIndex <= candidate.clippedEnd;
-      dayIndex += 1
-    ) {
-      tasksByDay[dayIndex].push(candidate.task);
-    }
-
-    let lane = laneNextFreeColumn.findIndex(
-      (nextFree) => nextFree <= candidate.columnStart,
+    .filter(({ start, end }) => end >= 0 && start <= lastGridDay)
+    .sort(
+      (left, right) =>
+        Math.max(left.start, 0) - Math.max(right.start, 0) ||
+        left.start - right.start ||
+        right.end - right.start - (left.end - left.start) ||
+        left.task.id.localeCompare(right.task.id),
     );
 
+  // lanes[lane][gridDay] is true when a bar already covers that day.
+  const lanes: boolean[][] = [];
+  const layouts = weeks.map(
+    (): WeekLayout<TTask> => ({
+      segments: [],
+      hiddenCountByDay: new Array<number>(dayCount).fill(0),
+      tasksByDay: Array.from({ length: dayCount }, () => []),
+    }),
+  );
+
+  for (const { task, start, end } of placed) {
+    const from = Math.max(0, start);
+    const to = Math.min(lastGridDay, end);
+
+    let lane = lanes.findIndex((busy) => {
+      for (let day = from; day <= to; day += 1) if (busy[day]) return false;
+      return true;
+    });
     if (lane === -1) {
-      lane = laneNextFreeColumn.length;
-      laneNextFreeColumn.push(candidate.columnEnd);
-    } else {
-      laneNextFreeColumn[lane] = candidate.columnEnd;
+      lane = lanes.length;
+      lanes.push([]);
     }
+    for (let day = from; day <= to; day += 1) lanes[lane][day] = true;
 
-    if (lane < maxLanes) {
-      segments.push({
-        task: candidate.task,
-        lane,
-        columnStart: candidate.columnStart,
-        columnEnd: candidate.columnEnd,
-        continuesBefore: candidate.continuesBefore,
-        continuesAfter: candidate.continuesAfter,
-      });
-      continue;
-    }
+    for (let weekIndex = 0; weekIndex < weeks.length; weekIndex += 1) {
+      const weekFirst = weekIndex * dayCount;
+      const clippedStart = Math.max(from, weekFirst);
+      const clippedEnd = Math.min(to, weekFirst + dayCount - 1);
+      if (clippedStart > clippedEnd) continue;
 
-    for (
-      let dayIndex = candidate.clippedStart;
-      dayIndex <= candidate.clippedEnd;
-      dayIndex += 1
-    ) {
-      hiddenCountByDay[dayIndex] += 1;
+      const layout = layouts[weekIndex];
+      for (let day = clippedStart; day <= clippedEnd; day += 1) {
+        layout.tasksByDay[day - weekFirst].push(task);
+        if (lane >= maxLanes) layout.hiddenCountByDay[day - weekFirst] += 1;
+      }
+      if (lane < maxLanes) {
+        layout.segments.push({
+          task,
+          lane,
+          columnStart: clippedStart - weekFirst + 1,
+          columnEnd: clippedEnd - weekFirst + 2,
+          continuesBefore: start < weekFirst,
+          continuesAfter: end > weekFirst + dayCount - 1,
+        });
+      }
     }
   }
 
-  return { segments, hiddenCountByDay, tasksByDay };
+  return layouts;
 }
 
 /** The tasks that overlap at least one day of the grid, i.e. the ones a person can see. */

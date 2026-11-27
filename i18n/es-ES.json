@@ -1984,7 +1984,12 @@
 				"roleExceedsAuthority": "You cannot grant, change or remove a role above your own.",
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
-			}
+			},
+			"roleGroupBuiltIn": "Integrados",
+			"roleGroupCustom": "Roles personalizados",
+			"roleDescriptionLead": "Dirige el {{term_project_one}}: gestiona miembros y ajustes, asigna y clasifica {{term_work_item_other}}.",
+			"roleDescriptionMember": "Crea y actualiza {{term_work_item_other}}, comenta de forma interna y asume trabajo.",
+			"roleDescriptionViewer": "Acceso de solo lectura al {{term_project_one}}."
 		},
 		"workflows": {
 			"add": {
@@ -2396,7 +2401,8 @@
 			"workspaceSettings": "Ajustes del espacio de trabajo",
 			"instanceUsers": "Usuarios de la instancia",
 			"selectWorkspace": "Seleccionar espacio de trabajo",
-			"switchFailed": "Could not switch workspace. Check your access and try again."
+			"switchFailed": "Could not switch workspace. Check your access and try again.",
+			"pendingInvitations": "Invitaciones pendientes: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3188,7 +3194,10 @@
 				"month": "Month",
 				"week": "Week"
 			},
-			"viewGroup": "Calendar range"
+			"viewGroup": "Calendar range",
+			"stateDone": "Completado",
+			"stateOpen": "Abierto",
+			"stateCancelled": "Cancelado"
 		},
 		"group": {
 			"by": "Group by",
@@ -3279,7 +3288,9 @@
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
 			"archived": "Archived",
-			"completion": "{{name}} completion"
+			"completion": "{{name}} completion",
+			"joinNamed": "Unirse a {{name}}",
+			"joinShort": "Unirse"
 		},
 		"search": {
 			"pageTitle": "Buscar",

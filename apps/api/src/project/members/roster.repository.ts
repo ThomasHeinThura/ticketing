@@ -24,18 +24,18 @@ export const ROSTER_ROLE_DEFINITIONS = {
     name: "Project lead",
     builtIn: "lead",
     description:
-      "Project-scope lead granted to the creator of a project (rbac.md built-in lead capabilities).",
+      "Runs the project: manages members and settings, assigns and triages work.",
   },
   "project-member": {
     name: "Project member",
     builtIn: "member",
     description:
-      "Project-scope member: creates and updates work items, comments internally, self-assigns.",
+      "Creates and updates work items, comments internally and takes work.",
   },
   "project-viewer": {
     name: "Project viewer",
     builtIn: "viewer",
-    description: "Project-scope viewer: read-only.",
+    description: "Read-only access to the project.",
   },
 } as const;
 export type RosterRoleKey = keyof typeof ROSTER_ROLE_DEFINITIONS;
@@ -128,7 +128,9 @@ export async function loadProjectNames(
 export async function listProjectScopeRoles(
   executor: Executor,
   workspaceId: string,
-): Promise<Array<RosterRoleRef & { isSystem: boolean }>> {
+): Promise<
+  Array<RosterRoleRef & { isSystem: boolean; description: string | null }>
+> {
   const rows = await executor
     .select({
       roleId: roleTable.id,
@@ -136,6 +138,7 @@ export async function listProjectScopeRoles(
       roleName: roleTable.name,
       roleRank: roleTable.rank,
       isSystem: roleTable.isSystem,
+      description: roleTable.description,
     })
     .from(roleTable)
     .where(
