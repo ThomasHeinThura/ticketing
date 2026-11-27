@@ -343,7 +343,7 @@ it.each(["page", "pane"] as const)(
       screen.getByRole("button", { name: en.common.actions.retry }),
     );
     await waitFor(() => expect(screen.getByText("Attachments")).toBeVisible());
-    expect(await screen.findByText("SLA")).toBeVisible();
+    await waitFor(() => expect(screen.getByText("SLA")).toBeVisible());
     expect(areAllNamespacesLoaded()).toBe(true);
     expect(network.requests).toBeGreaterThan(1);
     expect(document.body.textContent).not.toMatch(/[A-Za-z]+:[A-Za-z_][\w.]+/);
