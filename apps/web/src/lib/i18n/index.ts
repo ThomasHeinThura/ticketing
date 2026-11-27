@@ -230,6 +230,34 @@ export async function switchLanguage(localeInput: string): Promise<boolean> {
   return true;
 }
 
+const WORK_ROUTE_NAMESPACE_SET: ReadonlySet<string> = new Set(
+  WORK_ROUTE_I18N_NAMESPACES,
+);
+/** The store event the React bindings follow (`react.bindI18nStore`). */
+const RENDER_RELEVANT_ADDED = "renderRelevantAdded";
+
+/**
+ * Re-emits the store's `added` for the namespaces mounted components can be waiting on. On the
+ * work list everything outside a namespace boundary paints with the work-route namespaces only
+ * (render-graph guard), so the later group re-renders nothing that reads it; without this filter
+ * it re-rendered every row in one long task (G11 list-to-detail paint). Elsewhere every namespace
+ * still re-renders, so a screen that painted before its strings arrived never keeps raw keys.
+ */
+function followRenderRelevantNamespaces(instance: I18nInstance) {
+  const store = instance.store as I18nInstance["store"] & {
+    emit(event: string, ...args: unknown[]): void;
+  };
+  store.on("added", (lng, ns) => {
+    if (
+      typeof location !== "undefined" &&
+      WORK_LIST_PATH_PATTERN.test(location.pathname) &&
+      !WORK_ROUTE_NAMESPACE_SET.has(ns)
+    )
+      return;
+    store.emit(RENDER_RELEVANT_ADDED, lng, ns);
+  });
+}
+
 /**
  * Create a runtime-scoped i18next instance with its own backend connector and resource store.
  * Loaded locale bundles are copied by value; lazy namespaces use the shared immutable group
@@ -282,12 +310,13 @@ export async function createScopedI18n(
       ns: initialNamespaces,
       resources: hasSeed ? seedResources : undefined,
       partialBundledLanguages: hasSeed,
-      react: { bindI18nStore: "added" },
+      react: { bindI18nStore: RENDER_RELEVANT_ADDED },
       interpolation: {
         escapeValue: false,
         skipOnVariables: true,
       },
     });
+  followRenderRelevantNamespaces(scopedI18n);
 
   if (useNamespaceGroups && !initialNamespacesOverride) {
     const instances = scopedGroupInstances.get(locale) ?? new Set();
@@ -329,7 +358,7 @@ void i18n
           ns: [...WORK_ROUTE_I18N_NAMESPACES],
           // A namespace that arrives after first paint re-renders the components that
           // already asked for it instead of leaving their keys on screen.
-          react: { bindI18nStore: "added" },
+          react: { bindI18nStore: RENDER_RELEVANT_ADDED },
         }
       : {}),
     interpolation: {
@@ -338,5 +367,7 @@ void i18n
     },
   })
   .then(() => preloadNamespaces(initialLocale));
+// The store exists once `init` has been called; follow it before any later namespace lands.
+if (useNamespaceGroups) followRenderRelevantNamespaces(i18n);
 
 export { i18n };

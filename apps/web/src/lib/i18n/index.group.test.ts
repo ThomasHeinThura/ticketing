@@ -111,6 +111,24 @@ describe("i18n group mode on the work list", () => {
     );
   });
 
+  it("re-renders on the work list only for the namespaces painted there", async () => {
+    const { i18n, whenAllNamespacesLoaded } = await importInGroupMode();
+    const added: string[] = [];
+    const store = i18n.store as typeof i18n.store & {
+      on(event: string, callback: (lng: string, ns: string) => void): void;
+    };
+    store.on("renderRelevantAdded", (_lng, ns) => added.push(ns));
+    await whenAllNamespacesLoaded();
+    expect(i18n.hasLoadedNamespace("settings")).toBe(true);
+    expect(added).not.toContain("settings");
+    i18n.addResourceBundle("en-US", "tasks", { probe: "x" }, true, true);
+    expect(added).toContain("tasks");
+    // Off the work list a late namespace still re-renders, so no screen keeps raw keys.
+    window.history.pushState({}, "", "/agent/settings");
+    i18n.addResourceBundle("en-US", "settings", { probe: "x" }, true, true);
+    expect(added).toContain("settings");
+  });
+
   it("does nothing special outside the work list", async () => {
     const { i18n, whenAllNamespacesLoaded } =
       await importInGroupMode("/dashboard");
