@@ -37,7 +37,7 @@ export function TaskCrumbPresentation({
         }
       >
         <span className="truncate text-left">
-          {label || t("tasks:common.selectTask")}
+          {label || t("tasksExtra:common.selectTask")}
         </span>
         <ChevronsUpDown className="size-3.5 text-muted-foreground" />
       </DropdownMenuTrigger>

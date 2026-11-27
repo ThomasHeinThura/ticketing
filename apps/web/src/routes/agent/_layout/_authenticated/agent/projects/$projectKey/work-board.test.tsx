@@ -103,8 +103,14 @@ vi.mock("@/hooks/use-project-view-preference", async (importOriginal) => ({
         }
       : { value: undefined, set: vi.fn(), settled: true },
 }));
-vi.mock("react-i18next", () => ({
+vi.mock("@/lib/i18n", () => ({
+  areAllNamespacesLoaded: () => true,
+  whenAllNamespacesLoaded: () => Promise.resolve(),
+}));
+vi.mock("react-i18next", async () => ({
+  I18nContext: (await import("react")).createContext(undefined),
   useTranslation: () => ({
+    i18n: { language: "en-US" },
     t: (key: string, options?: Record<string, unknown>) =>
       translate(
         typeof options?.count === "number"

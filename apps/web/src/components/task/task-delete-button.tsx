@@ -42,7 +42,7 @@ export default function TaskDeleteButton({
       await openPendingAction({ ...pendingAction, finalFocus });
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : t("tasks:delete.error"),
+        error instanceof Error ? error.message : t("tasksExtra:delete.error"),
       );
     }
   };
@@ -53,7 +53,7 @@ export default function TaskDeleteButton({
       ref={deleteButtonRef}
       variant="ghost"
       size="sm"
-      aria-label={t("tasks:delete.action")}
+      aria-label={t("tasksExtra:delete.action")}
       className={cn(
         "text-destructive hover:bg-destructive/10 hover:text-destructive",
         className,
@@ -62,7 +62,7 @@ export default function TaskDeleteButton({
       onClick={() => void handleDelete()}
     >
       <Trash2 className="size-4" />
-      <span className="hidden sm:inline">{t("tasks:delete.action")}</span>
+      <span className="hidden sm:inline">{t("tasksExtra:delete.action")}</span>
     </Button>
   );
 }

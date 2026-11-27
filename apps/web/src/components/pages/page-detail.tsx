@@ -12,23 +12,24 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Label,
   LoadingStatus,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Sheet,
+  SheetDescription,
+  SheetHeader,
+  SheetPanel,
+  SheetPopup,
+  SheetTitle,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -232,11 +233,8 @@ function History({
       ? t("history.kind.restore", { from: version.restoredFrom })
       : t(`history.kind.${version.kind}`);
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("history.title")}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <>
+      <div className="space-y-3">
         {!versions.isError && (versions.isLoading || versionsPlaceholder) ? (
           <LoadingStatus
             visible={versionsPlaceholder}
@@ -256,10 +254,7 @@ function History({
         <ol className="flex flex-col gap-2" aria-label={t("history.title")}>
           {(versionsPlaceholder ? [] : (versions.data?.versions ?? [])).map(
             (version) => (
-              <li
-                key={version.number}
-                className="flex flex-col gap-1 rounded-md border px-3 py-2"
-              >
+              <li key={version.number} className="flex flex-col gap-1 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium text-sm">
                     {t("history.version", { number: version.number })}
@@ -287,7 +282,7 @@ function History({
             ),
           )}
         </ol>
-      </CardContent>
+      </div>
       {previewing !== null ? (
         <VersionPreview
           projectKey={projectKey}
@@ -299,7 +294,7 @@ function History({
           onMissing={() => void versions.refetch()}
         />
       ) : null}
-    </Card>
+    </>
   );
 }
 
@@ -357,6 +352,7 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
   const [conflict, setConflict] = useState<PageConflictError | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [addingToDocuments, setAddingToDocuments] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const list = useQuery({
     queryKey: pageKeys.list(projectKey),
     queryFn: () => getPages(projectKey),
@@ -492,7 +488,7 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
   return (
     <>
       <PageTitle title={t("detail.pageTitle", { title: page.title })} />
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4">
         <Breadcrumb label={t("detail.breadcrumb")}>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -566,6 +562,9 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
               {t("share.staffOnly")}
               <span className="sr-only"> {t("share.staffOnlyHint")}</span>
             </Badge>
+            <Button variant="outline" onClick={() => setHistoryOpen(true)}>
+              {t("history.title")}
+            </Button>
             {page.canEdit ? (
               <>
                 <Button
@@ -584,74 +583,86 @@ function PageView({ projectKey, page }: { projectKey: string; page: Page }) {
             ) : null}
           </div>
         </div>
-        <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
-          <div className="min-w-0 space-y-4">
-            {page.canEdit ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="page-edit-parent">{t("fields.parent")}</Label>
-                  <Select
-                    value={draft.parentId ?? TOP_LEVEL}
-                    // Labels for the trigger; without them the Select shows the page id.
-                    items={[
-                      { value: TOP_LEVEL, label: t("fields.topLevel") },
-                      ...parents.map(({ page: candidate, depth }) => ({
-                        value: candidate.id,
-                        label: `${"– ".repeat(depth)}${candidate.title}`,
-                      })),
-                    ]}
-                    onValueChange={(value) => {
-                      const parentId =
-                        value && value !== TOP_LEVEL ? value : null;
-                      if (parentId === draftRef.current.parentId) return;
-                      edit({ parentId });
-                      // A move is a discrete choice: save it now, not after the typing delay.
-                      void autosave.flush();
-                    }}
+        <div className="min-w-0 space-y-3">
+          {page.canEdit ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-muted-foreground">
+                  {t("fields.parent")}
+                </span>
+                <Select
+                  value={draft.parentId ?? TOP_LEVEL}
+                  // Labels for the trigger; without them the Select shows the page id.
+                  items={[
+                    { value: TOP_LEVEL, label: t("fields.topLevel") },
+                    ...parents.map(({ page: candidate, depth }) => ({
+                      value: candidate.id,
+                      label: `${"– ".repeat(depth)}${candidate.title}`,
+                    })),
+                  ]}
+                  onValueChange={(value) => {
+                    const parentId =
+                      value && value !== TOP_LEVEL ? value : null;
+                    if (parentId === draftRef.current.parentId) return;
+                    edit({ parentId });
+                    // A move is a discrete choice: save it now, not after the typing delay.
+                    void autosave.flush();
+                  }}
+                >
+                  <SelectTrigger
+                    aria-label={t("fields.parent")}
+                    size="sm"
+                    className="w-auto min-w-0 max-w-64 border-transparent bg-background shadow-none before:shadow-none dark:bg-background"
                   >
-                    <SelectTrigger id="page-edit-parent">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={TOP_LEVEL}>
-                        {t("fields.topLevel")}
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={TOP_LEVEL}>
+                      {t("fields.topLevel")}
+                    </SelectItem>
+                    {parents.map(({ page: candidate, depth }) => (
+                      <SelectItem key={candidate.id} value={candidate.id}>
+                        {`${"– ".repeat(depth)}${candidate.title}`}
                       </SelectItem>
-                      {parents.map(({ page: candidate, depth }) => (
-                        <SelectItem key={candidate.id} value={candidate.id}>
-                          {`${"– ".repeat(depth)}${candidate.title}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <DocumentEditor
-                  key={editorKey}
-                  ariaLabel={t("editor.bodyLabel")}
-                  documentValue={editorBody}
-                  onDocumentChange={(document) => edit({ body: document })}
-                  onBlur={() => void autosave.flush()}
-                  placeholder={t("editor.bodyPlaceholder")}
-                />
-              </>
-            ) : (
-              <Card>
-                <CardContent className="py-4">
-                  <KbArticleContent body={page.body} />
-                </CardContent>
-              </Card>
-            )}
-          </div>
-          <History
-            projectKey={projectKey}
-            page={page}
-            beforeRestore={async () => {
-              await autosave.flush();
-              return autosave.baseVersion();
-            }}
-            onRestored={loadIntoEditor}
-          />
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DocumentEditor
+                key={editorKey}
+                ariaLabel={t("editor.bodyLabel")}
+                documentValue={editorBody}
+                onDocumentChange={(document) => edit({ body: document })}
+                onBlur={() => void autosave.flush()}
+                placeholder={t("editor.bodyPlaceholder")}
+              />
+            </>
+          ) : (
+            <KbArticleContent body={page.body} />
+          )}
         </div>
       </div>
+      <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+        <SheetPopup closeLabel={t("common.close")}>
+          <SheetHeader>
+            <SheetTitle>{t("history.title")}</SheetTitle>
+            <SheetDescription className="sr-only">
+              {t("history.previewDescription")}
+            </SheetDescription>
+          </SheetHeader>
+          <SheetPanel>
+            <History
+              projectKey={projectKey}
+              page={page}
+              beforeRestore={async () => {
+                await autosave.flush();
+                return autosave.baseVersion();
+              }}
+              onRestored={loadIntoEditor}
+            />
+          </SheetPanel>
+        </SheetPopup>
+      </Sheet>
       {conflict ? (
         <ConflictDialog
           conflict={conflict}

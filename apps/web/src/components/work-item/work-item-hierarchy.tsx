@@ -131,12 +131,12 @@ export default function WorkItemHierarchy({
             ) : (
               <ChevronRight className="size-4" />
             )}
-            {t("tasks:subtasks.title")}
+            {t("tasksExtra:subtasks.title")}
           </CollapsibleTrigger>
           {first && first.progress.total > 0 ? (
             <span className="flex items-center gap-1.5 ml-0.5">
               <span className="sr-only">
-                {t("workItems:hierarchy.progress", first.progress)}
+                {t("workItemsExtra:hierarchy.progress", first.progress)}
               </span>
               <CircularProgress
                 completed={first.progress.completed}
@@ -159,13 +159,13 @@ export default function WorkItemHierarchy({
             update({ ...state, mode: treeMode ? undefined : "tree" })
           }
         >
-          {t("workItems:hierarchy.title")}
+          {t("workItemsExtra:hierarchy.title")}
         </Button>
       </div>
       <CollapsibleContent>
         {expanded.length >= HIERARCHY_URL_MAX_ENTRIES ? (
           <p role="status" className="text-xs text-muted-foreground px-2 py-1">
-            {t("workItems:hierarchy.disclosureLimit")}
+            {t("workItemsExtra:hierarchy.disclosureLimit")}
           </p>
         ) : null}
         {!currentFatal && (currentQuery.isPending || currentPlaceholder) ? (
@@ -206,10 +206,10 @@ function HierarchyError({ onRetry }: { onRetry: () => void }) {
       className="flex items-center gap-2 px-2 py-1 bg-background"
     >
       <span className="text-xs text-muted-foreground">
-        {t("workItems:hierarchy.error")}
+        {t("workItemsExtra:hierarchy.error")}
       </span>
       <Button variant="ghost" size="xs" onClick={onRetry}>
-        {t("workItems:hierarchy.retry")}
+        {t("workItemsExtra:hierarchy.retry")}
       </Button>
     </div>
   );
@@ -307,8 +307,8 @@ function HierarchyNode({
             className="size-6 shrink-0"
             aria-label={t(
               open
-                ? "workItems:hierarchy.collapse"
-                : "workItems:hierarchy.expand",
+                ? "workItemsExtra:hierarchy.collapse"
+                : "workItemsExtra:hierarchy.expand",
               { key: node.key },
             )}
             aria-expanded={node.hasChildren ? open : undefined}
@@ -421,8 +421,8 @@ function HierarchyNode({
               className="size-6 shrink-0"
               aria-label={t(
                 open
-                  ? "workItems:hierarchy.collapse"
-                  : "workItems:hierarchy.expand",
+                  ? "workItemsExtra:hierarchy.collapse"
+                  : "workItemsExtra:hierarchy.expand",
                 { key: node.key },
               )}
               aria-expanded={open}
@@ -458,7 +458,7 @@ function HierarchyNode({
                 <div>
                   {outsidePage ? (
                     <p className="text-xs text-muted-foreground px-2 py-1">
-                      {t("workItems:hierarchy.currentBranch")}
+                      {t("workItemsExtra:hierarchy.currentBranch")}
                     </p>
                   ) : null}
                   <HierarchyNode
@@ -489,7 +489,7 @@ function HierarchyNode({
               (data?.pages.length ?? 0) >= HIERARCHY_AUTO_RESTORE_PAGES &&
               (data?.pages.length ?? 0) < desiredPages ? (
                 <p className="text-xs text-muted-foreground px-2 py-1">
-                  {t("workItems:hierarchy.restoreLimit", {
+                  {t("workItemsExtra:hierarchy.restoreLimit", {
                     count: HIERARCHY_AUTO_RESTORE_PAGES,
                   })}
                 </p>
@@ -512,15 +512,15 @@ function HierarchyNode({
                 >
                   {t(
                     query.isFetchingNextPage
-                      ? "workItems:hierarchy.loading"
-                      : "workItems:hierarchy.more",
+                      ? "workItemsExtra:hierarchy.loading"
+                      : "workItemsExtra:hierarchy.more",
                     { key: node.key },
                   )}
                 </Button>
               ) : null}
               {data && rows.length === 0 && !outsidePage ? (
                 <p className="text-xs text-muted-foreground px-2 py-1">
-                  {t("workItems:hierarchy.empty")}
+                  {t("workItemsExtra:hierarchy.empty")}
                 </p>
               ) : null}
             </>

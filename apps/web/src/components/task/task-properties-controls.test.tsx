@@ -18,7 +18,7 @@ const translations = vi.hoisted(() => ({
   ready: true,
   language: "en",
   t: (key: string) =>
-    key === "tasks:popover.assignee.unassigned" && translations.ready
+    key === "tasksExtra:popover.assignee.unassigned" && translations.ready
       ? translations.language === "de"
         ? "Nicht zugewiesen"
         : "Unassigned"
@@ -191,7 +191,7 @@ describe("task property render boundaries", () => {
     const { rerender } = renderWithQueryClient(renderControls(task));
     expect(
       screen.getByRole("button", {
-        name: "tasks:popover.assignee.unassigned",
+        name: "tasksExtra:popover.assignee.unassigned",
       }),
     ).toBeVisible();
 

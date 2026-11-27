@@ -110,7 +110,7 @@ export function GanttTaskBar({
           toast.error(
             error instanceof Error
               ? error.message
-              : t("tasks:gantt.updateDatesError"),
+              : t("tasksExtra:gantt.updateDatesError"),
           );
         }
         return false;
@@ -305,7 +305,7 @@ export function GanttTaskBar({
         <Button
           variant="ghost"
           type="button"
-          aria-label={t("tasks:gantt.resizeStart")}
+          aria-label={t("tasksExtra:gantt.resizeStart")}
           disabled={!canEditDates}
           onPointerDown={handleResizeLeftPointerDown}
           className={cn(
@@ -317,7 +317,9 @@ export function GanttTaskBar({
         <Button
           variant="ghost"
           type="button"
-          aria-label={t("tasks:gantt.taskAriaLabel", { title: task.title })}
+          aria-label={t("tasksExtra:gantt.taskAriaLabel", {
+            title: task.title,
+          })}
           className="relative z-10 min-h-[44px] min-w-0 flex-1 cursor-grab touch-manipulation overflow-hidden px-2 text-left active:cursor-grabbing sm:min-h-0 sm:px-2.5"
           onPointerDown={canEditDates ? handleMovePointerDown : undefined}
           onClick={canEditDates ? undefined : onOpenTask}
@@ -334,7 +336,7 @@ export function GanttTaskBar({
         <Button
           variant="ghost"
           type="button"
-          aria-label={t("tasks:gantt.resizeDue")}
+          aria-label={t("tasksExtra:gantt.resizeDue")}
           disabled={!canEditDates}
           onPointerDown={handleResizeRightPointerDown}
           className={cn(

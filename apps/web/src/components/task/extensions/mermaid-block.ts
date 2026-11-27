@@ -11,7 +11,7 @@ import { isDarkTheme, SHIKI_CODEBLOCK_REFRESH_META } from "./shiki-code-block";
 
 const MERMAID_LANGUAGE = "mermaid";
 const MERMAID_REFRESH_META = "mermaid-refresh";
-const DEFAULT_ERROR_KEY = "tasks:detail.editor.mermaid.renderFailed";
+const DEFAULT_ERROR_KEY = "tasksExtra:detail.editor.mermaid.renderFailed";
 const RENDER_DEBOUNCE_MS = 250;
 const RENDER_TIMEOUT_MS = 15_000;
 const RENDER_CACHE_LIMIT = 20;

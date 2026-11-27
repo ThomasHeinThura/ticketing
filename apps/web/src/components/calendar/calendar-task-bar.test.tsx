@@ -58,7 +58,7 @@ describe("CalendarTaskBar", () => {
     );
 
     expect(screen.getByRole("button")).toHaveAccessibleName(
-      translate("tasks:calendar.taskAriaLabel", {
+      translate("tasksExtra:calendar.taskAriaLabel", {
         title: "Design review",
         range: "2026-08-10 – 2026-08-12",
       }),

@@ -8,6 +8,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import NamespaceBoundary from "@/components/common/namespace-boundary";
 import type { WorkItemRow } from "@/types/work-item";
 
 const CanonicalTaskMenu = lazy(
@@ -98,20 +99,22 @@ export default function WorkItemContextMenu({
         })}
       </ContextMenuTrigger>
       {intent ? (
-        <Suspense fallback={null}>
-          <CanonicalTaskMenu
-            key={`${intent.workspaceId}:${intent.projectId}:${intent.key}`}
-            workspaceId={intent.workspaceId}
-            projectId={intent.projectId}
-            itemKey={intent.key}
-            open={open}
-            keyboardAnchor={keyboardAnchor}
-            onClose={() => {
-              setOpen(false);
-              setKeyboardAnchor(undefined);
-            }}
-          />
-        </Suspense>
+        <NamespaceBoundary>
+          <Suspense fallback={null}>
+            <CanonicalTaskMenu
+              key={`${intent.workspaceId}:${intent.projectId}:${intent.key}`}
+              workspaceId={intent.workspaceId}
+              projectId={intent.projectId}
+              itemKey={intent.key}
+              open={open}
+              keyboardAnchor={keyboardAnchor}
+              onClose={() => {
+                setOpen(false);
+                setKeyboardAnchor(undefined);
+              }}
+            />
+          </Suspense>
+        </NamespaceBoundary>
       ) : null}
     </ContextMenu>
   );

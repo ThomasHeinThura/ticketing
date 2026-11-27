@@ -82,7 +82,7 @@ export default function TaskContextMenuPresentation({
       anchor={keyboardAnchor}
     >
       <ContextMenuItem onClick={onCopyLink}>
-        <span>{t("tasks:contextMenu.copyLink")}</span>
+        <span>{t("tasksExtra:contextMenu.copyLink")}</span>
       </ContextMenuItem>
       {status}
       {priority || states || dueDate || assignee ? (

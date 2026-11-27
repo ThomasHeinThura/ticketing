@@ -52,11 +52,13 @@ const UnassignedOption = memo(function UnassignedOption({
     >
       <div
         className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
-        title={t("tasks:popover.assignee.unassigned")}
+        title={t("tasksExtra:popover.assignee.unassigned")}
       >
         <span className="text-[10px] font-medium text-muted-foreground">?</span>
       </div>
-      <span className="text-sm">{t("tasks:popover.assignee.unassigned")}</span>
+      <span className="text-sm">
+        {t("tasksExtra:popover.assignee.unassigned")}
+      </span>
       {selected ? (
         <Check className="ml-auto h-4 w-4" />
       ) : (
@@ -145,7 +147,7 @@ export default function TaskAssigneePopover({
         toast.error(
           error instanceof Error
             ? error.message
-            : t("tasks:popover.assignee.updateError"),
+            : t("tasksExtra:popover.assignee.updateError"),
         );
       }
     },

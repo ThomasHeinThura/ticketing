@@ -141,7 +141,7 @@ export default function TaskLabelsPopover({
         );
         if (taskLabel?.id) {
           await detachLabel({ labelId: taskLabel.id });
-          toast.success(t("tasks:popover.labels.removeSuccess"));
+          toast.success(t("tasksExtra:popover.labels.removeSuccess"));
         }
       } else {
         if (workspaceLabel.taskId !== null) return;
@@ -149,7 +149,7 @@ export default function TaskLabelsPopover({
           labelId: workspaceLabel.id,
           taskId,
         });
-        toast.success(t("tasks:popover.labels.addSuccess"));
+        toast.success(t("tasksExtra:popover.labels.addSuccess"));
       }
 
       await queryClient.invalidateQueries({
@@ -159,7 +159,7 @@ export default function TaskLabelsPopover({
       toast.error(
         error instanceof Error
           ? error.message
-          : t("tasks:popover.labels.updateError"),
+          : t("tasksExtra:popover.labels.updateError"),
       );
     }
   };
@@ -192,13 +192,13 @@ export default function TaskLabelsPopover({
         queryKey: ["tasks", projectId],
       });
 
-      toast.success(t("tasks:popover.labels.createSuccess"));
+      toast.success(t("tasksExtra:popover.labels.createSuccess"));
       handleClose();
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : t("tasks:popover.labels.createError"),
+          : t("tasksExtra:popover.labels.createError"),
       );
     }
   };
@@ -211,7 +211,7 @@ export default function TaskLabelsPopover({
           ref={searchInputRef}
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          placeholder={t("tasks:popover.labels.searchPlaceholder")}
+          placeholder={t("tasksExtra:popover.labels.searchPlaceholder")}
           className="border-none h-auto focus-visible:ring-0 shadow-none !bg-transparent"
         />
       </div>
@@ -219,7 +219,7 @@ export default function TaskLabelsPopover({
       <div className="py-1">
         {filteredLabels.length === 0 && searchValue.length === 0 && (
           <span className="text-xs text-muted-foreground px-2">
-            {t("tasks:popover.labels.empty")}
+            {t("tasksExtra:popover.labels.empty")}
           </span>
         )}
         {filteredLabels.map((label) => (
@@ -267,7 +267,7 @@ export default function TaskLabelsPopover({
               }}
             />
             <span className="truncate">
-              {t("tasks:popover.labels.create", { name: searchValue })}
+              {t("tasksExtra:popover.labels.create", { name: searchValue })}
             </span>
           </Button>
         )}
@@ -279,7 +279,7 @@ export default function TaskLabelsPopover({
     <div className="w-auto">
       <div className="flex items-center justify-between p-2 border-b border-border">
         <span className="text-xs font-medium">
-          {t("tasks:popover.labels.chooseColor")}
+          {t("tasksExtra:popover.labels.chooseColor")}
         </span>
         <Button
           variant="ghost"
@@ -308,7 +308,7 @@ export default function TaskLabelsPopover({
               style={{ backgroundColor: color.color }}
             />
             <span className="truncate">
-              {t(`tasks:popover.labels.colors.${color.key}`)}
+              {t(`tasksExtra:popover.labels.colors.${color.key}`)}
             </span>
             {selectedColor === color.value && (
               <Check className="w-3 h-3 ml-auto" />

@@ -11,8 +11,16 @@ import TaskContextMenuPresentation from "@/components/kanban-board/task-card-con
 import type { WorkItemRow } from "@/types/work-item";
 import WorkItemContextMenu from "./work-item-context-menu";
 
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+vi.mock("@/lib/i18n", () => ({
+  areAllNamespacesLoaded: () => true,
+  whenAllNamespacesLoaded: () => Promise.resolve(),
+}));
+vi.mock("react-i18next", async () => ({
+  I18nContext: (await import("react")).createContext(undefined),
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: "en-US" },
+  }),
 }));
 const calls = vi.hoisted(() => vi.fn());
 vi.mock("./work-item-context-menu-content", () => ({

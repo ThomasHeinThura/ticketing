@@ -130,7 +130,7 @@ describe("Gantt bar drag and edge resize (VW-29)", () => {
 
   it("changes only the due date when the right edge is dragged", async () => {
     renderCanonical();
-    drag(screen.getByLabelText(enUS.tasks.gantt.resizeDue), 20);
+    drag(screen.getByLabelText(enUS.tasksExtra.gantt.resizeDue), 20);
 
     await vi.waitFor(() => expect(updateWorkItem).toHaveBeenCalledTimes(1));
     expect(updateWorkItem).toHaveBeenCalledWith({
@@ -143,7 +143,7 @@ describe("Gantt bar drag and edge resize (VW-29)", () => {
 
   it("changes only the start date when the left edge is dragged", async () => {
     renderCanonical();
-    drag(screen.getByLabelText(enUS.tasks.gantt.resizeStart), -20);
+    drag(screen.getByLabelText(enUS.tasksExtra.gantt.resizeStart), -20);
 
     await vi.waitFor(() => expect(updateWorkItem).toHaveBeenCalledTimes(1));
     expect(updateWorkItem).toHaveBeenCalledWith({
@@ -156,7 +156,7 @@ describe("Gantt bar drag and edge resize (VW-29)", () => {
 
   it("never lets the start edge pass the due date", async () => {
     renderCanonical();
-    drag(screen.getByLabelText(enUS.tasks.gantt.resizeStart), 500);
+    drag(screen.getByLabelText(enUS.tasksExtra.gantt.resizeStart), 500);
 
     await vi.waitFor(() => expect(updateWorkItem).toHaveBeenCalledTimes(1));
     expect(updateWorkItem).toHaveBeenCalledWith(
@@ -177,7 +177,7 @@ describe("Gantt bar drag and edge resize (VW-29)", () => {
 
   it("does not save a drag that ends on the original day", () => {
     renderCanonical();
-    drag(screen.getByLabelText(enUS.tasks.gantt.resizeDue), 3);
+    drag(screen.getByLabelText(enUS.tasksExtra.gantt.resizeDue), 3);
 
     expect(updateWorkItem).not.toHaveBeenCalled();
   });
@@ -186,8 +186,12 @@ describe("Gantt bar drag and edge resize (VW-29)", () => {
     permission.canUpdate = false;
     const { onOpenTask } = renderCanonical();
 
-    expect(screen.getByLabelText(enUS.tasks.gantt.resizeDue)).toBeDisabled();
-    expect(screen.getByLabelText(enUS.tasks.gantt.resizeStart)).toBeDisabled();
+    expect(
+      screen.getByLabelText(enUS.tasksExtra.gantt.resizeDue),
+    ).toBeDisabled();
+    expect(
+      screen.getByLabelText(enUS.tasksExtra.gantt.resizeStart),
+    ).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: /Plan the rollout/ }));
     expect(onOpenTask).toHaveBeenCalledTimes(1);
@@ -198,7 +202,9 @@ describe("Gantt bar drag and edge resize (VW-29)", () => {
     permission.isCheckingPermissions = true;
     renderCanonical();
 
-    expect(screen.getByLabelText(enUS.tasks.gantt.resizeDue)).toBeDisabled();
+    expect(
+      screen.getByLabelText(enUS.tasksExtra.gantt.resizeDue),
+    ).toBeDisabled();
   });
 
   it("restores the original dates when the save is refused", async () => {

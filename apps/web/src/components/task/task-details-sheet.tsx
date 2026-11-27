@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import NamespaceBoundary from "@/components/common/namespace-boundary";
 import {
   TaskDetailsSkeleton,
   TaskPropertiesSidebarSkeleton,
@@ -112,13 +113,15 @@ export default function TaskDetailsSheet({
         <DelayedSuspense
           fallback={(visible) => <TaskDetailsSheetLoading visible={visible} />}
         >
-          <TaskDetailsSheetBody
-            key={visibleTaskId}
-            taskId={visibleTaskId}
-            projectId={projectId}
-            workspaceId={workspaceId}
-            onClose={onClose}
-          />
+          <NamespaceBoundary fallback={<TaskDetailsSheetLoading visible />}>
+            <TaskDetailsSheetBody
+              key={visibleTaskId}
+              taskId={visibleTaskId}
+              projectId={projectId}
+              workspaceId={workspaceId}
+              onClose={onClose}
+            />
+          </NamespaceBoundary>
         </DelayedSuspense>
       )}
     </TaskDetailsSheetFrame>

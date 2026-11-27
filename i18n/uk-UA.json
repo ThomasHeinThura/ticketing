@@ -2760,7 +2760,6 @@
 		}
 	},
 	"tasks": {
-		"title": "{{term_work_item_other}}",
 		"status": {
 			"label": "Статус",
 			"to-do": "До виконання",
@@ -2778,12 +2777,111 @@
 			"high": "Високий",
 			"urgent": "Терміновий"
 		},
-		"boardSearchPlaceholder": "Пошук тікетів...",
-		"boardSearchActive": "Пошук активний",
 		"view": {
 			"board": "Дошка",
 			"list": "Список"
 		},
+		"sort": {
+			"label": "Сортування",
+			"by": "Сортувати за",
+			"direction": "Напрямок",
+			"ascending": "За зростанням",
+			"descending": "За спаданням",
+			"fields": {
+				"position": "Вручну (позиція)",
+				"createdAt": "Дата створення",
+				"priority": "Пріоритет",
+				"dueDate": "Дата завершення",
+				"title": "Назва",
+				"number": "Номер {{term_work_item_one}}"
+			}
+		},
+		"listView": {
+			"addTask": "Додати {{term_work_item_one}}",
+			"archiveAllTooltip": "Архівувати всі завершені {{term_work_item_other}}",
+			"noTasks": "Немає завдань"
+		},
+		"pr": {
+			"merged": "Змерджено",
+			"draft": "Чернетка",
+			"open": "Відкрито",
+			"label": "Pull Request",
+			"count_one": "{{count}} PR",
+			"count_few": "{{count}} PR",
+			"count_many": "{{count}} PR",
+			"count_other": "{{count}} PR"
+		},
+		"assignee": {
+			"label": "Виконавець",
+			"unassigned": "Не призначено"
+		},
+		"dueDate": {
+			"label": "Дата завершення",
+			"clear": "Очистити дату",
+			"updateSuccess": "Дату завершення {{term_work_item_one}} успішно оновлено",
+			"updateError": "Не вдалося оновити дату завершення {{term_work_item_one}}",
+			"clearSuccess": "Дату завершення {{term_work_item_one}} очищено",
+			"clearError": "Не вдалося очистити дату завершення"
+		},
+		"bulk": {
+			"selectedCount": "{{count}} обрано",
+			"moveToBacklog": "Перемістити до беклогу",
+			"moveToBacklogSuccess": "{{count}} завдань переміщено до беклогу",
+			"moveToBacklogError": "Не вдалося перемістити {{term_work_item_other}} до беклогу",
+			"moveToBoard": "Перемістити на дошку",
+			"moveToBoardSuccess": "{{count}} завдань переміщено на дошку",
+			"moveToBoardError": "Не вдалося перемістити {{term_work_item_other}} на дошку",
+			"delete": "Видалити {{term_work_item_other}}",
+			"deleteConfirm": "Видалити {{count}} завдань? Цю дію неможливо скасувати.",
+			"deleteSuccess": "{{count}} завдань видалено",
+			"deleteError": "Не вдалося видалити {{term_work_item_other}}",
+			"archive": "Архівувати {{term_work_item_other}}",
+			"archiveSuccess": "{{count}} завдань архівовано",
+			"archiveError": "Не вдалося архівувати {{term_work_item_other}}",
+			"updateSuccess": "{{count}} завдань оновлено",
+			"updateError": "Не вдалося оновити {{term_work_item_other}}",
+			"assignTo": "Призначити на",
+			"assignSuccess": "{{count}} завдань призначено",
+			"assignError": "Не вдалося призначити {{term_work_item_other}}",
+			"setPriority": "Встановити пріоритет",
+			"updatePriorityError": "Не вдалося оновити пріоритет",
+			"addLabel": "Додати мітку",
+			"addLabelSuccess": "Мітку додано до {{count}} завдань",
+			"addLabelError": "Не вдалося додати мітку",
+			"setDueDate": "Встановити дату завершення",
+			"updateDueDateError": "Не вдалося оновити дату завершення",
+			"actions": "Дії",
+			"searchActions": "Пошук дій...",
+			"noActionsFound": "Дій не знайдено.",
+			"changeStatus": "Змінити статус",
+			"removeLabel": "Remove label"
+		},
+		"group": {
+			"by": "Group by",
+			"fields": {
+				"assignee": "Assignee",
+				"priority": "Priority",
+				"state": "Status",
+				"module": "{{term_module_one}}",
+				"epic": "{{term_epic_one}}",
+				"label": "Labels"
+			},
+			"label": "Group",
+			"none": "None"
+		},
+		"kanban": {
+			"addTask": "Додати {{term_work_item_one}}"
+		},
+		"actions": {
+			"archive": "Архівувати",
+			"markAsPlanned": "Позначити як заплановане",
+			"delete": "Видалити..."
+		}
+	},
+	"tasksExtra": {
+		"title": "{{term_work_item_other}}",
+		"boardSearchPlaceholder": "Пошук тікетів...",
+		"boardSearchActive": "Пошук активний",
 		"common": {
 			"selectTask": "Обрати {{term_work_item_one}}",
 			"loadingTask": "Завантаження {{term_work_item_one}}...",
@@ -3021,21 +3119,6 @@
 			},
 			"title": "Backlog"
 		},
-		"sort": {
-			"label": "Сортування",
-			"by": "Сортувати за",
-			"direction": "Напрямок",
-			"ascending": "За зростанням",
-			"descending": "За спаданням",
-			"fields": {
-				"position": "Вручну (позиція)",
-				"createdAt": "Дата створення",
-				"priority": "Пріоритет",
-				"dueDate": "Дата завершення",
-				"title": "Назва",
-				"number": "Номер {{term_work_item_one}}"
-			}
-		},
 		"boardFilters": {
 			"filterBy": "Фільтрувати за",
 			"allStatuses": "Усі статуси",
@@ -3091,36 +3174,6 @@
 		"archive": {
 			"success": "Архівовано {{count}} завдань"
 		},
-		"listView": {
-			"addTask": "Додати {{term_work_item_one}}",
-			"archiveAllTooltip": "Архівувати всі завершені {{term_work_item_other}}",
-			"noTasks": "Немає завдань"
-		},
-		"kanban": {
-			"addTask": "Додати {{term_work_item_one}}"
-		},
-		"pr": {
-			"merged": "Змерджено",
-			"draft": "Чернетка",
-			"open": "Відкрито",
-			"label": "Pull Request",
-			"count_one": "{{count}} PR",
-			"count_few": "{{count}} PR",
-			"count_many": "{{count}} PR",
-			"count_other": "{{count}} PR"
-		},
-		"assignee": {
-			"label": "Виконавець",
-			"unassigned": "Не призначено"
-		},
-		"dueDate": {
-			"label": "Дата завершення",
-			"clear": "Очистити дату",
-			"updateSuccess": "Дату завершення {{term_work_item_one}} успішно оновлено",
-			"updateError": "Не вдалося оновити дату завершення {{term_work_item_one}}",
-			"clearSuccess": "Дату завершення {{term_work_item_one}} очищено",
-			"clearError": "Не вдалося очистити дату завершення"
-		},
 		"labels": {
 			"label": "Мітки",
 			"empty": "Немає доступних міток"
@@ -3133,44 +3186,6 @@
 		"contextMenu": {
 			"copyLink": "Копіювати посилання",
 			"copyLinkSuccess": "Посилання на {{term_work_item_one}} скопійовано!"
-		},
-		"actions": {
-			"archive": "Архівувати",
-			"markAsPlanned": "Позначити як заплановане",
-			"delete": "Видалити..."
-		},
-		"bulk": {
-			"selectedCount": "{{count}} обрано",
-			"moveToBacklog": "Перемістити до беклогу",
-			"moveToBacklogSuccess": "{{count}} завдань переміщено до беклогу",
-			"moveToBacklogError": "Не вдалося перемістити {{term_work_item_other}} до беклогу",
-			"moveToBoard": "Перемістити на дошку",
-			"moveToBoardSuccess": "{{count}} завдань переміщено на дошку",
-			"moveToBoardError": "Не вдалося перемістити {{term_work_item_other}} на дошку",
-			"delete": "Видалити {{term_work_item_other}}",
-			"deleteConfirm": "Видалити {{count}} завдань? Цю дію неможливо скасувати.",
-			"deleteSuccess": "{{count}} завдань видалено",
-			"deleteError": "Не вдалося видалити {{term_work_item_other}}",
-			"archive": "Архівувати {{term_work_item_other}}",
-			"archiveSuccess": "{{count}} завдань архівовано",
-			"archiveError": "Не вдалося архівувати {{term_work_item_other}}",
-			"updateSuccess": "{{count}} завдань оновлено",
-			"updateError": "Не вдалося оновити {{term_work_item_other}}",
-			"assignTo": "Призначити на",
-			"assignSuccess": "{{count}} завдань призначено",
-			"assignError": "Не вдалося призначити {{term_work_item_other}}",
-			"setPriority": "Встановити пріоритет",
-			"updatePriorityError": "Не вдалося оновити пріоритет",
-			"addLabel": "Додати мітку",
-			"addLabelSuccess": "Мітку додано до {{count}} завдань",
-			"addLabelError": "Не вдалося додати мітку",
-			"setDueDate": "Встановити дату завершення",
-			"updateDueDateError": "Не вдалося оновити дату завершення",
-			"actions": "Дії",
-			"searchActions": "Пошук дій...",
-			"noActionsFound": "Дій не знайдено.",
-			"changeStatus": "Змінити статус",
-			"removeLabel": "Remove label"
 		},
 		"editor": {
 			"table": {
@@ -3208,19 +3223,6 @@
 			"stateDone": "Завершено",
 			"stateOpen": "Відкрито",
 			"stateCancelled": "Скасовано"
-		},
-		"group": {
-			"by": "Group by",
-			"fields": {
-				"assignee": "Assignee",
-				"priority": "Priority",
-				"state": "Status",
-				"module": "{{term_module_one}}",
-				"epic": "{{term_epic_one}}",
-				"label": "Labels"
-			},
-			"label": "Group",
-			"none": "None"
 		}
 	},
 	"invitations": {
@@ -3478,32 +3480,6 @@
 	},
 	"workItems": {
 		"listChanged": "This list has changed.",
-		"parent": {
-			"label": "Parent",
-			"none": "No parent",
-			"key": "Parent {{term_work_item_one}} key",
-			"loading": "Loading parent…",
-			"saved": "Parent updated.",
-			"conflict": "This item changed. Review the latest version and try again.",
-			"unavailable": "Choose a reachable {{term_work_item_one}} in this {{term_project_one}}, other than this item.",
-			"failed": "Could not change the parent. Try again.",
-			"set": "Set parent",
-			"remove": "Remove parent"
-		},
-		"hierarchy": {
-			"title": "Hierarchy",
-			"progress": "{{completed}} of {{total}} descendants complete",
-			"error": "Hierarchy could not be loaded.",
-			"retry": "Retry",
-			"expand": "Expand {{key}}",
-			"collapse": "Collapse {{key}}",
-			"currentBranch": "Current branch outside the loaded page",
-			"more": "Load more children of {{key}}",
-			"loading": "Loading…",
-			"empty": "No children",
-			"restoreLimit": "Restored the first {{count}} pages. Load more to continue.",
-			"disclosureLimit": "Collapse a branch before opening more branches."
-		},
 		"detail": {
 			"loading": "Loading {{term_work_item_one}}…",
 			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open.",
@@ -3580,7 +3556,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "Перемістити «{{column}}» вгору",
+			"moveColumnDown": "Перемістити «{{column}}» вниз"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3798,7 +3776,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Активні фільтри",
+			"addFilter": "Фільтр",
+			"searchFields": "Пошук полів",
+			"searchValues": "Пошук значень",
+			"advanced": "Розширений",
+			"advancedFilter": "Розширений фільтр",
+			"me": "Я"
 		},
 		"properties": {
 			"clearDate": "Clear date",
@@ -3834,6 +3819,139 @@
 			"noRequesterMatch": "Немає відповідних клієнтів.",
 			"noCustomers": "У цієї організації ще немає клієнтів.",
 			"requesterError": "Не вдалося завантажити клієнтів."
+		},
+		"blocked": {
+			"badge": "Blocked",
+			"badgeTitle": "Blocked by open {{term_work_item_other}}"
+		},
+		"openChildren": {
+			"title": "Close with open child items?",
+			"description": "This {{term_work_item_one}} still has open child items. Closing it does not close them; they stay open.",
+			"item": "{{key}} {{title}} ({{state}})",
+			"more": "And {{remaining}} more open below this item",
+			"confirm": "Close anyway"
+		},
+		"sla": {
+			"metric": {
+				"first_response": "first response",
+				"resolution": "resolution"
+			},
+			"remaining": "{{time}} left",
+			"state": {
+				"at_risk": "At risk",
+				"breached": "Breached",
+				"met": "Met",
+				"missed": "Missed",
+				"ok": "On track"
+			},
+			"title": "SLA {{metric}}: {{state}}"
+		},
+		"journey": {
+			"confirmAssignment": "Confirm assignment",
+			"editHeading": "Edit",
+			"edit": "Edit",
+			"title": "Title",
+			"description": "Description",
+			"startDate": "Start date",
+			"dueDate": "Due date",
+			"save": "Save",
+			"saving": "Saving…",
+			"cancel": "Cancel",
+			"saveAttention": "This needs your attention",
+			"editConflict": "Someone else changed this {{term_work_item_one}} (you edited version {{asserted}}; the latest is version {{current}}). Your draft is kept below. Review the latest values, then reload them or cancel.",
+			"saveError": "Something went wrong while saving. Your changes were not applied.",
+			"reloadLatest": "Discard my draft and reload the latest",
+			"editUnavailable": "Some fields could not be loaded, so this {{term_work_item_one}} can't be edited right now.",
+			"transitionPlaceholder": "Choose a new state",
+			"transitionBlocked": "unavailable: {{reasons}}",
+			"transitionNoteRequired": "note required",
+			"transitionNote": "Note",
+			"transitionsEmpty": "No state changes are available right now.",
+			"loadingTransitions": "Loading state changes…",
+			"transitionsError": "Couldn't load the available state changes.",
+			"transitionForbidden": "You don't have permission to change the state of this {{term_work_item_one}}.",
+			"assignmentForbidden": "You don't have permission to change the assignee of this {{term_work_item_one}}.",
+			"transitionConflict": "This {{term_work_item_one}} changed state in the meantime. The available state changes were refreshed.",
+			"transitionUnavailable": "That state change isn't available right now. The available state changes were refreshed.",
+			"assignmentHeading": "Assignment",
+			"assignee": "Assignee",
+			"assigneePlaceholder": "Choose a person",
+			"assign": "Assign",
+			"assignToMe": "Assign to me",
+			"unassign": "Unassign",
+			"confirmReassign": "This {{term_work_item_one}} is already assigned",
+			"confirmReassignDescription": "Assigning it will take it from its current assignee, who will be notified. Confirm to continue.",
+			"assignmentConflict": "The assignee changed in the meantime. The latest assignee is shown; try again if you still want to change it.",
+			"assignmentError": "Couldn't assign this {{term_work_item_one}}.",
+			"unassignmentError": "Couldn't unassign this {{term_work_item_one}}.",
+			"loadingPeople": "Loading people…",
+			"peopleError": "Couldn't load the people you can assign to.",
+			"noPeople": "There is nobody you can assign this {{term_work_item_one}} to.",
+			"unnamedPerson": "Unnamed person",
+			"editSaved": "Changes saved.",
+			"transitionSubmit": "Move to state",
+			"transitionMoving": "Moving…",
+			"transitionDone": "State changed to {{state}}.",
+			"assignDone": "Assigned to {{name}}.",
+			"unassignDone": "Unassigned.",
+			"reasonNoteRequired": "a note is required",
+			"reasonAssigneePresent": "needs an assignee",
+			"reasonChildrenClosed": "child items are still open",
+			"reasonNoOpenBlockers": "blocked by open items",
+			"reasonFieldRequired": "a required field is empty",
+			"reasonChangeRisk": "{{term_change_one}} risk is too high",
+			"reasonUnknown": "not available",
+			"reasonApprovalPending": "waiting for approval",
+			"reasonCabPending": "waiting for {{term_change_one}} advisory board approval"
+		},
+		"customFieldValue": {
+			"amount": "Amount",
+			"clear": "Clear",
+			"currencyCode": "Currency code",
+			"no": "No",
+			"noChoices": "Nothing to choose from",
+			"notOnProject": "(not on this project)",
+			"notSet": "Not set",
+			"optional": "optional",
+			"requiredHint": "Required before this item can start or finish",
+			"yes": "Yes",
+			"hour": "Година",
+			"minute": "Хвилина",
+			"invalidLocalTime": "Цей час пропускається під час переведення годинника. Виберіть інший час.",
+			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
+		}
+	},
+	"workItemsExtra": {
+		"parent": {
+			"label": "Parent",
+			"none": "No parent",
+			"key": "Parent {{term_work_item_one}} key",
+			"loading": "Loading parent…",
+			"saved": "Parent updated.",
+			"conflict": "This item changed. Review the latest version and try again.",
+			"unavailable": "Choose a reachable {{term_work_item_one}} in this {{term_project_one}}, other than this item.",
+			"failed": "Could not change the parent. Try again.",
+			"set": "Set parent",
+			"remove": "Remove parent"
+		},
+		"hierarchy": {
+			"title": "Hierarchy",
+			"progress": "{{completed}} of {{total}} descendants complete",
+			"error": "Hierarchy could not be loaded.",
+			"retry": "Retry",
+			"expand": "Expand {{key}}",
+			"collapse": "Collapse {{key}}",
+			"currentBranch": "Current branch outside the loaded page",
+			"more": "Load more children of {{key}}",
+			"loading": "Loading…",
+			"empty": "No children",
+			"restoreLimit": "Restored the first {{count}} pages. Load more to continue.",
+			"disclosureLimit": "Collapse a branch before opening more branches."
 		},
 		"relations": {
 			"add": "Add relation",
@@ -3901,37 +4019,6 @@
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
 		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
-		},
-		"blocked": {
-			"badge": "Blocked",
-			"badgeTitle": "Blocked by open {{term_work_item_other}}"
-		},
-		"openChildren": {
-			"title": "Close with open child items?",
-			"description": "This {{term_work_item_one}} still has open child items. Closing it does not close them; they stay open.",
-			"item": "{{key}} {{title}} ({{state}})",
-			"more": "And {{remaining}} more open below this item",
-			"confirm": "Close anyway"
-		},
-		"sla": {
-			"metric": {
-				"first_response": "first response",
-				"resolution": "resolution"
-			},
-			"remaining": "{{time}} left",
-			"state": {
-				"at_risk": "At risk",
-				"breached": "Breached",
-				"met": "Met",
-				"missed": "Missed",
-				"ok": "On track"
-			},
-			"title": "SLA {{metric}}: {{state}}"
-		},
 		"priority": {
 			"urgent": "Urgent",
 			"high": "High",
@@ -3943,64 +4030,6 @@
 			"emptyTitle": "No backlog items",
 			"emptyDescription": "Items in backlog or unstarted states appear here for manual ranking.",
 			"rankColumn": "Order"
-		},
-		"journey": {
-			"confirmAssignment": "Confirm assignment",
-			"editHeading": "Edit",
-			"edit": "Edit",
-			"title": "Title",
-			"description": "Description",
-			"startDate": "Start date",
-			"dueDate": "Due date",
-			"save": "Save",
-			"saving": "Saving…",
-			"cancel": "Cancel",
-			"saveAttention": "This needs your attention",
-			"editConflict": "Someone else changed this {{term_work_item_one}} (you edited version {{asserted}}; the latest is version {{current}}). Your draft is kept below. Review the latest values, then reload them or cancel.",
-			"saveError": "Something went wrong while saving. Your changes were not applied.",
-			"reloadLatest": "Discard my draft and reload the latest",
-			"editUnavailable": "Some fields could not be loaded, so this {{term_work_item_one}} can't be edited right now.",
-			"transitionPlaceholder": "Choose a new state",
-			"transitionBlocked": "unavailable: {{reasons}}",
-			"transitionNoteRequired": "note required",
-			"transitionNote": "Note",
-			"transitionsEmpty": "No state changes are available right now.",
-			"loadingTransitions": "Loading state changes…",
-			"transitionsError": "Couldn't load the available state changes.",
-			"transitionForbidden": "You don't have permission to change the state of this {{term_work_item_one}}.",
-			"assignmentForbidden": "You don't have permission to change the assignee of this {{term_work_item_one}}.",
-			"transitionConflict": "This {{term_work_item_one}} changed state in the meantime. The available state changes were refreshed.",
-			"transitionUnavailable": "That state change isn't available right now. The available state changes were refreshed.",
-			"assignmentHeading": "Assignment",
-			"assignee": "Assignee",
-			"assigneePlaceholder": "Choose a person",
-			"assign": "Assign",
-			"assignToMe": "Assign to me",
-			"unassign": "Unassign",
-			"confirmReassign": "This {{term_work_item_one}} is already assigned",
-			"confirmReassignDescription": "Assigning it will take it from its current assignee, who will be notified. Confirm to continue.",
-			"assignmentConflict": "The assignee changed in the meantime. The latest assignee is shown; try again if you still want to change it.",
-			"assignmentError": "Couldn't assign this {{term_work_item_one}}.",
-			"unassignmentError": "Couldn't unassign this {{term_work_item_one}}.",
-			"loadingPeople": "Loading people…",
-			"peopleError": "Couldn't load the people you can assign to.",
-			"noPeople": "There is nobody you can assign this {{term_work_item_one}} to.",
-			"unnamedPerson": "Unnamed person",
-			"editSaved": "Changes saved.",
-			"transitionSubmit": "Move to state",
-			"transitionMoving": "Moving…",
-			"transitionDone": "State changed to {{state}}.",
-			"assignDone": "Assigned to {{name}}.",
-			"unassignDone": "Unassigned.",
-			"reasonNoteRequired": "a note is required",
-			"reasonAssigneePresent": "needs an assignee",
-			"reasonChildrenClosed": "child items are still open",
-			"reasonNoOpenBlockers": "blocked by open items",
-			"reasonFieldRequired": "a required field is empty",
-			"reasonChangeRisk": "{{term_change_one}} risk is too high",
-			"reasonUnknown": "not available",
-			"reasonApprovalPending": "waiting for approval",
-			"reasonCabPending": "waiting for {{term_change_one}} advisory board approval"
 		},
 		"auditHistory": {
 			"action": "Action",
@@ -4076,22 +4105,6 @@
 			"target": "Target {{term_project_one}}",
 			"targetPlaceholder": "Choose a {{term_project_one}}",
 			"title": "Move {{key}} to another {{term_project_one}}"
-		},
-		"customFieldValue": {
-			"amount": "Amount",
-			"clear": "Clear",
-			"currencyCode": "Currency code",
-			"no": "No",
-			"noChoices": "Nothing to choose from",
-			"notOnProject": "(not on this project)",
-			"notSet": "Not set",
-			"optional": "optional",
-			"requiredHint": "Required before this item can start or finish",
-			"yes": "Yes",
-			"hour": "Година",
-			"minute": "Хвилина",
-			"invalidLocalTime": "Цей час пропускається під час переведення годинника. Виберіть інший час.",
-			"datetime": "Date and time"
 		}
 	},
 	"portal": {

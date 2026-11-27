@@ -51,9 +51,9 @@ export function getCalendarTaskStatusClass(
 }
 
 const STATE_LABEL_KEYS = {
-  open: "tasks:calendar.stateOpen",
-  completed: "tasks:calendar.stateDone",
-  cancelled: "tasks:calendar.stateCancelled",
+  open: "tasksExtra:calendar.stateOpen",
+  completed: "tasksExtra:calendar.stateDone",
+  cancelled: "tasksExtra:calendar.stateCancelled",
 } as const;
 
 type CalendarTaskBarProps = {
@@ -135,7 +135,7 @@ export default function CalendarTaskBar({
         aria-label={withState(
           selectionMode
             ? t("workItems:bulk.selectItem", { key: taskKey ?? task.title })
-            : t("tasks:calendar.taskAriaLabel", {
+            : t("tasksExtra:calendar.taskAriaLabel", {
                 title: task.title,
                 range,
               }),

@@ -84,7 +84,7 @@ export default function SubtaskRow({
               checked={isCompleted}
               onCheckedChange={onToggleComplete}
               disabled={!canEdit}
-              aria-label={t("tasks:subtasks.completeAria", {
+              aria-label={t("tasksExtra:subtasks.completeAria", {
                 defaultValue: "Mark subtask complete",
               })}
             />
@@ -131,7 +131,7 @@ export default function SubtaskRow({
                 ) : (
                   <div
                     className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-border/70"
-                    title={t("tasks:popover.assignee.unassigned")}
+                    title={t("tasksExtra:popover.assignee.unassigned")}
                   >
                     <span className="text-[9px] font-medium text-muted-foreground">
                       ?

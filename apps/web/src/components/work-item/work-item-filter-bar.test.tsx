@@ -1,0 +1,180 @@
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@/test/en-translation";
+import WorkItemFilterBar from "./work-item-filter-bar";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) =>
+      translate(key, options),
+  }),
+}));
+
+vi.mock("@/components/work-item/work-item-filter-editor", () => ({
+  default: () => <div data-testid="filter-editor" />,
+}));
+
+afterEach(() => {
+  cleanup();
+});
+
+function renderBar(filter: string) {
+  const onApply = vi.fn();
+  render(
+    <WorkItemFilterBar
+      filter={filter}
+      mode="visual"
+      onModeChange={vi.fn()}
+      onApply={onApply}
+    />,
+  );
+  return onApply;
+}
+
+describe("WorkItemFilterBar (SV-11 chips)", () => {
+  it("shows one chip per condition and never rewrites untouched text", () => {
+    const onApply = renderBar("priority:in(high,urgent) assignee:@me");
+    const chips = screen.getAllByTestId("work-item-filter-chip");
+    expect(chips.map((chip) => chip.textContent)).toEqual([
+      "Priority: high, urgent",
+      "Assignee: @me",
+    ]);
+    expect(onApply).not.toHaveBeenCalled();
+  });
+
+  it("applies a picked value live and keeps the other chips", async () => {
+    const onApply = renderBar("priority:high state:started");
+    fireEvent.click(
+      screen.getAllByTestId("work-item-filter-chip")[0] as HTMLElement,
+    );
+    fireEvent.click(await screen.findByRole("option", { name: "urgent" }));
+    expect(onApply).toHaveBeenCalledWith(
+      "AND(priority:in(high,urgent),state:started)",
+      { replace: false },
+    );
+  });
+
+  it("removes a chip and clears the filter with the last one", () => {
+    const onApply = renderBar("priority:high state:started");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove Priority filter" }),
+    );
+    expect(onApply).toHaveBeenCalledWith("state:started", {
+      replace: false,
+    });
+    cleanup();
+    const last = renderBar("priority:high");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove Priority filter" }),
+    );
+    expect(last).toHaveBeenCalledWith("", { replace: false });
+  });
+
+  it("adds a field from the + Filter list and applies Me at once", async () => {
+    const onApply = renderBar("priority:high");
+    fireEvent.click(screen.getByRole("button", { name: "Filter" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Assignee" }));
+    expect(onApply).toHaveBeenCalledWith("AND(priority:high,assignee:@me)", {
+      replace: false,
+    });
+  });
+
+  it("adds a valued field as a pending chip that applies with its first value and stays open", async () => {
+    const onApply = renderBar("");
+    fireEvent.click(screen.getByRole("button", { name: "Filter" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Priority" }));
+    expect(onApply).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("option", { name: "high" }));
+    expect(onApply).toHaveBeenCalledWith("priority:high", {
+      replace: false,
+    });
+  });
+
+  it("shows a filter it cannot chip as one Advanced filter chip that opens the editor", async () => {
+    const onApply = renderBar("priority:high OR state:started");
+    expect(screen.queryByRole("button", { name: "Filter" })).toBeNull();
+    const chip = screen.getByTestId("work-item-filter-chip");
+    expect(chip).toHaveTextContent("Advanced filter");
+    fireEvent.click(chip);
+    expect(await screen.findByTestId("filter-editor")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Remove Advanced filter filter" }),
+    );
+    expect(onApply).toHaveBeenCalledWith("");
+  });
+
+  it("opens the Advanced editor from the Advanced button", async () => {
+    renderBar("");
+    fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
+    expect(await screen.findByTestId("filter-editor")).toBeInTheDocument();
+  });
+
+  it("replaces the value of an eq-only field such as lifecycle instead of building an in filter", async () => {
+    const onApply = renderBar("lifecycle:active");
+    fireEvent.click(screen.getByTestId("work-item-filter-chip"));
+    fireEvent.click(await screen.findByRole("option", { name: "archived" }));
+    expect(onApply).toHaveBeenCalledWith("lifecycle:archived", {
+      replace: false,
+    });
+  });
+
+  it("exposes which values are selected to assistive tech", async () => {
+    renderBar("priority:high");
+    fireEvent.click(screen.getByTestId("work-item-filter-chip"));
+    expect(
+      await screen.findByRole("option", { name: "high", selected: true }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "urgent", selected: false }),
+    ).toBeInTheDocument();
+  });
+
+  it("pushes the first live change of a session and replaces the later ones", async () => {
+    const onApply = renderBar("priority:high");
+    fireEvent.click(screen.getByTestId("work-item-filter-chip"));
+    fireEvent.click(await screen.findByRole("option", { name: "urgent" }));
+    fireEvent.click(await screen.findByRole("option", { name: "low" }));
+    expect(onApply.mock.calls.map(([, options]) => options)).toEqual([
+      { replace: false },
+      { replace: true },
+    ]);
+  });
+
+  it("starts a new session after Back restores an earlier filter", async () => {
+    const onApply = vi.fn();
+    const props = { mode: "visual" as const, onModeChange: vi.fn(), onApply };
+    const { rerender } = render(
+      <WorkItemFilterBar filter="priority:high" {...props} />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-filter-chip"));
+    fireEvent.click(await screen.findByRole("option", { name: "urgent" }));
+    // The parent re-renders with the applied filter, then Back restores the original one.
+    rerender(
+      <WorkItemFilterBar filter="priority:in(high,urgent)" {...props} />,
+    );
+    rerender(<WorkItemFilterBar filter="priority:high" {...props} />);
+    fireEvent.click(await screen.findByRole("option", { name: "low" }));
+    expect(onApply.mock.calls.map(([, options]) => options)).toEqual([
+      { replace: false },
+      { replace: false },
+    ]);
+  });
+
+  it("follows Back while a value popover stays open", async () => {
+    const onApply = vi.fn();
+    const props = { mode: "visual" as const, onModeChange: vi.fn(), onApply };
+    const { rerender } = render(
+      <WorkItemFilterBar filter="dueDate:<2026-12-01" {...props} />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-filter-chip"));
+    const input = await screen.findByRole("textbox", { name: /Due date/ });
+    fireEvent.change(input, { target: { value: "2026-12-24" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    rerender(<WorkItemFilterBar filter="dueDate:<2026-12-24" {...props} />);
+    // Back restores the earlier filter with the popover still open.
+    rerender(<WorkItemFilterBar filter="dueDate:<2026-12-01" {...props} />);
+    expect(screen.getByRole("textbox", { name: /Due date/ })).toHaveValue(
+      "2026-12-01",
+    );
+  });
+});

@@ -239,10 +239,10 @@ export function activityChangeDescription(
       return t("workItemExtras:detail.unavailable");
     const type = record.type as keyof typeof inverse;
     return t(
-      `workItems:relations.types.${record.direction === "incoming" ? inverse[type] : type}`,
+      `workItemsExtra:relations.types.${record.direction === "incoming" ? inverse[type] : type}`,
     );
   };
-  return `${t("tasks:relations.title")}: ${relationLabel(row.oldValue)} → ${relationLabel(row.newValue)}`;
+  return `${t("tasksExtra:relations.title")}: ${relationLabel(row.oldValue)} → ${relationLabel(row.newValue)}`;
 }
 
 /**

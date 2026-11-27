@@ -15,8 +15,16 @@ import WorkItemCreateDialogShell from "./work-item-create-dialog-shell";
 vi.mock("@/hooks/queries/project/use-get-projects", () => ({
   default: () => ({ data: [{ id: "project-1", slug: "HELP" }] }),
 }));
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+vi.mock("@/lib/i18n", () => ({
+  areAllNamespacesLoaded: () => true,
+  whenAllNamespacesLoaded: () => Promise.resolve(),
+}));
+vi.mock("react-i18next", async () => ({
+  I18nContext: (await import("react")).createContext(undefined),
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: "en-US" },
+  }),
 }));
 
 vi.mock("./create-work-item-dialog-form", () => ({

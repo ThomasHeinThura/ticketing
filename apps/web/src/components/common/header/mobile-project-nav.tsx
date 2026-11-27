@@ -84,11 +84,11 @@ function MobileViewButton({
       onClick={disabledReason ? undefined : onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+        "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
         disabledReason && "cursor-not-allowed opacity-64",
         active
-          ? "border-border bg-secondary text-foreground"
-          : "border-transparent text-muted-foreground hover:bg-accent",
+          ? "bg-secondary text-foreground"
+          : "text-muted-foreground hover:bg-accent",
       )}
     >
       <Icon className="size-3.5" />
@@ -160,10 +160,10 @@ export default function MobileProjectNav({
                 onClick={onSelectBacklog}
                 aria-current={activeView === "backlog" ? "page" : undefined}
                 className={cn(
-                  "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                  "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
                   activeView === "backlog"
-                    ? "border-border bg-secondary text-foreground"
-                    : "border-transparent text-muted-foreground hover:bg-accent",
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-accent",
                 )}
               >
                 {t("navigation:projectViews.backlog")}
@@ -174,10 +174,10 @@ export default function MobileProjectNav({
                 onClick={onSelectBoard}
                 aria-current={activeView === "board" ? "page" : undefined}
                 className={cn(
-                  "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                  "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
                   activeView === "board"
-                    ? "border-border bg-secondary text-foreground"
-                    : "border-transparent text-muted-foreground hover:bg-accent",
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-accent",
                 )}
               >
                 <SquareKanban className="size-3.5" />
@@ -190,10 +190,10 @@ export default function MobileProjectNav({
                   onClick={onSelectCalendar}
                   aria-current={activeView === "calendar" ? "page" : undefined}
                   className={cn(
-                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
                     activeView === "calendar"
-                      ? "border-border bg-secondary text-foreground"
-                      : "border-transparent text-muted-foreground hover:bg-accent",
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:bg-accent",
                   )}
                 >
                   <CalendarRange className="size-3.5" />
@@ -207,10 +207,10 @@ export default function MobileProjectNav({
                   onClick={onSelectGantt}
                   aria-current={activeView === "gantt" ? "page" : undefined}
                   className={cn(
-                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+                    "flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
                     activeView === "gantt"
-                      ? "border-border bg-secondary text-foreground"
-                      : "border-transparent text-muted-foreground hover:bg-accent",
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:bg-accent",
                   )}
                 >
                   <CalendarDays className="size-3.5" />
@@ -317,7 +317,7 @@ export default function MobileProjectNav({
               variant="ghost"
               type="button"
               onClick={onAddProject}
-              className="flex w-full items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
             >
               <Plus className="size-3.5" />
               {t("navigation:projectList.addProject")}
@@ -329,7 +329,7 @@ export default function MobileProjectNav({
               variant="ghost"
               type="button"
               onClick={onOpenProjectSettings}
-              className="flex w-full items-center gap-2 rounded-md border border-border px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
             >
               <Settings className="size-3.5" />
               {t("navigation:projectList.projectSettings")}

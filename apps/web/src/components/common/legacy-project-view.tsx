@@ -69,7 +69,7 @@ export default function LegacyProjectView({
       <Layout.Content>
         <Alert>
           <AlertDescription>
-            {t("workItems:legacyView.unavailable")}
+            {t("workItemsExtra:legacyView.unavailable")}
           </AlertDescription>
         </Alert>
       </Layout.Content>
@@ -77,22 +77,26 @@ export default function LegacyProjectView({
   if (!href || translated.legacyTaskId || translated.unsupported.length === 0)
     return (
       <Layout.Content>
-        <p>{t("workItems:legacyView.opening")}</p>
+        <p>{t("workItemsExtra:legacyView.opening")}</p>
       </Layout.Content>
     );
   return (
     <Layout.Content>
       <Alert>
-        <AlertTitle>{t("workItems:legacyView.unsupportedTitle")}</AlertTitle>
+        <AlertTitle>
+          {t("workItemsExtra:legacyView.unsupportedTitle")}
+        </AlertTitle>
         <AlertDescription>
-          {t("workItems:legacyView.unsupportedDescription", {
+          {t("workItemsExtra:legacyView.unsupportedDescription", {
             controls: translated.unsupported
-              .map((control) => t(`workItems:legacyView.controls.${control}`))
+              .map((control) =>
+                t(`workItemsExtra:legacyView.controls.${control}`),
+              )
               .join(", "),
           })}
         </AlertDescription>
         <Button onClick={() => void navigate({ href, replace: true })}>
-          {t("workItems:legacyView.continue")}
+          {t("workItemsExtra:legacyView.continue")}
         </Button>
       </Alert>
     </Layout.Content>

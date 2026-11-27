@@ -22,4 +22,11 @@ describe("Badge", () => {
     const { baseElement } = render(<Badge variant="success">Done</Badge>);
     await expectNoA11yViolations(baseElement);
   });
+
+  it("renders the outline variant as a borderless tint", () => {
+    render(<Badge variant="outline">Open</Badge>);
+
+    expect(screen.getByText("Open")).toHaveClass("bg-secondary");
+    expect(screen.getByText("Open")).not.toHaveClass("border-input");
+  });
 });

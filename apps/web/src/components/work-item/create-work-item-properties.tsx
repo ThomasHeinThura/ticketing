@@ -37,6 +37,8 @@ type Props = {
   options: CreateWorkItemOptions;
   typeControl: ReactNode;
   priorityControl: ReactNode;
+  /** Ghost Attach button, shown last in the chip row. */
+  attachControl?: ReactNode;
   startDate: Date | undefined;
   dueDate: Date | undefined;
   assigneeId: string;
@@ -283,6 +285,7 @@ export default function CreateWorkItemProperties(props: Props) {
           loading={options.labelsLoading}
           error={options.labelsError}
         />
+        {props.attachControl}
       </CreateTaskPropertyRow>
       {options.peopleError && (canAssign || canUpdate) ? (
         <p role="status" className="text-xs text-muted-foreground">
@@ -291,7 +294,7 @@ export default function CreateWorkItemProperties(props: Props) {
       ) : null}
       {options.labelsError && canUpdate ? (
         <p role="status" className="text-xs text-muted-foreground">
-          {t("tasks:popover.labels.updateError")}
+          {t("tasksExtra:popover.labels.updateError")}
         </p>
       ) : null}
     </>

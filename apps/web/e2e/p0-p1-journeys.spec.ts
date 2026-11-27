@@ -201,8 +201,9 @@ test.describe("Stage P0 & P1 Integrated E2E Journeys", () => {
     const table = page.getByTestId("work-item-list-populated");
     await expect(table).toBeVisible();
 
-    await page.getByRole("button", { name: /Filter/i }).click();
+    await page.getByRole("button", { name: "Columns" }).click();
     await expect(page.getByTestId("work-item-column-controls")).toBeVisible();
+    await page.keyboard.press("Escape");
     await expect(page.getByTestId("work-item-export-csv")).toBeVisible();
   });
 

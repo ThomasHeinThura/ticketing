@@ -219,7 +219,7 @@ export function SettingsHistory({ target }: { target: HistoryTarget }) {
   const actionLabelKey = (action: string) => {
     const name = action.replace(/\./g, "_");
     const own = `settings:history.actions.${name}`;
-    const workItem = `workItems:auditHistory.actions.${name}`;
+    const workItem = `workItemsExtra:auditHistory.actions.${name}`;
     return i18n.exists(own)
       ? own
       : i18n.exists(workItem)

@@ -206,7 +206,7 @@ export default function TaskPropertiesControls({
           >
             {assignee?.user?.name ??
               assigneeName ??
-              translate("tasks:popover.assignee.unassigned")}
+              translate("tasksExtra:popover.assignee.unassigned")}
           </span>
         </Button>
       </TaskAssigneePopover>
@@ -225,7 +225,7 @@ export default function TaskPropertiesControls({
           >
             {startDate
               ? formatDateShort(startDate)
-              : translate("tasks:properties.noDate")}
+              : translate("tasksExtra:properties.noDate")}
           </span>
         </Button>
       </TaskStartDatePopover>
@@ -273,7 +273,7 @@ export default function TaskPropertiesControls({
           >
             {dueDate
               ? formatDateShort(dueDate)
-              : translate("tasks:properties.noDate")}
+              : translate("tasksExtra:properties.noDate")}
           </span>
         </Button>
       </TaskDueDatePopover>

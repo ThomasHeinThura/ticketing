@@ -41,14 +41,14 @@ export default function TaskStartDatePopover({
         ...currentTask,
         startDate: date?.toISOString() || null,
       });
-      toast.success(t("tasks:popover.startDate.updateSuccess"));
+      toast.success(t("tasksExtra:popover.startDate.updateSuccess"));
       setOpen(false);
     } catch (error) {
       if (!(error instanceof TaskUpdateError)) {
         toast.error(
           error instanceof Error
             ? error.message
-            : t("tasks:popover.startDate.updateError"),
+            : t("tasksExtra:popover.startDate.updateError"),
         );
       }
     }
@@ -79,7 +79,7 @@ export default function TaskStartDatePopover({
               onClick={() => handleDateChange(undefined)}
             >
               <X className="h-4 w-4" />
-              {t("tasks:popover.startDate.clear")}
+              {t("tasksExtra:popover.startDate.clear")}
             </Button>
           </div>
         )}

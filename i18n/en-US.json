@@ -2742,7 +2742,6 @@
 		}
 	},
 	"tasks": {
-		"title": "{{term_work_item_other}}",
 		"status": {
 			"label": "Status",
 			"to-do": "To Do",
@@ -2760,12 +2759,109 @@
 			"high": "High",
 			"urgent": "Urgent"
 		},
-		"boardSearchPlaceholder": "Search tickets...",
-		"boardSearchActive": "Search active",
 		"view": {
 			"board": "Board",
 			"list": "List"
 		},
+		"sort": {
+			"label": "Sort",
+			"by": "Sort By",
+			"direction": "Direction",
+			"ascending": "Ascending",
+			"descending": "Descending",
+			"fields": {
+				"position": "Manual (position)",
+				"createdAt": "Created date",
+				"priority": "Priority",
+				"dueDate": "Due date",
+				"title": "Title",
+				"number": "{{term_work_item_one}} number"
+			}
+		},
+		"listView": {
+			"addTask": "Add {{term_work_item_one}}",
+			"archiveAllTooltip": "Archive all completed {{term_work_item_other}}",
+			"noTasks": "No {{term_work_item_other}}"
+		},
+		"pr": {
+			"merged": "Merged",
+			"draft": "Draft",
+			"open": "Open",
+			"label": "Pull Request",
+			"count_one": "{{count}} PR",
+			"count_other": "{{count}} PRs"
+		},
+		"assignee": {
+			"label": "Assignee",
+			"unassigned": "Unassigned"
+		},
+		"dueDate": {
+			"label": "Due date",
+			"clear": "Clear date",
+			"updateSuccess": "{{term_work_item_one}} due date updated successfully",
+			"updateError": "Failed to update {{term_work_item_one}} due date",
+			"clearSuccess": "{{term_work_item_one}} due date cleared",
+			"clearError": "Failed to clear due date"
+		},
+		"bulk": {
+			"selectedCount": "{{count}} selected",
+			"moveToBacklog": "Move to Backlog",
+			"moveToBacklogSuccess": "{{count}} {{term_work_item_other}} moved to backlog",
+			"moveToBacklogError": "Failed to move {{term_work_item_other}} to backlog",
+			"moveToBoard": "Move to Board",
+			"moveToBoardSuccess": "{{count}} {{term_work_item_other}} moved to board",
+			"moveToBoardError": "Failed to move {{term_work_item_other}} to board",
+			"delete": "Delete {{term_work_item_other}}",
+			"deleteConfirm": "Delete {{count}} {{term_work_item_other}}? This action cannot be undone.",
+			"deleteSuccess": "{{count}} {{term_work_item_other}} deleted",
+			"deleteError": "Failed to delete {{term_work_item_other}}",
+			"archive": "Archive {{term_work_item_other}}",
+			"archiveSuccess": "{{count}} {{term_work_item_other}} archived",
+			"archiveError": "Failed to archive {{term_work_item_other}}",
+			"updateSuccess": "{{count}} {{term_work_item_other}} updated",
+			"updateError": "Failed to update {{term_work_item_other}}",
+			"assignTo": "Assign to",
+			"assignSuccess": "{{count}} {{term_work_item_other}} assigned",
+			"assignError": "Failed to assign {{term_work_item_other}}",
+			"setPriority": "Set Priority",
+			"updatePriorityError": "Failed to update priority",
+			"addLabel": "Add Label",
+			"addLabelSuccess": "Label added to {{count}} {{term_work_item_other}}",
+			"addLabelError": "Failed to add label",
+			"setDueDate": "Set Due Date",
+			"updateDueDateError": "Failed to update due date",
+			"actions": "Actions",
+			"searchActions": "Search actions...",
+			"noActionsFound": "No actions found.",
+			"changeStatus": "Change Status",
+			"removeLabel": "Remove label"
+		},
+		"group": {
+			"label": "Group",
+			"by": "Group by",
+			"fields": {
+				"state": "Status",
+				"assignee": "Assignee",
+				"priority": "Priority",
+				"module": "{{term_module_one}}",
+				"label": "Labels",
+				"epic": "{{term_epic_one}}"
+			},
+			"none": "None"
+		},
+		"kanban": {
+			"addTask": "Add {{term_work_item_one}}"
+		},
+		"actions": {
+			"archive": "Archive",
+			"markAsPlanned": "Mark as planned",
+			"delete": "Delete..."
+		}
+	},
+	"tasksExtra": {
+		"title": "{{term_work_item_other}}",
+		"boardSearchPlaceholder": "Search tickets...",
+		"boardSearchActive": "Search active",
 		"common": {
 			"selectTask": "Select {{term_work_item_one}}",
 			"loadingTask": "Loading {{term_work_item_one}}...",
@@ -3003,21 +3099,6 @@
 			},
 			"title": "Backlog"
 		},
-		"sort": {
-			"label": "Sort",
-			"by": "Sort By",
-			"direction": "Direction",
-			"ascending": "Ascending",
-			"descending": "Descending",
-			"fields": {
-				"position": "Manual (position)",
-				"createdAt": "Created date",
-				"priority": "Priority",
-				"dueDate": "Due date",
-				"title": "Title",
-				"number": "{{term_work_item_one}} number"
-			}
-		},
 		"boardFilters": {
 			"filterBy": "Filter By",
 			"allStatuses": "All statuses",
@@ -3099,34 +3180,6 @@
 		"archive": {
 			"success": "Archived {{count}} {{term_work_item_other}}"
 		},
-		"listView": {
-			"addTask": "Add {{term_work_item_one}}",
-			"archiveAllTooltip": "Archive all completed {{term_work_item_other}}",
-			"noTasks": "No {{term_work_item_other}}"
-		},
-		"kanban": {
-			"addTask": "Add {{term_work_item_one}}"
-		},
-		"pr": {
-			"merged": "Merged",
-			"draft": "Draft",
-			"open": "Open",
-			"label": "Pull Request",
-			"count_one": "{{count}} PR",
-			"count_other": "{{count}} PRs"
-		},
-		"assignee": {
-			"label": "Assignee",
-			"unassigned": "Unassigned"
-		},
-		"dueDate": {
-			"label": "Due date",
-			"clear": "Clear date",
-			"updateSuccess": "{{term_work_item_one}} due date updated successfully",
-			"updateError": "Failed to update {{term_work_item_one}} due date",
-			"clearSuccess": "{{term_work_item_one}} due date cleared",
-			"clearError": "Failed to clear due date"
-		},
 		"labels": {
 			"label": "Labels",
 			"empty": "No labels available"
@@ -3140,44 +3193,6 @@
 			"copyLink": "Copy link",
 			"copyLinkSuccess": "{{term_work_item_one}} link copied!"
 		},
-		"actions": {
-			"archive": "Archive",
-			"markAsPlanned": "Mark as planned",
-			"delete": "Delete..."
-		},
-		"bulk": {
-			"selectedCount": "{{count}} selected",
-			"moveToBacklog": "Move to Backlog",
-			"moveToBacklogSuccess": "{{count}} {{term_work_item_other}} moved to backlog",
-			"moveToBacklogError": "Failed to move {{term_work_item_other}} to backlog",
-			"moveToBoard": "Move to Board",
-			"moveToBoardSuccess": "{{count}} {{term_work_item_other}} moved to board",
-			"moveToBoardError": "Failed to move {{term_work_item_other}} to board",
-			"delete": "Delete {{term_work_item_other}}",
-			"deleteConfirm": "Delete {{count}} {{term_work_item_other}}? This action cannot be undone.",
-			"deleteSuccess": "{{count}} {{term_work_item_other}} deleted",
-			"deleteError": "Failed to delete {{term_work_item_other}}",
-			"archive": "Archive {{term_work_item_other}}",
-			"archiveSuccess": "{{count}} {{term_work_item_other}} archived",
-			"archiveError": "Failed to archive {{term_work_item_other}}",
-			"updateSuccess": "{{count}} {{term_work_item_other}} updated",
-			"updateError": "Failed to update {{term_work_item_other}}",
-			"assignTo": "Assign to",
-			"assignSuccess": "{{count}} {{term_work_item_other}} assigned",
-			"assignError": "Failed to assign {{term_work_item_other}}",
-			"setPriority": "Set Priority",
-			"updatePriorityError": "Failed to update priority",
-			"addLabel": "Add Label",
-			"addLabelSuccess": "Label added to {{count}} {{term_work_item_other}}",
-			"addLabelError": "Failed to add label",
-			"setDueDate": "Set Due Date",
-			"updateDueDateError": "Failed to update due date",
-			"actions": "Actions",
-			"searchActions": "Search actions...",
-			"noActionsFound": "No actions found.",
-			"changeStatus": "Change Status",
-			"removeLabel": "Remove label"
-		},
 		"editor": {
 			"table": {
 				"addColumnBefore": "Insert column left",
@@ -3188,19 +3203,6 @@
 				"deleteRow": "Delete row",
 				"deleteTable": "Delete table"
 			}
-		},
-		"group": {
-			"label": "Group",
-			"by": "Group by",
-			"fields": {
-				"state": "Status",
-				"assignee": "Assignee",
-				"priority": "Priority",
-				"module": "{{term_module_one}}",
-				"label": "Labels",
-				"epic": "{{term_epic_one}}"
-			},
-			"none": "None"
 		}
 	},
 	"invitations": {
@@ -3456,56 +3458,6 @@
 	},
 	"workItems": {
 		"listChanged": "This list has changed.",
-		"relations": {
-			"add": "Add relation",
-			"type": "Relation type",
-			"hidden_one": "{{count}} related item you cannot see",
-			"hidden_other": "{{count}} related items you cannot see",
-			"cycle": "Blocking cycle",
-			"error": "Relations could not be loaded. Try again.",
-			"linkError": "The relation could not be added. Check access and try again.",
-			"removeError": "The removal request could not be created. Try again.",
-			"pending": "Relation removal requested. The relation remains until approved.",
-			"reviewPending": "View removal request",
-			"searchError": "{{term_work_item_other}} could not be searched. Try again.",
-			"types": {
-				"relates": "relates to",
-				"blocks": "blocks",
-				"blocked_by": "blocked by",
-				"duplicates": "duplicates",
-				"duplicated_by": "duplicated by",
-				"precedes": "precedes",
-				"follows": "follows",
-				"requires": "requires",
-				"required_by": "required by"
-			}
-		},
-		"parent": {
-			"label": "Parent",
-			"none": "No parent",
-			"key": "Parent {{term_work_item_one}} key",
-			"loading": "Loading parent…",
-			"saved": "Parent updated.",
-			"conflict": "This item changed. Review the latest version and try again.",
-			"unavailable": "Choose a reachable {{term_work_item_one}} in this {{term_project_one}}, other than this item.",
-			"failed": "Could not change the parent. Try again.",
-			"set": "Set parent",
-			"remove": "Remove parent"
-		},
-		"hierarchy": {
-			"title": "Hierarchy",
-			"progress": "{{completed}} of {{total}} descendants complete",
-			"error": "Hierarchy could not be loaded.",
-			"retry": "Retry",
-			"expand": "Expand {{key}}",
-			"collapse": "Collapse {{key}}",
-			"currentBranch": "Current branch outside the loaded page",
-			"more": "Load more children of {{key}}",
-			"loading": "Loading…",
-			"empty": "No children",
-			"restoreLimit": "Restored the first {{count}} pages. Load more to continue.",
-			"disclosureLimit": "Collapse a branch before opening more branches."
-		},
 		"list": {
 			"pageTitle": "{{term_work_item_other}}",
 			"pageTitleWithProject": "{{term_work_item_other}} · {{project}}",
@@ -3575,7 +3527,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "Move {{column}} up",
+			"moveColumnDown": "Move {{column}} down"
 		},
 		"create": {
 			"trigger": "Create {{term_work_item_one}}",
@@ -3798,7 +3752,14 @@
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Active filters",
+			"addFilter": "Filter",
+			"searchFields": "Search fields",
+			"searchValues": "Search values",
+			"advanced": "Advanced",
+			"advancedFilter": "Advanced filter",
+			"me": "Me"
 		},
 		"properties": {
 			"title": "Properties",
@@ -3835,49 +3796,6 @@
 			"noCustomers": "This organisation has no customers yet.",
 			"requesterError": "Customers could not be loaded."
 		},
-		"deletion": {
-			"actions": "{{term_work_item_one}} actions",
-			"requestFailed": "The deletion request could not be created. Check access and try again.",
-			"hidden": "{{term_work_item_one}} details are no longer available.",
-			"childrenAffected_one": "This item has {{count}} child item. Deleting the parent keeps its children.",
-			"childrenAffected_other": "This item has {{count}} child items. Deleting the parent keeps its children.",
-			"project": "{{term_project_one}}: {{project}}",
-			"customerRequester": "Customer requester: {{name}}.",
-			"requestedBy": "Deletion requested by {{name}}.",
-			"portalVisibility": "Customer portal visibility: {{visibility}}.",
-			"visibility": {
-				"organisation": "Visible to the customer organisation",
-				"private": "Not visible to customers"
-			},
-			"portalRemoval": {
-				"organisation": "After approval, this {{term_work_item_one}} is removed from the customer portal.",
-				"private": "This {{term_work_item_one}} has no customer portal listing to remove."
-			},
-			"impact": "Effect of deleting this {{term_work_item_one}}",
-			"retention": "It is kept for {{days}} days and then permanently removed."
-		},
-		"legacyView": {
-			"unsupportedTitle": "Some saved controls need attention",
-			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
-			"continue": "Open without unsupported controls",
-			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
-			"opening": "Opening {{term_project_one}}…",
-			"controls": {
-				"q": "Search",
-				"status": "Status",
-				"assignee": "Assignee",
-				"labels": "Labels",
-				"dueDate": "Due date",
-				"priority": "Priority",
-				"sort": "Sort",
-				"filter": "Filter"
-			}
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"openFullPage": "Open full page",
-			"close": "Close {{term_work_item_one}}"
-		},
 		"blocked": {
 			"badge": "Blocked",
 			"badgeTitle": "Blocked by open {{term_work_item_other}}"
@@ -3903,18 +3821,6 @@
 				"met": "Met",
 				"missed": "Missed"
 			}
-		},
-		"priority": {
-			"urgent": "Urgent",
-			"high": "High",
-			"medium": "Medium",
-			"low": "Low",
-			"no-priority": "No priority"
-		},
-		"backlog": {
-			"emptyTitle": "No backlog items",
-			"emptyDescription": "Items in backlog or unstarted states appear here for manual ranking.",
-			"rankColumn": "Order"
 		},
 		"journey": {
 			"confirmAssignment": "Confirm assignment",
@@ -3973,6 +3879,129 @@
 			"reasonUnknown": "not available",
 			"reasonApprovalPending": "waiting for approval",
 			"reasonCabPending": "waiting for {{term_change_one}} advisory board approval"
+		},
+		"customFieldValue": {
+			"amount": "Amount",
+			"clear": "Clear",
+			"currencyCode": "Currency code",
+			"no": "No",
+			"noChoices": "Nothing to choose from",
+			"notOnProject": "(not on this project)",
+			"notSet": "Not set",
+			"optional": "optional",
+			"requiredHint": "Required before this item can start or finish",
+			"yes": "Yes",
+			"hour": "Hour",
+			"minute": "Minute",
+			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time.",
+			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"openFullPage": "Open full page",
+			"close": "Close {{term_work_item_one}}"
+		}
+	},
+	"workItemsExtra": {
+		"relations": {
+			"add": "Add relation",
+			"type": "Relation type",
+			"hidden_one": "{{count}} related item you cannot see",
+			"hidden_other": "{{count}} related items you cannot see",
+			"cycle": "Blocking cycle",
+			"error": "Relations could not be loaded. Try again.",
+			"linkError": "The relation could not be added. Check access and try again.",
+			"removeError": "The removal request could not be created. Try again.",
+			"pending": "Relation removal requested. The relation remains until approved.",
+			"reviewPending": "View removal request",
+			"searchError": "{{term_work_item_other}} could not be searched. Try again.",
+			"types": {
+				"relates": "relates to",
+				"blocks": "blocks",
+				"blocked_by": "blocked by",
+				"duplicates": "duplicates",
+				"duplicated_by": "duplicated by",
+				"precedes": "precedes",
+				"follows": "follows",
+				"requires": "requires",
+				"required_by": "required by"
+			}
+		},
+		"parent": {
+			"label": "Parent",
+			"none": "No parent",
+			"key": "Parent {{term_work_item_one}} key",
+			"loading": "Loading parent…",
+			"saved": "Parent updated.",
+			"conflict": "This item changed. Review the latest version and try again.",
+			"unavailable": "Choose a reachable {{term_work_item_one}} in this {{term_project_one}}, other than this item.",
+			"failed": "Could not change the parent. Try again.",
+			"set": "Set parent",
+			"remove": "Remove parent"
+		},
+		"hierarchy": {
+			"title": "Hierarchy",
+			"progress": "{{completed}} of {{total}} descendants complete",
+			"error": "Hierarchy could not be loaded.",
+			"retry": "Retry",
+			"expand": "Expand {{key}}",
+			"collapse": "Collapse {{key}}",
+			"currentBranch": "Current branch outside the loaded page",
+			"more": "Load more children of {{key}}",
+			"loading": "Loading…",
+			"empty": "No children",
+			"restoreLimit": "Restored the first {{count}} pages. Load more to continue.",
+			"disclosureLimit": "Collapse a branch before opening more branches."
+		},
+		"deletion": {
+			"actions": "{{term_work_item_one}} actions",
+			"requestFailed": "The deletion request could not be created. Check access and try again.",
+			"hidden": "{{term_work_item_one}} details are no longer available.",
+			"childrenAffected_one": "This item has {{count}} child item. Deleting the parent keeps its children.",
+			"childrenAffected_other": "This item has {{count}} child items. Deleting the parent keeps its children.",
+			"project": "{{term_project_one}}: {{project}}",
+			"customerRequester": "Customer requester: {{name}}.",
+			"requestedBy": "Deletion requested by {{name}}.",
+			"portalVisibility": "Customer portal visibility: {{visibility}}.",
+			"visibility": {
+				"organisation": "Visible to the customer organisation",
+				"private": "Not visible to customers"
+			},
+			"portalRemoval": {
+				"organisation": "After approval, this {{term_work_item_one}} is removed from the customer portal.",
+				"private": "This {{term_work_item_one}} has no customer portal listing to remove."
+			},
+			"impact": "Effect of deleting this {{term_work_item_one}}",
+			"retention": "It is kept for {{days}} days and then permanently removed."
+		},
+		"legacyView": {
+			"unsupportedTitle": "Some saved controls need attention",
+			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
+			"continue": "Open without unsupported controls",
+			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
+			"opening": "Opening {{term_project_one}}…",
+			"controls": {
+				"q": "Search",
+				"status": "Status",
+				"assignee": "Assignee",
+				"labels": "Labels",
+				"dueDate": "Due date",
+				"priority": "Priority",
+				"sort": "Sort",
+				"filter": "Filter"
+			}
+		},
+		"priority": {
+			"urgent": "Urgent",
+			"high": "High",
+			"medium": "Medium",
+			"low": "Low",
+			"no-priority": "No priority"
+		},
+		"backlog": {
+			"emptyTitle": "No backlog items",
+			"emptyDescription": "Items in backlog or unstarted states appear here for manual ranking.",
+			"rankColumn": "Order"
 		},
 		"auditHistory": {
 			"title": "Audit history",
@@ -4048,22 +4077,6 @@
 			"failed": "Unable to move this {{term_work_item_one}}.",
 			"confirm": "Move",
 			"success": "Moved as {{key}}."
-		},
-		"customFieldValue": {
-			"amount": "Amount",
-			"clear": "Clear",
-			"currencyCode": "Currency code",
-			"no": "No",
-			"noChoices": "Nothing to choose from",
-			"notOnProject": "(not on this project)",
-			"notSet": "Not set",
-			"optional": "optional",
-			"requiredHint": "Required before this item can start or finish",
-			"yes": "Yes",
-			"hour": "Hour",
-			"minute": "Minute",
-			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time.",
-			"datetime": "Date and time"
 		}
 	},
 	"portal": {

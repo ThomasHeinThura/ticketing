@@ -340,7 +340,8 @@ describe("portal shell", () => {
     renderShell();
     const help = await screen.findByRole("link", { name: "shell.getHelp" });
     expect(help.className).not.toMatch(/(^|\s)bg-primary(\s|$)/);
-    expect(help.className).toMatch(/(^|\s)border-input(\s|$)/);
+    // Secondary actions are tonal (outline variant), not bordered boxes (27 Nov 2026).
+    expect(help.className).toMatch(/(^|\s)bg-secondary(\s|$)/);
     // From sm up the theme switch stays in the top bar and the avatar menu has no theme item.
     const themeSwitch = screen.getByRole("switch", { name: "shell.theme" });
     expect(themeSwitch).toBeInTheDocument();
