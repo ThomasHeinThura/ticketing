@@ -3534,7 +3534,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "{{column}} को ऊपर ले जाएँ",
+			"moveColumnDown": "{{column}} को नीचे ले जाएँ"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3750,7 +3752,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "सक्रिय फ़िल्टर",
+			"addFilter": "फ़िल्टर",
+			"searchFields": "फ़ील्ड खोजें",
+			"searchValues": "मान खोजें",
+			"advanced": "उन्नत",
+			"advancedFilter": "उन्नत फ़िल्टर",
+			"me": "मैं"
 		},
 		"properties": {
 			"clearDate": "Clear date",

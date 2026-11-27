@@ -83,8 +83,10 @@ async function mockSearch(
   return requests;
 }
 
+// "Advanced" opens the form editor; a filter the chips cannot show is one "Advanced filter" chip
+// that opens the same editor.
 const openFilter = (page: Page) =>
-  page.getByRole("button", { name: /^Filter/ }).click();
+  page.getByRole("button", { name: /^Advanced/ }).click();
 
 test("structured filter is applied, scoped to the project and restored from the URL", async ({
   page,
@@ -137,9 +139,9 @@ test("structured filter is applied, scoped to the project and restored from the 
 
   // The filtered list is addressable: a reload reproduces the same query.
   await page.reload();
-  await expect(
-    page.getByRole("textbox", { name: "Filter work items" }),
-  ).toHaveValue("priority:high");
+  await expect(page.getByTestId("work-item-filter-chip")).toHaveText(
+    "Priority: high",
+  );
   await expect(
     page.getByText("Matching high priority item", { exact: true }),
   ).toBeVisible();
@@ -175,6 +177,10 @@ test("visual and text modes keep sort, direction and columns through history and
   await page.goto(
     `${TABLE_PATH}&sort=priority&dir=desc&columns=%5B%22key%22%2C%22priority%22%5D&filter=assignee%3A%40me`,
   );
+  await expect(page.getByTestId("work-item-filter-chip")).toHaveText(
+    "Assignee: @me",
+  );
+  await openFilter(page);
   await expect(
     page.getByRole("form", { name: "Work item filters" }),
   ).toBeVisible();
@@ -198,6 +204,11 @@ test("visual and text modes keep sort, direction and columns through history and
   for (const kept of [/sort=priority/u, /dir=desc/u, /columns=/u])
     await expect(page).toHaveURL(kept);
 
+  // Applying closes the editor; the complex filter is now one "Advanced filter" chip.
+  await expect(page.getByTestId("work-item-filter-chip")).toHaveText(
+    "Advanced filter",
+  );
+  await openFilter(page);
   await page.getByRole("button", { name: "Visual" }).click();
   await expect(page).toHaveURL(/filterMode=visual/u);
   // The group operator is a Kaneo popover trigger.
@@ -205,22 +216,25 @@ test("visual and text modes keep sort, direction and columns through history and
     page.getByRole("button", { name: "Group operator" }).first(),
   ).toContainText("all (AND)");
 
+  // An Advanced apply and a mode switch each push an entry.
   await page.goBack();
   await expect(page).toHaveURL(/filterMode=text/u);
   await expect(
     page.getByRole("textbox", { name: "Filter work items" }),
   ).toHaveValue("(priority:high OR assignee:@me) AND due:>=7d");
   await page.goBack();
-  await expect(page).toHaveURL(/filterMode=text/u);
+  await expect(page).toHaveURL(/filter=assignee%3A%40me&filterMode=text/u);
   await page.goBack();
-  await expect(page.getByRole("button", { name: "Text" })).toHaveAttribute(
-    "aria-pressed",
-    "false",
+  await expect(page).not.toHaveURL(/filterMode=/u);
+  await expect(page.getByTestId("work-item-filter-chip")).toHaveText(
+    "Assignee: @me",
   );
 
   await page.goForward();
+  await page.goForward();
+  await page.goForward();
   await page.reload();
-  await expect(page).toHaveURL(/filterMode=text/u);
+  await expect(page).toHaveURL(/filterMode=visual/u);
   await expect(
     page.getByRole("columnheader").filter({ hasText: /\S/u }),
   ).toHaveText(["Key", "Priority"]);
@@ -283,9 +297,9 @@ test("a filter that matches nothing says so and keeps the filter visible", async
   await expect(page.getByTestId("work-item-list-empty")).toContainText(
     "No Work items match this filter",
   );
-  await expect(
-    page.getByRole("form", { name: "Work item filters" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("work-item-filter-chip")).toHaveText(
+    "Priority: urgent",
+  );
 });
 
 test("the work list gates Export CSV on exportTasks capability and exports the filtered query (D1)", async ({
@@ -364,9 +378,10 @@ test("table layout allows showing, hiding and reordering columns in the URL (VW-
   await page.goto(
     "/agent/projects/WLP/work?layout=table&columns=%5B%22key%22%2C%22title%22%2C%22priority%22%5D&filter=priority%3Ahigh",
   );
+  await page.getByRole("button", { name: "Columns" }).click();
   const columnControls = page.getByTestId("work-item-column-controls");
   await expect(columnControls).toBeVisible();
-  await columnControls.getByRole("button", { name: "Move Title left" }).click();
+  await columnControls.getByRole("button", { name: "Move Title up" }).click();
   await expect(page).toHaveURL(/columns=%5B%22title%22%2C%22key%22/u);
 });
 
@@ -394,9 +409,9 @@ test("the board applies a URL filter across its state columns and exposes the fi
   await page.goto(
     "/agent/projects/WLP/work?layout=board&filter=priority%3Ahigh",
   );
-  await expect(
-    page.getByRole("form", { name: "Work item filters" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("work-item-filter-chip")).toHaveText(
+    "Priority: high",
+  );
   await expect(
     page.getByText("Matching high priority item", { exact: true }),
   ).toBeVisible();
@@ -425,6 +440,7 @@ for (const mode of ["visual", "text"] as const) {
     await page.goto(
       `${WORK_LIST_PATH}&filterMode=${mode}&filter=${encodeURIComponent("(priority:high OR assignee:@me) AND label:urgent")}`,
     );
+    await openFilter(page);
     await expect(
       page.getByRole("form", { name: "Work item filters" }),
     ).toBeVisible();
@@ -458,26 +474,44 @@ test("a filter matching more than one page loads the rest on demand", async ({
   expect((requests.at(-1) as { cursor?: string }).cursor).toBe("cursor-1");
 });
 
-test("the filter toggle is a disclosure: focus enters the editor and returns on close", async ({
+test("the Advanced button is a popover: Escape closes the editor and focus returns", async ({
   page,
 }) => {
   await installPerformanceApiFixture(page);
   await mockSearch(page);
   await page.goto(WORK_LIST_PATH);
-  const toggle = page.getByRole("button", { name: "Filter" });
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(toggle).not.toHaveAttribute("aria-pressed", /.*/u);
-  await toggle.focus();
+  const advanced = page.getByRole("button", { name: "Advanced" });
+  await advanced.focus();
   await page.keyboard.press("Enter");
-  await expect(toggle).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("button", { name: "Visual" })).toBeFocused();
-  await page.getByRole("button", { name: "Text" }).click();
-  await page
-    .getByRole("textbox", { name: "Filter work items" })
-    .press("Escape");
+  await expect(
+    page.getByRole("form", { name: "Work item filters" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(
     page.getByRole("form", { name: "Work item filters" }),
   ).toHaveCount(0);
-  await expect(toggle).toBeFocused();
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(advanced).toBeFocused();
+});
+
+test("chips apply live: add a field, pick values, remove it, the first change pushes, later ones replace (SV-11)", async ({
+  page,
+}) => {
+  await installPerformanceApiFixture(page);
+  await mockSearch(page);
+  await page.goto(WORK_LIST_PATH);
+  const before = await page.evaluate(() => window.history.length);
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.getByRole("option", { name: "Priority" }).click();
+  await page.getByRole("option", { name: "high", exact: true }).click();
+  await expect(page).toHaveURL(/filter=priority%3Ahigh/u);
+  await page.getByRole("option", { name: "urgent" }).click();
+  await expect(page).toHaveURL(/filter=priority%3Ain/u);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("work-item-filter-chip")).toHaveText(
+    "Priority: high, urgent",
+  );
+  await page.getByRole("button", { name: "Remove Priority filter" }).click();
+  await expect(page).not.toHaveURL(/filter=/u);
+  // One entry for the whole session: Back returns to the unfiltered list.
+  expect(await page.evaluate(() => window.history.length)).toBe(before + 1);
 });

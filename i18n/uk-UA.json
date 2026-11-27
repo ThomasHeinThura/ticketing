@@ -3556,7 +3556,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "Перемістити «{{column}}» вгору",
+			"moveColumnDown": "Перемістити «{{column}}» вниз"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3774,7 +3776,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Активні фільтри",
+			"addFilter": "Фільтр",
+			"searchFields": "Пошук полів",
+			"searchValues": "Пошук значень",
+			"advanced": "Розширений",
+			"advancedFilter": "Розширений фільтр",
+			"me": "Я"
 		},
 		"properties": {
 			"clearDate": "Clear date",

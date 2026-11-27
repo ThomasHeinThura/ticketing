@@ -3534,7 +3534,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "{{column}} sütununu yukarı taşı",
+			"moveColumnDown": "{{column}} sütununu aşağı taşı"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3750,7 +3752,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Etkin filtreler",
+			"addFilter": "Filtre",
+			"searchFields": "Alan ara",
+			"searchValues": "Değer ara",
+			"advanced": "Gelişmiş",
+			"advancedFilter": "Gelişmiş filtre",
+			"me": "Ben"
 		},
 		"properties": {
 			"clearDate": "Clear date",

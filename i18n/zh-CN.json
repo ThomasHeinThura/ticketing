@@ -3523,7 +3523,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "上移{{column}}",
+			"moveColumnDown": "下移{{column}}"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3738,7 +3740,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "已启用的筛选",
+			"addFilter": "筛选",
+			"searchFields": "搜索字段",
+			"searchValues": "搜索值",
+			"advanced": "高级",
+			"advancedFilter": "高级筛选",
+			"me": "我"
 		},
 		"properties": {
 			"clearDate": "Clear date",

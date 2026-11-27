@@ -3523,7 +3523,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "Di chuyển {{column}} lên",
+			"moveColumnDown": "Di chuyển {{column}} xuống"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3738,7 +3740,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Bộ lọc đang bật",
+			"addFilter": "Bộ lọc",
+			"searchFields": "Tìm trường",
+			"searchValues": "Tìm giá trị",
+			"advanced": "Nâng cao",
+			"advancedFilter": "Bộ lọc nâng cao",
+			"me": "Tôi"
 		},
 		"properties": {
 			"clearDate": "Clear date",

@@ -3534,7 +3534,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "Μετακίνηση του {{column}} προς τα πάνω",
+			"moveColumnDown": "Μετακίνηση του {{column}} προς τα κάτω"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3750,7 +3752,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Ενεργά φίλτρα",
+			"addFilter": "Φίλτρο",
+			"searchFields": "Αναζήτηση πεδίων",
+			"searchValues": "Αναζήτηση τιμών",
+			"advanced": "Για προχωρημένους",
+			"advancedFilter": "Φίλτρο για προχωρημένους",
+			"me": "Εγώ"
 		},
 		"properties": {
 			"clearDate": "Clear date",

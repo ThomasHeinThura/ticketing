@@ -3523,7 +3523,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "{{column}} 위로 이동",
+			"moveColumnDown": "{{column}} 아래로 이동"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3738,7 +3740,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "활성 필터",
+			"addFilter": "필터",
+			"searchFields": "필드 검색",
+			"searchValues": "값 검색",
+			"advanced": "고급",
+			"advancedFilter": "고급 필터",
+			"me": "나"
 		},
 		"properties": {
 			"clearDate": "Clear date",

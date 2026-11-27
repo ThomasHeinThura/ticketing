@@ -3534,7 +3534,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "{{column}} omhoog verplaatsen",
+			"moveColumnDown": "{{column}} omlaag verplaatsen"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3750,7 +3752,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Actieve filters",
+			"addFilter": "Filter",
+			"searchFields": "Velden zoeken",
+			"searchValues": "Waarden zoeken",
+			"advanced": "Geavanceerd",
+			"advancedFilter": "Geavanceerd filter",
+			"me": "Ik"
 		},
 		"properties": {
 			"clearDate": "Clear date",

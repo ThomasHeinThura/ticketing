@@ -3534,7 +3534,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "Премести го {{column}} нагоре",
+			"moveColumnDown": "Премести го {{column}} надолу"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3750,7 +3752,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Активни филтри",
+			"addFilter": "Филтер",
+			"searchFields": "Пребарај полиња",
+			"searchValues": "Пребарај вредности",
+			"advanced": "Напредно",
+			"advancedFilter": "Напреден филтер",
+			"me": "Јас"
 		},
 		"properties": {
 			"clearDate": "Clear date",

@@ -442,12 +442,16 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
                     }),
                   })
                 }
-                onApply={(nextFilter: string) =>
+                onApply={(
+                  nextFilter: string,
+                  options?: { replace?: boolean },
+                ) =>
                   navigate({
                     search: (prev: WorkItemListSearch) => ({
                       ...prev,
                       filter: nextFilter.trim() ? nextFilter : undefined,
                     }),
+                    replace: options?.replace ?? false,
                   })
                 }
                 workspaceId={workspace?.id}

@@ -3523,7 +3523,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "{{column}}を上へ移動",
+			"moveColumnDown": "{{column}}を下へ移動"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3738,7 +3740,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "有効なフィルター",
+			"addFilter": "フィルター",
+			"searchFields": "フィールドを検索",
+			"searchValues": "値を検索",
+			"advanced": "詳細設定",
+			"advancedFilter": "詳細フィルター",
+			"me": "自分"
 		},
 		"properties": {
 			"clearDate": "Clear date",

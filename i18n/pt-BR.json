@@ -3545,7 +3545,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "Mover {{column}} para cima",
+			"moveColumnDown": "Mover {{column}} para baixo"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3762,7 +3764,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Filtros ativos",
+			"addFilter": "Filtro",
+			"searchFields": "Pesquisar campos",
+			"searchValues": "Pesquisar valores",
+			"advanced": "Avançado",
+			"advancedFilter": "Filtro avançado",
+			"me": "Eu"
 		},
 		"properties": {
 			"clearDate": "Clear date",
