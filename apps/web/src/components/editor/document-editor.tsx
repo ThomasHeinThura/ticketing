@@ -84,7 +84,7 @@ export function DocumentEditor({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: only notes the first interaction
     <div
-      className={cn("taskdesk-document-editor rounded-lg border", className)}
+      className={cn("taskdesk-document-editor", className)}
       onFocus={touch}
       onKeyDown={touch}
       onPointerDown={touch}

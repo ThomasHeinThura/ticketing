@@ -24,11 +24,12 @@ describe("comment editor stacking and focus indicator", () => {
     );
   });
 
-  it("draws a token-based focus ring when the editor has keyboard focus", () => {
+  it("draws a token-based focus underline when the editor has keyboard focus", () => {
+    // Borderless (Notion-like) surfaces keep a visible keyboard cue: a 1px --ring underline.
     const body = ruleBody(
-      ".taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible)",
+      ".taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible)::after",
     );
     expect(body).toContain("var(--ring)");
-    expect(body).toContain("box-shadow");
+    expect(body).toContain("height: 1px");
   });
 });

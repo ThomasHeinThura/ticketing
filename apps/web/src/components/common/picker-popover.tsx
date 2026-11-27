@@ -95,7 +95,7 @@ export function PickerPopover({
           className={cn("min-w-0 justify-between gap-2 font-normal", className)}
         >
           <span className="truncate">{visibleText}</span>
-          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+          <ChevronDown className="size-3.5 shrink-0" />
         </Button>
       </PopoverTrigger>
       <PopoverContent

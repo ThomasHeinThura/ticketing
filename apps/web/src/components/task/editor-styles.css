@@ -22,11 +22,9 @@
     justify-content: center;
     width: 2rem;
     height: 2rem;
-    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
     border-radius: 999px;
-    background: color-mix(in srgb, var(--background) 82%, transparent);
-    color: color-mix(in srgb, var(--foreground) 76%, transparent);
-    box-shadow: 0 4px 16px color-mix(in srgb, var(--background) 68%, transparent);
+    background: transparent;
+    color: color-mix(in srgb, var(--foreground) 60%, transparent);
     transition:
       background-color 0.15s ease,
       border-color 0.15s ease,
@@ -35,17 +33,13 @@
   }
 
   .taskdesk-editor-quick-attach:hover {
-    border-color: color-mix(in srgb, var(--foreground) 18%, var(--border));
     background: color-mix(in srgb, var(--accent) 72%, transparent);
     color: var(--foreground);
-    transform: translateY(-1px);
   }
 
   .taskdesk-editor-quick-attach:focus-visible {
     outline: none;
-    box-shadow:
-      0 0 0 2px color-mix(in srgb, var(--ring) 24%, transparent),
-      0 4px 16px color-mix(in srgb, var(--background) 68%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 24%, transparent);
   }
 
   .taskdesk-tiptap-bubble {
@@ -824,13 +818,21 @@
     z-index: 80;
   }
 
-  /* Visible keyboard focus for the editor (the ProseMirror node itself has
-     outline: none): the same border + 3px ring tokens the shared Input uses. */
-  .taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible) {
-    border-radius: 0.6rem;
-    box-shadow:
-      0 0 0 1px var(--ring),
-      0 0 0 4px color-mix(in srgb, var(--ring) 24%, transparent);
+  /* One borderless keyboard-focus cue for every editor surface: a 1px --ring
+     underline (the ProseMirror node itself has outline: none). The comment
+     composer keeps its own card focus treatment. */
+  .taskdesk-tiptap-shell:has(.ProseMirror:focus-visible)::after,
+  .taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible)::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: auto 0 0;
+    height: 1px;
+    background: var(--ring);
+  }
+
+  .taskdesk-comment-composer .taskdesk-comment-editor-shell::after {
+    content: none;
   }
 
   .taskdesk-editor-drop-indicator {
@@ -1128,7 +1130,7 @@
     min-height: 16rem;
     max-height: none;
     overflow: visible;
-    padding: 0.85rem 1rem 1.25rem;
+    padding: 0.85rem 0 1.25rem;
     font-size: 0.95rem;
     line-height: 1.7;
   }
