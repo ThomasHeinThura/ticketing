@@ -316,17 +316,17 @@ it.each(["page", "pane"] as const)(
         }
       >
         <I18nextProvider i18n={i18n}>
-          {variant === "pane" ? (
-            <SidePaneBody itemKey="PROJ-123" onClose={() => {}} />
-          ) : (
-            <Boundary>
+          <Boundary>
+            {variant === "pane" ? (
+              <SidePaneBody itemKey="PROJ-123" onClose={() => {}} />
+            ) : (
               <WorkItemDetail
                 {...baseProps}
                 item={makeItem()}
                 variant={variant}
               />
-            </Boundary>
-          )}
+            )}
+          </Boundary>
         </I18nextProvider>
       </QueryClientProvider>
     );

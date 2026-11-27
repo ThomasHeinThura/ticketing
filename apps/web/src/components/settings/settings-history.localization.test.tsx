@@ -80,6 +80,7 @@ const NAMESPACES = [
   "common",
   "settings",
   "workItems",
+  "workItemsExtra",
   "godModeSettings",
   "featureFlags",
 ];
@@ -220,7 +221,7 @@ const open = (locale: string) =>
       name: at(read(locale), "settings.history.title"),
     }),
   );
-const noPlaceholder = /\{\{|defaultValue|workItems:|settings:history/;
+const noPlaceholder = /\{\{|defaultValue|workItems(?:Extra)?:|settings:history/;
 
 beforeEach(() => get.mockReset());
 afterEach(cleanup);
@@ -232,7 +233,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
       const source = read(locale);
       const settings = ((source.settings as Json).history as Json)
         .actions as Json;
-      const workItems = ((source.workItems as Json).auditHistory as Json)
+      const workItems = ((source.workItemsExtra as Json).auditHistory as Json)
         .actions as Json;
       const expected = ((english.settings as Json).history as Json)
         .actions as Json;
@@ -246,7 +247,7 @@ describe("catalog completeness for the History strings (static, real catalogs)",
         if (key !== "bulk_performed") expect(workItems).not.toHaveProperty(key);
       }
       expect(
-        at(source, "workItems.auditHistory.actions.work_item_created"),
+        at(source, "workItemsExtra.auditHistory.actions.work_item_created"),
       ).not.toBe("");
     },
   );
@@ -1066,7 +1067,7 @@ describe("full History inventory has dedicated localized labels", () => {
           await screen.findByText(new RegExp(`^${escapeRe(title)} · `))
         ).closest("div") as HTMLElement;
         expect(row.textContent, `${type} ${action}`).not.toMatch(
-          /settings:history|workItems:|\w+\.\w+_\w+/,
+          /settings:history|workItems(?:Extra)?:|\w+\.\w+_\w+/,
         );
         expect(row.textContent).not.toContain(
           `${fill(at(own, GENERIC[0] as string))} · `,

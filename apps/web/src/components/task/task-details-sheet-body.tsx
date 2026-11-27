@@ -76,7 +76,7 @@ export default function TaskDetailsSheetBody({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {t("tasks:detail.openInFullPage")}
+                {t("tasksExtra:detail.openInFullPage")}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

@@ -17,6 +17,46 @@ export const WORK_ROUTE_I18N_NAMESPACES = [
 export const WORK_LIST_PATH_PATTERN = /^\/agent\/projects\/[^/]+\/work\/?$/;
 
 /**
+ * Work-route modules rendered before any namespace boundary (the board layout and the side-pane
+ * shell). The build adds their chunks' static closures to the first-paint set the guard scans.
+ */
+export const WORK_ROUTE_BOUNDARY_FREE_MODULES = [
+  "/components/work-item/work-item-board.tsx",
+  "/components/work-item/work-item-side-pane.tsx",
+] as const;
+
+/**
+ * Namespaces split out of the first-paint ones to keep the work list small. Any module that reads
+ * them must be unreachable from the work route and shell except through a namespace boundary.
+ */
+export const SPLIT_OUT_NAMESPACES = ["tasksExtra", "workItemsExtra"] as const;
+
+/** Entry points of the agent work route and shell render graph (relative to `apps/web/src`). */
+export const WORK_ROUTE_RENDER_ROOTS = [
+  "main.tsx",
+  "routes/agent/__root.tsx",
+  "routes/agent/_layout.tsx",
+  "routes/agent/_layout/_authenticated.tsx",
+  "routes/agent/_layout/_authenticated/agent.tsx",
+  "routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx",
+  "routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx",
+] as const;
+
+/**
+ * Optional surfaces that read the split-out namespaces. Each is rendered inside the shared
+ * `NamespaceBoundary` by its importer, so it can never paint before the deferred group lands.
+ * The render-graph guard stops at an import into one of these only when the importer renders the
+ * boundary; strip the boundary and the surface's reads fail the build.
+ */
+export const WORK_ROUTE_GATED_SURFACES = [
+  "/components/work-item/work-item-side-pane-body.tsx",
+  "/components/work-item/work-item-context-menu-content.tsx",
+  "/components/pending-action/pending-action-approval.tsx",
+  "/components/work-item/create-work-item-dialog-form.tsx",
+  "/components/task/task-details-sheet-body.tsx",
+] as const;
+
+/**
  * Modules that are part of the work route's first-paint chunks and still refer to a deferred
  * namespace, with the namespaces they may refer to. The build fails for any other module (see
  * `findDeferredNamespaceUsers`), so adding a deferred-namespace string to a first-paint screen

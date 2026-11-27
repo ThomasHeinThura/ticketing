@@ -20,8 +20,12 @@ vi.mock("@/lib/i18n", () => ({
   areAllNamespacesLoaded: () => true,
   whenAllNamespacesLoaded: () => Promise.resolve(),
 }));
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+vi.mock("react-i18next", async () => ({
+  I18nContext: (await import("react")).createContext(undefined),
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: "en-US" },
+  }),
 }));
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-router")>()),

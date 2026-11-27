@@ -152,7 +152,7 @@ export default function TaskPropertiesSidebar({
     navigator.clipboard.writeText(
       `${window.location.origin}/dashboard/workspace/${workspaceId}/project/${projectId}/task/${taskId}`,
     );
-    toast.message(t("tasks:properties.copyTaskLink"));
+    toast.message(t("tasksExtra:properties.copyTaskLink"));
   };
 
   const handleCopyTaskBranch = () => {
@@ -163,7 +163,7 @@ export default function TaskPropertiesSidebar({
       task?.title,
     );
     navigator.clipboard.writeText(branchName);
-    toast.message(t("tasks:properties.copyTaskBranch"));
+    toast.message(t("tasksExtra:properties.copyTaskBranch"));
   };
 
   return (
@@ -200,7 +200,7 @@ export default function TaskPropertiesSidebar({
                   <TooltipContent>
                     <KbdSequence
                       keys={["Ctrl", "Shift", "C"]}
-                      description={t("tasks:properties.copyTaskLink")}
+                      description={t("tasksExtra:properties.copyTaskLink")}
                       separator=""
                     />
                   </TooltipContent>
@@ -219,7 +219,7 @@ export default function TaskPropertiesSidebar({
                   <TooltipContent>
                     <KbdSequence
                       keys={["Ctrl", "Shift", "G"]}
-                      description={t("tasks:properties.copyTaskBranch")}
+                      description={t("tasksExtra:properties.copyTaskBranch")}
                       separator=""
                     />
                   </TooltipContent>
@@ -269,7 +269,7 @@ export default function TaskPropertiesSidebar({
                   <TooltipContent>
                     <KbdSequence
                       keys={["Ctrl", "Shift", "C"]}
-                      description={t("tasks:properties.copyTaskLink")}
+                      description={t("tasksExtra:properties.copyTaskLink")}
                       separator=""
                     />
                   </TooltipContent>
@@ -288,7 +288,7 @@ export default function TaskPropertiesSidebar({
                   <TooltipContent>
                     <KbdSequence
                       keys={["Ctrl", "Shift", "G"]}
-                      description={t("tasks:properties.copyTaskBranch")}
+                      description={t("tasksExtra:properties.copyTaskBranch")}
                       separator=""
                     />
                   </TooltipContent>
@@ -298,7 +298,7 @@ export default function TaskPropertiesSidebar({
 
             <div className="hidden lg:flex items-center justify-between px-3 py-2 border-b border-border lg:border-none">
               <p className="text-sm font-medium text-foreground flex-1">
-                {t("tasks:properties.title")}
+                {t("tasksExtra:properties.title")}
               </p>
               <div className="flex">
                 {task && canMoveTask && (
@@ -328,7 +328,7 @@ export default function TaskPropertiesSidebar({
                     <TooltipContent>
                       <KbdSequence
                         keys={["Ctrl", "Shift", "C"]}
-                        description={t("tasks:properties.copyTaskLink")}
+                        description={t("tasksExtra:properties.copyTaskLink")}
                         separator=""
                       />
                     </TooltipContent>
@@ -347,7 +347,7 @@ export default function TaskPropertiesSidebar({
                     <TooltipContent>
                       <KbdSequence
                         keys={["Ctrl", "Shift", "G"]}
-                        description={t("tasks:properties.copyTaskBranch")}
+                        description={t("tasksExtra:properties.copyTaskBranch")}
                         separator=""
                       />
                     </TooltipContent>
@@ -374,7 +374,7 @@ export default function TaskPropertiesSidebar({
             projectId={task.projectId}
             workspaceId={workspaceId}
             taskLabels={taskLabels}
-            heading={t("tasks:properties.labels")}
+            heading={t("tasksExtra:properties.labels")}
           />
         )}
       </TaskPropertiesPresentation>

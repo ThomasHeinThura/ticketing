@@ -95,7 +95,7 @@ function TaskTitle({ taskId, task }: TaskTitleProps) {
         render={({ field }) => (
           <TaskTitlePresentation
             {...field}
-            placeholder={t("tasks:detail.titlePlaceholder")}
+            placeholder={t("tasksExtra:detail.titlePlaceholder")}
             readOnly={!canEdit}
             onChange={(e) => {
               field.onChange(e);

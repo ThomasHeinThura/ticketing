@@ -92,7 +92,7 @@ export default function WorkItemParentControl({
         parentId: response.parentId,
       });
       clearConflict();
-      announce(t("workItems:parent.saved"));
+      announce(t("workItemsExtra:parent.saved"));
       setOpen(false);
       await Promise.all([
         refresh(),
@@ -102,18 +102,18 @@ export default function WorkItemParentControl({
     onError: (failure) => {
       if (failure instanceof WorkItemVersionConflictError) {
         reportConflict();
-        setError(t("workItems:parent.conflict"));
+        setError(t("workItemsExtra:parent.conflict"));
         void refresh();
       } else if (failure instanceof HttpError && failure.status === 404) {
         // Either end may have disappeared; check the subject rather than hiding
         // a still-reachable item because the proposed parent was removed.
-        setError(t("workItems:parent.unavailable"));
+        setError(t("workItemsExtra:parent.unavailable"));
         void Promise.all([refresh(), hierarchy.refetch(), candidate.refetch()]);
       } else {
         setError(
           failure instanceof HttpError
             ? failure.message
-            : t("workItems:parent.failed"),
+            : t("workItemsExtra:parent.failed"),
         );
       }
     },
@@ -121,10 +121,10 @@ export default function WorkItemParentControl({
   const parentText = !first
     ? t(
         hierarchy.isError
-          ? "workItems:parent.unavailable"
-          : "workItems:parent.loading",
+          ? "workItemsExtra:parent.unavailable"
+          : "workItemsExtra:parent.loading",
       )
-    : (parent?.key ?? t("workItems:parent.none"));
+    : (parent?.key ?? t("workItemsExtra:parent.none"));
   const trigger = (
     <Button
       variant="ghost"
@@ -134,7 +134,7 @@ export default function WorkItemParentControl({
       )}
       disabled={!first || !canUpdateTasks() || mutation.isPending}
       // WCAG 2.5.3: the name contains the visible text.
-      aria-label={`${t("workItems:parent.label")}: ${parentText}`}
+      aria-label={`${t("workItemsExtra:parent.label")}: ${parentText}`}
     >
       <GitBranch className="size-4" />
       <span className="truncate">{parentText}</span>
@@ -170,8 +170,8 @@ export default function WorkItemParentControl({
           }}
         >
           <Input
-            aria-label={t("workItems:parent.key")}
-            placeholder={t("workItems:parent.key")}
+            aria-label={t("workItemsExtra:parent.key")}
+            placeholder={t("workItemsExtra:parent.key")}
             value={draft}
             maxLength={64}
             disabled={mutation.isPending}
@@ -185,10 +185,10 @@ export default function WorkItemParentControl({
           (candidate.isPending || placeholderVisible) ? (
             <LoadingStatus
               visible={placeholderVisible}
-              label={t("workItems:parent.loading")}
+              label={t("workItemsExtra:parent.loading")}
             >
               <p className="text-xs text-muted-foreground">
-                {t("workItems:parent.loading")}
+                {t("workItemsExtra:parent.loading")}
               </p>
             </LoadingStatus>
           ) : null}
@@ -202,7 +202,7 @@ export default function WorkItemParentControl({
             candidate.isError ||
             (reachableCandidate && !eligible)) ? (
             <p role="alert" className="text-xs text-muted-foreground">
-              {t("workItems:parent.unavailable")}
+              {t("workItemsExtra:parent.unavailable")}
             </p>
           ) : null}
           {error ? (
@@ -221,7 +221,7 @@ export default function WorkItemParentControl({
               mutation.isPending
             }
           >
-            {t("workItems:parent.set")}
+            {t("workItemsExtra:parent.set")}
           </Button>
           {parent ? (
             <Button
@@ -231,7 +231,7 @@ export default function WorkItemParentControl({
               disabled={mutation.isPending}
               onClick={() => mutation.mutate(null)}
             >
-              {t("workItems:parent.remove")}
+              {t("workItemsExtra:parent.remove")}
             </Button>
           ) : null}
         </form>

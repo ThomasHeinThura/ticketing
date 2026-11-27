@@ -65,7 +65,7 @@ export default function CalendarToolbar({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:w-auto">
           <Heading className="text-sm font-semibold text-foreground">
-            {t("tasks:calendar.title")}
+            {t("tasksExtra:calendar.title")}
           </Heading>
           <span
             className="text-sm text-muted-foreground"
@@ -83,7 +83,7 @@ export default function CalendarToolbar({
           ) : null}
           {onViewChange ? (
             <fieldset
-              aria-label={t("tasks:calendar.viewGroup")}
+              aria-label={t("tasksExtra:calendar.viewGroup")}
               className="m-0 inline-flex min-w-0 items-center gap-1 border-0 p-0"
             >
               {CALENDAR_VIEWS.map((mode) => (
@@ -95,7 +95,7 @@ export default function CalendarToolbar({
                   aria-pressed={view === mode}
                   onClick={() => onViewChange(mode)}
                 >
-                  {t(`tasks:calendar.view.${mode}`)}
+                  {t(`tasksExtra:calendar.view.${mode}`)}
                 </Button>
               ))}
             </fieldset>
@@ -107,10 +107,10 @@ export default function CalendarToolbar({
               className="min-h-11 min-w-11 touch-manipulation sm:min-h-0 sm:min-w-0"
               aria-label={t(
                 view === "month"
-                  ? "tasks:calendar.previousMonth"
+                  ? "tasksExtra:calendar.previousMonth"
                   : view === "week"
-                    ? "tasks:calendar.previousWeek"
-                    : "tasks:calendar.previousDay",
+                    ? "tasksExtra:calendar.previousWeek"
+                    : "tasksExtra:calendar.previousDay",
               )}
               onClick={onPreviousMonth}
             >
@@ -122,7 +122,7 @@ export default function CalendarToolbar({
               className="min-h-11 min-w-11 touch-manipulation sm:min-h-0 sm:min-w-0"
               onClick={onToday}
             >
-              {t("tasks:calendar.today")}
+              {t("tasksExtra:calendar.today")}
             </Button>
             <Button
               variant="outline"
@@ -130,10 +130,10 @@ export default function CalendarToolbar({
               className="min-h-11 min-w-11 touch-manipulation sm:min-h-0 sm:min-w-0"
               aria-label={t(
                 view === "month"
-                  ? "tasks:calendar.nextMonth"
+                  ? "tasksExtra:calendar.nextMonth"
                   : view === "week"
-                    ? "tasks:calendar.nextWeek"
-                    : "tasks:calendar.nextDay",
+                    ? "tasksExtra:calendar.nextWeek"
+                    : "tasksExtra:calendar.nextDay",
               )}
               onClick={onNextMonth}
             >

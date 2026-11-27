@@ -9640,7 +9640,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -9731,7 +9731,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -9822,7 +9822,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -9913,7 +9913,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -10874,7 +10874,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -10911,7 +10911,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -10924,7 +10924,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -10986,7 +10986,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -11167,7 +11167,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -11204,7 +11204,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -11217,7 +11217,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -11279,7 +11279,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -11404,7 +11404,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -11421,7 +11421,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -11548,7 +11548,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/div[0]/CreateWorkItemStagedAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.attachments",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -11565,7 +11565,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -13260,7 +13260,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -13277,7 +13277,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -13404,7 +13404,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -13421,7 +13421,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -15564,7 +15564,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -15577,7 +15577,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -15590,7 +15590,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -15603,7 +15603,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -16230,7 +16230,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -16243,7 +16243,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -16256,7 +16256,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -16269,7 +16269,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -17192,7 +17192,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -17209,7 +17209,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -17336,7 +17336,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -17353,7 +17353,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -17861,7 +17861,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -17881,7 +17881,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -18021,7 +18021,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -18041,7 +18041,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -18549,7 +18549,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -18569,7 +18569,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -18709,7 +18709,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -18729,7 +18729,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -26641,7 +26641,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -26658,7 +26658,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -26785,7 +26785,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -26802,7 +26802,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -28649,7 +28649,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -28669,7 +28669,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -28840,7 +28840,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -28860,7 +28860,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -29368,7 +29368,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -29388,7 +29388,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -29559,7 +29559,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -29579,7 +29579,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -29672,7 +29672,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -29685,7 +29685,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -29698,7 +29698,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30011,7 +30011,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30024,7 +30024,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30073,7 +30073,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30086,7 +30086,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30099,7 +30099,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30112,7 +30112,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30125,7 +30125,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30138,7 +30138,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30151,7 +30151,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30188,7 +30188,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30372,7 +30372,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30385,7 +30385,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30398,7 +30398,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30711,7 +30711,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30724,7 +30724,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30773,7 +30773,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30786,7 +30786,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30799,7 +30799,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30812,7 +30812,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30825,7 +30825,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30838,7 +30838,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30851,7 +30851,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -30888,7 +30888,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -31912,7 +31912,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -31929,7 +31929,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -32056,7 +32056,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -32073,7 +32073,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/ActivityActorPresentation[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -33282,7 +33282,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -33397,7 +33397,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -34184,7 +34184,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -34204,7 +34204,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -34224,7 +34224,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -34403,7 +34403,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -34423,7 +34423,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -34443,7 +34443,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -35086,7 +35086,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -35106,7 +35106,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -35126,7 +35126,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -35305,7 +35305,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -35325,7 +35325,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -35345,7 +35345,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -37031,7 +37031,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -37047,7 +37047,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -37063,7 +37063,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -37363,7 +37363,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -37379,7 +37379,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -37395,7 +37395,7 @@
 					"apps/web/src/components/work-item/work-item-relations.tsx:WorkItemRelations",
 					"jsx:RelationsSection[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/span[0]",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -64872,7 +64872,7 @@
 					"apps/web/src/components/task/task-detail-presentation.tsx:TaskDetailContentPresentation",
 					"jsx:div[0]/span[0]>bg-border",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -64960,7 +64960,7 @@
 					"apps/web/src/components/task/task-detail-presentation.tsx:TaskDetailContentPresentation",
 					"jsx:div[0]/span[0]>bg-border",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -65185,7 +65185,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -65202,7 +65202,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -65329,7 +65329,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -65346,7 +65346,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -78314,6 +78314,20 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/common/namespace-boundary.tsx:NamespaceBoundary",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/common/namespace-boundary.tsx:NamespaceBoundary",
+					"jsx:div[0]/Alert[0]/AlertDescription[0]",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/identity-access-denied.tsx:IdentityAccessDenied",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/api-keys.tsx:/_layout/_authenticated/god-mode/api-keys",
@@ -81435,20 +81449,6 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/work-item/work-item-namespace-boundary.tsx:DeferredWorkItemNamespaces",
-					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/components/work-item/work-item-namespace-boundary.tsx:DeferredWorkItemNamespaces",
-					"jsx:div[0]/Alert[0]/AlertDescription[0]",
-					"opaque-backdrop:bg-background"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/workflow/cab-template-panel.tsx:CabTemplatePanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/workflows.tsx:/_layout/_authenticated/dashboard/settings/workspace/workflows",
@@ -83032,7 +83032,7 @@
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -83126,7 +83126,7 @@
 					"apps/web/src/components/service-management/shared.tsx:MutationError",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -83259,7 +83259,7 @@
 					"apps/web/src/components/time-tracking/work-item-costs.tsx:WorkItemCosts",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -83275,7 +83275,7 @@
 					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -83317,7 +83317,7 @@
 					"apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -83333,7 +83333,7 @@
 					"apps/web/src/components/work-item/work-item-approvals.tsx:WorkItemApprovals",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -83349,7 +83349,7 @@
 					"apps/web/src/components/work-item/work-item-audit-history.tsx:WorkItemAuditHistory",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -83365,7 +83365,7 @@
 					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -83851,6 +83851,20 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/common/namespace-boundary.tsx:NamespaceBoundary",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/common/namespace-boundary.tsx:NamespaceBoundary",
+					"jsx:div[0]/Alert[0]/AlertDescription[0]",
+					"opaque-backdrop:bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/god-mode/identity-access-denied.tsx:IdentityAccessDenied",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/api-keys.tsx:/_layout/_authenticated/god-mode/api-keys",
@@ -86972,20 +86986,6 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
-					"apps/web/src/components/work-item/work-item-namespace-boundary.tsx:DeferredWorkItemNamespaces",
-					"Alert->packages/ui/src/components/alert.tsx:Alert",
-					"apps/web/src/components/work-item/work-item-namespace-boundary.tsx:DeferredWorkItemNamespaces",
-					"jsx:div[0]/Alert[0]/AlertDescription[0]",
-					"opaque-backdrop:bg-background"
-				],
-				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
-				"surfaceContext": "caller-chain",
-				"usage": "packages/ui/src/components/alert.tsx"
-			},
-			{
-				"backdropLayers": ["bg-background"],
-				"category": "body",
-				"chain": [
 					"apps/web/src/components/workflow/cab-template-panel.tsx:CabTemplatePanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/workflows.tsx:/_layout/_authenticated/dashboard/settings/workspace/workflows",
@@ -88569,7 +88569,7 @@
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -88663,7 +88663,7 @@
 					"apps/web/src/components/service-management/shared.tsx:MutationError",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -88796,7 +88796,7 @@
 					"apps/web/src/components/time-tracking/work-item-costs.tsx:WorkItemCosts",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -88812,7 +88812,7 @@
 					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -88854,7 +88854,7 @@
 					"apps/web/src/components/work-item/work-item-activity.tsx:WorkItemActivity",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -88870,7 +88870,7 @@
 					"apps/web/src/components/work-item/work-item-approvals.tsx:WorkItemApprovals",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -88886,7 +88886,7 @@
 					"apps/web/src/components/work-item/work-item-audit-history.tsx:WorkItemAuditHistory",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -88902,7 +88902,7 @@
 					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -90539,7 +90539,7 @@
 					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -91808,7 +91808,7 @@
 					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -92440,7 +92440,7 @@
 					"apps/web/src/components/work-item/work-item-approval-request.tsx:ApprovalRequestForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -95016,7 +95016,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -95036,7 +95036,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -95056,7 +95056,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -95309,7 +95309,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -95329,7 +95329,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -95349,7 +95349,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -96478,7 +96478,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -96498,7 +96498,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -96518,7 +96518,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -96915,7 +96915,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -96935,7 +96935,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -96955,7 +96955,7 @@
 					"jsx:div[0]/CommentComposerPresentation[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
 					"component-slot:apps/web/src/components/activity/comment-composer-presentation.tsx:CommentComposerPresentation.header",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -97447,7 +97447,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -97884,7 +97884,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -98004,7 +98004,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -99298,7 +99298,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -99311,7 +99311,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -99324,7 +99324,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -99834,7 +99834,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -99847,7 +99847,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -99860,7 +99860,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100065,7 +100065,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100078,7 +100078,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100091,7 +100091,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100104,7 +100104,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100117,7 +100117,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100130,7 +100130,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100143,7 +100143,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100156,7 +100156,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100277,7 +100277,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100290,7 +100290,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100303,7 +100303,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100316,7 +100316,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100329,7 +100329,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100342,7 +100342,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100355,7 +100355,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100368,7 +100368,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100381,7 +100381,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100430,7 +100430,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100443,7 +100443,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100456,7 +100456,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100469,7 +100469,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100482,7 +100482,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100495,7 +100495,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100508,7 +100508,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100521,7 +100521,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100534,7 +100534,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100547,7 +100547,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100560,7 +100560,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100573,7 +100573,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100586,7 +100586,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100599,7 +100599,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100612,7 +100612,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100625,7 +100625,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100638,7 +100638,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100651,7 +100651,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100664,7 +100664,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100677,7 +100677,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100690,7 +100690,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100703,7 +100703,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100716,7 +100716,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100729,7 +100729,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100742,7 +100742,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100755,7 +100755,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100888,7 +100888,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100949,7 +100949,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -100962,7 +100962,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101047,7 +101047,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101060,7 +101060,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101193,7 +101193,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101206,7 +101206,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101219,7 +101219,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101232,7 +101232,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101245,7 +101245,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101258,7 +101258,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101271,7 +101271,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101284,7 +101284,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101297,7 +101297,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101310,7 +101310,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101323,7 +101323,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101336,7 +101336,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101349,7 +101349,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101362,7 +101362,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101436,7 +101436,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -101486,7 +101486,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -102932,7 +102932,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -102956,7 +102956,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -103334,7 +103334,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -103771,7 +103771,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -103891,7 +103891,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -105185,7 +105185,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -105198,7 +105198,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -105211,7 +105211,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -105721,7 +105721,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -105734,7 +105734,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -105747,7 +105747,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -105952,7 +105952,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -105965,7 +105965,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -105978,7 +105978,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -105991,7 +105991,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106004,7 +106004,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106017,7 +106017,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106030,7 +106030,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106043,7 +106043,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106164,7 +106164,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106177,7 +106177,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106190,7 +106190,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106203,7 +106203,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106216,7 +106216,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106229,7 +106229,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106242,7 +106242,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106255,7 +106255,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106268,7 +106268,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106317,7 +106317,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106330,7 +106330,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106343,7 +106343,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106356,7 +106356,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106369,7 +106369,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106382,7 +106382,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106395,7 +106395,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106408,7 +106408,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106421,7 +106421,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106434,7 +106434,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106447,7 +106447,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106460,7 +106460,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106473,7 +106473,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106486,7 +106486,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106499,7 +106499,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106512,7 +106512,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106525,7 +106525,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106538,7 +106538,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106551,7 +106551,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106564,7 +106564,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106577,7 +106577,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106590,7 +106590,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106603,7 +106603,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106616,7 +106616,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106629,7 +106629,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106642,7 +106642,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106775,7 +106775,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106836,7 +106836,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106849,7 +106849,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106934,7 +106934,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -106947,7 +106947,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107080,7 +107080,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107093,7 +107093,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107106,7 +107106,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107119,7 +107119,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107132,7 +107132,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107145,7 +107145,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107158,7 +107158,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107171,7 +107171,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107184,7 +107184,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107197,7 +107197,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107210,7 +107210,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107223,7 +107223,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107236,7 +107236,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107249,7 +107249,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107323,7 +107323,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -107373,7 +107373,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -108843,7 +108843,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -108867,7 +108867,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -113193,7 +113193,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -113210,7 +113210,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -113304,7 +113304,7 @@
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -113398,7 +113398,7 @@
 					"apps/web/src/components/time-tracking/time-shared.tsx:ReviewNotice",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -113414,7 +113414,7 @@
 					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -113430,7 +113430,7 @@
 					"apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -113446,7 +113446,7 @@
 					"apps/web/src/components/work-item/work-item-properties.tsx:ConflictNotice",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -114751,7 +114751,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentAttachments[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.children",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -114768,7 +114768,7 @@
 					"jsx:section[0]/Timeline[0]/TimelineItem[0]/TimelineContent[0]/CommentCardPresentation[0]/WorkItemCommentDelete[0]",
 					"component-slot:apps/web/src/components/activity/comment-card-presentation.tsx:CommentCardPresentation.actions",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -114862,7 +114862,7 @@
 					"apps/web/src/components/service-management/change-section.tsx:ChangeForm",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -114956,7 +114956,7 @@
 					"apps/web/src/components/time-tracking/time-shared.tsx:ReviewNotice",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -114972,7 +114972,7 @@
 					"apps/web/src/components/work-item/work-item-comment-composer.tsx:WorkItemCommentComposer",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -114988,7 +114988,7 @@
 					"apps/web/src/components/work-item/work-item-detail.tsx:WorkItemDetail",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -115004,7 +115004,7 @@
 					"apps/web/src/components/work-item/work-item-properties.tsx:ConflictNotice",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children",
 					"opaque-backdrop:bg-popover"
@@ -122799,7 +122799,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -122812,7 +122812,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -122825,7 +122825,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -122838,7 +122838,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -122888,7 +122888,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -122957,7 +122957,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -122993,7 +122993,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -123006,7 +123006,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -123019,7 +123019,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -123032,7 +123032,7 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -123082,7 +123082,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -123151,7 +123151,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],

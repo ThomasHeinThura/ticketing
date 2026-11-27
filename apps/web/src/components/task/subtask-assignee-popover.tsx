@@ -70,7 +70,7 @@ export default function SubtaskAssigneePopover({
         toast.error(
           error instanceof Error
             ? error.message
-            : t("tasks:popover.assignee.updateError"),
+            : t("tasksExtra:popover.assignee.updateError"),
         );
       }
     },
@@ -132,14 +132,14 @@ export default function SubtaskAssigneePopover({
           >
             <div
               className="w-6 h-6 rounded-full bg-muted border border-border flex items-center justify-center"
-              title={t("tasks:popover.assignee.unassigned")}
+              title={t("tasksExtra:popover.assignee.unassigned")}
             >
               <span className="text-[10px] font-medium text-muted-foreground">
                 ?
               </span>
             </div>
             <span className="text-sm">
-              {t("tasks:popover.assignee.unassigned")}
+              {t("tasksExtra:popover.assignee.unassigned")}
             </span>
             {allSameAssignee && !currentAssignee ? (
               <Check className="ml-auto h-4 w-4" />

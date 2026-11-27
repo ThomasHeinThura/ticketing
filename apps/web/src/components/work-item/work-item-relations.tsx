@@ -201,9 +201,9 @@ export default function WorkItemRelations({
           update({ ...state, collapsed: open ? undefined : true })
         }
         count={(data?.data.length ?? 0) + (data?.hiddenCount ?? 0)}
-        title={t("tasks:relations.title")}
+        title={t("tasksExtra:relations.title")}
         canEdit={canEdit}
-        addLabel={t("workItems:relations.add")}
+        addLabel={t("workItemsExtra:relations.add")}
         onAdd={() => {
           create.reset();
           update({ ...state, picker: true });
@@ -223,13 +223,13 @@ export default function WorkItemRelations({
           </LoadingStatus>
         ) : relations.isError ? (
           <p role="alert" className="text-xs px-2 py-1">
-            {t("workItems:relations.error")}{" "}
+            {t("workItemsExtra:relations.error")}{" "}
             <Button
               variant="ghost"
               size="xs"
               onClick={() => void relations.refetch()}
             >
-              {t("workItems:hierarchy.retry")}
+              {t("workItemsExtra:hierarchy.retry")}
             </Button>
           </p>
         ) : (
@@ -237,7 +237,7 @@ export default function WorkItemRelations({
             {[...groups].map(([label, items]) => (
               <div key={label} className="mt-1.5">
                 <span className="text-xs text-muted-foreground px-2">
-                  {t(`workItems:relations.types.${label}`)}
+                  {t(`workItemsExtra:relations.types.${label}`)}
                 </span>
                 <div className="flex flex-col mt-0.5">
                   {items.map((relation) => {
@@ -280,7 +280,7 @@ export default function WorkItemRelations({
                             </span>
                             {relation.blockingCycle && (
                               <span className="text-xs text-warning-foreground">
-                                {t("workItems:relations.cycle")}
+                                {t("workItemsExtra:relations.cycle")}
                               </span>
                             )}
                             {item.assigneeName ? (
@@ -295,7 +295,9 @@ export default function WorkItemRelations({
                             ) : (
                               <span
                                 className="text-xs text-muted-foreground"
-                                title={t("tasks:popover.assignee.unassigned")}
+                                title={t(
+                                  "tasksExtra:popover.assignee.unassigned",
+                                )}
                               >
                                 ?
                               </span>
@@ -304,7 +306,7 @@ export default function WorkItemRelations({
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-40">
                           <ContextMenuItem onClick={() => openItem(item.key)}>
-                            {t("tasks:relations.openTask")}
+                            {t("tasksExtra:relations.openTask")}
                           </ContextMenuItem>
                           {canEdit && relation.canRemove && (
                             <>
@@ -314,7 +316,7 @@ export default function WorkItemRelations({
                                 className="text-destructive"
                                 onClick={() => remove.mutate(relation.id)}
                               >
-                                {t("tasks:relations.removeRelation")}
+                                {t("tasksExtra:relations.removeRelation")}
                               </ContextMenuItem>
                             </>
                           )}
@@ -327,19 +329,21 @@ export default function WorkItemRelations({
             ))}
             {data?.hiddenCount ? (
               <p className="text-xs text-muted-foreground px-2 py-1">
-                {t("workItems:relations.hidden", { count: data.hiddenCount })}
+                {t("workItemsExtra:relations.hidden", {
+                  count: data.hiddenCount,
+                })}
               </p>
             ) : null}
             {data && data.data.length === 0 && data.hiddenCount === 0 && (
               <p className="text-xs text-muted-foreground px-2 py-1">
-                {t("tasks:relations.empty")}
+                {t("tasksExtra:relations.empty")}
               </p>
             )}
           </>
         )}
         {remove.isError && (
           <p role="alert" className="text-xs px-2 py-1">
-            {t("workItems:relations.removeError")}
+            {t("workItemsExtra:relations.removeError")}
           </p>
         )}
       </RelationsSection>
@@ -349,11 +353,11 @@ export default function WorkItemRelations({
           update({ ...state, picker: open ? true : undefined })
         }
       >
-        <CommandDialogPopup aria-label={t("workItems:relations.add")}>
+        <CommandDialogPopup aria-label={t("workItemsExtra:relations.add")}>
           <Command items={results} filter={null}>
             <CommandInput
-              aria-label={t("tasks:relations.searchPlaceholder")}
-              placeholder={t("tasks:relations.searchPlaceholder")}
+              aria-label={t("tasksExtra:relations.searchPlaceholder")}
+              placeholder={t("tasksExtra:relations.searchPlaceholder")}
               value={state.query ?? ""}
               maxLength={200}
               onChange={(event) =>
@@ -376,19 +380,19 @@ export default function WorkItemRelations({
                 </LoadingStatus>
               ) : candidateFatal ? (
                 <p role="alert" className="text-xs px-2 py-1">
-                  {t("workItems:relations.searchError")}{" "}
+                  {t("workItemsExtra:relations.searchError")}{" "}
                   <Button
                     variant="ghost"
                     size="xs"
                     onClick={() => void candidates.refetch()}
                   >
-                    {t("workItems:hierarchy.retry")}
+                    {t("workItemsExtra:hierarchy.retry")}
                   </Button>
                 </p>
               ) : (
                 <>
                   <CommandEmpty>
-                    {t("tasks:relations.noTasksFound")}
+                    {t("tasksExtra:relations.noTasksFound")}
                   </CommandEmpty>
                   <CommandList>
                     {(item) => (
@@ -417,7 +421,7 @@ export default function WorkItemRelations({
               )}
               {candidates.isFetchNextPageError && !candidateAccessLost && (
                 <p role="alert" className="text-xs px-2 py-1">
-                  {t("workItems:relations.searchError")}
+                  {t("workItemsExtra:relations.searchError")}
                 </p>
               )}
               {candidates.hasNextPage && (
@@ -432,18 +436,18 @@ export default function WorkItemRelations({
               )}
               {create.isError && (
                 <p role="alert" className="text-xs px-2 py-1">
-                  {t("workItems:relations.linkError")}
+                  {t("workItemsExtra:relations.linkError")}
                 </p>
               )}
             </CommandPanel>
             <CommandFooter>
               <PickerPopover
                 value={relationType}
-                ariaLabel={t("workItems:relations.type")}
+                ariaLabel={t("workItemsExtra:relations.type")}
                 searchable={false}
                 options={RELATION_PICKER_TYPES.map((type) => ({
                   value: type,
-                  label: t(`workItems:relations.types.${type}`),
+                  label: t(`workItemsExtra:relations.types.${type}`),
                 }))}
                 onChange={(type) => {
                   if (
@@ -453,7 +457,7 @@ export default function WorkItemRelations({
                 }}
               />
               <span className="text-muted-foreground">
-                {t("tasks:relations.selectTask")}
+                {t("tasksExtra:relations.selectTask")}
               </span>
             </CommandFooter>
           </Command>

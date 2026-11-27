@@ -195,7 +195,7 @@ describe("TaskPropertiesSidebar responsive controls", () => {
     expect(screen.getByRole("button", { name: /Backlog/ })).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: /tasks:popover\.assignee\.unassigned/,
+        name: /tasksExtra:popover\.assignee\.unassigned/,
       }),
     ).toBeInTheDocument();
   });

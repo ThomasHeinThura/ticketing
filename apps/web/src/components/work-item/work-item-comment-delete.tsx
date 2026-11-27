@@ -73,7 +73,7 @@ export function WorkItemCommentDelete({
       </TooltipProvider>
       {failed && (
         <span role="alert" className="text-xs text-destructive">
-          {t("workItems:deletion.requestFailed")}
+          {t("workItemsExtra:deletion.requestFailed")}
         </span>
       )}
     </>

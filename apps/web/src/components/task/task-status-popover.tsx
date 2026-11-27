@@ -64,7 +64,7 @@ export default function TaskStatusPopover({
         toast.error(
           error instanceof Error
             ? error.message
-            : t("tasks:popover.status.updateError"),
+            : t("tasksExtra:popover.status.updateError"),
         );
       }
     },

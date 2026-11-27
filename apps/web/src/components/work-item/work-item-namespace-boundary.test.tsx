@@ -101,7 +101,7 @@ describe("direct-link detail translations", () => {
     expect(screen.getByText(/Project Unassigned/)).toBeVisible();
     expect(document.body.textContent).not.toMatch(/\w+:[\w.]+/);
   });
-  it("holds detail again when the language changes", async () => {
+  it("never hides revealed detail on a language change", async () => {
     const instance = await mount();
     await act(async () => {
       instance.addResourceBundle("en-US", "workItemExtras", en.workItemExtras);
@@ -112,11 +112,8 @@ describe("direct-link detail translations", () => {
     await act(async () => {
       await instance.changeLanguage("de-DE");
     });
-    expect(screen.getByTestId("work-item-detail-loading")).toBeVisible();
-    await act(async () => {
-      instance.addResourceBundle("de-DE", "workItemExtras", en.workItemExtras);
-      resolve();
-    });
+    // Fallback language text, never a raw key, and the draft state is untouched.
+    expect(screen.queryByTestId("work-item-detail-loading")).toBeNull();
     expect(screen.getByText(/Project Unassigned/)).toBeVisible();
     expect(screen.getByRole("button", { name: "Draft 1" })).toBeVisible();
     expect(document.body.textContent).not.toMatch(/\w+:[\w.]+/);

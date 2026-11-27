@@ -27,7 +27,7 @@ describe("English catalog test translator", () => {
         term_work_item_one: "Injected label",
       }),
     ).toBe(`Work item SUP-7: ${userText}`);
-    expect(translate("tasks:calendar.noTasks", { count: 0 })).toContain(
+    expect(translate("tasksExtra:calendar.noTasks", { count: 0 })).toContain(
       "Work items",
     );
   });

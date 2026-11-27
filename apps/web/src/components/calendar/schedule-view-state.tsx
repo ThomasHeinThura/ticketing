@@ -115,12 +115,12 @@ export default function ScheduleViewState({
         <EmptyTitle>
           {isFiltered
             ? t("workItems:list.emptyFilteredTitle")
-            : t(`tasks:${layout}.noTasks`)}
+            : t(`tasksExtra:${layout}.noTasks`)}
         </EmptyTitle>
         <EmptyDescription>
           {isFiltered
             ? t("workItems:list.emptyFilteredDescription")
-            : t(`tasks:${layout}.noTasksSubtitle`)}
+            : t(`tasksExtra:${layout}.noTasksSubtitle`)}
         </EmptyDescription>
       </EmptyHeader>
     </Empty>

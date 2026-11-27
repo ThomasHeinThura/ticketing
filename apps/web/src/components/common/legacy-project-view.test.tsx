@@ -53,7 +53,9 @@ describe("authorized legacy navigation", () => {
   it("does not expose task IDs or links when project access fails", () => {
     mocks.project = { isError: true };
     render(<LegacyProjectView projectId="p" workspaceId="w" view="board" />);
-    expect(screen.getByText("workItems:legacyView.unavailable")).toBeTruthy();
+    expect(
+      screen.getByText("workItemsExtra:legacyView.unavailable"),
+    ).toBeTruthy();
     expect(document.body.textContent).not.toContain("private-task-id");
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
@@ -63,7 +65,9 @@ describe("authorized legacy navigation", () => {
       data: { id: "p", workspaceId: "other", slug: "help" },
     };
     render(<LegacyProjectView projectId="p" workspaceId="w" view="board" />);
-    expect(screen.getByText("workItems:legacyView.unavailable")).toBeTruthy();
+    expect(
+      screen.getByText("workItemsExtra:legacyView.unavailable"),
+    ).toBeTruthy();
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
   it("opens the canonical board after the authorized read", async () => {
@@ -87,7 +91,9 @@ describe("authorized legacy navigation", () => {
     };
     mocks.task = { isError: true };
     render(<LegacyProjectView projectId="p" workspaceId="w" view="board" />);
-    expect(screen.getByText("workItems:legacyView.unavailable")).toBeTruthy();
+    expect(
+      screen.getByText("workItemsExtra:legacyView.unavailable"),
+    ).toBeTruthy();
     expect(document.body.textContent).not.toContain("private-task-id");
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
@@ -99,11 +105,13 @@ describe("authorized legacy navigation", () => {
     mocks.search = { q: "private query" };
     render(<LegacyProjectView projectId="p" workspaceId="w" view="board" />);
     expect(
-      screen.getByText("workItems:legacyView.unsupportedTitle"),
+      screen.getByText("workItemsExtra:legacyView.unsupportedTitle"),
     ).toBeTruthy();
     expect(mocks.navigate).not.toHaveBeenCalled();
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:legacyView.continue" }),
+      screen.getByRole("button", {
+        name: "workItemsExtra:legacyView.continue",
+      }),
     );
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledTimes(1));
     expect(mocks.navigate.mock.calls[0][0].href).not.toContain("q=");
@@ -148,7 +156,9 @@ describe("authorized legacy navigation", () => {
       );
       expect(mocks.navigate).not.toHaveBeenCalled();
       fireEvent.click(
-        screen.getByRole("button", { name: "workItems:legacyView.continue" }),
+        screen.getByRole("button", {
+          name: "workItemsExtra:legacyView.continue",
+        }),
       );
       const target = new URL(
         mocks.navigate.mock.calls[0][0].href,

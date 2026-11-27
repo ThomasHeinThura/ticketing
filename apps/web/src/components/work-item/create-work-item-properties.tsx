@@ -294,7 +294,7 @@ export default function CreateWorkItemProperties(props: Props) {
       ) : null}
       {options.labelsError && canUpdate ? (
         <p role="status" className="text-xs text-muted-foreground">
-          {t("tasks:popover.labels.updateError")}
+          {t("tasksExtra:popover.labels.updateError")}
         </p>
       ) : null}
     </>

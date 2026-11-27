@@ -73,7 +73,7 @@ export default function TaskCardContextMenuContent({
     const taskLink = generateLink(path);
 
     navigator.clipboard.writeText(taskLink);
-    toast.success(t("tasks:contextMenu.copyLinkSuccess"));
+    toast.success(t("tasksExtra:contextMenu.copyLinkSuccess"));
   };
 
   const handleChange = async (field: keyof Task, value: string | Date) => {
@@ -103,11 +103,11 @@ export default function TaskCardContextMenuContent({
             [field]: value,
           });
       }
-      toast.success(t("tasks:update.success"));
+      toast.success(t("tasksExtra:update.success"));
     } catch (error) {
       if (!(error instanceof TaskUpdateError)) {
         toast.error(
-          error instanceof Error ? error.message : t("tasks:update.error"),
+          error instanceof Error ? error.message : t("tasksExtra:update.error"),
         );
       }
     }

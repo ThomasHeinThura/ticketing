@@ -575,7 +575,7 @@ it("handles a failed pending deletion without navigation or a success claim", as
   );
   await waitFor(() =>
     expect(mocks.error).toHaveBeenCalledWith(
-      translate("workItems:deletion.requestFailed"),
+      translate("workItemsExtra:deletion.requestFailed"),
     ),
   );
   expect(mocks.openPending).not.toHaveBeenCalled();

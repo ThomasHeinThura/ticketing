@@ -63,8 +63,8 @@ function RouteComponent() {
       <PageTitle
         title={
           isLoading
-            ? t("tasks:common.loadingTask")
-            : t("tasks:common.taskNotFound")
+            ? t("tasksExtra:common.loadingTask")
+            : t("tasksExtra:common.taskNotFound")
         }
         hideAppName
       />
@@ -83,10 +83,10 @@ function RouteComponent() {
       ) : (
         <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-12 text-center">
           <h1 className="text-2xl font-bold">
-            {t("tasks:common.taskNotFound")}
+            {t("tasksExtra:common.taskNotFound")}
           </h1>
           <p className="text-muted-foreground max-w-md">
-            {t("tasks:common.taskNotFoundDescription", {
+            {t("tasksExtra:common.taskNotFoundDescription", {
               defaultValue:
                 "The task you are looking for does not exist or has been deleted.",
             })}

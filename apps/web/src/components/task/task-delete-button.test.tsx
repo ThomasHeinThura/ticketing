@@ -54,7 +54,7 @@ describe("TaskDeleteButton", () => {
     render(<TaskDeleteButton workItemKey="PROJ-1" />);
 
     expect(
-      screen.queryByRole("button", { name: "tasks:delete.action" }),
+      screen.queryByRole("button", { name: "tasksExtra:delete.action" }),
     ).toBeNull();
   });
 
@@ -64,7 +64,7 @@ describe("TaskDeleteButton", () => {
     render(<TaskDeleteButton workItemKey="PROJ-1" onRequested={onRequested} />);
 
     fireEvent.click(
-      screen.getByRole("button", { name: "tasks:delete.action" }),
+      screen.getByRole("button", { name: "tasksExtra:delete.action" }),
     );
 
     await waitFor(() =>
@@ -80,7 +80,7 @@ describe("TaskDeleteButton", () => {
       | (() => HTMLElement | false)
       | undefined;
     expect(finalFocus?.()).toBe(
-      screen.getByRole("button", { name: "tasks:delete.action" }),
+      screen.getByRole("button", { name: "tasksExtra:delete.action" }),
     );
     expect(mocks.success).not.toHaveBeenCalled();
     expect(onRequested).toHaveBeenCalledTimes(1);
@@ -91,7 +91,7 @@ describe("TaskDeleteButton", () => {
     mocks.deleteTask.mockResolvedValue({ pendingActionId: "pa-focus" });
     render(<TaskDeleteButton workItemKey="PROJ-1" />);
     const trigger = screen.getByRole("button", {
-      name: "tasks:delete.action",
+      name: "tasksExtra:delete.action",
     });
     trigger.focus();
 
@@ -114,7 +114,7 @@ describe("TaskDeleteButton", () => {
     const view = render(<TaskDeleteButton workItemKey="PROJ-1" />);
     rerender = view.rerender;
     const trigger = screen.getByRole("button", {
-      name: "tasks:delete.action",
+      name: "tasksExtra:delete.action",
     });
     view.rerender(
       <TaskDeleteButton
@@ -145,7 +145,7 @@ describe("TaskDeleteButton", () => {
     render(<TaskDeleteButton workItemKey="PROJ-1" onRequested={onRequested} />);
 
     fireEvent.click(
-      screen.getByRole("button", { name: "tasks:delete.action" }),
+      screen.getByRole("button", { name: "tasksExtra:delete.action" }),
     );
 
     await waitFor(() =>

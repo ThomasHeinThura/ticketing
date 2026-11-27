@@ -208,10 +208,10 @@ describe("original Kaneo direct Sub-tasks composition", () => {
       screen.getByRole("link", { name: "TD-1 · Private cached title" }),
     ).toHaveAttribute("aria-current", "page");
     expect(
-      screen.getByRole("button", { name: "workItems:hierarchy.title" }),
+      screen.getByRole("button", { name: "workItemsExtra:hierarchy.title" }),
     ).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:hierarchy.title" }),
+      screen.getByRole("button", { name: "workItemsExtra:hierarchy.title" }),
     );
     const destination = new URL(
       fake.navigate.mock.calls[0]?.[0].href,
@@ -225,7 +225,7 @@ describe("original Kaneo direct Sub-tasks composition", () => {
     fake.query = successful(parentPage());
     render(<WorkItemHierarchy workItemKey="TD-1" onAccessLost={vi.fn()} />);
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:hierarchy.title" }),
+      screen.getByRole("button", { name: "workItemsExtra:hierarchy.title" }),
     );
     const destination = new URL(
       fake.navigate.mock.calls[0]?.[0].href,
@@ -269,7 +269,7 @@ describe("original Kaneo direct Sub-tasks composition", () => {
       screen.getByRole("link", { name: "TD-2 Direct child" }),
     ).toBeInTheDocument();
     fireEvent.click(
-      screen.getByRole("button", { name: "workItems:hierarchy.retry" }),
+      screen.getByRole("button", { name: "workItemsExtra:hierarchy.retry" }),
     );
     expect(fake.query.fetchNextPage).toHaveBeenCalledOnce();
   });

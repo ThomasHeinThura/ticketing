@@ -136,7 +136,7 @@ describe("useUpdateTask conflict recovery", () => {
       );
     });
 
-    expect(toast.error).toHaveBeenCalledWith("tasks:update.conflict");
+    expect(toast.error).toHaveBeenCalledWith("tasksExtra:update.conflict");
     expect(updateTask).toHaveBeenCalledTimes(1);
   });
 
@@ -174,7 +174,7 @@ describe("useUpdateTask conflict recovery", () => {
       );
     });
     expect(toast.error).toHaveBeenCalledTimes(1);
-    expect(toast.error).toHaveBeenCalledWith("tasks:update.error");
+    expect(toast.error).toHaveBeenCalledWith("tasksExtra:update.error");
     expect(updateTask).toHaveBeenCalledTimes(1);
   });
 });
