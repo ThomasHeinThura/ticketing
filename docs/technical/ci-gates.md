@@ -83,8 +83,8 @@ names are aggregators over explicit shard jobs and fail closed (`scripts/ci/asse
 unless every named job succeeded: `static` (typecheck, tokens, checks), `unit + component`
 (3 shards, `pnpm test -- --shard=i/3`), `integration - Postgres 18` (8 shards) and
 `e2e - protected-route redirect` (8 `pnpm test:e2e --shard=i/4` shards, four over the smoke set
-and four over the `*-persisted.spec.ts` journeys, selected by `E2E_SET=smoke|persisted`, plus `e2e-image`, the
-real-Docker deploy helpers and the candidate shipping image). Unset `E2E_SET` runs every test.
+and four over the `*-persisted.spec.ts` journeys, chosen by a file-path filter argument, plus `e2e-image`, the
+real-Docker deploy helpers and the candidate shipping image).
 Each gate still runs once, over
 the whole suite, @a11y specs included; sharding removes, skips and weakens nothing.
 

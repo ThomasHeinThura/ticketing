@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { assertGateJobs } from "./assert-integration-shards.mjs";
 import { parseWorkflowFile } from "./lib/workflow-gates.mjs";
+
+// File-path filters Playwright reads as regular expressions (no leading dash, no shell-special characters).
+const SMOKE_ARG = "'^(?!.*[-]persisted[.]spec[.]ts)'";
+const PERSISTED_ARG = "'[-]persisted[.]spec[.]ts'";
 
 const range = (prefix, count) =>
   Array.from({ length: count }, (_, index) => `${prefix}-${index + 1}`);
@@ -27,7 +31,9 @@ const GATES = [
     name: "e2e - protected-route redirect",
     shards: [...range("e2e", 8), "e2e-image"],
     command: (i) =>
-      i <= 8 ? `pnpm test:e2e --shard=${((i - 1) % 4) + 1}/4` : null,
+      i <= 8
+        ? `pnpm test:e2e --shard=${((i - 1) % 4) + 1}/4 ${i <= 4 ? SMOKE_ARG : PERSISTED_ARG}`
+        : null,
   },
   {
     label: "unit",
@@ -190,11 +196,9 @@ test("the e2e shards cover every shard index once and the shipping-image checks 
     const job = source.slice(start, source.indexOf("\n  e2e-", start + 1));
     const set = index < 4 ? "smoke" : "persisted";
     assert.ok(
-      job.includes(`E2E_SET: ${set}\n`),
-      `e2e-${index + 1} sets ${set}`,
-    );
-    assert.ok(
-      job.includes(`run: pnpm test:e2e --shard=${(index % 4) + 1}/4\n`),
+      job.includes(
+        `run: pnpm test:e2e --shard=${(index % 4) + 1}/4 ${index < 4 ? SMOKE_ARG : PERSISTED_ARG}\n`,
+      ),
       `e2e-${index + 1} shard`,
     );
     assert.ok(job.includes(`name: playwright-${set}-${(index % 4) + 1}\n`));
@@ -246,4 +250,22 @@ test("the static jobs together keep every pre-split static step", () => {
       1,
       `${command} must run exactly once`,
     );
+});
+
+test("the two e2e filters partition every spec file exactly once", () => {
+  const smoke = new RegExp(SMOKE_ARG.slice(1, -1), "i");
+  const persisted = new RegExp(PERSISTED_ARG.slice(1, -1), "i");
+  const specs = readdirSync(
+    new URL("../../apps/web/e2e/", import.meta.url),
+  ).filter((name) => name.endsWith(".spec.ts"));
+  assert.ok(specs.length > 50);
+  for (const name of specs) {
+    const path = `/repo/apps/web/e2e/${name}`;
+    assert.equal(
+      Number(smoke.test(path)) + Number(persisted.test(path)),
+      1,
+      `${name} must match exactly one e2e filter`,
+    );
+  }
+  assert.ok(specs.some((name) => persisted.test(name)));
 });
