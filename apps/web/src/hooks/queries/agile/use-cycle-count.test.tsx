@@ -5,12 +5,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCyclesOffered } from "./use-cycle-count";
 
 const mocks = vi.hoisted(() => ({
-  project: { kind: "project", slug: "OPS" } as { kind: string; slug: string },
+  project: { id: "p1", kind: "project", slug: "OPS" } as {
+    id: string;
+    kind: string;
+    slug: string;
+  },
   cycles: [] as unknown[],
 }));
 
-vi.mock("@/hooks/queries/project/use-get-project", () => ({
-  default: () => ({ data: mocks.project }),
+vi.mock("@/hooks/queries/project/use-get-projects", () => ({
+  default: () => ({ data: [mocks.project] }),
 }));
 vi.mock("@/fetchers/agile", () => ({
   FeatureDisabledError: class extends Error {},
@@ -25,7 +29,7 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 beforeEach(() => {
-  mocks.project = { kind: "project", slug: "OPS" };
+  mocks.project = { id: "p1", kind: "project", slug: "OPS" };
   mocks.cycles = [];
 });
 
@@ -45,7 +49,7 @@ describe("useCyclesOffered (managed services, 27 Nov 2026)", () => {
   });
 
   it("hides cycles on a managed service that has none", async () => {
-    mocks.project = { kind: "managed_service", slug: "SUP" };
+    mocks.project = { id: "p1", kind: "managed_service", slug: "SUP" };
     const { result } = renderHook(() => useCyclesOffered("p1", "w1", true), {
       wrapper,
     });
@@ -53,7 +57,7 @@ describe("useCyclesOffered (managed services, 27 Nov 2026)", () => {
   });
 
   it("keeps cycles on a managed service that still holds old ones", async () => {
-    mocks.project = { kind: "managed_service", slug: "SUP" };
+    mocks.project = { id: "p1", kind: "managed_service", slug: "SUP" };
     mocks.cycles = [{ id: "c1" }];
     const { result } = renderHook(() => useCyclesOffered("p1", "w1", true), {
       wrapper,

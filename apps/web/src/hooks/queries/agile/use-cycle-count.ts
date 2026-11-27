@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { FeatureDisabledError, getCycles } from "@/fetchers/agile";
-import useGetProject from "@/hooks/queries/project/use-get-project";
+import useGetProjects from "@/hooks/queries/project/use-get-projects";
 
 /**
  * How many cycles a project holds (undefined until known). Shares the cycles list's cache entry.
@@ -30,10 +30,9 @@ export function useCyclesOffered(
   workspaceId: string | undefined,
   cyclesFeature: boolean,
 ) {
-  const { data: project } = useGetProject({
-    id: projectId ?? "",
-    workspaceId: workspaceId ?? "",
-  });
+  // The workspace project list is already cached on every project screen.
+  const { data: projects } = useGetProjects({ workspaceId: workspaceId ?? "" });
+  const project = projects?.find((candidate) => candidate.id === projectId);
   const managed = project?.kind === "managed_service";
   const count = useCycleCount(project?.slug, managed && cyclesFeature);
   return cyclesFeature && (!managed || (count ?? 0) > 0);
