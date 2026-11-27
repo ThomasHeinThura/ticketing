@@ -2480,7 +2480,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Apri notifiche"
 	},
 	"notifications": {
 		"title": "Notifiche",
@@ -2493,9 +2494,6 @@
 		"clearAll": "Cancella tutte le notifiche",
 		"clearDialogTitle": "Cancellare tutte le notifiche?",
 		"clearDialogDescription": "Questo rimuoverà permanentemente tutte le notifiche. Non puoi annullare questa azione.",
-		"shortcuts": {
-			"open": "Apri notifiche"
-		},
 		"reminderLeadTime": {
 			"minutes_one": "{{count}} minuto",
 			"minutes_other": "{{count}} minuti",

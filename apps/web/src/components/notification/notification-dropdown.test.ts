@@ -7,7 +7,7 @@ import {
   getPendingActionNotificationHref,
   getSubmissionNotificationHref,
   getWebhookNotificationHref,
-} from "./notification-dropdown";
+} from "./notification-content";
 
 const t = (key: string, options?: Record<string, unknown>) => {
   if (key === "notifications:reminderLeadTime.days") {

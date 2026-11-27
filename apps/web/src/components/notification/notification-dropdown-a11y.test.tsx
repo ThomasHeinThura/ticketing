@@ -9,7 +9,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => vi.fn() }));
 vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-i18next")>()),
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: "en-US" },
+  }),
 }));
 vi.mock("@/hooks/queries/notification/use-get-notifications", () => ({
   default: () => ({
@@ -38,6 +41,11 @@ vi.mock("@/hooks/use-keyboard-shortcuts", async (importOriginal) => ({
   useRegisterShortcuts: () => {},
 }));
 vi.mock("@/lib/format", () => ({ formatRelativeTime: () => "1m" }));
+// The menu sits behind a namespace boundary; these tests run with every string loaded.
+vi.mock("@/lib/i18n", () => ({
+  areAllNamespacesLoaded: () => true,
+  whenAllNamespacesLoaded: () => Promise.resolve(),
+}));
 
 import NotificationDropdown, {
   type NotificationDropdownRef,

@@ -9,7 +9,7 @@ import {
   isContainedInBoundary,
 } from "../../../vite/namespace-render-graph";
 import {
-  SPLIT_OUT_NAMESPACES,
+  BOUNDARY_ONLY_NAMESPACES,
   WORK_ROUTE_GATED_SURFACES,
   WORK_ROUTE_RENDER_ROOTS,
 } from "./work-route-namespaces";
@@ -31,7 +31,7 @@ function scan(overrides: Record<string, (source: string) => string> = {}) {
     roots: WORK_ROUTE_RENDER_ROOTS,
     gated: WORK_ROUTE_GATED_SURFACES,
     known,
-    only: SPLIT_OUT_NAMESPACES,
+    only: BOUNDARY_ONLY_NAMESPACES,
     read: (target) => {
       const source = readFileSync(target, "utf8");
       return byFile.get(target)?.(source) ?? source;
@@ -81,6 +81,11 @@ const SURFACES = [
     name: "legacy task sheet",
     importer: "components/task/task-details-sheet.tsx",
     surface: "components/task/task-details-sheet-body.tsx",
+  },
+  {
+    name: "notification menu",
+    importer: "components/notification/notification-dropdown.tsx",
+    surface: "components/notification/notification-menu.tsx",
   },
 ] as const;
 
@@ -216,6 +221,27 @@ describe("work route render graph guard", () => {
         "components/work-item/create-work-item-dialog.tsx": stripBoundary,
       }),
     ).toContain("components/work-item/create-work-item-properties.tsx");
+  });
+
+  it("fails when the shell's notification dropdown reads its namespace outside a boundary", () => {
+    const notificationsRead = (source: string) =>
+      `${source}\nexport const injected = () => t("notifications:title");\n`;
+    expect(
+      scan({
+        "components/notification/notification-dropdown.tsx": notificationsRead,
+      }),
+    ).toContain("components/notification/notification-dropdown.tsx");
+    // The clear dialog is gated too: stripping its boundary exposes its reads.
+    expect(
+      scan({
+        "components/notification/notification-dropdown.tsx": stripBoundary,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        "components/notification/notification-menu.tsx",
+        "components/notification/notification-clear-dialog.tsx",
+      ]),
+    );
   });
 
   it("fails for a deferred read in the work route itself", () => {

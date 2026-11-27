@@ -2475,7 +2475,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Benachrichtigungen öffnen"
 	},
 	"notifications": {
 		"title": "Benachrichtigungen",
@@ -2488,9 +2489,6 @@
 		"clearAll": "Alle Benachrichtigungen löschen",
 		"clearDialogTitle": "Alle Benachrichtigungen löschen?",
 		"clearDialogDescription": "Dadurch werden alle Benachrichtigungen dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
-		"shortcuts": {
-			"open": "Benachrichtigungen öffnen"
-		},
 		"reminderLeadTime": {
 			"minutes_one": "{{count}} Minute",
 			"minutes_other": "{{count}} Minuten",

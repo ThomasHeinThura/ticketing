@@ -2475,7 +2475,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Отвори известувања"
 	},
 	"notifications": {
 		"title": "Известувања",
@@ -2488,9 +2489,6 @@
 		"clearAll": "Исчисти ги сите известувања",
 		"clearDialogTitle": "Исчисти ги сите известувања?",
 		"clearDialogDescription": "Ова трајно ќе ги отстрани сите известувања. Не можеш да ја вратиш оваа акција.",
-		"shortcuts": {
-			"open": "Отвори известувања"
-		},
 		"events": {
 			"task_created": {
 				"title": "Нова {{term_work_item_one}} е креирана",

@@ -2480,7 +2480,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Abrir notificaciones"
 	},
 	"notifications": {
 		"title": "Notificationes",
@@ -2493,9 +2494,6 @@
 		"clearAll": "Borrar todas las notificaciones",
 		"clearDialogTitle": "¿Borrar notificaciones?",
 		"clearDialogDescription": "Esto eliminará todas las notificaciones. Esta acción no puede deshacerse.",
-		"shortcuts": {
-			"open": "Abrir notificaciones"
-		},
 		"events": {
 			"task_created": {
 				"title": "Se ha creado una nueva {{term_work_item_one}}",

@@ -8,7 +8,7 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import packageJson from "../../package.json";
 import {
-  SPLIT_OUT_NAMESPACES,
+  BOUNDARY_ONLY_NAMESPACES,
   WORK_ROUTE_BOUNDARY_FREE_MODULES,
   WORK_ROUTE_GATED_SURFACES,
   WORK_ROUTE_RENDER_ROOTS,
@@ -250,7 +250,7 @@ function preloadWorkRouteForDirectVisits(): Plugin {
           roots: WORK_ROUTE_RENDER_ROOTS,
           gated: WORK_ROUTE_GATED_SURFACES,
           known: catalogNamespaces,
-          only: SPLIT_OUT_NAMESPACES,
+          only: BOUNDARY_ONLY_NAMESPACES,
         });
         if (ungatedReads.length > 0)
           throw new Error(

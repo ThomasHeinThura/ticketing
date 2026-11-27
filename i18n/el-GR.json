@@ -2475,7 +2475,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Άνοιγμα ειδοποιήσεων"
 	},
 	"notifications": {
 		"title": "Ειδοποιήσεις",
@@ -2488,9 +2489,6 @@
 		"clearAll": "Εκκαθάριση όλων των ειδοποιήσεων",
 		"clearDialogTitle": "Εκκαθάριση όλων των ειδοποιήσεων;",
 		"clearDialogDescription": "Αυτό θα αφαιρέσει οριστικά όλες τις ειδοποιήσεις. Δεν μπορείτε να αναιρέσετε αυτήν την ενέργεια.",
-		"shortcuts": {
-			"open": "Άνοιγμα ειδοποιήσεων"
-		},
 		"events": {
 			"task_created": {
 				"title": "Δημιουργήθηκε νέα {{term_work_item_one}}",

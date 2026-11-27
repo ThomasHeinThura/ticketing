@@ -2470,7 +2470,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "알림 열기"
 	},
 	"notifications": {
 		"title": "알림",
@@ -2482,9 +2483,6 @@
 		"clearAll": "모든 알림 지우기",
 		"clearDialogTitle": "모든 알림을 지우시겠습니까?",
 		"clearDialogDescription": "모든 알림이 영구적으로 제거됩니다. 이 작업은 취소할 수 없습니다.",
-		"shortcuts": {
-			"open": "알림 열기"
-		},
 		"events": {
 			"task_created": {
 				"title": "새 {{term_work_item_one}} 생성됨",

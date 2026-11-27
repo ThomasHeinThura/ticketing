@@ -2480,7 +2480,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Abrir notificações"
 	},
 	"notifications": {
 		"title": "Notificações",
@@ -2493,9 +2494,6 @@
 		"clearAll": "Limpar todas as notificações",
 		"clearDialogTitle": "Limpar todas as notificações?",
 		"clearDialogDescription": "Isso removerá permanentemente todas as notificações. Você não pode desfazer esta ação.",
-		"shortcuts": {
-			"open": "Abrir notificações"
-		},
 		"reminderLeadTime": {
 			"minutes_one": "{{count}} minuto",
 			"minutes_other": "{{count}} minutos",

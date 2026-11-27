@@ -50,7 +50,8 @@ vi.mock(
   "@/hooks/mutations/notification/use-mark-notification-as-unread",
   () => ({ default: () => ({ mutate: vi.fn() }) }),
 );
-vi.mock("@/components/notification/notification-dropdown", () => ({
+vi.mock("@/components/notification/notification-content", () => ({
+  isLegacyTaskNotification: () => false,
   getNotificationContent: () => "",
   getNotificationTitle: () => "",
   useNotificationClick: () => vi.fn(),

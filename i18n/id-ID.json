@@ -2470,7 +2470,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Buka notifikasi"
 	},
 	"notifications": {
 		"title": "Notifikasi",
@@ -2482,9 +2483,6 @@
 		"clearAll": "Hapus semua notifikasi",
 		"clearDialogTitle": "Hapus semua notifikasi?",
 		"clearDialogDescription": "Ini akan menghapus semua notifikasi secara permanen. Anda tidak dapat membatalkan tindakan ini.",
-		"shortcuts": {
-			"open": "Buka notifikasi"
-		},
 		"events": {
 			"task_created": {
 				"title": "{{term_work_item_one}} Baru Dibuat",

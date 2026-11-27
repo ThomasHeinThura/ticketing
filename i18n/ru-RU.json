@@ -2493,7 +2493,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Открыть уведомления"
 	},
 	"notifications": {
 		"title": "Уведомления",
@@ -2508,9 +2509,6 @@
 		"clearAll": "Очистить все уведомления",
 		"clearDialogTitle": "Очистить все уведомления?",
 		"clearDialogDescription": "Все уведомления будут безвозвратно удалены. Это действие нельзя отменить.",
-		"shortcuts": {
-			"open": "Открыть уведомления"
-		},
 		"events": {
 			"task_created": {
 				"title": "Создана новая {{term_work_item_one}}",

@@ -20,7 +20,10 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: "en-US" },
+  }),
 }));
 vi.mock("@/lib/toast", () => ({ toast: { info: mocks.toastInfo } }));
 vi.mock("@/hooks/queries/notification/use-get-notifications", () => ({
@@ -50,9 +53,14 @@ vi.mock("@/hooks/use-keyboard-shortcuts", async (importOriginal) => ({
   useRegisterShortcuts: () => {},
 }));
 vi.mock("@/lib/format", () => ({ formatRelativeTime: () => "1m" }));
+// The menu sits behind a namespace boundary; these tests run with every string loaded.
+vi.mock("@/lib/i18n", () => ({
+  areAllNamespacesLoaded: () => true,
+  whenAllNamespacesLoaded: () => Promise.resolve(),
+}));
 
+import { isLegacyTaskNotification } from "./notification-content";
 import NotificationDropdown, {
-  isLegacyTaskNotification,
   type NotificationDropdownRef,
 } from "./notification-dropdown";
 

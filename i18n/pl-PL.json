@@ -752,7 +752,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Otwórz powiadomienia"
 	},
 	"notifications": {
 		"title": "Powiadomienia",
@@ -767,9 +768,6 @@
 		"clearAll": "Wyczyść wszystkie powiadomienia",
 		"clearDialogTitle": "Wyczyścić wszystkie powiadomienia?",
 		"clearDialogDescription": "To trwale usunie wszystkie powiadomienia. Nie można tego cofnąć.",
-		"shortcuts": {
-			"open": "Otwórz powiadomienia"
-		},
 		"reminderLeadTime": {
 			"minutes_one": "{{count}} minuta",
 			"minutes_few": "{{count}} minuty",
