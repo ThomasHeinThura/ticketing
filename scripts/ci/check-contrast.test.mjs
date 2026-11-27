@@ -1600,14 +1600,16 @@ describe("G3 contrast inventory and math", () => {
         'import { Button } from "@taskdesk/ui"; export function Fixture(){ return <main className="bg-background"><Button variant="outline"><span className="text-muted-foreground">Save</span></Button></main>; }',
       );
       const outline = observeInheritedForegroundSurfaces([fixture], tokenNames);
+      // The outline variant is tonal since 27 Nov 2026: a translucent fill, so text is measured
+      // against the opaque page behind it.
       assert.ok(
         outline.pairs.has(
-          "--color-muted-foreground|--color-popover|bg-popover|light",
+          "--color-muted-foreground|--color-background|bg-background|light",
         ),
       );
       assert.equal(
         outline.pairs.has(
-          "--color-muted-foreground|--color-secondary|bg-secondary|light",
+          "--color-muted-foreground|--color-popover|bg-popover|light",
         ),
         false,
       );
