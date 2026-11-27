@@ -309,505 +309,536 @@ async function requestJson<T>(
 type Item = { id: string; key: string };
 type ItemDetail = { customFields: Array<{ key: string; value: unknown }> };
 
-test("template defaults, overrides and clears persist across role, device and theme", async ({
-  browser,
-}, testInfo) => {
-  test.setTimeout(1_800_000);
-  const containers: string[] = [];
-  try {
-    await withMfaCsrfApp(
-      async (fixture) => {
-        const { origin, email, password, setupUrl, databaseUrl } = fixture;
-        const setup = await browser.newContext({
-          locale: "en-GB",
-          timezoneId: "UTC",
-          reducedMotion: "reduce",
-        });
-        const contexts = [];
-        const evidence: Array<Record<string, unknown>> = [];
-        try {
-          const setupPage = await setup.newPage();
-          await navigateToSetup(setupPage, setupUrl);
-          await setupPage.getByLabel("Full name").fill("Template Matrix Setup");
-          await setupPage.getByLabel("Email").fill(email);
-          await fillSensitive(
-            setupPage.locator('input[autocomplete="new-password"]'),
-            password,
-          );
-          await setupPage
-            .getByRole("button", { name: "Create account" })
-            .click();
-          await enrollFirstAdmin(setupPage, origin, password);
-          const actors = await seedMatrixActors(databaseUrl, email);
-          const owner = actors.find((actor) => actor.role === "owner");
-          if (!owner) throw new Error("Matrix owner missing");
-          const workspace = await requestJson<{ id: string }>(
-            setupPage,
-            "/api/workspace",
-            { name: "Template Matrix Workspace", ownerUserId: owner.id },
-          );
-          expect(workspace.status).toBe(200);
-          const workspaceId = workspace.body.id;
-          await grantMatrixRoles(databaseUrl, workspaceId, actors);
-          const portal = new URL(origin);
-          portal.hostname = "portal.localhost";
-          const portalOrigin = portal.origin;
-          const pages = new Map<Role, Page>();
-          let signInRetried = false;
-          for (const [index, actor] of actors.entries()) {
-            // Seven actors need three windows under the shared sign-in limit.
-            if (index === 3 || index === 6)
-              await new Promise((done) => setTimeout(done, 12_000));
-            const context = await browser.newContext({
-              locale: "en-GB",
-              timezoneId: "UTC",
-              reducedMotion: "reduce",
-            });
-            contexts.push(context);
-            const actorOrigin =
-              actor.role === "customer" ? portalOrigin : origin;
-            const signIn = () =>
-              context.request.post(
-                new URL("/api/auth/sign-in/email", actorOrigin).toString(),
-                {
-                  headers: { Origin: actorOrigin },
-                  data: { email: actor.email, password: actor.password },
-                },
-              );
-            let response = await signIn();
-            if (response.status() === 429) {
-              if (signInRetried)
-                throw new Error(
-                  "Actor setup exhausted its one auth rate-limit retry",
-                );
-              const delay = signInRetryDelay(response.headers());
-              signInRetried = true;
-              await response.dispose();
-              await new Promise((done) => setTimeout(done, delay));
-              response = await signIn();
-            }
-            expect(response.status(), `Real ${actor.role} sign-in`).toBe(200);
-            const session = await context.request.get(
-              new URL("/api/auth/get-session", actorOrigin).toString(),
+// One test and one disposable fixture per role keeps the heavy matrix shardable.
+for (const targetRole of ROLES)
+  test(`template defaults, overrides and clears persist across device and theme for ${targetRole}`, async ({
+    browser,
+  }, testInfo) => {
+    test.setTimeout(1_800_000);
+    const containers: string[] = [];
+    try {
+      await withMfaCsrfApp(
+        async (fixture) => {
+          const { origin, email, password, setupUrl, databaseUrl } = fixture;
+          const setup = await browser.newContext({
+            locale: "en-GB",
+            timezoneId: "UTC",
+            reducedMotion: "reduce",
+          });
+          const contexts = [];
+          const evidence: Array<Record<string, unknown>> = [];
+          try {
+            const setupPage = await setup.newPage();
+            await navigateToSetup(setupPage, setupUrl);
+            await setupPage
+              .getByLabel("Full name")
+              .fill("Template Matrix Setup");
+            await setupPage.getByLabel("Email").fill(email);
+            await fillSensitive(
+              setupPage.locator('input[autocomplete="new-password"]'),
+              password,
             );
-            expect(session.status()).toBe(200);
-            const identity = (await session.json()) as {
-              user: { id: string; role?: string | null };
-              session: { portal: string };
-            };
-            expect(identity.session).toBeTruthy();
-            expect(identity.user.id).toBe(actor.id);
-            expect(
-              identity.user.role === null ||
-                identity.user.role === "user" ||
-                (actor.role === "customer" && identity.user.role === undefined),
-            ).toBe(true);
-            expect(identity.session.portal).toBe(
-              actor.role === "customer" ? "customer" : "agent",
+            await setupPage
+              .getByRole("button", { name: "Create account" })
+              .click();
+            await enrollFirstAdmin(setupPage, origin, password);
+            const actors = await seedMatrixActors(databaseUrl, email);
+            const owner = actors.find((actor) => actor.role === "owner");
+            if (!owner) throw new Error("Matrix owner missing");
+            const workspace = await requestJson<{ id: string }>(
+              setupPage,
+              "/api/workspace",
+              { name: "Template Matrix Workspace", ownerUserId: owner.id },
             );
-            if (actor.role === "customer") {
-              expect(
-                (await context.cookies(origin)).some(
-                  (cookie) => cookie.name === "__Host-tdk_agent_session",
-                ),
-              ).toBe(false);
-            } else {
-              const instanceSettings = await context.request.get(
-                new URL("/api/instance/settings", origin).toString(),
-                { headers: { Origin: origin } },
-              );
-              expect(instanceSettings.status()).toBe(403);
-              const csrf = await context.request.get(
-                new URL("/api/me/csrf-token", origin).toString(),
-                { headers: { Origin: origin } },
-              );
-              expect(csrf.status()).toBe(200);
-              const { token } = (await csrf.json()) as { token: string };
-              const activated = await context.request.post(
-                new URL(
-                  `/api/workspace/${workspaceId}/activate`,
-                  origin,
-                ).toString(),
-                {
-                  headers: { Origin: origin, "x-taskdesk-csrf": token },
-                  data: {},
-                },
-              );
-              expect(activated.status()).toBe(200);
-            }
-            const page = await context.newPage();
-            await page.goto(
-              new URL(
-                actor.role === "customer" ? "/projects" : "/agent",
-                actorOrigin,
-              ).toString(),
-            );
-            pages.set(actor.role, page);
-          }
-          const ownerPage = pages.get("owner");
-          if (!ownerPage) throw new Error("Owner session missing");
-          const slug = uniqueProjectKey(8);
-          const project = await requestJson<{ id: string }>(
-            ownerPage,
-            "/api/project",
-            { name: "Template Matrix", icon: "Folder", slug, workspaceId },
-          );
-          expect(project.status).toBe(200);
-          const projectId = project.body.id;
-          for (const role of ["lead", "member", "viewer"] as const) {
-            const actor = actors.find((value) => value.role === role);
-            if (!actor) throw new Error(`Missing ${role}`);
-            const roleKey =
-              role === "lead"
-                ? "project-lead"
-                : role === "member"
-                  ? "project-member"
-                  : "project-viewer";
-            const grant = await requestJson(
-              ownerPage,
-              `/api/projects/${projectId}/members`,
-              { personId: actor.personId, roleKey },
-            );
-            expect(grant.status, `Project reach for ${role}`).toBe(200);
-          }
-          const types = await requestJson<Array<{ id: string; key: string }>>(
-            ownerPage,
-            `/api/workspace/${workspaceId}/work-item-types`,
-          );
-          expect(types.status).toBe(200);
-          const type = types.body.find((entry) => entry.key === "task");
-          if (!type) throw new Error("Task type missing");
-          const section = await requestJson<{ id: string }>(
-            ownerPage,
-            "/api/custom-field-sections",
-            { workspaceId, name: "Template Matrix Fields" },
-          );
-          expect(section.status).toBe(200);
-          for (const field of [
-            { key: "matrix_required", name: "Matrix required", required: true },
-            {
-              key: "matrix_optional",
-              name: "Matrix optional",
-              required: false,
-            },
-          ]) {
-            const created = await requestJson(ownerPage, "/api/custom-fields", {
-              workspaceId,
-              sectionId: section.body.id,
-              key: field.key,
-              name: field.name,
-              format: "text",
-              visibility: [
-                {
-                  workItemTypeId: type.id,
-                  visible: true,
-                  required: field.required,
-                },
-              ],
-            });
-            expect(created.status).toBe(200);
-          }
-          const template = await requestJson<{ id: string }>(
-            ownerPage,
-            `/api/workspace/${workspaceId}/work-item-templates`,
-            {
-              name: "Matrix template",
-              typeId: type.id,
-              title: "Matrix task",
-              customFieldValues: {
-                matrix_required: "Required default",
-                matrix_optional: "Optional default",
-              },
-            },
-          );
-          expect(template.status).toBe(200);
-          const createPath = `/api/projects/${encodeURIComponent(projectId)}/work-items`;
-          const listUrl = new URL(
-            `/agent/projects/${encodeURIComponent(slug)}/work?layout=list`,
-            origin,
-          ).toString();
-          for (const role of ROLES) {
-            const page = pages.get(role);
-            if (!page) throw new Error(`Missing ${role} page`);
-            for (const view of VIEWS) {
-              await page.setViewportSize({
-                width: view.width,
-                height: view.height,
+            expect(workspace.status).toBe(200);
+            const workspaceId = workspace.body.id;
+            await grantMatrixRoles(databaseUrl, workspaceId, actors);
+            const portal = new URL(origin);
+            portal.hostname = "portal.localhost";
+            const portalOrigin = portal.origin;
+            const pages = new Map<Role, Page>();
+            let signInRetried = false;
+            // The owner prepares the project; the tested role gets its own session.
+            for (const actor of actors.filter(
+              (value) => value.role === "owner" || value.role === targetRole,
+            )) {
+              const context = await browser.newContext({
+                locale: "en-GB",
+                timezoneId: "UTC",
+                reducedMotion: "reduce",
               });
-              for (const theme of THEMES) {
-                await setTheme(page, theme);
-                await page.emulateMedia({ colorScheme: theme });
-                if (role === "customer") {
-                  await page.goto(
-                    new URL("/projects", portalOrigin).toString(),
-                  );
-                  await expect(page.locator("html")).toHaveClass(
-                    new RegExp(`\\b${theme}\\b`),
-                  );
-                  await expect(
-                    page.getByRole("heading", {
-                      name: "Projects",
-                      exact: true,
-                    }),
-                  ).toBeVisible();
-                  const agentApi = await page
-                    .context()
-                    .request.get(new URL(createPath, origin).toString());
-                  expect(agentApi.status()).toBe(401);
-                  const agentCreate = await page
-                    .context()
-                    .request.post(new URL(createPath, origin).toString(), {
-                      headers: { Origin: origin },
-                      data: {
-                        typeId: type.id,
-                        title: "Customer must not create agent work items",
-                        templateId: template.body.id,
-                      },
-                    });
-                  expect(agentCreate.status()).toBe(401);
-                  await expectNoHorizontalOverflow(page);
-                  await page.screenshot({
-                    path: testInfo.outputPath(
-                      `template-${role}-${view.name}-${theme}.png`,
-                    ),
-                  });
-                  evidence.push({
-                    role,
-                    view: view.name,
-                    theme,
-                    agentStatus: agentApi.status(),
-                    agentCreateStatus: agentCreate.status(),
-                  });
-                  continue;
-                }
-                await page.goto(listUrl);
-                await expect(page.locator("html")).toHaveClass(
-                  new RegExp(`\\b${theme}\\b`),
+              contexts.push(context);
+              const actorOrigin =
+                actor.role === "customer" ? portalOrigin : origin;
+              const signIn = () =>
+                context.request.post(
+                  new URL("/api/auth/sign-in/email", actorOrigin).toString(),
+                  {
+                    headers: { Origin: actorOrigin },
+                    data: { email: actor.email, password: actor.password },
+                  },
                 );
-                if (role === "viewer") {
-                  await expect(
-                    page.getByTestId("work-item-list-populated"),
-                  ).toBeVisible();
-                  if (view.width >= 1024)
+              let response = await signIn();
+              if (response.status() === 429) {
+                if (signInRetried)
+                  throw new Error(
+                    "Actor setup exhausted its one auth rate-limit retry",
+                  );
+                const delay = signInRetryDelay(response.headers());
+                signInRetried = true;
+                await response.dispose();
+                await new Promise((done) => setTimeout(done, delay));
+                response = await signIn();
+              }
+              expect(response.status(), `Real ${actor.role} sign-in`).toBe(200);
+              const session = await context.request.get(
+                new URL("/api/auth/get-session", actorOrigin).toString(),
+              );
+              expect(session.status()).toBe(200);
+              const identity = (await session.json()) as {
+                user: { id: string; role?: string | null };
+                session: { portal: string };
+              };
+              expect(identity.session).toBeTruthy();
+              expect(identity.user.id).toBe(actor.id);
+              expect(
+                identity.user.role === null ||
+                  identity.user.role === "user" ||
+                  (actor.role === "customer" &&
+                    identity.user.role === undefined),
+              ).toBe(true);
+              expect(identity.session.portal).toBe(
+                actor.role === "customer" ? "customer" : "agent",
+              );
+              if (actor.role === "customer") {
+                expect(
+                  (await context.cookies(origin)).some(
+                    (cookie) => cookie.name === "__Host-tdk_agent_session",
+                  ),
+                ).toBe(false);
+              } else {
+                const instanceSettings = await context.request.get(
+                  new URL("/api/instance/settings", origin).toString(),
+                  { headers: { Origin: origin } },
+                );
+                expect(instanceSettings.status()).toBe(403);
+                const csrf = await context.request.get(
+                  new URL("/api/me/csrf-token", origin).toString(),
+                  { headers: { Origin: origin } },
+                );
+                expect(csrf.status()).toBe(200);
+                const { token } = (await csrf.json()) as { token: string };
+                const activated = await context.request.post(
+                  new URL(
+                    `/api/workspace/${workspaceId}/activate`,
+                    origin,
+                  ).toString(),
+                  {
+                    headers: { Origin: origin, "x-taskdesk-csrf": token },
+                    data: {},
+                  },
+                );
+                expect(activated.status()).toBe(200);
+              }
+              const page = await context.newPage();
+              await page.goto(
+                new URL(
+                  actor.role === "customer" ? "/projects" : "/agent",
+                  actorOrigin,
+                ).toString(),
+              );
+              pages.set(actor.role, page);
+            }
+            const ownerPage = pages.get("owner");
+            if (!ownerPage) throw new Error("Owner session missing");
+            const slug = uniqueProjectKey(8);
+            const project = await requestJson<{ id: string }>(
+              ownerPage,
+              "/api/project",
+              { name: "Template Matrix", icon: "Folder", slug, workspaceId },
+            );
+            expect(project.status).toBe(200);
+            const projectId = project.body.id;
+            for (const role of ["lead", "member", "viewer"] as const) {
+              const actor = actors.find((value) => value.role === role);
+              if (!actor) throw new Error(`Missing ${role}`);
+              const roleKey =
+                role === "lead"
+                  ? "project-lead"
+                  : role === "member"
+                    ? "project-member"
+                    : "project-viewer";
+              const grant = await requestJson(
+                ownerPage,
+                `/api/projects/${projectId}/members`,
+                { personId: actor.personId, roleKey },
+              );
+              expect(grant.status, `Project reach for ${role}`).toBe(200);
+            }
+            const types = await requestJson<Array<{ id: string; key: string }>>(
+              ownerPage,
+              `/api/workspace/${workspaceId}/work-item-types`,
+            );
+            expect(types.status).toBe(200);
+            const type = types.body.find((entry) => entry.key === "task");
+            if (!type) throw new Error("Task type missing");
+            const section = await requestJson<{ id: string }>(
+              ownerPage,
+              "/api/custom-field-sections",
+              { workspaceId, name: "Template Matrix Fields" },
+            );
+            expect(section.status).toBe(200);
+            for (const field of [
+              {
+                key: "matrix_required",
+                name: "Matrix required",
+                required: true,
+              },
+              {
+                key: "matrix_optional",
+                name: "Matrix optional",
+                required: false,
+              },
+            ]) {
+              const created = await requestJson(
+                ownerPage,
+                "/api/custom-fields",
+                {
+                  workspaceId,
+                  sectionId: section.body.id,
+                  key: field.key,
+                  name: field.name,
+                  format: "text",
+                  visibility: [
+                    {
+                      workItemTypeId: type.id,
+                      visible: true,
+                      required: field.required,
+                    },
+                  ],
+                },
+              );
+              expect(created.status).toBe(200);
+            }
+            const template = await requestJson<{ id: string }>(
+              ownerPage,
+              `/api/workspace/${workspaceId}/work-item-templates`,
+              {
+                name: "Matrix template",
+                typeId: type.id,
+                title: "Matrix task",
+                customFieldValues: {
+                  matrix_required: "Required default",
+                  matrix_optional: "Optional default",
+                },
+              },
+            );
+            expect(template.status).toBe(200);
+            if (targetRole === "viewer") {
+              // The viewer list must be populated, so seed it instead of relying on other roles.
+              const seeded = await requestJson(
+                ownerPage,
+                `/api/projects/${encodeURIComponent(projectId)}/work-items`,
+                {
+                  typeId: type.id,
+                  title: "Matrix seeded task",
+                  templateId: template.body.id,
+                },
+              );
+              expect(seeded.status).toBe(200);
+            }
+            const createPath = `/api/projects/${encodeURIComponent(projectId)}/work-items`;
+            const listUrl = new URL(
+              `/agent/projects/${encodeURIComponent(slug)}/work?layout=list`,
+              origin,
+            ).toString();
+            for (const role of [targetRole]) {
+              const page = pages.get(role);
+              if (!page) throw new Error(`Missing ${role} page`);
+              for (const view of VIEWS) {
+                await page.setViewportSize({
+                  width: view.width,
+                  height: view.height,
+                });
+                for (const theme of THEMES) {
+                  await setTheme(page, theme);
+                  await page.emulateMedia({ colorScheme: theme });
+                  if (role === "customer") {
+                    await page.goto(
+                      new URL("/projects", portalOrigin).toString(),
+                    );
+                    await expect(page.locator("html")).toHaveClass(
+                      new RegExp(`\\b${theme}\\b`),
+                    );
                     await expect(
-                      page.locator('[data-project-view="overview"]'),
-                    ).toBeVisible();
-                  else
-                    await expect(
-                      page.getByRole("button", {
-                        name: "Project navigation",
+                      page.getByRole("heading", {
+                        name: "Projects",
                         exact: true,
                       }),
                     ).toBeVisible();
-                  const read = await requestJson(page, createPath);
-                  expect(read.status).toBe(200);
-                  const denied = await requestJson(page, createPath, {
-                    typeId: type.id,
-                    title: "Viewer must not create",
-                    templateId: template.body.id,
-                  });
-                  expect(denied.status).toBe(403);
-                  await expect(
-                    page.getByTestId("create-work-item-trigger"),
-                  ).toHaveCount(0);
-                  await expectNoHorizontalOverflow(page);
-                  await page.screenshot({
-                    path: testInfo.outputPath(
-                      `template-${role}-${view.name}-${theme}.png`,
-                    ),
-                  });
-                  evidence.push({
-                    role,
-                    view: view.name,
-                    theme,
-                    createStatus: denied.status,
-                  });
-                  continue;
-                }
-                for (const scenario of [
-                  "default",
-                  "override",
-                  "clear",
-                ] as const) {
-                  const keyboardJourney =
-                    role === "owner" &&
-                    view.name === "desktop" &&
-                    theme === "light" &&
-                    scenario === "default";
-                  await page.goto(listUrl);
-                  const create = page.getByTestId("create-work-item-trigger");
-                  if (keyboardJourney) {
-                    await create.focus();
-                    await expect(create).toBeFocused();
-                    await create.press("Enter");
-                  } else await create.click();
-                  const dialog = page.getByTestId("create-work-item-dialog");
-                  await expect(dialog).toBeVisible();
-                  const templateTrigger = dialog.getByTestId(
-                    "create-work-item-template-trigger",
-                  );
-                  if (keyboardJourney) {
-                    await expect(
-                      dialog.getByTestId("create-work-item-title"),
-                    ).toBeFocused();
-                    await templateTrigger.focus();
-                    await expect(templateTrigger).toBeFocused();
-                    await templateTrigger.press("Enter");
-                  } else await templateTrigger.click();
-                  const templateOption = page.getByRole("button", {
-                    name: "Matrix template",
-                    exact: true,
-                  });
-                  if (keyboardJourney) {
-                    await templateOption.focus();
-                    await expect(templateOption).toBeFocused();
-                    await templateOption.press("Enter");
-                    await expect(templateTrigger).toBeFocused();
-                  } else await templateOption.click();
-                  await dialog
-                    .getByTestId("create-work-item-title")
-                    .fill(`${role} ${view.name} ${theme} ${scenario}`);
-                  if (scenario === "override")
-                    await dialog
-                      .locator("#create-work-item-cf-matrix_required")
-                      .fill("Explicit override");
-                  if (scenario === "clear") {
-                    const optional = dialog.locator(
-                      "#create-work-item-cf-matrix_optional",
-                    );
-                    await optional.fill("temporary");
-                    await optional.fill("");
-                  }
-                  const pending = page.waitForResponse(
-                    (response) =>
-                      new URL(response.url()).pathname === createPath &&
-                      response.request().method() === "POST",
-                  );
-                  const submit = dialog.getByTestId("create-work-item-submit");
-                  if (keyboardJourney) {
-                    await submit.focus();
-                    await expect(submit).toBeFocused();
-                    await submit.press("Enter");
-                  } else await submit.click();
-                  const response = await pending;
-                  expect(
-                    response.status(),
-                    `${role} ${view.name} ${theme} ${scenario}`,
-                  ).toBe(200);
-                  const item = (await response.json()) as Item;
-                  await expect(dialog).toBeHidden();
-                  const expectedRequired =
-                    scenario === "override"
-                      ? "Explicit override"
-                      : "Required default";
-                  const expectedOptional =
-                    scenario === "clear" ? null : "Optional default";
-                  const detail = await requestJson<ItemDetail>(
-                    page,
-                    `/api/work-items/${encodeURIComponent(item.key)}`,
-                  );
-                  expect(detail.status).toBe(200);
-                  expect(
-                    detail.body.customFields.find(
-                      (field) => field.key === "matrix_required",
-                    )?.value,
-                  ).toBe(expectedRequired);
-                  expect(
-                    detail.body.customFields.find(
-                      (field) => field.key === "matrix_optional",
-                    )?.value ?? null,
-                  ).toBe(expectedOptional);
-                  await page.goto(
-                    new URL(
-                      `/agent/work-items/${encodeURIComponent(item.key)}`,
-                      origin,
-                    ).toString(),
-                  );
-                  await page.reload();
-                  await expect(
-                    page.locator("#work-item-cf-matrix_required"),
-                  ).toHaveValue(expectedRequired);
-                  await expect(
-                    page.locator("#work-item-cf-matrix_optional"),
-                  ).toHaveValue(expectedOptional ?? "");
-                  if (keyboardJourney) {
-                    const persisted = page.locator(
-                      "#work-item-cf-matrix_required",
-                    );
-                    await persisted.focus();
-                    await persisted.press("End");
-                    await expect(persisted).toBeFocused();
-                    await expect(persisted).toHaveValue(expectedRequired);
-                  }
-                  if (scenario === "clear") {
-                    const required = page.locator(
-                      "#work-item-cf-matrix_required",
-                    );
-                    const optional = page.locator(
-                      "#work-item-cf-matrix_optional",
-                    );
-                    await required.focus();
-                    await required.press("Tab");
-                    await expect(optional).toBeFocused();
-                    await optional.press("Shift+Tab");
-                    await expect(required).toBeFocused();
-                    await expect(required).toHaveValue(expectedRequired);
-                    await expect(optional).toHaveValue(expectedOptional ?? "");
+                    const agentApi = await page
+                      .context()
+                      .request.get(new URL(createPath, origin).toString());
+                    expect(agentApi.status()).toBe(401);
+                    const agentCreate = await page
+                      .context()
+                      .request.post(new URL(createPath, origin).toString(), {
+                        headers: { Origin: origin },
+                        data: {
+                          typeId: type.id,
+                          title: "Customer must not create agent work items",
+                          templateId: template.body.id,
+                        },
+                      });
+                    expect(agentCreate.status()).toBe(401);
                     await expectNoHorizontalOverflow(page);
                     await page.screenshot({
                       path: testInfo.outputPath(
                         `template-${role}-${view.name}-${theme}.png`,
                       ),
                     });
+                    evidence.push({
+                      role,
+                      view: view.name,
+                      theme,
+                      agentStatus: agentApi.status(),
+                      agentCreateStatus: agentCreate.status(),
+                    });
+                    continue;
                   }
-                  evidence.push({
-                    role,
-                    view: view.name,
-                    theme,
-                    scenario,
-                    item: item.key,
-                    createStatus: response.status(),
-                  });
+                  await page.goto(listUrl);
+                  await expect(page.locator("html")).toHaveClass(
+                    new RegExp(`\\b${theme}\\b`),
+                  );
+                  if (role === "viewer") {
+                    await expect(
+                      page.getByTestId("work-item-list-populated"),
+                    ).toBeVisible();
+                    if (view.width >= 1024)
+                      await expect(
+                        page.locator('[data-project-view="overview"]'),
+                      ).toBeVisible();
+                    else
+                      await expect(
+                        page.getByRole("button", {
+                          name: "Project navigation",
+                          exact: true,
+                        }),
+                      ).toBeVisible();
+                    const read = await requestJson(page, createPath);
+                    expect(read.status).toBe(200);
+                    const denied = await requestJson(page, createPath, {
+                      typeId: type.id,
+                      title: "Viewer must not create",
+                      templateId: template.body.id,
+                    });
+                    expect(denied.status).toBe(403);
+                    await expect(
+                      page.getByTestId("create-work-item-trigger"),
+                    ).toHaveCount(0);
+                    await expectNoHorizontalOverflow(page);
+                    await page.screenshot({
+                      path: testInfo.outputPath(
+                        `template-${role}-${view.name}-${theme}.png`,
+                      ),
+                    });
+                    evidence.push({
+                      role,
+                      view: view.name,
+                      theme,
+                      createStatus: denied.status,
+                    });
+                    continue;
+                  }
+                  for (const scenario of [
+                    "default",
+                    "override",
+                    "clear",
+                  ] as const) {
+                    const keyboardJourney =
+                      role === "owner" &&
+                      view.name === "desktop" &&
+                      theme === "light" &&
+                      scenario === "default";
+                    await page.goto(listUrl);
+                    const create = page.getByTestId("create-work-item-trigger");
+                    if (keyboardJourney) {
+                      await create.focus();
+                      await expect(create).toBeFocused();
+                      await create.press("Enter");
+                    } else await create.click();
+                    const dialog = page.getByTestId("create-work-item-dialog");
+                    await expect(dialog).toBeVisible();
+                    const templateTrigger = dialog.getByTestId(
+                      "create-work-item-template-trigger",
+                    );
+                    if (keyboardJourney) {
+                      await expect(
+                        dialog.getByTestId("create-work-item-title"),
+                      ).toBeFocused();
+                      await templateTrigger.focus();
+                      await expect(templateTrigger).toBeFocused();
+                      await templateTrigger.press("Enter");
+                    } else await templateTrigger.click();
+                    const templateOption = page.getByRole("button", {
+                      name: "Matrix template",
+                      exact: true,
+                    });
+                    if (keyboardJourney) {
+                      await templateOption.focus();
+                      await expect(templateOption).toBeFocused();
+                      await templateOption.press("Enter");
+                      await expect(templateTrigger).toBeFocused();
+                    } else await templateOption.click();
+                    await dialog
+                      .getByTestId("create-work-item-title")
+                      .fill(`${role} ${view.name} ${theme} ${scenario}`);
+                    if (scenario === "override")
+                      await dialog
+                        .locator("#create-work-item-cf-matrix_required")
+                        .fill("Explicit override");
+                    if (scenario === "clear") {
+                      const optional = dialog.locator(
+                        "#create-work-item-cf-matrix_optional",
+                      );
+                      await optional.fill("temporary");
+                      await optional.fill("");
+                    }
+                    const pending = page.waitForResponse(
+                      (response) =>
+                        new URL(response.url()).pathname === createPath &&
+                        response.request().method() === "POST",
+                    );
+                    const submit = dialog.getByTestId(
+                      "create-work-item-submit",
+                    );
+                    if (keyboardJourney) {
+                      await submit.focus();
+                      await expect(submit).toBeFocused();
+                      await submit.press("Enter");
+                    } else await submit.click();
+                    const response = await pending;
+                    expect(
+                      response.status(),
+                      `${role} ${view.name} ${theme} ${scenario}`,
+                    ).toBe(200);
+                    const item = (await response.json()) as Item;
+                    await expect(dialog).toBeHidden();
+                    const expectedRequired =
+                      scenario === "override"
+                        ? "Explicit override"
+                        : "Required default";
+                    const expectedOptional =
+                      scenario === "clear" ? null : "Optional default";
+                    const detail = await requestJson<ItemDetail>(
+                      page,
+                      `/api/work-items/${encodeURIComponent(item.key)}`,
+                    );
+                    expect(detail.status).toBe(200);
+                    expect(
+                      detail.body.customFields.find(
+                        (field) => field.key === "matrix_required",
+                      )?.value,
+                    ).toBe(expectedRequired);
+                    expect(
+                      detail.body.customFields.find(
+                        (field) => field.key === "matrix_optional",
+                      )?.value ?? null,
+                    ).toBe(expectedOptional);
+                    await page.goto(
+                      new URL(
+                        `/agent/work-items/${encodeURIComponent(item.key)}`,
+                        origin,
+                      ).toString(),
+                    );
+                    await page.reload();
+                    await expect(
+                      page.locator("#work-item-cf-matrix_required"),
+                    ).toHaveValue(expectedRequired);
+                    await expect(
+                      page.locator("#work-item-cf-matrix_optional"),
+                    ).toHaveValue(expectedOptional ?? "");
+                    if (keyboardJourney) {
+                      const persisted = page.locator(
+                        "#work-item-cf-matrix_required",
+                      );
+                      await persisted.focus();
+                      await persisted.press("End");
+                      await expect(persisted).toBeFocused();
+                      await expect(persisted).toHaveValue(expectedRequired);
+                    }
+                    if (scenario === "clear") {
+                      const required = page.locator(
+                        "#work-item-cf-matrix_required",
+                      );
+                      const optional = page.locator(
+                        "#work-item-cf-matrix_optional",
+                      );
+                      await required.focus();
+                      await required.press("Tab");
+                      await expect(optional).toBeFocused();
+                      await optional.press("Shift+Tab");
+                      await expect(required).toBeFocused();
+                      await expect(required).toHaveValue(expectedRequired);
+                      await expect(optional).toHaveValue(
+                        expectedOptional ?? "",
+                      );
+                      await expectNoHorizontalOverflow(page);
+                      await page.screenshot({
+                        path: testInfo.outputPath(
+                          `template-${role}-${view.name}-${theme}.png`,
+                        ),
+                      });
+                    }
+                    evidence.push({
+                      role,
+                      view: view.name,
+                      theme,
+                      scenario,
+                      item: item.key,
+                      createStatus: response.status(),
+                    });
+                  }
                 }
               }
             }
-          }
-          expect(evidence).toHaveLength(102);
-          expect(
-            new Set(
-              evidence.map((cell) => `${cell.role}/${cell.view}/${cell.theme}`),
-            ).size,
-          ).toBe(42);
-          for (const role of ROLES) {
-            const records = evidence.filter((cell) => cell.role === role);
-            expect(records).toHaveLength(
-              role === "viewer" || role === "customer" ? 6 : 18,
-            );
+            const cellCount =
+              targetRole === "viewer" || targetRole === "customer" ? 6 : 18;
+            expect(evidence).toHaveLength(cellCount);
             expect(
-              new Set(records.map((cell) => `${cell.view}/${cell.theme}`)).size,
+              new Set(
+                evidence.map(
+                  (cell) => `${cell.role}/${cell.view}/${cell.theme}`,
+                ),
+              ).size,
             ).toBe(6);
+            expect(evidence.every((cell) => cell.role === targetRole)).toBe(
+              true,
+            );
+            await testInfo.attach(
+              `template-${targetRole}-device-theme-matrix`,
+              {
+                body: JSON.stringify(evidence, null, 2),
+                contentType: "application/json",
+              },
+            );
+          } finally {
+            await Promise.all(contexts.map((context) => context.close()));
+            await setup.close();
           }
-          await testInfo.attach("template-role-device-theme-matrix", {
-            body: JSON.stringify(evidence, null, 2),
-            contentType: "application/json",
-          });
-        } finally {
-          await Promise.all(contexts.map((context) => context.close()));
-          await setup.close();
-        }
-      },
-      {
-        beforeStart: seedPortalSupport,
-        discardChildOutput: true,
-        onContainerCreated: (id) => {
-          containers.push(id);
-          console.info(`Template matrix fixture container: ${id}`);
         },
-      },
-    );
-  } finally {
-    console.info(
-      `Template matrix fixture containers created: ${containers.length ? containers.join(", ") : "none"}`,
-    );
-  }
-});
+        {
+          beforeStart: seedPortalSupport,
+          discardChildOutput: true,
+          onContainerCreated: (id) => {
+            containers.push(id);
+            console.info(`Template matrix fixture container: ${id}`);
+          },
+        },
+      );
+    } finally {
+      console.info(
+        `Template matrix fixture containers created: ${containers.length ? containers.join(", ") : "none"}`,
+      );
+    }
+  });
