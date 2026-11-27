@@ -36,7 +36,9 @@ export default function WorkItemSidePane({
         <DelayedSuspense
           fallback={(visible) => <WorkItemDetailLoading visible={visible} />}
         >
-          <WorkItemNamespaceBoundary>
+          <WorkItemNamespaceBoundary
+            preload={() => import("./work-item-side-pane-body")}
+          >
             <WorkItemSidePaneBody
               key={visibleItemKey}
               itemKey={visibleItemKey}

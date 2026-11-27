@@ -33,7 +33,10 @@ export function CreateWorkItemDialogContent({
   );
   return (
     <DelayedSuspense fallback={loading}>
-      <NamespaceBoundary fallback={loading(true)}>
+      <NamespaceBoundary
+        preload={() => import("./create-work-item-dialog-form")}
+        fallback={loading}
+      >
         <DefaultCreateWorkItemDialogForm
           onClose={onClose}
           onCancel={onCancel}

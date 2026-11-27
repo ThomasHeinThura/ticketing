@@ -10,6 +10,7 @@ import {
 } from "react";
 import NamespaceBoundary from "@/components/common/namespace-boundary";
 import type { WorkItemRow } from "@/types/work-item";
+import WorkItemContextMenuSkeleton from "./work-item-context-menu-skeleton";
 
 const CanonicalTaskMenu = lazy(
   () => import("./work-item-context-menu-content"),
@@ -99,8 +100,20 @@ export default function WorkItemContextMenu({
         })}
       </ContextMenuTrigger>
       {intent ? (
-        <NamespaceBoundary>
-          <Suspense fallback={null}>
+        <NamespaceBoundary
+          preload={() => import("./work-item-context-menu-content")}
+          fallback={(visible) => (
+            <WorkItemContextMenuSkeleton
+              visible={visible}
+              keyboardAnchor={keyboardAnchor}
+            />
+          )}
+        >
+          <Suspense
+            fallback={
+              <WorkItemContextMenuSkeleton keyboardAnchor={keyboardAnchor} />
+            }
+          >
             <CanonicalTaskMenu
               key={`${intent.workspaceId}:${intent.projectId}:${intent.key}`}
               workspaceId={intent.workspaceId}

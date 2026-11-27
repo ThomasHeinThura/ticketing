@@ -5,6 +5,7 @@ import { PendingActionTerminologyBoundary } from "@/components/pending-action/pe
 import { toast } from "@/lib/toast";
 import usePendingActionDialogStore from "@/store/pending-action-dialog";
 import { PendingActionApproval } from "./pending-action-approval";
+import PendingActionApprovalSkeleton from "./pending-action-approval-skeleton";
 
 /** One Kaneo Dialog for every in-place deletion approval (typed name, step-up, confirm). */
 export default function PendingActionApprovalDialog() {
@@ -16,16 +17,20 @@ export default function PendingActionApprovalDialog() {
   const finalFocus = usePendingActionDialogStore((state) => state.finalFocus);
   if (!pendingActionId) return null;
   return (
-    <NamespaceBoundary>
-      <Dialog
-        open
-        onOpenChange={(open) => {
-          if (!open) close();
-        }}
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) close();
+      }}
+    >
+      <DialogContent
+        closeLabel={t("common:actions.close")}
+        {...(finalFocus ? { finalFocus } : {})}
       >
-        <DialogContent
-          closeLabel={t("common:actions.close")}
-          {...(finalFocus ? { finalFocus } : {})}
+        <NamespaceBoundary
+          fallback={(visible) => (
+            <PendingActionApprovalSkeleton visible={visible} />
+          )}
         >
           <PendingActionTerminologyBoundary id={pendingActionId}>
             <PendingActionApproval
@@ -41,8 +46,8 @@ export default function PendingActionApprovalDialog() {
               }}
             />
           </PendingActionTerminologyBoundary>
-        </DialogContent>
-      </Dialog>
-    </NamespaceBoundary>
+        </NamespaceBoundary>
+      </DialogContent>
+    </Dialog>
   );
 }

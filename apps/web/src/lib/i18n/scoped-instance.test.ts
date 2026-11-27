@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createScopedI18n, i18n } from "./index";
+import { installAudienceTerms } from "./terminology-provider";
 
 // The portal deliberately emits no grouped agent catalog loaders.
 vi.mock("./group-loaders-slim", () => ({ default: {} }));
@@ -50,5 +51,33 @@ describe("scoped i18next instances", () => {
       "Save intake queue",
     );
     expect(i18n.hasResourceBundle(locale, "intake")).toBe(false);
+  });
+
+  it("clones seeded bundles so agent and customer terminology never reach each other or the base", async () => {
+    const agent = await createScopedI18n("en-US");
+    const customer = await createScopedI18n("en-US");
+    const shipped = structuredClone(agent.getResourceBundle("en-US", "term"));
+    installAudienceTerms(agent, "en-US", shipped, "agent", {
+      work_item: { one: "Ticket", other: "Tickets" },
+    });
+    installAudienceTerms(customer, "en-US", shipped, "customer", {
+      work_item: { one: "Case", other: "Cases" },
+    });
+    const read = (instance: typeof i18n, audience: string) =>
+      instance.t(`${audience}.work_item`, { ns: "term", count: 1 });
+    expect(read(agent, "agent")).toBe("Ticket");
+    expect(read(customer, "customer")).toBe("Case");
+    // Neither overlay leaks across audiences, into the base store or into a fresh clone.
+    expect(read(customer, "agent")).not.toBe("Ticket");
+    expect(read(agent, "customer")).not.toBe("Case");
+    expect(read(i18n, "agent")).not.toBe("Ticket");
+    expect(read(i18n, "customer")).not.toBe("Case");
+    const fresh = await createScopedI18n("en-US");
+    expect(read(fresh, "agent")).not.toBe("Ticket");
+    expect(read(fresh, "customer")).not.toBe("Case");
+    // The bundles are copies, not shared references.
+    expect(agent.getResourceBundle("en-US", "term")).not.toBe(
+      i18n.getResourceBundle("en-US", "term"),
+    );
   });
 });

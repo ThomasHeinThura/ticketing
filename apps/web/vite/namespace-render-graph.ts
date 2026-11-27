@@ -111,6 +111,19 @@ function boundNames(source: string, specifier: string): string[] {
     "g",
   );
   for (const match of source.matchAll(dynamics)) names.push(match[1]);
+  // `const load = () => import("spec"); const X = lazy(load);` (the loader is shared with the
+  // boundary's `preload`).
+  const loaders = new RegExp(
+    `([A-Za-z_$][\\w$]*)\\s*=\\s*\\(\\)\\s*=>\\s*import\\(\\s*["']${quoted}["']`,
+    "g",
+  );
+  for (const [, loader] of source.matchAll(loaders)) {
+    const lazyOf = new RegExp(
+      `([A-Za-z_$][\\w$]*)\\s*=\\s*lazy\\(\\s*${loader.replace(/\$/g, "\\$")}\\s*\\)`,
+      "g",
+    );
+    for (const match of source.matchAll(lazyOf)) names.push(match[1]);
+  }
   return names;
 }
 

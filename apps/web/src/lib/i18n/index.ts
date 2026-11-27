@@ -137,6 +137,22 @@ export function areAllNamespacesLoaded(localeInput = i18n.language): boolean {
  */
 const scopedGroupInstances = new Map<AppLocale, Set<I18nInstance>>();
 
+/** The deferred group of a locale: one retry, then the full catalog from its own chunk. */
+async function loadRestResources(
+  locale: AppLocale,
+): Promise<Record<string, unknown>> {
+  try {
+    return await loadGroup("rest", locale);
+  } catch {
+    try {
+      return await loadGroup("rest", locale);
+    } catch {
+      fullCatalogFallback.add(locale);
+      return loadLocaleResources(locale);
+    }
+  }
+}
+
 /**
  * Loads every namespace of a locale in group mode: the deferred group, one retry, then the full
  * catalog from its own chunk. Rejects only if all three fail; a screen must never render raw
@@ -146,17 +162,7 @@ function ensureAllNamespaces(locale: AppLocale): Promise<void> {
   const cached = allNamespaces.get(locale);
   if (cached) return cached;
   const pending = (async () => {
-    let namespaces: string[];
-    try {
-      namespaces = Object.keys(await loadGroup("rest", locale));
-    } catch {
-      try {
-        namespaces = Object.keys(await loadGroup("rest", locale));
-      } catch {
-        fullCatalogFallback.add(locale);
-        namespaces = Object.keys(await loadLocaleResources(locale));
-      }
-    }
+    const namespaces = Object.keys(await loadRestResources(locale));
     await i18n.loadNamespaces(namespaces);
     await Promise.all(
       [...(scopedGroupInstances.get(locale) ?? [])].map((scoped) =>
@@ -188,6 +194,37 @@ export function preloadNamespaces(locale: AppLocale): Promise<void> {
   return loadLocaleResources(locale).then((resources) =>
     i18n.loadNamespaces(Object.keys(resources)),
   );
+}
+
+let languageSwitch = 0;
+
+/**
+ * Switches the base instance to `localeInput` only once the complete new locale (eager and
+ * deferred namespaces) is in its store, so the page never shows a mix of two languages. Until
+ * then everything stays in the current language. If the fetch fails the switch still happens and
+ * the namespace boundaries keep gating deferred surfaces. Returns false when a newer switch
+ * superseded this one.
+ */
+export async function switchLanguage(localeInput: string): Promise<boolean> {
+  const locale = resolveLocale(localeInput, getBrowserLocale());
+  if (i18n.language === locale) return true;
+  const request = ++languageSwitch;
+  try {
+    const resources: Record<string, unknown> = useNamespaceGroups
+      ? {
+          ...(await loadGroup("slim", locale)),
+          ...(await loadRestResources(locale)),
+        }
+      : await loadLocaleResources(locale);
+    for (const [namespace, bundle] of Object.entries(resources))
+      if (!i18n.hasResourceBundle(locale, namespace))
+        i18n.addResourceBundle(locale, namespace, bundle, false, false);
+  } catch {
+    // changeLanguage below fetches what it can; deferred surfaces stay behind their boundary.
+  }
+  if (request !== languageSwitch) return false;
+  await i18n.changeLanguage(locale);
+  return true;
 }
 
 /**

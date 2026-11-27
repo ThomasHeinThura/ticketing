@@ -331,7 +331,8 @@ it.each(["page", "pane"] as const)(
       </QueryClientProvider>
     );
     render(content);
-    expect(screen.getByTestId("work-item-detail-loading")).toBeVisible();
+    // The offline failure lands inside the ~150 ms delay, so no skeleton ever flashes.
+    expect(screen.queryByTestId("work-item-detail-loading")).not.toBeVisible();
     expect(await screen.findByRole("alert")).toHaveTextContent(
       en.common.error.messages.unknown,
     );
