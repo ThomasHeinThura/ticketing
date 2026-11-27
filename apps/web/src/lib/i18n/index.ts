@@ -206,18 +206,22 @@ export async function createScopedI18n(
     : useNamespaceGroups
       ? [...WORK_ROUTE_I18N_NAMESPACES]
       : Object.keys(await loadLocaleResources(locale));
-  const loadedResources = i18n.getDataByLanguage(locale);
-  const loadedInitialResources = Object.fromEntries(
-    initialNamespaces.flatMap((namespace) =>
-      loadedResources?.[namespace] === undefined
-        ? []
-        : [[namespace, structuredClone(loadedResources[namespace])]],
-    ),
-  );
-  const seedResources =
-    Object.keys(loadedInitialResources).length > 0
-      ? { [locale]: loadedInitialResources }
-      : undefined;
+  // Seed every bundle the base instance has already loaded, for every language: the fallback
+  // language's deferred namespaces must be available at once, or content that stays mounted across
+  // a language change would show raw keys until this instance fetched them. Bundles are cloned,
+  // so the instance's own terminology overlays never touch the shared store.
+  const seedResources: Record<string, Record<string, unknown>> = {};
+  for (const language of Object.keys(i18n.store?.data ?? {})) {
+    const loaded = i18n.getDataByLanguage(language);
+    if (!loaded) continue;
+    seedResources[language] = Object.fromEntries(
+      Object.entries(loaded).map(([namespace, bundle]) => [
+        namespace,
+        structuredClone(bundle),
+      ]),
+    );
+  }
+  const hasSeed = Object.keys(seedResources).length > 0;
 
   await scopedI18n
     .use(
@@ -236,8 +240,8 @@ export async function createScopedI18n(
       fallbackLng: defaultLocale,
       defaultNS: "common",
       ns: initialNamespaces,
-      resources: seedResources,
-      partialBundledLanguages: Boolean(seedResources),
+      resources: hasSeed ? seedResources : undefined,
+      partialBundledLanguages: hasSeed,
       react: { bindI18nStore: "added" },
       interpolation: {
         escapeValue: false,
