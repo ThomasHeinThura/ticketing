@@ -80,26 +80,63 @@ describe("CalendarTaskBar", () => {
   });
 
   it.each([
-    ["to-do", "bg-slate-500/15"],
-    ["in-progress", "bg-blue-500/15"],
-    ["in-review", "bg-amber-500/15"],
-    ["done", "bg-emerald-500/15"],
-    ["custom-status", "bg-primary/12"],
-  ])("uses the %s status color", (status, expectedClass) => {
+    [true, "bg-success/15"],
+    [false, "bg-info/15"],
+    [undefined, "bg-info/15"],
+  ])(
+    "colours isFinal=%s by column state, not slug",
+    (isFinal, expectedClass) => {
+      render(
+        <CalendarTaskBar
+          segment={{
+            ...segment,
+            task: { ...segment.task, status: "custom-status", isFinal },
+          }}
+          projectSlug="KAN"
+          onOpenTask={vi.fn()}
+        />,
+      );
+
+      const taskBar = screen.getByRole("button");
+      expect(taskBar).toHaveClass(expectedClass);
+      if (isFinal !== undefined) {
+        expect(taskBar.getAttribute("aria-label")).toMatch(
+          isFinal ? /Completed$/ : /Open$/,
+        );
+      }
+    },
+  );
+
+  it("keeps the change-calendar frozen colour and adds no state label", () => {
     render(
       <CalendarTaskBar
         segment={{
           ...segment,
-          task: { ...segment.task, status },
+          task: { ...segment.task, status: "frozen", isFinal: false },
         }}
         projectSlug="KAN"
         onOpenTask={vi.fn()}
       />,
     );
 
+    expect(screen.getByRole("button")).toHaveClass("bg-red-500/15");
+    expect(screen.getByRole("button").getAttribute("aria-label")).not.toMatch(
+      /Open$/,
+    );
+  });
+
+  it("insets continuing bars and squares only the continuing side", () => {
+    render(
+      <CalendarTaskBar
+        segment={{ ...segment, continuesBefore: true, continuesAfter: false }}
+        projectSlug="KAN"
+        onOpenTask={vi.fn()}
+      />,
+    );
+
     const taskBar = screen.getByRole("button");
-    expect(taskBar).toHaveAttribute("data-task-status", status);
-    expect(taskBar).toHaveClass(expectedClass);
+    expect(taskBar).toHaveClass("mx-1", "rounded-l-none", "rounded-r-md");
+    expect(taskBar).not.toHaveClass("border-l-0");
   });
 
   it("is a toggle named for the work item while selection mode is on (VW-3)", () => {

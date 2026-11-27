@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
   role: "user" as string,
   workspaces: [{ id: "ws-1", name: "Support" }],
+  invitations: [] as { id: string }[],
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -47,6 +48,9 @@ vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
 }));
 vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
   default: () => ({ data: mocks.workspaces }),
+}));
+vi.mock("@/hooks/queries/invitation/use-pending-invitations", () => ({
+  usePendingInvitations: () => ({ data: mocks.invitations }),
 }));
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
@@ -80,6 +84,7 @@ beforeEach(() => {
   );
   mocks.role = "user";
   mocks.workspaces = [{ id: "ws-1", name: "Support" }];
+  mocks.invitations = [];
 });
 
 afterEach(() => {
@@ -167,5 +172,24 @@ describe("WorkspaceSwitcher switch failure feedback (P-13)", () => {
       );
     });
     expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+});
+
+describe("WorkspaceSwitcher pending invitations (27 Nov 2026)", () => {
+  it("offers Invitations only while the user has one pending", async () => {
+    renderSwitcher();
+    await screen.findByRole("menuitem", { name: "Workspace settings" });
+    expect(screen.queryByRole("menuitem", { name: /Invitations/ })).toBeNull();
+  });
+
+  it("opens the pending invitations page from the menu", async () => {
+    mocks.invitations = [{ id: "inv-1" }, { id: "inv-2" }];
+    renderSwitcher();
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: /Invitations/ }),
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/dashboard/invitations",
+    });
   });
 });

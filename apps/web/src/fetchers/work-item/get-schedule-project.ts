@@ -8,6 +8,8 @@ import type Task from "@/types/task";
 type ScheduleTask = Task & {
   epic: { id: string; key: string; title: string } | null;
   epicAvailable: boolean;
+  /** The work item sits in a completed or cancelled state (the board's final columns). */
+  isFinal: boolean;
 };
 
 /** Adapt canonical rows to Kaneo's existing calendar/timeline rendering contract. */
@@ -72,6 +74,9 @@ export async function getScheduleProject(
         number: item.number,
         description: null,
         status: item.stateName,
+        isFinal:
+          item.stateCategory === "completed" ||
+          item.stateCategory === "cancelled",
         priority: item.priority,
         startDate: item.startDate,
         dueDate: item.dueDate,

@@ -106,6 +106,8 @@ export async function listProjectMembers(
         roleName: row?.roleName ?? built.name,
         roleRank: row?.roleRank ?? builtInRank(key),
         roleId: row?.roleId ?? null,
+        roleDescription: built.description as string | null,
+        isSystem: true,
       };
     }),
     ...existing
@@ -115,6 +117,8 @@ export async function listProjectMembers(
         roleName: role.roleName,
         roleRank: role.roleRank,
         roleId: role.roleId as string | null,
+        roleDescription: role.description,
+        isSystem: role.isSystem,
       })),
   ].sort(
     (a, b) => a.roleRank - b.roleRank || a.roleKey.localeCompare(b.roleKey),

@@ -11,6 +11,7 @@ import {
   CardTitle,
   Input,
   LoadingStatus,
+  Separator,
   Skeleton,
   useDelayedPending,
 } from "@taskdesk/ui";
@@ -369,126 +370,112 @@ function PortalSignIn() {
   }
 
   const title =
-    stage === "factor" || stage === "otp"
+    stage === "factor"
       ? t("auth:twoFactor.title")
-      : t("auth:signIn.pageTitle");
+      : stage === "otp"
+        ? t("auth:verifyOtp.title")
+        : t("auth:signIn.title");
   const subtitle =
-    stage === "factor" ? t("auth:twoFactor.subtitle") : t("common:appName");
+    stage === "factor"
+      ? t("auth:twoFactor.subtitle")
+      : stage === "otp"
+        ? t("auth:verifyOtp.subtitle")
+        : search.invitationId
+          ? t("auth:signIn.invitationSubtitle")
+          : t("auth:signIn.subtitle");
+  // Email code and magic link sit under an "or" divider, only while the portal enables them.
+  const alternatives =
+    authMethods.data?.emailOtp || authMethods.data?.magicLink ? (
+      <>
+        <div className="flex items-center gap-3 text-muted-foreground text-xs">
+          <Separator className="flex-1" />
+          {t("auth:forms.or")}
+          <Separator className="flex-1" />
+        </div>
+        {authMethods.data.emailOtp ? (
+          <Button
+            className="w-full"
+            type="button"
+            variant="outline"
+            disabled={pending || !email.trim()}
+            onClick={() => void sendEmailOtp()}
+          >
+            {t("auth:signInForm.sendEmailCode")}
+          </Button>
+        ) : null}
+        {authMethods.data.magicLink ? (
+          <Button
+            className="w-full"
+            type="button"
+            variant="outline"
+            disabled={pending || !email.trim()}
+            onClick={() => void sendMagicLink()}
+          >
+            {t("auth:signInForm.sendMagicLink")}
+          </Button>
+        ) : null}
+      </>
+    ) : null;
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle render={(props) => <h1 {...props} />}>{title}</CardTitle>
-          <CardDescription>{subtitle}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {failed ? (
-            <Alert variant="error" className="mb-4">
-              <AlertDescription>
-                {refusalKey
-                  ? t(refusalKey)
-                  : stage === "factor"
-                    ? t("auth:twoFactor.error")
-                    : t("auth:signInForm.failedSignIn")}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-          {magicLinkSent ? (
-            <Alert variant="success" className="mb-4">
-              <AlertDescription>
-                {t("auth:signInForm.magicLinkSent")}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-          <Button
-            variant="link"
-            render={<a href="/forgot-password" />}
-            className="w-full"
-          >
-            {t("auth:passwordRecovery.forgot")}
-          </Button>
-          {stage === "email" ? (
-            <form className="space-y-4" onSubmit={submitEmail}>
-              <label
-                className="block space-y-2 text-sm font-medium"
-                htmlFor="portal-email"
-              >
-                {t("auth:forms.email")}
-                <Input
-                  id="portal-email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                />
-              </label>
-              <Button className="w-full" type="submit" disabled={pending}>
-                {pending
-                  ? t("auth:signInForm.signingIn")
-                  : t("auth:signInForm.signIn")}
-              </Button>
-              {authMethods.data?.emailOtp ? (
-                <Button
-                  className="w-full"
-                  type="button"
-                  variant="outline"
-                  disabled={pending || !email.trim()}
-                  onClick={() => void sendEmailOtp()}
-                >
-                  {t("auth:signInForm.sendEmailCode")}
-                </Button>
-              ) : null}
-              {authMethods.data?.magicLink ? (
-                <Button
-                  className="w-full"
-                  type="button"
-                  variant="outline"
-                  disabled={pending || !email.trim()}
-                  onClick={() => void sendMagicLink()}
-                >
-                  {t("auth:signInForm.sendMagicLink")}
-                </Button>
-              ) : null}
-            </form>
-          ) : null}
-          {stage === "password" ? (
-            !authMethods.isError &&
-            (authMethods.isPending ||
-              (placeholderVisible && authMethods.data?.password)) ? (
-              <LoadingStatus
-                visible={placeholderVisible}
-                label={t("auth:signInForm.signingIn")}
-              >
-                <div>
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              </LoadingStatus>
-            ) : authMethods.data?.password ? (
-              <form className="space-y-4" onSubmit={submitPassword}>
-                {/* Shown as wrapping text, not a read-only input, so a long address is never cut off. */}
-                <div className="space-y-2 text-sm font-medium">
-                  <span id="portal-email-label">{t("auth:forms.email")}</span>
-                  <output
-                    id="portal-email-readonly"
-                    aria-labelledby="portal-email-label"
-                    className="block break-all font-normal"
-                  >
-                    {email}
-                  </output>
-                </div>
+    <main className="flex min-h-svh w-full flex-col items-center bg-background px-4 py-6 sm:py-10">
+      <div className="my-auto w-full max-w-sm space-y-6">
+        {/* Not the staff Logo: it links to the agent Dashboard. */}
+        <div className="flex justify-center">
+          <img
+            src="/logo-dark.svg"
+            alt="TaskDesk"
+            className="h-6 w-auto dark:hidden"
+          />
+          <img
+            src="/logo-light.svg"
+            alt="TaskDesk"
+            className="hidden h-6 w-auto dark:block"
+          />
+        </div>
+        <Card className="w-full">
+          <CardHeader className="pb-3">
+            <CardTitle
+              className="text-lg"
+              render={(props) => <h1 {...props} />}
+            >
+              {title}
+            </CardTitle>
+            <CardDescription>{subtitle}</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {failed ? (
+              <Alert variant="error" className="mb-4">
+                <AlertDescription>
+                  {refusalKey
+                    ? t(refusalKey)
+                    : stage === "factor"
+                      ? t("auth:twoFactor.error")
+                      : t("auth:signInForm.failedSignIn")}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {magicLinkSent ? (
+              <Alert variant="success" className="mb-4">
+                <AlertDescription>
+                  {t("auth:signInForm.magicLinkSent")}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {stage === "email" ? (
+              <form className="space-y-4" onSubmit={submitEmail}>
                 <label
                   className="block space-y-2 text-sm font-medium"
-                  htmlFor="portal-password"
+                  htmlFor="portal-email"
                 >
-                  {t("auth:forms.password")}
+                  {t("auth:forms.email")}
                   <Input
-                    id="portal-password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    id="portal-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder={t("auth:forms.emailPlaceholder")}
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
                     required
                   />
                 </label>
@@ -496,6 +483,101 @@ function PortalSignIn() {
                   {pending
                     ? t("auth:signInForm.signingIn")
                     : t("auth:signInForm.signIn")}
+                </Button>
+                {alternatives}
+              </form>
+            ) : null}
+            {stage === "password" ? (
+              !authMethods.isError &&
+              (authMethods.isPending ||
+                (placeholderVisible && authMethods.data?.password)) ? (
+                <LoadingStatus
+                  visible={placeholderVisible}
+                  label={t("auth:signInForm.signingIn")}
+                >
+                  <div>
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </LoadingStatus>
+              ) : authMethods.data?.password ? (
+                <form className="space-y-4" onSubmit={submitPassword}>
+                  {/* Shown as wrapping text, not a read-only input, so a long address is never cut off. */}
+                  <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/40 py-1 pr-1 pl-3 text-sm">
+                    <output
+                      id="portal-email-readonly"
+                      aria-label={t("auth:forms.email")}
+                      className="min-w-0 break-all"
+                    >
+                      {email}
+                    </output>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateStage("email")}
+                    >
+                      {t("auth:verifyOtp.changeEmail")}
+                    </Button>
+                  </div>
+                  {/* Link last in the DOM, so Tab goes Password then Forgot; the grid shows it beside the label. */}
+                  <div className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1">
+                    <label
+                      className="font-medium text-sm"
+                      htmlFor="portal-password"
+                    >
+                      {t("auth:forms.password")}
+                    </label>
+                    <Input
+                      id="portal-password"
+                      className="col-span-2"
+                      type="password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      required
+                    />
+                    <Button
+                      variant="link"
+                      size="xs"
+                      render={<a href="/forgot-password" />}
+                      className="col-start-2 row-start-1"
+                    >
+                      {t("auth:passwordRecovery.forgot")}
+                    </Button>
+                  </div>
+                  <Button className="w-full" type="submit" disabled={pending}>
+                    {pending
+                      ? t("auth:signInForm.signingIn")
+                      : t("auth:signInForm.signIn")}
+                  </Button>
+                  {alternatives}
+                </form>
+              ) : null
+            ) : null}
+            {stage === "otp" ? (
+              <form className="space-y-4" onSubmit={submitEmailOtp}>
+                <label
+                  className="block space-y-2 text-sm font-medium"
+                  htmlFor="portal-email-otp"
+                >
+                  {t("auth:forms.verificationCode")}
+                  <Input
+                    id="portal-email-otp"
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    required
+                  />
+                </label>
+                <Button
+                  className="w-full"
+                  type="submit"
+                  disabled={pending || !code.trim()}
+                >
+                  {pending
+                    ? t("auth:twoFactor.verifying")
+                    : t("auth:twoFactor.verify")}
                 </Button>
                 <Button
                   type="button"
@@ -505,107 +587,55 @@ function PortalSignIn() {
                 >
                   {t("auth:verifyOtp.changeEmail")}
                 </Button>
-                {authMethods.data.emailOtp ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => void sendEmailOtp()}
-                  >
-                    {t("auth:signInForm.sendEmailCode")}
-                  </Button>
-                ) : null}
-                {authMethods.data.magicLink ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => void sendMagicLink()}
-                  >
-                    {t("auth:signInForm.sendMagicLink")}
-                  </Button>
-                ) : null}
               </form>
-            ) : null
-          ) : null}
-          {stage === "otp" ? (
-            <form className="space-y-4" onSubmit={submitEmailOtp}>
-              <label
-                className="block space-y-2 text-sm font-medium"
-                htmlFor="portal-email-otp"
-              >
-                {t("auth:forms.verificationCode")}
-                <Input
-                  id="portal-email-otp"
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                  required
-                />
-              </label>
-              <Button
-                className="w-full"
-                type="submit"
-                disabled={pending || !code.trim()}
-              >
-                {pending
-                  ? t("auth:twoFactor.verifying")
-                  : t("auth:twoFactor.verify")}
-              </Button>
-              <Button
-                type="button"
-                variant="link"
-                className="w-full"
-                onClick={() => updateStage("email")}
-              >
-                {t("auth:verifyOtp.changeEmail")}
-              </Button>
-            </form>
-          ) : null}
-          {stage === "factor" ? (
-            <form className="space-y-4" onSubmit={submitFactor}>
-              <label
-                className="block space-y-2 text-sm font-medium"
-                htmlFor="portal-factor-code"
-              >
-                {factor === "backup"
-                  ? t("auth:twoFactor.backupCode")
-                  : t("auth:twoFactor.authenticatorCode")}
-                <Input
-                  id="portal-factor-code"
-                  autoComplete="one-time-code"
-                  inputMode={factor === "backup" ? "text" : "numeric"}
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                  required
-                />
-              </label>
-              <Button
-                className="w-full"
-                type="submit"
-                disabled={pending || !code.trim()}
-              >
-                {pending
-                  ? t("auth:twoFactor.verifying")
-                  : t("auth:twoFactor.verify")}
-              </Button>
-              <Button
-                type="button"
-                variant="link"
-                className="w-full"
-                onClick={() =>
-                  updateStage("factor", factor === "backup" ? "totp" : "backup")
-                }
-              >
-                {factor === "backup"
-                  ? t("auth:twoFactor.useAuthenticatorCode")
-                  : t("auth:twoFactor.useBackupCode")}
-              </Button>
-            </form>
-          ) : null}
-        </CardContent>
-      </Card>
+            ) : null}
+            {stage === "factor" ? (
+              <form className="space-y-4" onSubmit={submitFactor}>
+                <label
+                  className="block space-y-2 text-sm font-medium"
+                  htmlFor="portal-factor-code"
+                >
+                  {factor === "backup"
+                    ? t("auth:twoFactor.backupCode")
+                    : t("auth:twoFactor.authenticatorCode")}
+                  <Input
+                    id="portal-factor-code"
+                    autoComplete="one-time-code"
+                    inputMode={factor === "backup" ? "text" : "numeric"}
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    required
+                  />
+                </label>
+                <Button
+                  className="w-full"
+                  type="submit"
+                  disabled={pending || !code.trim()}
+                >
+                  {pending
+                    ? t("auth:twoFactor.verifying")
+                    : t("auth:twoFactor.verify")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full"
+                  onClick={() =>
+                    updateStage(
+                      "factor",
+                      factor === "backup" ? "totp" : "backup",
+                    )
+                  }
+                >
+                  {factor === "backup"
+                    ? t("auth:twoFactor.useAuthenticatorCode")
+                    : t("auth:twoFactor.useBackupCode")}
+                </Button>
+              </form>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }

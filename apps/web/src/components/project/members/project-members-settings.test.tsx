@@ -51,18 +51,24 @@ vi.mock("@/hooks/queries/project-member/use-get-project-members", () => ({
           roleName: "Project viewer",
           roleRank: 20,
           roleId: null,
+          isSystem: true,
+          roleDescription: "Read-only access.",
         },
         {
           roleKey: "project-member",
           roleName: "Project member",
           roleRank: 40,
           roleId: null,
+          isSystem: true,
+          roleDescription: "Creates work.",
         },
         {
           roleKey: "project-lead",
           roleName: "Project lead",
           roleRank: 50,
           roleId: null,
+          isSystem: true,
+          roleDescription: "Runs the project.",
         },
       ],
     },
@@ -353,12 +359,15 @@ it("does not submit an unchanged role", async () => {
   mocks.updateRole.mockReset();
   render(<ProjectMembersSettings projectId="p1" />);
   fireEvent.click(
-    screen.getByRole("button", {
+    screen.getByRole("combobox", {
       name: /settings:projectMembers.changeRoleFor/,
     }),
   );
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Project member" }),
-  );
+  const option = await screen.findByRole("option", { name: /Project member/ });
+  expect(
+    screen.getByText("settings:projectMembers.roleGroupBuiltIn"),
+  ).toBeTruthy();
+  expect(screen.getByText("Creates work.")).toBeTruthy();
+  fireEvent.click(option);
   expect(mocks.updateRole).not.toHaveBeenCalled();
 });

@@ -107,6 +107,7 @@ export function buildTasks(
       title: `${change.key} ${change.title}`,
       number: null,
       status: taskStatus(change),
+      isFinal: change.retrospective,
       ...span(change.windowStart, change.windowEnd),
     })),
   ];

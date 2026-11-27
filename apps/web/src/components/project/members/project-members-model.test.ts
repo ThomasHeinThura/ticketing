@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assignableRoles,
+  groupRosterRoles,
   isAuthorityReplacingWorkspaceRole,
   projectMemberErrorKey,
   rosterRoleItems,
@@ -63,6 +64,28 @@ describe("project members model", () => {
       assignableRoles(roles, 20, "project-lead").map((r) => r.roleKey),
     ).toEqual(["project-viewer", "project-lead"]);
     expect(assignableRoles(roles, undefined)).toHaveLength(3);
+  });
+
+  it("puts built-in roles first as lead, member, viewer, then custom roles", () => {
+    const role = (roleKey: string, roleRank: number, isSystem: boolean) => ({
+      roleKey,
+      roleName: roleKey,
+      roleRank,
+      roleId: null,
+      isSystem,
+    });
+    const { builtIn, custom } = groupRosterRoles([
+      role("uat-agent", 1, false),
+      role("project-viewer", 20, true),
+      role("project-member", 40, true),
+      role("project-lead", 50, true),
+    ]);
+    expect(builtIn.map((r) => r.roleKey)).toEqual([
+      "project-lead",
+      "project-member",
+      "project-viewer",
+    ]);
+    expect(custom.map((r) => r.roleKey)).toEqual(["uat-agent"]);
   });
 
   it("maps server refusals to i18n keys without exposing server text", () => {

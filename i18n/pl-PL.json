@@ -672,7 +672,8 @@
 			"workspaceSettings": "Ustawienia obszaru roboczego",
 			"instanceUsers": "Użytkownicy instancji",
 			"selectWorkspace": "Wybierz obszar roboczy",
-			"switchFailed": "Could not switch workspace. Check your access and try again."
+			"switchFailed": "Could not switch workspace. Check your access and try again.",
+			"pendingInvitations": "Pending invitations: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -866,7 +867,9 @@
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
 			"archived": "Archived",
-			"completion": "{{name}} completion"
+			"completion": "{{name}} completion",
+			"joinNamed": "Join {{name}}",
+			"joinShort": "Join"
 		},
 		"search": {
 			"pageTitle": "Szukaj",
@@ -2705,7 +2708,9 @@
 				"roleExceedsAuthority": "You cannot grant, change or remove a role above your own.",
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
-			}
+			},
+			"roleGroupBuiltIn": "Built-in",
+			"roleGroupCustom": "Custom roles"
 		},
 		"workflows": {
 			"add": {
@@ -3266,7 +3271,9 @@
 				"month": "Month",
 				"week": "Week"
 			},
-			"viewGroup": "Calendar range"
+			"viewGroup": "Calendar range",
+			"stateDone": "Completed",
+			"stateOpen": "Open"
 		},
 		"gantt": {
 			"hideTasks": "Ukryj {{term_work_item_other}}",

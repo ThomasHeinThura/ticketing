@@ -26,6 +26,8 @@ import {
   MenuTrigger,
   Select,
   SelectContent,
+  SelectGroup,
+  SelectGroupLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -42,7 +44,6 @@ import { EllipsisIcon, TrashIcon, TriangleAlert, UserPlus } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback } from "@/components/avatar";
-import { PickerPopover } from "@/components/common/picker-popover";
 import {
   useAddProjectMember,
   useRemoveProjectMember,
@@ -57,6 +58,7 @@ import { toast } from "@/lib/toast";
 import { CustomerProjectAccess } from "./customer-project-access";
 import {
   assignableRoles,
+  groupRosterRoles,
   isAuthorityReplacingWorkspaceRole,
   projectMemberErrorKey,
   type RosterMemberView,
@@ -315,20 +317,36 @@ function ProjectMembersSettings({ projectId }: Props) {
                   </TableCell>
                   <TableCell className="py-3">
                     {canManage && !member.managedExternally ? (
-                      <PickerPopover
-                        options={rosterRoleItems(
-                          assignableRoles(roles, callerRank, member.roleKey),
-                        )}
+                      <Select
+                        items={rosterRoleItems(roles)}
                         value={member.roleKey}
                         disabled={isChangingRole}
-                        onChange={(value) =>
+                        onValueChange={(value) =>
+                          typeof value === "string" &&
                           void handleChangeRole(member, value)
                         }
-                        className="h-8 w-40"
-                        ariaLabel={t("settings:projectMembers.changeRoleFor", {
-                          name: member.displayName ?? member.personId,
-                        })}
-                      />
+                      >
+                        <SelectTrigger
+                          className="h-8 w-40"
+                          aria-label={t(
+                            "settings:projectMembers.changeRoleFor",
+                            {
+                              name: member.displayName ?? member.personId,
+                            },
+                          )}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <RoleSelectOptions
+                            roles={assignableRoles(
+                              roles,
+                              callerRank,
+                              member.roleKey,
+                            )}
+                          />
+                        </SelectContent>
+                      </Select>
                     ) : (
                       <Badge variant="secondary">{member.roleName}</Badge>
                     )}
@@ -573,6 +591,41 @@ function ProjectMembersSettings({ projectId }: Props) {
   );
 }
 
+/** Built-in roles, then custom roles; each option shows its description under the name. */
+function RoleSelectOptions({ roles }: { roles: readonly RosterRoleView[] }) {
+  const { t } = useTranslation();
+  const { builtIn, custom } = groupRosterRoles(roles);
+  const groups = [
+    {
+      key: "builtIn",
+      label: t("settings:projectMembers.roleGroupBuiltIn"),
+      roles: builtIn,
+    },
+    {
+      key: "custom",
+      label: t("settings:projectMembers.roleGroupCustom"),
+      roles: custom,
+    },
+  ];
+  return groups
+    .filter((group) => group.roles.length > 0)
+    .map((group) => (
+      <SelectGroup key={group.key}>
+        <SelectGroupLabel>{group.label}</SelectGroupLabel>
+        {group.roles.map((role) => (
+          <SelectItem key={role.roleKey} value={role.roleKey}>
+            <span className="block">{role.roleName}</span>
+            {role.roleDescription ? (
+              <span className="line-clamp-2 block text-muted-foreground text-xs">
+                {role.roleDescription}
+              </span>
+            ) : null}
+          </SelectItem>
+        ))}
+      </SelectGroup>
+    ));
+}
+
 function AddMemberDialog({
   projectId,
   open,
@@ -695,11 +748,7 @@ function AddMemberDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {roleItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
+                <RoleSelectOptions roles={roles} />
               </SelectContent>
             </Select>
           </div>

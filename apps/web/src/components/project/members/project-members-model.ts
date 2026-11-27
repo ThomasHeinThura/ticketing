@@ -6,6 +6,8 @@ export type RosterRoleView = {
   roleName: string;
   roleRank: number;
   roleId: string | null;
+  roleDescription?: string | null;
+  isSystem?: boolean;
 };
 
 export type RosterMemberView = {
@@ -23,9 +25,23 @@ export type RosterMemberView = {
   removable: boolean;
 };
 
-/** Select items for the roster roles, lowest rank first (the API already sorts them). */
+/** Select items for the roster roles (label is what the closed Select shows). */
 export function rosterRoleItems(roles: readonly RosterRoleView[]) {
   return roles.map((role) => ({ value: role.roleKey, label: role.roleName }));
+}
+
+const BUILT_IN_ORDER = ["project-lead", "project-member", "project-viewer"];
+
+/** Built-in roles first (lead, member, viewer), then custom roles in the API's rank order. */
+export function groupRosterRoles(roles: readonly RosterRoleView[]) {
+  const builtIn = roles
+    .filter((role) => role.isSystem)
+    .sort(
+      (a, b) =>
+        (BUILT_IN_ORDER.indexOf(a.roleKey) + 1 || 99) -
+        (BUILT_IN_ORDER.indexOf(b.roleKey) + 1 || 99),
+    );
+  return { builtIn, custom: roles.filter((role) => !role.isSystem) };
 }
 
 /**

@@ -1981,7 +1981,9 @@
 				"roleExceedsAuthority": "You cannot grant, change or remove a role above your own.",
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
-			}
+			},
+			"roleGroupBuiltIn": "Built-in",
+			"roleGroupCustom": "Custom roles"
 		},
 		"workflows": {
 			"add": {
@@ -2391,7 +2393,8 @@
 			"workspaceSettings": "Поставки на работниот простор",
 			"instanceUsers": "Корисници на инстанцата",
 			"selectWorkspace": "Избери работен простор",
-			"switchFailed": "Could not switch workspace. Check your access and try again."
+			"switchFailed": "Could not switch workspace. Check your access and try again.",
+			"pendingInvitations": "Pending invitations: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3178,7 +3181,9 @@
 				"month": "Month",
 				"week": "Week"
 			},
-			"viewGroup": "Calendar range"
+			"viewGroup": "Calendar range",
+			"stateDone": "Completed",
+			"stateOpen": "Open"
 		},
 		"group": {
 			"by": "Group by",
@@ -3269,7 +3274,9 @@
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
 			"archived": "Archived",
-			"completion": "{{name}} completion"
+			"completion": "{{name}} completion",
+			"joinNamed": "Join {{name}}",
+			"joinShort": "Join"
 		},
 		"search": {
 			"pageTitle": "Пребарување",
