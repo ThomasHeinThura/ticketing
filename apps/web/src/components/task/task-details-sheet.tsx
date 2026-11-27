@@ -113,7 +113,12 @@ export default function TaskDetailsSheet({
         <DelayedSuspense
           fallback={(visible) => <TaskDetailsSheetLoading visible={visible} />}
         >
-          <NamespaceBoundary fallback={<TaskDetailsSheetLoading visible />}>
+          <NamespaceBoundary
+            preload={() => import("./task-details-sheet-body")}
+            fallback={(visible) => (
+              <TaskDetailsSheetLoading visible={visible} />
+            )}
+          >
             <TaskDetailsSheetBody
               key={visibleTaskId}
               taskId={visibleTaskId}

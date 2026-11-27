@@ -1,7 +1,15 @@
 import de from "@i18n/de-DE.json";
 import en from "@i18n/en-US.json";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { Textarea } from "@taskdesk/ui";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -46,8 +54,8 @@ afterEach(() => {
   state.hold = false;
 });
 
-describe("revealed content across a profile language change (real provider stack)", () => {
-  it("shows the English fallback, never a raw key, while the German deferred fetch is held", async () => {
+describe("profile language change on the work route (real provider stack)", () => {
+  it("keeps the page in English until the whole German locale is loaded, with no mixed frame and an open editor intact", async () => {
     window.history.pushState({}, "", "/agent/projects/WLP/work");
     vi.resetModules();
     const { AppI18nProvider } = await import("./provider");
@@ -57,7 +65,13 @@ describe("revealed content across a profile language change (real provider stack
     const { useTranslation } = await import("react-i18next");
     function Surface() {
       const { t } = useTranslation();
-      return <p>{t("tasksExtra:contextMenu.copyLink")}</p>;
+      return (
+        <div>
+          <p>{t("common:actions.cancel")}</p>
+          <p>{t("tasksExtra:contextMenu.copyLink")}</p>
+          <Textarea aria-label="editor" />
+        </div>
+      );
     }
     const client = new QueryClient();
     const tree = (children: ReactNode) => (
@@ -67,10 +81,21 @@ describe("revealed content across a profile language change (real provider stack
         </AppI18nProvider>
       </QueryClientProvider>
     );
+    const enText = [
+      en.common.actions.cancel,
+      en.tasksExtra.contextMenu.copyLink,
+    ];
+    const deText = [
+      de.common.actions.cancel,
+      de.tasksExtra.contextMenu.copyLink,
+    ];
     const raw = "contextMenu.copyLink";
-    let sawRawKey = false;
+    let mixedOrRaw = false;
     const observer = new MutationObserver(() => {
-      if (document.body.textContent?.includes(raw)) sawRawKey = true;
+      const text = document.body.textContent ?? "";
+      const english = enText.filter((value) => text.includes(value)).length;
+      const german = deText.filter((value) => text.includes(value)).length;
+      if (text.includes(raw) || (english > 0 && german > 0)) mixedOrRaw = true;
     });
     observer.observe(document.body, {
       subtree: true,
@@ -82,6 +107,8 @@ describe("revealed content across a profile language change (real provider stack
     expect(
       await screen.findByText(en.tasksExtra.contextMenu.copyLink),
     ).toBeVisible();
+    const editor = screen.getByLabelText("editor") as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: "half-written note" } });
 
     // Switch the profile to German and hold the German deferred fetch.
     state.hold = true;
@@ -90,20 +117,25 @@ describe("revealed content across a profile language change (real provider stack
     });
     state.locale = "de-DE";
     view.rerender(tree(<Surface />));
-    await waitFor(() => expect(document.documentElement.lang).toBe("de-DE"));
-    // Let the replacement terminology instance be published.
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 80));
     });
+    // Nothing of German is shown yet and the document language has not moved.
+    expect(document.documentElement.lang).not.toBe("de-DE");
     expect(screen.getByText(en.tasksExtra.contextMenu.copyLink)).toBeVisible();
+    expect(screen.getByText(en.common.actions.cancel)).toBeVisible();
+    expect(screen.queryByText(de.tasksExtra.contextMenu.copyLink)).toBeNull();
     expect(document.body.textContent).not.toContain(raw);
 
     await act(async () => state.release());
     expect(
       await screen.findByText(de.tasksExtra.contextMenu.copyLink),
     ).toBeVisible();
-    expect(sawRawKey).toBe(false);
+    expect(screen.getByText(de.common.actions.cancel)).toBeVisible();
+    await waitFor(() => expect(document.documentElement.lang).toBe("de-DE"));
+    expect(screen.getByLabelText("editor")).toBe(editor);
+    expect(editor.value).toBe("half-written note");
+    expect(mixedOrRaw).toBe(false);
     observer.disconnect();
-    // Real provider stack and catalog cloning: slower than the 5 s default on a loaded CI runner.
-  }, 15_000);
+  });
 });

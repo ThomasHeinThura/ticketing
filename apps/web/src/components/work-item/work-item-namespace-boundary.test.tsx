@@ -6,6 +6,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { createInstance } from "i18next";
 import { useState } from "react";
@@ -73,15 +74,22 @@ async function mount() {
 describe("direct-link detail translations", () => {
   it("holds the pane until all text is ready and then shows human labels", async () => {
     const instance = await mount();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      en.workItems.detail.loading,
+    // Reserved but invisible inside the ~150 ms delay, then the translated skeleton.
+    expect(screen.getByTestId("work-item-detail-loading")).not.toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        en.workItems.detail.loading,
+      ),
     );
     expect(screen.queryByText(/Project Unassigned/)).not.toBeInTheDocument();
     await act(async () => {
       instance.addResourceBundle("en-US", "workItemExtras", en.workItemExtras);
       resolve();
     });
-    expect(screen.getByText(/Project Unassigned/)).toBeVisible();
+    // The placeholder was shown, so it holds for its ~300 ms minimum before the detail appears.
+    await waitFor(() =>
+      expect(screen.getByText(/Project Unassigned/)).toBeVisible(),
+    );
     expect(document.body.textContent).not.toMatch(/\w+:[\w.]+/);
   });
   it("shows a translated failure and retries without painting keys", async () => {
@@ -93,12 +101,17 @@ describe("direct-link detail translations", () => {
     fireEvent.click(
       screen.getByRole("button", { name: en.common.actions.retry }),
     );
-    expect(screen.getByTestId("work-item-detail-loading")).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByTestId("work-item-detail-loading")).toBeVisible(),
+    );
     await act(async () => {
       instance.addResourceBundle("en-US", "workItemExtras", en.workItemExtras);
       resolve();
     });
-    expect(screen.getByText(/Project Unassigned/)).toBeVisible();
+    // The placeholder was shown, so it holds for its ~300 ms minimum before the detail appears.
+    await waitFor(() =>
+      expect(screen.getByText(/Project Unassigned/)).toBeVisible(),
+    );
     expect(document.body.textContent).not.toMatch(/\w+:[\w.]+/);
   });
   it("never hides revealed detail on a language change", async () => {

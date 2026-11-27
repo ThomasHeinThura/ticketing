@@ -1075,6 +1075,9 @@
 						}
 					},
 					"required": ["back", "noAccess", "error"]
+				},
+				"pendingActionTitle": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -1101,7 +1104,8 @@
 				"retry",
 				"navigation",
 				"featureOff",
-				"states"
+				"states",
+				"pendingActionTitle"
 			]
 		},
 		"auth": {

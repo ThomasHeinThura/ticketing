@@ -150,6 +150,27 @@ describe("work route render graph guard", () => {
     );
   });
 
+  it("recognises a loader shared by lazy() and the boundary's preload", () => {
+    const shared = (body: string) =>
+      `const load = () => import("./surface");\nconst Surface = lazy(load);\n${body}`;
+    expect(
+      isContainedInBoundary(
+        shared(
+          "<NamespaceBoundary preload={load}><Surface /></NamespaceBoundary>",
+        ),
+        "./surface",
+      ),
+    ).toBe(true);
+    expect(
+      isContainedInBoundary(
+        shared(
+          "<Surface /><NamespaceBoundary preload={load}></NamespaceBoundary>",
+        ),
+        "./surface",
+      ),
+    ).toBe(false);
+  });
+
   it("follows dynamic imports and stops only at the boundary component", () => {
     // The form and its label picker are only reached through `lazy(() => import(...))`.
     expect(
