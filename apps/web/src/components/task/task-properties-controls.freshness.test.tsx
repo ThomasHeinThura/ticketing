@@ -228,7 +228,7 @@ describe("WI-7a: task property mutation freshness", () => {
   it("uses the full task cache version after an omitted description update", async () => {
     const { queryClient } = mount(task);
     const dateButtons = await screen.findAllByRole("button", {
-      name: "tasks:properties.noDate",
+      name: "tasksExtra:properties.noDate",
     });
     await waitFor(() =>
       expect(queryClient.getQueryState(["task", task.id])?.fetchStatus).toBe(
@@ -265,7 +265,7 @@ describe("WI-7a: task property mutation freshness", () => {
   it("resets the mutation snapshot when task and project identity changes", async () => {
     const { queryClient, controls, rerender } = mount(task);
     await screen.findAllByRole("button", {
-      name: "tasks:properties.noDate",
+      name: "tasksExtra:properties.noDate",
     });
     const nextTask: Task = {
       ...task,
@@ -282,7 +282,7 @@ describe("WI-7a: task property mutation freshness", () => {
     fireEvent.click(
       startDateButton(
         await screen.findAllByRole("button", {
-          name: "tasks:properties.noDate",
+          name: "tasksExtra:properties.noDate",
         }),
       ),
     );

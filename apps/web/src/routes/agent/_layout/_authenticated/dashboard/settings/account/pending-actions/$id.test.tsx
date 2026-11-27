@@ -574,7 +574,9 @@ describe("pending action detail intent lifecycle", () => {
       "HELP-7 · Analytics refresh",
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "tasks:relations.removeRelation" }),
+      screen.getByRole("button", {
+        name: "tasksExtra:relations.removeRelation",
+      }),
     );
     await waitFor(() =>
       expect(mocks.approve).toHaveBeenCalledWith({ id: "action-a" }),
@@ -587,10 +589,14 @@ describe("pending action detail intent lifecycle", () => {
     mocks.relation = true;
     mocks.relationRedacted = true;
     render(<Harness />);
-    expect(screen.getByText("workItems:relations.hidden")).toBeInTheDocument();
+    expect(
+      screen.getByText("workItemsExtra:relations.hidden"),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/HELP-4|HELP-7/)).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "tasks:relations.removeRelation" }),
+      screen.queryByRole("button", {
+        name: "tasksExtra:relations.removeRelation",
+      }),
     ).not.toBeInTheDocument();
   });
 
@@ -602,7 +608,7 @@ describe("pending action detail intent lifecycle", () => {
       screen.getByText("HELP-4 · Certificate rotation"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("workItems:deletion.childrenAffected"),
+      screen.getByText("workItemsExtra:deletion.childrenAffected"),
     ).toBeInTheDocument();
     expect(screen.queryByText("target-a")).not.toBeInTheDocument();
     fireEvent.click(
@@ -619,7 +625,9 @@ describe("pending action detail intent lifecycle", () => {
     mocks.workItem = true;
     mocks.relationRedacted = true;
     render(<Harness />);
-    expect(screen.getByText("workItems:deletion.hidden")).toBeInTheDocument();
+    expect(
+      screen.getByText("workItemsExtra:deletion.hidden"),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText(/HELP-4|Certificate rotation|target-a/),
     ).not.toBeInTheDocument();
@@ -690,7 +698,9 @@ describe("pending action detail intent lifecycle", () => {
     mocks.bulkCount = 2;
     mocks.relationRedacted = true;
     render(<Harness />);
-    expect(screen.getByText("workItems:deletion.hidden")).toBeInTheDocument();
+    expect(
+      screen.getByText("workItemsExtra:deletion.hidden"),
+    ).toBeInTheDocument();
     expect(
       screen.queryByLabelText("pendingActions:bulk.confirmCount"),
     ).not.toBeInTheDocument();
@@ -722,7 +732,9 @@ describe("pending action detail intent lifecycle", () => {
     mocks.bulkCount = 2;
     mocks.duplicateKeys = true;
     render(<Harness />);
-    expect(screen.getByText("workItems:deletion.hidden")).toBeInTheDocument();
+    expect(
+      screen.getByText("workItemsExtra:deletion.hidden"),
+    ).toBeInTheDocument();
     expect(
       screen.queryByLabelText("pendingActions:bulk.confirmCount"),
     ).not.toBeInTheDocument();

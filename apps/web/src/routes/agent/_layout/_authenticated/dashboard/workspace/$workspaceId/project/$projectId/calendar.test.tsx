@@ -313,7 +313,7 @@ describe("old Kaneo calendar URL", () => {
     );
 
     expect(
-      await screen.findByText("workItems:legacyView.opening"),
+      await screen.findByText("workItemsExtra:legacyView.opening"),
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe(
       "/dashboard/workspace/workspace-1/project/project-1/calendar",
@@ -334,7 +334,7 @@ describe("old Kaneo calendar URL", () => {
     );
 
     expect(
-      await screen.findByText("workItems:legacyView.unavailable"),
+      await screen.findByText("workItemsExtra:legacyView.unavailable"),
     ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe(
       "/dashboard/workspace/workspace-1/project/project-1/calendar",
@@ -355,7 +355,7 @@ describe("old Kaneo calendar URL", () => {
     );
 
     expect(
-      await screen.findByText("workItems:legacyView.unavailable"),
+      await screen.findByText("workItemsExtra:legacyView.unavailable"),
     ).toBeInTheDocument();
     expect(state.renderedCalendar).not.toHaveBeenCalled();
   });

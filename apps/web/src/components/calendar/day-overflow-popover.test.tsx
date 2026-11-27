@@ -19,7 +19,7 @@ vi.mock("@/lib/format", () => ({
   formatDateShort: (value: Date) => value.toISOString().slice(0, 10),
 }));
 
-const TRIGGER_NAME = /^tasks:calendar\.dayTasksAriaLabel/;
+const TRIGGER_NAME = /^tasksExtra:calendar\.dayTasksAriaLabel/;
 
 function task(
   id: string,
@@ -58,9 +58,9 @@ describe("DayOverflowPopover", () => {
       />,
     );
     const trigger = screen.getByRole("button", { name: TRIGGER_NAME });
-    expect(trigger.textContent).toBe("tasks:calendar.moreTasks");
+    expect(trigger.textContent).toBe("tasksExtra:calendar.moreTasks");
     expect(trigger).toHaveAccessibleName(
-      expect.stringContaining("tasks:calendar.moreTasks"),
+      expect.stringContaining("tasksExtra:calendar.moreTasks"),
     );
   });
 

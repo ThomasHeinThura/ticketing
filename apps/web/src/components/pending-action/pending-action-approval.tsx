@@ -1003,7 +1003,7 @@ export function PendingActionApproval({
                 )
               : t(
                   action.data.targetType === "relation"
-                    ? "tasks:relations.removeRelation"
+                    ? "tasksExtra:relations.removeRelation"
                     : "common:actions.delete",
                 )
           : t("pendingActions:copy.a2b52d875e8b")}
@@ -1046,7 +1046,7 @@ export function PendingActionApproval({
             : action.data.targetType === "comment"
               ? t("pendingActions:comment.action")
               : action.data.targetType === "relation"
-                ? t("tasks:relations.removeRelation")
+                ? t("tasksExtra:relations.removeRelation")
                 : isBulkDeletion
                   ? t("pendingActions:bulk.action")
                   : action.data.targetType === "import_run"
@@ -1158,7 +1158,7 @@ export function PendingActionApproval({
               </ul>
             </div>
           ) : bulkRedacted ? (
-            t("workItems:deletion.hidden")
+            t("workItemsExtra:deletion.hidden")
           ) : attachmentSummary ? (
             <span>
               {attachmentSummary.key} · {attachmentSummary.title}
@@ -1176,24 +1176,24 @@ export function PendingActionApproval({
               {workItemSummary.key} · {workItemSummary.title}
               {workItemSummary.projectName ? (
                 <span className="block text-muted-foreground">
-                  {t("workItems:deletion.project", {
+                  {t("workItemsExtra:deletion.project", {
                     project: workItemSummary.projectName,
                   })}
                 </span>
               ) : null}
             </span>
           ) : workItemRedacted ? (
-            t("workItems:deletion.hidden")
+            t("workItemsExtra:deletion.hidden")
           ) : relationSummary ? (
             <span>
               {relationSummary.sourceKey} · {relationSummary.sourceTitle}
               {" — "}
-              {t(`workItems:relations.types.${relationSummary.type}`)}
+              {t(`workItemsExtra:relations.types.${relationSummary.type}`)}
               {" — "}
               {relationSummary.targetKey} · {relationSummary.targetTitle}
             </span>
           ) : relationRedacted ? (
-            t("workItems:relations.hidden", { count: 1 })
+            t("workItemsExtra:relations.hidden", { count: 1 })
           ) : hardPurgeSummary ? (
             <span>{hardPurgeSummary.label}</span>
           ) : hardPurgeRedacted ? (
@@ -1306,7 +1306,7 @@ export function PendingActionApproval({
           <p>{t("pendingActions:bulk.recovery")}</p>
           {bulkSummary.childrenAffected > 0 && (
             <p>
-              {t("workItems:deletion.childrenAffected", {
+              {t("workItemsExtra:deletion.childrenAffected", {
                 count: bulkSummary.childrenAffected,
               })}
             </p>
@@ -1366,7 +1366,7 @@ export function PendingActionApproval({
       )}
       {workItemSummary && workItemSummary.childrenAffected > 0 && (
         <p className="text-sm text-muted-foreground">
-          {t("workItems:deletion.childrenAffected", {
+          {t("workItemsExtra:deletion.childrenAffected", {
             count: workItemSummary.childrenAffected,
           })}
         </p>
@@ -1375,36 +1375,36 @@ export function PendingActionApproval({
         // `WI-23`: identify the customer requester, deleting actor, portal effect and retention.
         <section
           className="space-y-1 text-muted-foreground text-sm"
-          aria-label={t("workItems:deletion.impact")}
+          aria-label={t("workItemsExtra:deletion.impact")}
         >
           {workItemSummary.requesterName ? (
             <p>
-              {t("workItems:deletion.customerRequester", {
+              {t("workItemsExtra:deletion.customerRequester", {
                 name: workItemSummary.requesterName,
               })}
             </p>
           ) : null}
           {workItemSummary.requestedByName ? (
             <p>
-              {t("workItems:deletion.requestedBy", {
+              {t("workItemsExtra:deletion.requestedBy", {
                 name: workItemSummary.requestedByName,
               })}
             </p>
           ) : null}
           <p>
-            {t("workItems:deletion.portalVisibility", {
+            {t("workItemsExtra:deletion.portalVisibility", {
               visibility: t(
-                `workItems:deletion.visibility.${workItemSummary.customerVisibility}`,
+                `workItemsExtra:deletion.visibility.${workItemSummary.customerVisibility}`,
               ),
             })}
           </p>
           <p>
             {t(
-              `workItems:deletion.portalRemoval.${workItemSummary.customerVisibility}`,
+              `workItemsExtra:deletion.portalRemoval.${workItemSummary.customerVisibility}`,
             )}
           </p>
           <p>
-            {t("workItems:deletion.retention", {
+            {t("workItemsExtra:deletion.retention", {
               days: workItemSummary.recoveryDays,
             })}
           </p>

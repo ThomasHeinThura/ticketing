@@ -79,9 +79,9 @@ const { mocks, translate } = vi.hoisted(() => ({
         "activity:timeline.comments": "Comments",
         "activity:timeline.edited": "Edited",
         "common:people.unknown": "Unknown",
-        "tasks:relations.title": "Relations",
-        "workItems:relations.types.relates": "relates to",
-        "workItems:relations.types.blocked_by": "blocked by",
+        "tasksExtra:relations.title": "Relations",
+        "workItemsExtra:relations.types.relates": "relates to",
+        "workItemsExtra:relations.types.blocked_by": "blocked by",
         "workItemExtras:detail.unavailable": "Unavailable",
       }[key] ?? key
     );

@@ -1160,7 +1160,7 @@ function LabelsControl({
   useAccessLostOnQueryError(query.error, onAccessLost);
   const labels = query.data ?? [];
   const selected = labels.filter((label) => label.assigned);
-  const title = t("tasks:properties.labels");
+  const title = t("tasksExtra:properties.labels");
   const unavailable =
     query.isPending || query.isFetching || query.isError || save.isPending;
   return (
@@ -1201,8 +1201,8 @@ function LabelsControl({
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder={t("tasks:popover.labels.searchPlaceholder")}
-          aria-label={t("tasks:popover.labels.searchPlaceholder")}
+          placeholder={t("tasksExtra:popover.labels.searchPlaceholder")}
+          aria-label={t("tasksExtra:popover.labels.searchPlaceholder")}
         />
         <div className="max-h-64 overflow-y-auto py-1">
           {labels
@@ -1249,14 +1249,14 @@ function LabelsControl({
             label.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
           ) ? (
             <p className="px-2 py-1.5 text-xs text-muted-foreground">
-              {t("tasks:popover.labels.empty")}
+              {t("tasksExtra:popover.labels.empty")}
             </p>
           ) : null}
         </div>
       </PopoverContent>
       {query.isError ? (
         <div role="alert" className="text-xs">
-          <span>{t("tasks:popover.labels.updateError")}</span>
+          <span>{t("tasksExtra:popover.labels.updateError")}</span>
           <Button
             variant="ghost"
             size="sm"
@@ -1397,7 +1397,7 @@ function WorkItemPropertiesPanel({
         >
           <div className="flex flex-col gap-1">
             <span className="px-2 text-xs font-medium text-foreground">
-              {t("tasks:properties.labels")}
+              {t("tasksExtra:properties.labels")}
             </span>
             <div className="flex flex-wrap items-center gap-1.5 px-2">
               <LabelsControl {...controlProps} />

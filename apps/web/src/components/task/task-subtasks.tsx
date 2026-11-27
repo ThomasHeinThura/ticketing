@@ -153,7 +153,7 @@ function TaskSubtasks({
       toast.error(
         error instanceof Error
           ? error.message
-          : t("tasks:popover.status.updateError"),
+          : t("tasksExtra:popover.status.updateError"),
       );
     }
   };
@@ -281,7 +281,7 @@ function TaskSubtasks({
       setNewTitle("");
       setIsAdding(false);
     } catch {
-      toast.error(t("tasks:subtasks.createError"));
+      toast.error(t("tasksExtra:subtasks.createError"));
     }
   };
 
@@ -289,7 +289,7 @@ function TaskSubtasks({
     try {
       const target = subtasks.find((s) => s.task.id === deleteTaskId)?.task;
       if (!project?.slug || !target?.number)
-        throw new Error(t("tasks:subtasks.deleteError"));
+        throw new Error(t("tasksExtra:subtasks.deleteError"));
       // Deletion is only requested; the subtask stays until the requester approves it.
       const pendingAction = await deleteTask(
         `${project.slug}-${target.number}`,
@@ -299,7 +299,7 @@ function TaskSubtasks({
       toast.error(
         error instanceof Error
           ? error.message
-          : t("tasks:subtasks.deleteError"),
+          : t("tasksExtra:subtasks.deleteError"),
       );
     }
   };
@@ -319,7 +319,7 @@ function TaskSubtasks({
               ) : (
                 <ChevronRight className="size-4" />
               )}
-              <span>{t("tasks:subtasks.title")}</span>
+              <span>{t("tasksExtra:subtasks.title")}</span>
             </Button>
           </CollapsibleTrigger>
           {totalCount > 0 && (
@@ -336,7 +336,7 @@ function TaskSubtasks({
             variant="ghost"
             size="xs"
             className="text-muted-foreground"
-            aria-label={`${t("tasks:subtasks.addAction")} ${t("tasks:subtasks.title")}`}
+            aria-label={`${t("tasksExtra:subtasks.addAction")} ${t("tasksExtra:subtasks.title")}`}
             onClick={() => setIsAdding(true)}
             disabled={!canCreateSubtask}
           >
@@ -396,7 +396,7 @@ function TaskSubtasks({
           <div className="flex items-center gap-2 mt-2">
             <Input
               size="sm"
-              placeholder={t("tasks:subtasks.inputPlaceholder")}
+              placeholder={t("tasksExtra:subtasks.inputPlaceholder")}
               value={newTitle}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setNewTitle(e.target.value)
@@ -417,7 +417,7 @@ function TaskSubtasks({
                 !newTitle.trim() || createTask.isPending || !canCreateSubtask
               }
             >
-              {t("tasks:subtasks.addAction")}
+              {t("tasksExtra:subtasks.addAction")}
             </Button>
             <Button
               variant="ghost"
@@ -434,7 +434,7 @@ function TaskSubtasks({
 
         {!isAdding && totalCount === 0 && (
           <p className="text-xs text-muted-foreground px-2 py-1">
-            {t("tasks:subtasks.empty")}
+            {t("tasksExtra:subtasks.empty")}
           </p>
         )}
       </CollapsibleContent>

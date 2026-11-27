@@ -7,10 +7,10 @@ const TARGET_ACTION_KEYS: Readonly<Record<string, string>> = {
   approval_decision: "pendingActions:targets.approval_decision",
   import_chunk: "pendingActions:targets.import_chunk",
   import_run: "pendingActions:importRun.action",
-  work_item: "tasks:delete.action",
+  work_item: "tasksExtra:delete.action",
   attachment: "pendingActions:attachment.action",
   comment: "pendingActions:comment.action",
-  relation: "tasks:relations.removeRelation",
+  relation: "tasksExtra:relations.removeRelation",
 };
 
 const PURGE_ACTION_KEYS: Readonly<Record<string, string>> = {

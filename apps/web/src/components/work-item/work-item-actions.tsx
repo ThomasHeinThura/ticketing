@@ -61,7 +61,7 @@ export default function WorkItemActions({
                 ref={menuTriggerRef}
                 variant="ghost"
                 size="sm"
-                aria-label={t("workItems:deletion.actions")}
+                aria-label={t("workItemsExtra:deletion.actions")}
                 disabled={isPending}
               />
             }
@@ -84,7 +84,7 @@ export default function WorkItemActions({
       )}
       {failed && (
         <p role="alert" className="text-xs text-destructive">
-          {t("workItems:deletion.requestFailed")}
+          {t("workItemsExtra:deletion.requestFailed")}
         </p>
       )}
     </div>

@@ -38,10 +38,10 @@ export default function DayOverflowPopover({
     <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger
         // WCAG 2.5.3: the name contains the visible "+N more" text.
-        aria-label={`${t("tasks:calendar.dayTasksAriaLabel", { date: dayLabel })}: ${t("tasks:calendar.moreTasks", { count: hiddenCount })}`}
+        aria-label={`${t("tasksExtra:calendar.dayTasksAriaLabel", { date: dayLabel })}: ${t("tasksExtra:calendar.moreTasks", { count: hiddenCount })}`}
         className="w-full truncate rounded-sm px-1.5 pb-1 text-left text-[10px] leading-tight text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        {t("tasks:calendar.moreTasks", { count: hiddenCount })}
+        {t("tasksExtra:calendar.moreTasks", { count: hiddenCount })}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-2">
         <div className="space-y-1">

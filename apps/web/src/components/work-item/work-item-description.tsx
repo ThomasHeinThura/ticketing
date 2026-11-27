@@ -194,7 +194,7 @@ export default function WorkItemDescription({
           }, DESCRIPTION_SAVE_DELAY_MS);
         }}
         readOnly={readOnly || !canUpdateTasks()}
-        placeholder={t("tasks:detail.addDescription")}
+        placeholder={t("tasksExtra:detail.addDescription")}
         className={TASK_DESCRIPTION_EDITOR_CLASS}
       />
       {failed ? (

@@ -273,22 +273,24 @@ describe("WI-23 single work-item deletion dialog content", () => {
     });
     render(<PendingActionApproval id="pa-1" layout="page" />);
     expect(screen.getByText(/WLP-1 · One/)).toBeInTheDocument();
-    expect(screen.getByText("workItems:deletion.project")).toBeInTheDocument();
     expect(
-      screen.getByText("workItems:deletion.customerRequester"),
+      screen.getByText("workItemsExtra:deletion.project"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("workItems:deletion.requestedBy"),
+      screen.getByText("workItemsExtra:deletion.customerRequester"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("workItems:deletion.portalVisibility"),
+      screen.getByText("workItemsExtra:deletion.requestedBy"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("workItems:deletion.portalRemoval.organisation"),
+      screen.getByText("workItemsExtra:deletion.portalVisibility"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("workItems:deletion.recovery")).toBeNull();
     expect(
-      screen.getByText("workItems:deletion.retention"),
+      screen.getByText("workItemsExtra:deletion.portalRemoval.organisation"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("workItemsExtra:deletion.recovery")).toBeNull();
+    expect(
+      screen.getByText("workItemsExtra:deletion.retention"),
     ).toBeInTheDocument();
   });
 });

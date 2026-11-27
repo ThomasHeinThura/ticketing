@@ -197,7 +197,9 @@ describe("TaskMovePopover query cache freshness", () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "tasks:move.title" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "tasksExtra:move.title" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Destination" }));
 
     const statusTrigger = screen.getAllByTestId("select-trigger")[1];

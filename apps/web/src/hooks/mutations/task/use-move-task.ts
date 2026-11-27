@@ -10,7 +10,7 @@ export function useMoveTask() {
   return useMutation({
     mutationFn: moveTask,
     onSuccess: (result, variables) => {
-      toast.success(t("tasks:move.success"));
+      toast.success(t("tasksExtra:move.success"));
       queryClient.invalidateQueries({
         queryKey: ["task", variables.taskId],
       });
@@ -32,7 +32,7 @@ export function useMoveTask() {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : t("tasks:move.error"),
+        error instanceof Error ? error.message : t("tasksExtra:move.error"),
       );
     },
   });

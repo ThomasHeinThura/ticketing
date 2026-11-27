@@ -47,7 +47,7 @@ export default function TaskLayout({
   const taskLabel =
     projectSlug && taskNumber != null
       ? `${projectSlug}-${taskNumber}`
-      : t("tasks:common.selectTask");
+      : t("tasksExtra:common.selectTask");
 
   const handleTaskSwitch = (nextTaskId: string) => {
     navigate({
