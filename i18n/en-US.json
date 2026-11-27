@@ -1417,6 +1417,11 @@
 			"columnsNote": "These columns belong to the original {{term_work_item_one}} board. The states {{term_work_item_other}} move through are managed in States above."
 		},
 		"projectMembers": {
+			"roleGroupBuiltIn": "Built-in",
+			"roleGroupCustom": "Custom roles",
+			"roleDescriptionLead": "Runs the {{term_project_one}}: manages members and settings, assigns and triages {{term_work_item_other}}.",
+			"roleDescriptionMember": "Creates and updates {{term_work_item_other}}, comments internally and picks up work.",
+			"roleDescriptionViewer": "Read-only access to the {{term_project_one}}.",
 			"pageTitle": "{{term_project_one}} Members",
 			"title": "Members",
 			"subtitle": "Manage who is on this {{term_project_one}}'s roster and what role they hold.",
@@ -2391,7 +2396,8 @@
 			"workspaceSettings": "Workspace settings",
 			"instanceUsers": "Instance users",
 			"selectWorkspace": "Select workspace",
-			"switchFailed": "Could not switch workspace. Check your access and try again."
+			"switchFailed": "Could not switch workspace. Check your access and try again.",
+			"pendingInvitations": "Pending invitations: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3134,7 +3140,10 @@
 			"previousWeek": "Previous week",
 			"nextWeek": "Next week",
 			"previousDay": "Previous day",
-			"nextDay": "Next day"
+			"nextDay": "Next day",
+			"stateDone": "Completed",
+			"stateOpen": "Open",
+			"stateCancelled": "Cancelled"
 		},
 		"gantt": {
 			"pageTitle": "{{name}} – Gantt",
@@ -3271,7 +3280,9 @@
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
 			"archived": "Archived",
-			"completion": "{{name}} completion"
+			"completion": "{{name}} completion",
+			"joinShort": "Join",
+			"joinNamed": "Join {{name}}"
 		},
 		"search": {
 			"pageTitle": "Search",

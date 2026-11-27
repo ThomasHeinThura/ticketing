@@ -17,7 +17,6 @@ import { useTranslation } from "react-i18next";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import { isForbiddenError } from "@/components/settings/settings-access";
 import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
-import { usePendingInvitations } from "@/hooks/queries/invitation/use-pending-invitations";
 import { useCatalogueStatus } from "@/hooks/queries/service-management";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -55,7 +54,6 @@ export function NavMain() {
   // The highlight follows the router. `window.location` read during render goes stale, because
   // a navigation does not re-render the sidebar. Selecting only the path skips search changes.
   const path = useLocation({ select: (location) => location.pathname });
-  const { data: invitations = [] } = usePendingInvitations();
   const { user } = useAuth();
   // Pinned views and their counts are not needed to paint the shell (G11), so they are read
   // once the page has painted. The list and each count are keyed by viewer (SV-20, SV-22).
@@ -130,8 +128,6 @@ export function NavMain() {
   });
 
   if (!workspace) return null;
-
-  const pendingCount = invitations.length;
 
   const navItems = [
     {
@@ -216,22 +212,6 @@ export function NavMain() {
           },
         ]
       : []),
-    {
-      title: t("navigation:sidebar.members"),
-      // L-03: the canonical members page is in workspace settings; an old per-workspace URL
-      // naming another workspace still renders the old page, so it keeps the highlight too.
-      url: routes.workspaceMembers.path,
-      isActive:
-        path === routes.workspaceMembers.path ||
-        /^\/dashboard\/workspace\/[^/]+\/members$/u.test(path),
-      badge: null,
-    },
-    {
-      title: t("navigation:sidebar.invitations"),
-      url: "/dashboard/invitations",
-      isActive: path === "/dashboard/invitations",
-      badge: pendingCount > 0 ? pendingCount : null,
-    },
   ];
 
   return (

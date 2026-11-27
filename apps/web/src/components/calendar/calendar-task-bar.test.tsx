@@ -80,26 +80,86 @@ describe("CalendarTaskBar", () => {
   });
 
   it.each([
-    ["to-do", "bg-slate-500/15"],
-    ["in-progress", "bg-blue-500/15"],
-    ["in-review", "bg-amber-500/15"],
-    ["done", "bg-emerald-500/15"],
-    ["custom-status", "bg-primary/12"],
-  ])("uses the %s status color", (status, expectedClass) => {
+    ["completed", "bg-success/15", /Completed$/],
+    ["cancelled", "bg-muted/60", /Cancelled$/],
+    ["open", "bg-info/15", /Open$/],
+    [undefined, "bg-info/15", null],
+  ] as const)(
+    "colours and names stateCategory=%s by category, not state name",
+    (stateCategory, expectedClass, label) => {
+      render(
+        <CalendarTaskBar
+          segment={{
+            ...segment,
+            task: { ...segment.task, status: "custom-status", stateCategory },
+          }}
+          projectSlug="KAN"
+          onOpenTask={vi.fn()}
+        />,
+      );
+
+      const taskBar = screen.getByRole("button");
+      expect(taskBar).toHaveClass(expectedClass);
+      if (label) expect(taskBar.getAttribute("aria-label")).toMatch(label);
+      else expect(taskBar.getAttribute("aria-label")).not.toMatch(/Open$/);
+    },
+  );
+
+  it("keeps the change-calendar frozen colour and adds no state label", () => {
     render(
       <CalendarTaskBar
         segment={{
           ...segment,
-          task: { ...segment.task, status },
+          task: {
+            ...segment.task,
+            status: "frozen",
+            changeKind: "frozen",
+            stateCategory: "open",
+          },
         }}
         projectSlug="KAN"
         onOpenTask={vi.fn()}
       />,
     );
 
+    expect(screen.getByRole("button")).toHaveClass("bg-red-500/15");
+    expect(screen.getByRole("button").getAttribute("aria-label")).not.toMatch(
+      /Open$/,
+    );
+  });
+
+  it.each(["freeze", "frozen", "conflict"])(
+    "ignores a project state named %s without an explicit change kind",
+    (status) => {
+      render(
+        <CalendarTaskBar
+          segment={{
+            ...segment,
+            task: { ...segment.task, status, stateCategory: "completed" },
+          }}
+          projectSlug="KAN"
+          onOpenTask={vi.fn()}
+        />,
+      );
+
+      const taskBar = screen.getByRole("button");
+      expect(taskBar).toHaveClass("bg-success/15");
+      expect(taskBar.getAttribute("aria-label")).toMatch(/Completed$/);
+    },
+  );
+
+  it("insets continuing bars and squares only the continuing side", () => {
+    render(
+      <CalendarTaskBar
+        segment={{ ...segment, continuesBefore: true, continuesAfter: false }}
+        projectSlug="KAN"
+        onOpenTask={vi.fn()}
+      />,
+    );
+
     const taskBar = screen.getByRole("button");
-    expect(taskBar).toHaveAttribute("data-task-status", status);
-    expect(taskBar).toHaveClass(expectedClass);
+    expect(taskBar).toHaveClass("mx-1", "rounded-l-none", "rounded-r-md");
+    expect(taskBar).not.toHaveClass("border-l-0");
   });
 
   it("is a toggle named for the work item while selection mode is on (VW-3)", () => {

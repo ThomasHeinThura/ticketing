@@ -5617,6 +5617,21 @@
 					"type": "object",
 					"additionalProperties": false,
 					"properties": {
+						"roleGroupBuiltIn": {
+							"type": "string"
+						},
+						"roleGroupCustom": {
+							"type": "string"
+						},
+						"roleDescriptionLead": {
+							"type": "string"
+						},
+						"roleDescriptionMember": {
+							"type": "string"
+						},
+						"roleDescriptionViewer": {
+							"type": "string"
+						},
 						"pageTitle": {
 							"type": "string"
 						},
@@ -5864,6 +5879,11 @@
 						}
 					},
 					"required": [
+						"roleGroupBuiltIn",
+						"roleGroupCustom",
+						"roleDescriptionLead",
+						"roleDescriptionMember",
+						"roleDescriptionViewer",
 						"pageTitle",
 						"title",
 						"subtitle",
@@ -9674,6 +9694,27 @@
 						},
 						"switchFailed": {
 							"type": "string"
+						},
+						"pendingInvitations": {
+							"type": "string"
+						},
+						"pendingInvitations_zero": {
+							"type": "string"
+						},
+						"pendingInvitations_one": {
+							"type": "string"
+						},
+						"pendingInvitations_two": {
+							"type": "string"
+						},
+						"pendingInvitations_few": {
+							"type": "string"
+						},
+						"pendingInvitations_many": {
+							"type": "string"
+						},
+						"pendingInvitations_other": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12889,6 +12930,15 @@
 						},
 						"nextDay": {
 							"type": "string"
+						},
+						"stateDone": {
+							"type": "string"
+						},
+						"stateOpen": {
+							"type": "string"
+						},
+						"stateCancelled": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -12907,7 +12957,10 @@
 						"previousWeek",
 						"nextWeek",
 						"previousDay",
-						"nextDay"
+						"nextDay",
+						"stateDone",
+						"stateOpen",
+						"stateCancelled"
 					]
 				},
 				"gantt": {
@@ -13427,6 +13480,12 @@
 						},
 						"completion": {
 							"type": "string"
+						},
+						"joinShort": {
+							"type": "string"
+						},
+						"joinNamed": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -13469,7 +13528,9 @@
 						"showAllKinds",
 						"actions",
 						"archived",
-						"completion"
+						"completion",
+						"joinShort",
+						"joinNamed"
 					]
 				},
 				"search": {

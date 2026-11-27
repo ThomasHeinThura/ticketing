@@ -1978,7 +1978,12 @@
 				"roleExceedsAuthority": "You cannot grant, change or remove a role above your own.",
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
-			}
+			},
+			"roleGroupBuiltIn": "内置",
+			"roleGroupCustom": "自定义角色",
+			"roleDescriptionLead": "负责运营{{term_project_one}}：管理成员和设置，分配并分拣{{term_work_item_other}}。",
+			"roleDescriptionMember": "创建和更新{{term_work_item_other}}，在内部评论并承接工作。",
+			"roleDescriptionViewer": "对{{term_project_one}}拥有只读权限。"
 		},
 		"workflows": {
 			"add": {
@@ -2386,7 +2391,8 @@
 			"workspaceSettings": "工作区设置",
 			"instanceUsers": "实例用户",
 			"selectWorkspace": "选择工作区",
-			"switchFailed": "Could not switch workspace. Check your access and try again."
+			"switchFailed": "Could not switch workspace. Check your access and try again.",
+			"pendingInvitations": "待处理的邀请：{{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3183,7 +3189,10 @@
 				"month": "Month",
 				"week": "Week"
 			},
-			"viewGroup": "Calendar range"
+			"viewGroup": "Calendar range",
+			"stateDone": "已完成",
+			"stateOpen": "未完成",
+			"stateCancelled": "已取消"
 		}
 	},
 	"invitations": {
@@ -3261,7 +3270,9 @@
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
 			"archived": "Archived",
-			"completion": "{{name}} completion"
+			"completion": "{{name}} completion",
+			"joinNamed": "加入 {{name}}",
+			"joinShort": "加入"
 		},
 		"search": {
 			"pageTitle": "搜索",

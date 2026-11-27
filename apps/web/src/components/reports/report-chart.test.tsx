@@ -5,6 +5,7 @@ import {
   chartLayout,
   FALLBACK_WIDTH,
   formatChartValue,
+  integerTicks,
   legendHeight,
   lineSegments,
   MIN_PLOT_HEIGHT,
@@ -26,6 +27,22 @@ describe("chart maths", () => {
     expect(niceMax(23)).toBe(25);
     expect(niceMax(0.3)).toBe(0.5);
     expect(niceMax(Number.NaN)).toBe(1);
+  });
+
+  it("builds whole-number ticks for counts, never 1.3 or 3.8", () => {
+    expect(integerTicks(5)).toEqual([0, 2, 4, 6]);
+    expect(integerTicks(3)).toEqual([0, 1, 2, 3]);
+    expect(integerTicks(7)).toEqual([0, 2, 4, 6, 8]);
+    expect(integerTicks(1)).toEqual([0, 1]);
+    expect(integerTicks(23)).toEqual([0, 10, 20, 30]);
+    expect(integerTicks(0)).toEqual([0, 1]);
+    expect(integerTicks(Number.NaN)).toEqual([0, 1]);
+    for (const peak of [1, 2, 3, 5, 9, 13, 99, 101, 1234]) {
+      const ticks = integerTicks(peak);
+      expect(ticks.every(Number.isInteger)).toBe(true);
+      expect(ticks.at(-1)).toBeGreaterThanOrEqual(peak);
+      expect(ticks.length).toBeLessThanOrEqual(5);
+    }
   });
 
   it("breaks a line at a gap and never draws a gap as zero (RP-1)", () => {
@@ -304,6 +321,63 @@ describe("ReportChart", () => {
     expect(container.querySelectorAll("rect")).toHaveLength(5);
     expect(container.querySelector("title")?.textContent).toBe("Met, Mon: 3");
     expect(screen.getByText("Missed")).toBeTruthy();
+  });
+
+  it("labels every bar with its value and uses whole-number count ticks", () => {
+    const { container } = render(<ReportChart chart={bar} label="SLA" />);
+    const labels = [...container.querySelectorAll('[data-testid="bar-value"]')];
+    expect(labels.map((node) => node.textContent)).toEqual([
+      "3",
+      "5",
+      "1",
+      "0",
+      "2",
+    ]);
+    expect(labels.every((node) => node.getAttribute("aria-hidden"))).toBe(true);
+    const axis = [...container.querySelectorAll("line + text")].map(
+      (node) => node.textContent,
+    );
+    expect(axis).toEqual(["0", "2", "4", "6"]);
+  });
+
+  it("skips a label that would not fit over its bar", () => {
+    const { container } = render(
+      <ReportChart
+        label="Wide"
+        chart={{
+          type: "bar",
+          unit: "count",
+          categories: Array.from({ length: 30 }, (_, i) => `c${i}`),
+          series: [
+            {
+              key: "a",
+              label: "A",
+              values: Array.from({ length: 30 }, () => 1234),
+            },
+          ],
+        }}
+      />,
+    );
+    expect(
+      container.querySelectorAll('[data-testid="bar-value"]'),
+    ).toHaveLength(0);
+  });
+
+  it("keeps a chart of all-null counts drawable", () => {
+    const { container } = render(
+      <ReportChart
+        label="Empty"
+        chart={{
+          type: "bar",
+          unit: "count",
+          categories: ["a"],
+          series: [{ key: "a", label: "A", values: [null] }],
+        }}
+      />,
+    );
+    expect(
+      container.querySelectorAll('[data-testid="bar-value"]'),
+    ).toHaveLength(0);
   });
 
   it("draws a line with a gap as two lines", () => {

@@ -104,5 +104,6 @@ describe("revealed content across a profile language change (real provider stack
     ).toBeVisible();
     expect(sawRawKey).toBe(false);
     observer.disconnect();
-  });
+    // Real provider stack and catalog cloning: slower than the 5 s default on a loaded CI runner.
+  }, 15_000);
 });

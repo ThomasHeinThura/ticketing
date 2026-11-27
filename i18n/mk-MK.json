@@ -1981,7 +1981,12 @@
 				"roleExceedsAuthority": "You cannot grant, change or remove a role above your own.",
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
-			}
+			},
+			"roleGroupBuiltIn": "Вградени",
+			"roleGroupCustom": "Прилагодени улоги",
+			"roleDescriptionLead": "Го води {{term_project_one}}: управува со членови и поставки, доделува и распоредува {{term_work_item_other}}.",
+			"roleDescriptionMember": "Создава и ажурира {{term_work_item_other}}, коментира внатрешно и презема работа.",
+			"roleDescriptionViewer": "Пристап само за читање до {{term_project_one}}."
 		},
 		"workflows": {
 			"add": {
@@ -2391,7 +2396,8 @@
 			"workspaceSettings": "Поставки на работниот простор",
 			"instanceUsers": "Корисници на инстанцата",
 			"selectWorkspace": "Избери работен простор",
-			"switchFailed": "Could not switch workspace. Check your access and try again."
+			"switchFailed": "Could not switch workspace. Check your access and try again.",
+			"pendingInvitations": "Покани на чекање: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3193,7 +3199,10 @@
 				"month": "Month",
 				"week": "Week"
 			},
-			"viewGroup": "Calendar range"
+			"viewGroup": "Calendar range",
+			"stateDone": "Завршено",
+			"stateOpen": "Отворено",
+			"stateCancelled": "Откажано"
 		}
 	},
 	"invitations": {
@@ -3271,7 +3280,9 @@
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
 			"archived": "Archived",
-			"completion": "{{name}} completion"
+			"completion": "{{name}} completion",
+			"joinNamed": "Придружи се на {{name}}",
+			"joinShort": "Придружи се"
 		},
 		"search": {
 			"pageTitle": "Пребарување",

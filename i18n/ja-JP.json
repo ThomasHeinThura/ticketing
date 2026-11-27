@@ -1978,7 +1978,12 @@
 				"roleExceedsAuthority": "You cannot grant, change or remove a role above your own.",
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
-			}
+			},
+			"roleGroupBuiltIn": "組み込み",
+			"roleGroupCustom": "カスタムロール",
+			"roleDescriptionLead": "{{term_project_one}}を運営し、メンバーと設定を管理し、{{term_work_item_other}}の割り当てと仕分けを行います。",
+			"roleDescriptionMember": "{{term_work_item_other}}を作成・更新し、社内向けにコメントし、作業を引き受けます。",
+			"roleDescriptionViewer": "{{term_project_one}}への閲覧専用アクセス。"
 		},
 		"workflows": {
 			"add": {
@@ -2386,7 +2391,8 @@
 			"workspaceSettings": "ワークスペース設定",
 			"instanceUsers": "インスタンスユーザー",
 			"selectWorkspace": "ワークスペースを選択",
-			"switchFailed": "Could not switch workspace. Check your access and try again."
+			"switchFailed": "Could not switch workspace. Check your access and try again.",
+			"pendingInvitations": "保留中の招待: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3124,7 +3130,10 @@
 				"month": "Month",
 				"week": "Week"
 			},
-			"viewGroup": "Calendar range"
+			"viewGroup": "Calendar range",
+			"stateDone": "完了",
+			"stateOpen": "未完了",
+			"stateCancelled": "キャンセル済み"
 		},
 		"gantt": {
 			"pageTitle": "{{name}} – ガントチャート",
@@ -3261,7 +3270,9 @@
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
 			"archived": "Archived",
-			"completion": "{{name}} completion"
+			"completion": "{{name}} completion",
+			"joinNamed": "{{name}}に参加",
+			"joinShort": "参加"
 		},
 		"search": {
 			"pageTitle": "検索",
