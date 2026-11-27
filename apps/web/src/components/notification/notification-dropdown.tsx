@@ -18,7 +18,9 @@ import useGetNotifications from "@/hooks/queries/notification/use-get-notificati
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import NotificationClearDialog from "./notification-clear-dialog";
 import NotificationMenu from "./notification-menu";
-import NotificationMenuSkeleton from "./notification-menu-skeleton";
+import NotificationMenuSkeleton, {
+  NotificationMenuError,
+} from "./notification-menu-skeleton";
 
 export type NotificationDropdownRef = {
   toggle: () => void;
@@ -103,6 +105,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
               fallback={(visible) => (
                 <NotificationMenuSkeleton visible={visible} />
               )}
+              renderError={(retry) => <NotificationMenuError onRetry={retry} />}
             >
               <NotificationMenu
                 onClearAll={() => {

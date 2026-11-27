@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -100,7 +101,7 @@ describe("NotificationDropdown before the deferred strings land", () => {
     expect(screen.getByRole("menu")).not.toHaveAttribute("aria-busy");
   });
 
-  it("offers a retry when the strings fail, and reveals the menu once they load", async () => {
+  it("keeps the failure and its retry inside the popup, closes them with it, and retries by keyboard", async () => {
     const failed = deferred();
     const retried = deferred();
     mocks.load
@@ -111,15 +112,40 @@ describe("NotificationDropdown before the deferred strings land", () => {
     await act(async () => ref.current?.toggle());
     await act(async () => failed.reject(new Error("offline")));
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "common:actions.retry" }),
+    const popup = await screen.findByTestId("notification-menu-error");
+    expect(popup).toHaveAttribute("role", "menu");
+    within(popup).getByRole("menuitem", {
+      name: "common:actions.retry",
+    });
+    expect(within(popup).getByRole("group")).toHaveAccessibleName(
+      "common:error.messages.unknown",
     );
-    await act(async () => retried.resolve());
+    // No error panel outside the popup.
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "common:actions.retry" }),
+    ).toBeNull();
+
+    await act(async () => ref.current?.toggle());
     await waitFor(() =>
-      expect(screen.getByRole("group")).toHaveAccessibleName(
-        "notifications:title",
-      ),
+      expect(screen.queryByTestId("notification-menu-error")).toBeNull(),
     );
-    expect(notificationReads().length).toBeGreaterThan(0);
+    expect(screen.queryByText("common:actions.retry")).toBeNull();
+
+    await act(async () => ref.current?.toggle());
+    const reopened = await screen.findByRole("menuitem", {
+      name: "common:actions.retry",
+    });
+    reopened.focus();
+    fireEvent.keyDown(reopened, { key: "Enter" });
+    await act(async () => retried.resolve());
+    await waitFor(
+      () =>
+        expect(screen.getByRole("group")).toHaveAccessibleName(
+          "notifications:title",
+        ),
+      { timeout: 2000 },
+    );
+    expect(mocks.load).toHaveBeenCalledTimes(2);
   });
 });

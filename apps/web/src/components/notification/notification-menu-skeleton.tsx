@@ -1,4 +1,11 @@
-import { DropdownMenuContent, LoadingStatus, Skeleton } from "@taskdesk/ui";
+import {
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  LoadingStatus,
+  Skeleton,
+} from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 
 const ROWS = ["w-3/4", "w-2/3", "w-1/2"] as const;
@@ -37,5 +44,33 @@ export default function NotificationMenuSkeleton({
         </DropdownMenuContent>
       ) : null}
     </LoadingStatus>
+  );
+}
+
+/**
+ * The notification menu when its strings failed to load: the message labels a group whose one
+ * item retries, so the error stays inside the popup, closes with it and is reachable by keyboard.
+ */
+export function NotificationMenuError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <DropdownMenuContent
+      align="end"
+      className="w-88 p-0"
+      data-testid="notification-menu-error"
+    >
+      <DropdownMenuGroup className="p-1">
+        <DropdownMenuLabel className="px-2.5 py-2 font-normal text-muted-foreground text-sm">
+          {t("common:error.messages.unknown")}
+        </DropdownMenuLabel>
+        <DropdownMenuItem
+          closeOnClick={false}
+          onClick={onRetry}
+          className="cursor-pointer justify-center rounded-md px-2 py-1.5 text-sm"
+        >
+          {t("common:actions.retry")}
+        </DropdownMenuItem>
+      </DropdownMenuGroup>
+    </DropdownMenuContent>
   );
 }
