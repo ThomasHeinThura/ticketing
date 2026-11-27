@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { canWarmOnThisConnection } from "./load-work-item-side-pane";
 
 /**
  * Starts reading a work item the moment the user shows intent to open it (mouse hover or
@@ -11,6 +12,8 @@ export function warmWorkItemDetailOnIntent(
   queryClient: QueryClient,
   key: string,
 ) {
+  // Hover is a guess, so it costs nothing on Save-Data or a slow link; the open still reads.
+  if (!canWarmOnThisConnection()) return;
   void import("@/hooks/queries/work-item/use-get-work-item")
     .then(({ prefetchWorkItemDetail }) =>
       prefetchWorkItemDetail(queryClient, key),

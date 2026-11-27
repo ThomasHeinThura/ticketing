@@ -168,4 +168,36 @@ describe("side pane access changes", () => {
       expect(screen.queryByText("Printer on fire")).not.toBeInTheDocument(),
     );
   });
+
+  it("keeps the list row header up for as long as the loading placeholder is shown, even after the item arrives", async () => {
+    const { view } = setup();
+    let finish: (value: unknown) => void = () => {};
+    mocks.getWorkItem.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    render(view(row));
+    // Past the 150 ms delay, the placeholder is visible.
+    await waitFor(
+      () =>
+        expect(screen.getByTestId("work-item-detail-loading")).toBeVisible(),
+      { timeout: 1000 },
+    );
+    finish({ ...secret, workspaceId: "w", unavailableFields: [] });
+
+    const gaps: string[] = [];
+    const deadline = Date.now() + 1500;
+    while (Date.now() < deadline && !screen.queryByText("Secret title")) {
+      if (
+        screen.queryByTestId("work-item-detail-loading") &&
+        !screen.queryByText("Printer on fire")
+      )
+        gaps.push("loading skeleton without the row header");
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    expect(await screen.findByText("Secret title")).toBeInTheDocument();
+    expect(gaps).toEqual([]);
+    expect(screen.queryByText("Printer on fire")).not.toBeInTheDocument();
+  });
 });

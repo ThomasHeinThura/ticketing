@@ -95,7 +95,13 @@ export default function WorkItemSidePaneBody({
   const placeholderVisible = useDelayedPending(
     !item && !isNotFound && !isError,
   );
-  const showListRow = listRow !== undefined && !item && !isNotFound && !isError;
+  // Held while the placeholder is up, even once the item arrived, so the header never turns into
+  // skeleton blocks; a refusal or a missing item removes it at once.
+  const showListRow =
+    listRow !== undefined &&
+    !isNotFound &&
+    !isError &&
+    (!item || placeholderVisible);
 
   return (
     <div

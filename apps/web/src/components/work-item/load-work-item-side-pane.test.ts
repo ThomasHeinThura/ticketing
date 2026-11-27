@@ -67,6 +67,14 @@ describe("warmWorkItemSidePane", () => {
     expect(mocks.strings).not.toHaveBeenCalled();
   });
 
+  it("starts no further download when the user leaves while the body loads", async () => {
+    const left = new AbortController();
+    mocks.body.mockImplementationOnce(() => left.abort());
+    await warmWorkItemSidePane(left.signal);
+    expect(mocks.detail).not.toHaveBeenCalled();
+    expect(mocks.strings).not.toHaveBeenCalled();
+  });
+
   it("swallows a failed download: the pane loads normally when opened", async () => {
     mocks.detail.mockRejectedValueOnce(new Error("chunk failed"));
     await expect(warmWorkItemSidePane()).resolves.toBeUndefined();

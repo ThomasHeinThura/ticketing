@@ -6,6 +6,7 @@ import {
   isUnauthorizedError,
 } from "@/lib/http-error";
 import { followAuditInvalidation, historyHooks } from "./audit-invalidation";
+import { followWorkItemDetailAuthority } from "./detail-authority";
 import { configureNotifyScheduler } from "./notify-scheduler";
 import { SETTINGS_HISTORY_KEY } from "./settings-history-key";
 
@@ -216,6 +217,7 @@ export function createQueryClient() {
     },
   });
   followAuditInvalidation(client);
+  followWorkItemDetailAuthority(client);
   return client;
 }
 

@@ -85,9 +85,13 @@ export function findBoundaryElements(source: string): BoundaryElement[] {
   return elements;
 }
 
+/** Escapes every RegExp metacharacter, so source text can be matched literally. */
+export const escapeRegExp = (text: string) =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /** Local names the module binds to the component imported from `specifier`. */
 function boundNames(source: string, specifier: string): string[] {
-  const quoted = specifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const quoted = escapeRegExp(specifier);
   const names: string[] = [];
   const statics = new RegExp(
     `\\bimport\\s+(?!type\\b)([^;]*?)\\s+from\\s*["']${quoted}["']`,
@@ -129,7 +133,7 @@ function boundNames(source: string, specifier: string): string[] {
     ...source.matchAll(declared),
   ]) {
     const lazyOf = new RegExp(
-      `([A-Za-z_$][\\w$]*)\\s*=\\s*lazy\\(\\s*${loader.replace(/\$/g, "\\$")}\\s*\\)`,
+      `([A-Za-z_$][\\w$]*)\\s*=\\s*lazy\\(\\s*${escapeRegExp(loader)}\\s*\\)`,
       "g",
     );
     for (const match of source.matchAll(lazyOf)) names.push(match[1]);
@@ -153,7 +157,7 @@ export function isContainedInBoundary(
   let uses = 0;
   for (const name of names) {
     for (const match of source.matchAll(
-      new RegExp(`<${name}(?![\\w$.])`, "g"),
+      new RegExp(`<${escapeRegExp(name)}(?![\\w$.])`, "g"),
     )) {
       uses += 1;
       const at = match.index ?? 0;

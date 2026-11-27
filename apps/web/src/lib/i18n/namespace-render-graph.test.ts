@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  escapeRegExp,
   findBoundaryElements,
   findUngatedDeferredReads,
   importSpecifiers,
@@ -185,6 +186,27 @@ describe("work route render graph guard", () => {
     expect(isContainedInBoundary(declared("<Surface />"), "./surface")).toBe(
       false,
     );
+  });
+
+  it("matches source text literally: every RegExp metacharacter is escaped", () => {
+    const text = "load$1.x(a|b)[c]{2}+*?^\\";
+    expect(new RegExp(`^${escapeRegExp(text)}$`).test(text)).toBe(true);
+    // `.` is not "any character" and `$` is not an anchor once escaped.
+    expect(new RegExp(escapeRegExp("load$1.x")).test("load$1Zx")).toBe(false);
+    const shared = (loader: string, body: string) =>
+      `const ${loader} = () => import("./surface");\nconst Surface = lazy(${loader});\n${body}`;
+    const inside =
+      "<NamespaceBoundary preload={load$1}><Surface /></NamespaceBoundary>";
+    expect(isContainedInBoundary(shared("load$1", inside), "./surface")).toBe(
+      true,
+    );
+    // A loader whose name is only a regex-lookalike of another one is not the same binding.
+    expect(
+      isContainedInBoundary(
+        `const load$1 = () => import("./surface");\nconst Surface = lazy(loadX1);\n${inside}`,
+        "./surface",
+      ),
+    ).toBe(false);
   });
 
   it("follows dynamic imports and stops only at the boundary component", () => {

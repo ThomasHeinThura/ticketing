@@ -13,6 +13,9 @@ const requireFromWeb = createRequire(
   path.join(repoRoot, "apps/web/package.json"),
 );
 
+/** Escapes every RegExp metacharacter, so source text can be matched literally. */
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 function parseClassToken(className) {
   const segments = [];
   let bracketDepth = 0;
@@ -1118,7 +1121,7 @@ export function observeInheritedForegroundSurfaces(
       "utf8",
     );
     const wrapperStart = wrapperSource.search(
-      new RegExp(`function ${normalizedTarget.symbol}\\b`, "u"),
+      new RegExp(`function ${escapeRegExp(normalizedTarget.symbol)}\\b`, "u"),
     );
     if (wrapperStart < 0) return false;
     const wrapperTail = wrapperSource.slice(wrapperStart);
@@ -1130,7 +1133,7 @@ export function observeInheritedForegroundSurfaces(
         'import { Menu as MenuPrimitive } from "@base-ui/react/menu"',
       ) &&
       new RegExp(
-        `<MenuPrimitive\\.${primitive}\\b[\\s\\S]*?\\{\\.\\.\\.props\\}`,
+        `<MenuPrimitive\\.${escapeRegExp(primitive)}\\b[\\s\\S]*?\\{\\.\\.\\.props\\}`,
         "u",
       ).test(wrapperBody)
     );
@@ -1490,7 +1493,7 @@ export function observeInheritedForegroundSurfaces(
           ? undefined
           : source.match(
               new RegExp(
-                `(?:function\\s+${lazy[2]}\\s*\\(|(?:const|let)\\s+${lazy[2]}\\s*=)[^{]*\\{[^}]*?import\\(\\s*["']([^"']+)["']\\s*\\)`,
+                `(?:function\\s+${escapeRegExp(lazy[2])}\\s*\\(|(?:const|let)\\s+${escapeRegExp(lazy[2])}\\s*=)[^{]*\\{[^}]*?import\\(\\s*["']([^"']+)["']\\s*\\)`,
                 "u",
               ),
             )?.[1];
@@ -1571,7 +1574,7 @@ export function observeInheritedForegroundSurfaces(
       return undefined;
     }
     const start = source.search(
-      new RegExp(`(?:function|const)\\s+${defaultName}\\b`, "u"),
+      new RegExp(`(?:function|const)\\s+${escapeRegExp(defaultName)}\\b`, "u"),
     );
     if (start < 0) {
       wrapperSurfaceCache.set(key, undefined);
@@ -3240,7 +3243,7 @@ export function observeInheritedForegroundSurfaces(
         name &&
         source.match(
           new RegExp(
-            `\\b${name}\\.${member}\\s*=\\s*([A-Za-z_$][\\w$]*)\\s*;`,
+            `\\b${escapeRegExp(name)}\\.${escapeRegExp(member)}\\s*=\\s*([A-Za-z_$][\\w$]*)\\s*;`,
             "u",
           ),
         )?.[1];
@@ -3783,7 +3786,10 @@ export function observeInheritedForegroundSurfaces(
             /<[A-Za-z_$][\w.$]*\b[^>]*className=\{[^}]*\bclassName\b[^}]*\}/u.test(
               targetSource.slice(
                 targetSource.search(
-                  new RegExp(`(?:function|const)\\s+${targetName}\\b`, "u"),
+                  new RegExp(
+                    `(?:function|const)\\s+${escapeRegExp(targetName)}\\b`,
+                    "u",
+                  ),
                 ),
               ),
             );
@@ -4840,7 +4846,9 @@ export function sidebarSurfaceContract(occurrence, source, hasCallers = false) {
   if (occurrence.usage !== "packages/ui/src/components/sidebar.tsx")
     return undefined;
   const section = (name) => {
-    const start = source.search(new RegExp(`function ${name}\\b`, "u"));
+    const start = source.search(
+      new RegExp(`function ${escapeRegExp(name)}\\b`, "u"),
+    );
     if (start < 0) return "";
     const next = source.slice(start + 1).search(/\nfunction [A-Z]/u);
     return source.slice(start, next < 0 ? undefined : start + next + 1);

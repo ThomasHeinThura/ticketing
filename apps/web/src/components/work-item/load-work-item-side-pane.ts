@@ -48,6 +48,7 @@ export async function warmWorkItemSidePane(signal?: AbortSignal) {
     const body = await loadWorkItemSidePane().then((m) =>
       m.loadWorkItemSidePaneBody(),
     );
+    if (signal?.aborted) return;
     await body.warmWorkItemDetail();
     if (signal?.aborted) return;
     // Imported here, not at the top: the route chunk already has the i18n module, and a static
