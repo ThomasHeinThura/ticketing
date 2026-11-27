@@ -18,6 +18,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import usePendingActionDialogStore from "@/store/pending-action-dialog";
 
 const loader = vi.hoisted(() => vi.fn());
+const uploadMock = vi.hoisted(() => vi.fn());
+vi.mock("@/fetchers/attachment/work-item-attachments", () => ({
+  resumeWorkItemAttachment: uploadMock,
+}));
 vi.mock("@/lib/i18n", () => ({
   whenAllNamespacesLoaded: loader,
   areAllNamespacesLoaded: () => false,
@@ -143,7 +147,7 @@ async function eagerOnly() {
   instance = createInstance();
   await instance.use(initReactI18next).init({
     lng: "en-US",
-    fallbackLng: false,
+    fallbackLng: "en-US",
     resources: {
       "en-US": { common: en.common, workItems: en.workItems, tasks: en.tasks },
       "de-DE": { common: en.common, workItems: en.workItems, tasks: en.tasks },
@@ -221,17 +225,57 @@ describe.each(SURFACES)("$name", (surface) => {
     expect(await screen.findByText(text)).toBeVisible();
   });
 
-  it("holds the surface again when the language changes after it has loaded", async () => {
+  it("keeps the revealed surface mounted on a language change, falling back without a raw key", async () => {
     await show();
     await release();
     expect(await screen.findByText(text)).toBeVisible();
     await act(async () => {
       await instance.changeLanguage("de-DE");
     });
-    for (const element of screen.queryAllByText(text))
-      expect(element).not.toBeVisible();
+    // The new catalog is still missing: the loaded fallback language shows, never a raw key.
+    expect(screen.getByText(text)).toBeVisible();
     noRawKey();
-    await release("de-DE");
-    expect(await screen.findByText(text)).toBeVisible();
+    await act(async () => {
+      instance.addResourceBundle("de-DE", "tasksExtra", en.tasksExtra);
+      instance.addResourceBundle("de-DE", "workItemsExtra", en.workItemsExtra);
+    });
+    expect(screen.getByText(text)).toBeVisible();
+  });
+});
+
+describe("create form attachments across a language change", () => {
+  it("keeps a staged file and uploads it after the language changes", async () => {
+    const { default: NamespaceBoundary } = await import("./namespace-boundary");
+    const { useCreateWorkItemAttachments } = await import(
+      "@/components/work-item/use-create-work-item-attachments"
+    );
+    let api: ReturnType<typeof useCreateWorkItemAttachments> | undefined;
+    function Form() {
+      api = useCreateWorkItemAttachments("w:p");
+      return <p>{api.rows.length} staged</p>;
+    }
+    render(
+      <NamespaceBoundary>
+        <Form />
+      </NamespaceBoundary>,
+      { wrapper: Wrapper },
+    );
+    await release();
+    const file = new File(["a"], "a.txt");
+    await act(async () => api?.stage([file]));
+    expect(screen.getByText("1 staged")).toBeVisible();
+    await act(async () => {
+      await instance.changeLanguage("de-DE");
+    });
+    expect(screen.getByText("1 staged")).toBeVisible();
+    uploadMock.mockResolvedValue({ id: "a-id" });
+    let done: boolean | undefined;
+    await act(async () => {
+      done = await api?.upload("PROJ-1");
+    });
+    expect(uploadMock).toHaveBeenCalledTimes(1);
+    expect(uploadMock.mock.calls[0]?.[1]).toBe(file);
+    expect(done).toBe(true);
+    expect(api?.rows.map((row) => row.state)).toEqual(["ready"]);
   });
 });

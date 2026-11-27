@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  findBoundaryElements,
   findUngatedDeferredReads,
   importSpecifiers,
+  isContainedInBoundary,
 } from "../../../vite/namespace-render-graph";
 import {
   SPLIT_OUT_NAMESPACES,
@@ -38,6 +40,17 @@ function scan(overrides: Record<string, (source: string) => string> = {}) {
 
 const inject = (source: string) =>
   `${source}\nexport const injected = () => t("tasksExtra:injected.key");\n`;
+/** The first boundary loses its children: they move outside it and an empty boundary stays beside. */
+const moveOutsideBoundary = (source: string) => {
+  const [boundary] = findBoundaryElements(source);
+  if (!boundary) throw new Error("no boundary to move out of");
+  return (
+    source.slice(0, boundary.openStart) +
+    source.slice(boundary.openEnd, boundary.closeStart) +
+    "<NamespaceBoundary></NamespaceBoundary>" +
+    source.slice(boundary.closeEnd)
+  );
+};
 const stripBoundary = (source: string) =>
   source.replaceAll(/<(Work(?:Item)?)?NamespaceBoundary\b/g, "<Fragment");
 
@@ -62,6 +75,11 @@ const SURFACES = [
     name: "create work item form",
     importer: "components/work-item/create-work-item-dialog.tsx",
     surface: "components/work-item/create-work-item-dialog-form.tsx",
+  },
+  {
+    name: "legacy task sheet",
+    importer: "components/task/task-details-sheet.tsx",
+    surface: "components/task/task-details-sheet-body.tsx",
   },
 ] as const;
 
@@ -89,6 +107,48 @@ describe("work route render graph guard", () => {
       expect(injected).toContain(surface);
     },
   );
+
+  it.each(SURFACES)(
+    "$name: fails when the surface is moved outside its boundary and an empty one sits beside it",
+    ({ importer, surface }) => {
+      const violations = scan({ [importer]: moveOutsideBoundary });
+      expect(violations.length).toBeGreaterThan(0);
+      expect(
+        scan({ [importer]: moveOutsideBoundary, [surface]: inject }),
+      ).toContain(surface);
+    },
+  );
+
+  it("only counts a boundary that contains the component, not a fallback or a sibling", () => {
+    const gate = (body: string) => `import Surface from "./surface";\n${body}`;
+    expect(
+      isContainedInBoundary(
+        gate("<NamespaceBoundary><Surface /></NamespaceBoundary>"),
+        "./surface",
+      ),
+    ).toBe(true);
+    expect(
+      isContainedInBoundary(
+        gate("<NamespaceBoundary fallback={<Surface />}>x</NamespaceBoundary>"),
+        "./surface",
+      ),
+    ).toBe(false);
+    expect(
+      isContainedInBoundary(
+        gate("<Surface /><NamespaceBoundary></NamespaceBoundary>"),
+        "./surface",
+      ),
+    ).toBe(false);
+    expect(
+      isContainedInBoundary(
+        gate("<NamespaceBoundary />\n<Surface />"),
+        "./surface",
+      ),
+    ).toBe(false);
+    expect(isContainedInBoundary("export const a = 1;", "./surface")).toBe(
+      false,
+    );
+  });
 
   it("follows dynamic imports and stops only at the boundary component", () => {
     // The form and its label picker are only reached through `lazy(() => import(...))`.
