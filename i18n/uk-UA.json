@@ -2862,6 +2862,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "Додати {{term_work_item_one}}"
+		},
+		"actions": {
+			"archive": "Архівувати",
+			"markAsPlanned": "Позначити як заплановане",
+			"delete": "Видалити..."
 		}
 	},
 	"tasksExtra": {
@@ -3160,9 +3168,6 @@
 		"archive": {
 			"success": "Архівовано {{count}} завдань"
 		},
-		"kanban": {
-			"addTask": "Додати {{term_work_item_one}}"
-		},
 		"labels": {
 			"label": "Мітки",
 			"empty": "Немає доступних міток"
@@ -3175,11 +3180,6 @@
 		"contextMenu": {
 			"copyLink": "Копіювати посилання",
 			"copyLinkSuccess": "Посилання на {{term_work_item_one}} скопійовано!"
-		},
-		"actions": {
-			"archive": "Архівувати",
-			"markAsPlanned": "Позначити як заплановане",
-			"delete": "Видалити..."
 		},
 		"editor": {
 			"table": {
@@ -3899,6 +3899,11 @@
 			"minute": "Хвилина",
 			"invalidLocalTime": "Цей час пропускається під час переведення годинника. Виберіть інший час.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3993,11 +3998,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

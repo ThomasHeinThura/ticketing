@@ -3113,15 +3113,18 @@
 			},
 			"label": "Group",
 			"none": "None"
-		}
-	},
-	"tasksExtra": {
-		"title": "{{term_work_item_other}}",
+		},
+		"kanban": {
+			"addTask": "Dodaj {{term_work_item_one}}"
+		},
 		"actions": {
 			"archive": "Archiwizuj",
 			"delete": "Usuń...",
 			"markAsPlanned": "Oznacz jako zaplanowane"
-		},
+		}
+	},
+	"tasksExtra": {
+		"title": "{{term_work_item_other}}",
 		"archive": {
 			"success": "Zarchiwizowano {{term_work_item_other}}: {{count}}"
 		},
@@ -3358,9 +3361,6 @@
 			"noModule": "No {{term_module_one}}",
 			"epicUnavailable": "Unavailable {{term_epic_one}}",
 			"noEpic": "No {{term_epic_one}}"
-		},
-		"kanban": {
-			"addTask": "Dodaj {{term_work_item_one}}"
 		},
 		"labels": {
 			"empty": "Brak dostępnych etykiet",
@@ -3899,6 +3899,11 @@
 			"minute": "Minuta",
 			"invalidLocalTime": "Ta godzina jest pomijana przy zmianie czasu. Wybierz inną godzinę.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3993,11 +3998,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

@@ -81,7 +81,7 @@ export default function WorkItemSidePaneBody({
               <Link
                 to={routes.workItemDetail.path}
                 params={{ key: itemKey }}
-                aria-label={t("workItemsExtra:sidePane.openFullPage")}
+                aria-label={t("workItems:sidePane.openFullPage")}
               />
             }
           >
@@ -92,7 +92,7 @@ export default function WorkItemSidePaneBody({
             variant="ghost"
             onClick={onClose}
             className="text-foreground"
-            aria-label={t("workItemsExtra:sidePane.close", {
+            aria-label={t("workItems:sidePane.close", {
               defaultValue: "Close side pane",
             })}
           >

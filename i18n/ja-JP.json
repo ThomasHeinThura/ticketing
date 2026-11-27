@@ -2832,6 +2832,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "{{term_work_item_one}}を追加"
+		},
+		"actions": {
+			"archive": "アーカイブ",
+			"markAsPlanned": "計画中に設定",
+			"delete": "削除..."
 		}
 	},
 	"tasksExtra": {
@@ -3153,9 +3161,6 @@
 		"archive": {
 			"success": "{{count}} 件の{{term_work_item_other}}をアーカイブしました"
 		},
-		"kanban": {
-			"addTask": "{{term_work_item_one}}を追加"
-		},
 		"labels": {
 			"label": "ラベル",
 			"empty": "利用可能なラベルがありません"
@@ -3168,11 +3173,6 @@
 		"contextMenu": {
 			"copyLink": "リンクをコピー",
 			"copyLinkSuccess": "{{term_work_item_one}}のリンクをコピーしました！"
-		},
-		"actions": {
-			"archive": "アーカイブ",
-			"markAsPlanned": "計画中に設定",
-			"delete": "削除..."
 		},
 		"editor": {
 			"table": {
@@ -3863,6 +3863,11 @@
 			"minute": "分",
 			"invalidLocalTime": "この時刻は時計の切り替えで存在しません。別の時刻を選択してください。",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3951,11 +3956,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

@@ -1,9 +1,13 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { splitI18nNamespaces } from "../../../vite/i18n-namespace-groups";
+import {
+  findDeferredNamespaceUsers,
+  splitI18nNamespaces,
+} from "../../../vite/i18n-namespace-groups";
 import {
   WORK_LIST_PATH_PATTERN,
+  WORK_ROUTE_BOUNDARY_FREE_MODULES,
   WORK_ROUTE_I18N_NAMESPACES,
 } from "./work-route-namespaces";
 
@@ -93,5 +97,29 @@ describe("work route namespace groups", () => {
       false,
     );
     expect(WORK_LIST_PATH_PATTERN.test("/dashboard")).toBe(false);
+  });
+
+  it("guards the board and side-pane shell, which render before any namespace boundary", () => {
+    const srcDir = path.resolve(__dirname, "../..");
+    const known = Object.keys(
+      JSON.parse(readFileSync(path.join(i18nDir, "en-US.json"), "utf8")),
+    );
+    const modules = new Map(
+      WORK_ROUTE_BOUNDARY_FREE_MODULES.map((suffix) => {
+        const file = path.join(srcDir, suffix);
+        return [file, readFileSync(file, "utf8")] as const;
+      }),
+    );
+    expect(modules.size).toBe(2);
+    expect(findDeferredNamespaceUsers(modules, known)).toEqual([]);
+    const regression = new Map(
+      [...modules].map(([file, source]) => [
+        file,
+        `${source}\nt("tasksExtra:kanban.addTask");`,
+      ]),
+    );
+    expect(
+      findDeferredNamespaceUsers(regression, known).map((v) => v.namespace),
+    ).toEqual(["tasksExtra", "tasksExtra"]);
   });
 });

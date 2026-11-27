@@ -2832,6 +2832,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "{{term_work_item_one}} 추가"
+		},
+		"actions": {
+			"archive": "보관",
+			"markAsPlanned": "계획됨으로 표시",
+			"delete": "삭제..."
 		}
 	},
 	"tasksExtra": {
@@ -3153,9 +3161,6 @@
 		"archive": {
 			"success": "{{term_work_item_other}} {{count}}개를 보관했습니다"
 		},
-		"kanban": {
-			"addTask": "{{term_work_item_one}} 추가"
-		},
 		"labels": {
 			"label": "라벨",
 			"empty": "사용 가능한 라벨이 없습니다"
@@ -3168,11 +3173,6 @@
 		"contextMenu": {
 			"copyLink": "링크 복사",
 			"copyLinkSuccess": "{{term_work_item_one}} 링크가 복사되었습니다!"
-		},
-		"actions": {
-			"archive": "보관",
-			"markAsPlanned": "계획됨으로 표시",
-			"delete": "삭제..."
 		},
 		"editor": {
 			"table": {
@@ -3863,6 +3863,11 @@
 			"minute": "분",
 			"invalidLocalTime": "이 시간은 시간 변경으로 건너뛰어집니다. 다른 시간을 선택하세요.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3951,11 +3956,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

@@ -186,7 +186,7 @@ export default function TaskCardContextMenuContent({
       extraArchiveAction={
         task.status !== "planned" ? (
           <ContextMenuItem onClick={() => handleChange("status", "planned")}>
-            <span>{t("tasksExtra:actions.markAsPlanned")}</span>
+            <span>{t("tasks:actions.markAsPlanned")}</span>
           </ContextMenuItem>
         ) : undefined
       }

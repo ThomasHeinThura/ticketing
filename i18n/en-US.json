@@ -2842,6 +2842,14 @@
 				"epic": "{{term_epic_one}}"
 			},
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "Add {{term_work_item_one}}"
+		},
+		"actions": {
+			"archive": "Archive",
+			"markAsPlanned": "Mark as planned",
+			"delete": "Delete..."
 		}
 	},
 	"tasksExtra": {
@@ -3163,9 +3171,6 @@
 		"archive": {
 			"success": "Archived {{count}} {{term_work_item_other}}"
 		},
-		"kanban": {
-			"addTask": "Add {{term_work_item_one}}"
-		},
 		"labels": {
 			"label": "Labels",
 			"empty": "No labels available"
@@ -3178,11 +3183,6 @@
 		"contextMenu": {
 			"copyLink": "Copy link",
 			"copyLinkSuccess": "{{term_work_item_one}} link copied!"
-		},
-		"actions": {
-			"archive": "Archive",
-			"markAsPlanned": "Mark as planned",
-			"delete": "Delete..."
 		},
 		"editor": {
 			"table": {
@@ -3875,6 +3875,11 @@
 			"minute": "Minute",
 			"invalidLocalTime": "This time is skipped when the clocks change. Choose another time.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"openFullPage": "Open full page",
+			"close": "Close {{term_work_item_one}}"
 		}
 	},
 	"workItemsExtra": {
@@ -3965,11 +3970,6 @@
 				"sort": "Sort",
 				"filter": "Filter"
 			}
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"openFullPage": "Open full page",
-			"close": "Close {{term_work_item_one}}"
 		},
 		"priority": {
 			"urgent": "Urgent",

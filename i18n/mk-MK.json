@@ -2842,6 +2842,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "Додади {{term_work_item_one}}"
+		},
+		"actions": {
+			"archive": "Архивирај",
+			"markAsPlanned": "Означи како планирана",
+			"delete": "Избриши..."
 		}
 	},
 	"tasksExtra": {
@@ -3140,9 +3148,6 @@
 		"archive": {
 			"success": "Архивирани {{count}} {{term_work_item_other}}"
 		},
-		"kanban": {
-			"addTask": "Додади {{term_work_item_one}}"
-		},
 		"labels": {
 			"label": "Етикети",
 			"empty": "Нема достапни етикети"
@@ -3155,11 +3160,6 @@
 		"contextMenu": {
 			"copyLink": "Копирај линк",
 			"copyLinkSuccess": "Линкот на задачата е копиран!"
-		},
-		"actions": {
-			"archive": "Архивирај",
-			"markAsPlanned": "Означи како планирана",
-			"delete": "Избриши..."
 		},
 		"editor": {
 			"table": {
@@ -3875,6 +3875,11 @@
 			"minute": "Минута",
 			"invalidLocalTime": "Ова време се прескокнува при промена на часовникот. Изберете друго време.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3965,11 +3970,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

@@ -225,7 +225,7 @@ export default function TaskContextMenuPresentation({
         <>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={onArchive} disabled={disabled}>
-            <span>{t("tasksExtra:actions.archive")}</span>
+            <span>{t("tasks:actions.archive")}</span>
           </ContextMenuItem>
           {extraArchiveAction}
         </>
@@ -241,7 +241,7 @@ export default function TaskContextMenuPresentation({
               onDelete();
             }}
           >
-            <span>{t("tasksExtra:actions.delete")}</span>
+            <span>{t("tasks:actions.delete")}</span>
           </ContextMenuItem>
         </>
       ) : null}

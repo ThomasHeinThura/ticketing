@@ -2842,6 +2842,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "Talep ekle"
+		},
+		"actions": {
+			"archive": "Arşivle",
+			"markAsPlanned": "Planlandı olarak işaretle",
+			"delete": "Sil..."
 		}
 	},
 	"tasksExtra": {
@@ -3140,9 +3148,6 @@
 		"archive": {
 			"success": "{{count}} talep arşivlendi"
 		},
-		"kanban": {
-			"addTask": "Talep ekle"
-		},
 		"labels": {
 			"label": "Etiketler",
 			"empty": "Kullanılabilir etiket yok"
@@ -3155,11 +3160,6 @@
 		"contextMenu": {
 			"copyLink": "Bağlantıyı kopyala",
 			"copyLinkSuccess": "Talep bağlantısı kopyalandı!"
-		},
-		"actions": {
-			"archive": "Arşivle",
-			"markAsPlanned": "Planlandı olarak işaretle",
-			"delete": "Sil..."
 		},
 		"editor": {
 			"table": {
@@ -3875,6 +3875,11 @@
 			"minute": "Dakika",
 			"invalidLocalTime": "Bu saat, saat değişikliğinde atlanır. Başka bir saat seçin.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3965,11 +3970,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

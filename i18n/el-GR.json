@@ -2842,6 +2842,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "Προσθήκη εργασίας"
+		},
+		"actions": {
+			"archive": "Αρχειοθέτηση",
+			"markAsPlanned": "Επισήμανση ως προγραμματισμένη",
+			"delete": "Διαγραφή..."
 		}
 	},
 	"tasksExtra": {
@@ -3140,9 +3148,6 @@
 		"archive": {
 			"success": "Αρχειοθετήθηκαν {{count}} {{term_work_item_other}}"
 		},
-		"kanban": {
-			"addTask": "Προσθήκη εργασίας"
-		},
 		"labels": {
 			"label": "Ετικέτες",
 			"empty": "Δεν υπάρχουν διαθέσιμες ετικέτες"
@@ -3155,11 +3160,6 @@
 		"contextMenu": {
 			"copyLink": "Αντιγραφή συνδέσμου",
 			"copyLinkSuccess": "Ο σύνδεσμος της εργασίας αντιγράφηκε!"
-		},
-		"actions": {
-			"archive": "Αρχειοθέτηση",
-			"markAsPlanned": "Επισήμανση ως προγραμματισμένη",
-			"delete": "Διαγραφή..."
 		},
 		"editor": {
 			"table": {
@@ -3875,6 +3875,11 @@
 			"minute": "Λεπτό",
 			"invalidLocalTime": "Αυτή η ώρα παραλείπεται κατά την αλλαγή ώρας. Επιλέξτε άλλη ώρα.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3965,11 +3970,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

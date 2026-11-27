@@ -45,7 +45,7 @@ export default function WorkItemActions({
           variant="ghost"
           size="sm"
           className="text-foreground"
-          aria-label={t("tasksExtra:actions.delete")}
+          aria-label={t("tasks:actions.delete")}
           disabled={isPending}
           onClick={() =>
             void requestDeletion(connectedFocusTarget(deleteButtonRef.current))
@@ -77,7 +77,7 @@ export default function WorkItemActions({
               }
             >
               <Trash2 className="size-4" />
-              {t("tasksExtra:actions.delete")}
+              {t("tasks:actions.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

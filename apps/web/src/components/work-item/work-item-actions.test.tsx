@@ -48,7 +48,7 @@ async function chooseDelete() {
   });
   fireEvent.click(trigger);
   fireEvent.click(
-    await screen.findByRole("menuitem", { name: "tasksExtra:actions.delete" }),
+    await screen.findByRole("menuitem", { name: "tasks:actions.delete" }),
   );
   return trigger;
 }
@@ -127,9 +127,7 @@ it("uses the same persisted pending-action request from the Kaneo sheet trash bu
   expect(
     screen.queryByRole("button", { name: "workItemsExtra:deletion.actions" }),
   ).not.toBeInTheDocument();
-  fireEvent.click(
-    screen.getByRole("button", { name: "tasksExtra:actions.delete" }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "tasks:actions.delete" }));
   await waitFor(() =>
     expect(mocks.openPending).toHaveBeenCalledWith({
       pendingActionId: "pa-sheet",
@@ -140,7 +138,7 @@ it("uses the same persisted pending-action request from the Kaneo sheet trash bu
     | (() => HTMLElement | false)
     | undefined;
   expect(finalFocus?.()).toBe(
-    screen.getByRole("button", { name: "tasksExtra:actions.delete" }),
+    screen.getByRole("button", { name: "tasks:actions.delete" }),
   );
   expect(mocks.request).toHaveBeenCalledWith("HELP-4", expect.anything());
 });

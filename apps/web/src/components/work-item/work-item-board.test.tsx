@@ -297,7 +297,7 @@ describe("WorkItemBoard layout (VW-8)", () => {
       );
       expect(button).toHaveAttribute(
         "aria-label",
-        `${translate("tasksExtra:kanban.addTask")}: ${name}`,
+        `${translate("tasks:kanban.addTask")}: ${name}`,
       );
       expect(button).not.toHaveAttribute("title");
     }

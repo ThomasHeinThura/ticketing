@@ -2842,6 +2842,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "{{term_work_item_one}} hinzufügen"
+		},
+		"actions": {
+			"archive": "Archivieren",
+			"markAsPlanned": "Als geplant markieren",
+			"delete": "Löschen..."
 		}
 	},
 	"tasksExtra": {
@@ -3140,9 +3148,6 @@
 		"archive": {
 			"success": "{{count}} {{term_work_item_other}} archiviert"
 		},
-		"kanban": {
-			"addTask": "{{term_work_item_one}} hinzufügen"
-		},
 		"labels": {
 			"label": "Labels",
 			"empty": "Keine Labels verfügbar"
@@ -3155,11 +3160,6 @@
 		"contextMenu": {
 			"copyLink": "Link kopieren",
 			"copyLinkSuccess": "Aufgabenlink kopiert!"
-		},
-		"actions": {
-			"archive": "Archivieren",
-			"markAsPlanned": "Als geplant markieren",
-			"delete": "Löschen..."
 		},
 		"editor": {
 			"table": {
@@ -3875,6 +3875,11 @@
 			"minute": "Minute",
 			"invalidLocalTime": "Diese Uhrzeit wird bei der Zeitumstellung übersprungen. Wähle eine andere Uhrzeit.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3965,11 +3970,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

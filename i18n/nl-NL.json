@@ -2842,6 +2842,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "{{term_work_item_one}} toevoegen"
+		},
+		"actions": {
+			"archive": "Archiveren",
+			"markAsPlanned": "Markeren als gepland",
+			"delete": "Verwijderen..."
 		}
 	},
 	"tasksExtra": {
@@ -3129,9 +3137,6 @@
 		"archive": {
 			"success": "{{count}} {{term_work_item_other}} gearchiveerd"
 		},
-		"kanban": {
-			"addTask": "{{term_work_item_one}} toevoegen"
-		},
 		"labels": {
 			"label": "Labels",
 			"empty": "Geen labels beschikbaar"
@@ -3144,11 +3149,6 @@
 		"contextMenu": {
 			"copyLink": "Link kopiëren",
 			"copyLinkSuccess": "Taaklink gekopieerd!"
-		},
-		"actions": {
-			"archive": "Archiveren",
-			"markAsPlanned": "Markeren als gepland",
-			"delete": "Verwijderen..."
 		},
 		"move": {
 			"title": "{{term_work_item_one}} verplaatsen",
@@ -3875,6 +3875,11 @@
 			"minute": "Minuut",
 			"invalidLocalTime": "Dit tijdstip wordt overgeslagen bij de klokwijziging. Kies een ander tijdstip.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3965,11 +3970,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

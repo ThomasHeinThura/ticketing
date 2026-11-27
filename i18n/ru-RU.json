@@ -2906,6 +2906,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "Добавить задачу"
+		},
+		"actions": {
+			"archive": "Архивировать",
+			"markAsPlanned": "Отметить как запланированную",
+			"delete": "Удалить..."
 		}
 	},
 	"tasksExtra": {
@@ -3216,9 +3224,6 @@
 			"success_other": "{{count}} {{term_work_item_other}} архивировано",
 			"success": "{{count}} {{term_work_item_other}} архивировано"
 		},
-		"kanban": {
-			"addTask": "Добавить задачу"
-		},
 		"labels": {
 			"label": "Метки",
 			"empty": "Нет доступных меток"
@@ -3231,11 +3236,6 @@
 		"contextMenu": {
 			"copyLink": "Скопировать ссылку",
 			"copyLinkSuccess": "Ссылка на задачу скопирована!"
-		},
-		"actions": {
-			"archive": "Архивировать",
-			"markAsPlanned": "Отметить как запланированную",
-			"delete": "Удалить..."
 		},
 		"editor": {
 			"table": {
@@ -3955,6 +3955,11 @@
 			"minute": "Минута",
 			"invalidLocalTime": "Это время пропускается при переводе часов. Выберите другое время.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -4049,11 +4054,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

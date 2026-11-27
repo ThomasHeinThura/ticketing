@@ -2832,6 +2832,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "Tambah {{term_work_item_one}}"
+		},
+		"actions": {
+			"archive": "Arsipkan",
+			"markAsPlanned": "Tandai sebagai direncanakan",
+			"delete": "Hapus..."
 		}
 	},
 	"tasksExtra": {
@@ -3130,9 +3138,6 @@
 		"archive": {
 			"success": "{{count}} {{term_work_item_other}} diarsipkan"
 		},
-		"kanban": {
-			"addTask": "Tambah {{term_work_item_one}}"
-		},
 		"labels": {
 			"label": "Label",
 			"empty": "Tidak ada label tersedia"
@@ -3145,11 +3150,6 @@
 		"contextMenu": {
 			"copyLink": "Salin tautan",
 			"copyLinkSuccess": "Tautan {{term_work_item_one}} disalin!"
-		},
-		"actions": {
-			"archive": "Arsipkan",
-			"markAsPlanned": "Tandai sebagai direncanakan",
-			"delete": "Hapus..."
 		},
 		"editor": {
 			"table": {
@@ -3863,6 +3863,11 @@
 			"minute": "Menit",
 			"invalidLocalTime": "Waktu ini terlewati saat pergantian jam. Pilih waktu lain.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3951,11 +3956,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

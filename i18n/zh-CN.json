@@ -2832,6 +2832,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "添加{{term_work_item_one}}"
+		},
+		"actions": {
+			"archive": "归档",
+			"markAsPlanned": "标记为已计划",
+			"delete": "删除…"
 		}
 	},
 	"tasksExtra": {
@@ -3130,9 +3138,6 @@
 		"archive": {
 			"success": "已归档 {{count}} 个{{term_work_item_other}}"
 		},
-		"kanban": {
-			"addTask": "添加{{term_work_item_one}}"
-		},
 		"labels": {
 			"label": "标签",
 			"empty": "无可用标签"
@@ -3145,11 +3150,6 @@
 		"contextMenu": {
 			"copyLink": "复制链接",
 			"copyLinkSuccess": "{{term_work_item_one}}链接已复制！"
-		},
-		"actions": {
-			"archive": "归档",
-			"markAsPlanned": "标记为已计划",
-			"delete": "删除…"
 		},
 		"editor": {
 			"table": {
@@ -3863,6 +3863,11 @@
 			"minute": "分",
 			"invalidLocalTime": "此时间在时钟调整时被跳过。请选择其他时间。",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3951,11 +3956,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",

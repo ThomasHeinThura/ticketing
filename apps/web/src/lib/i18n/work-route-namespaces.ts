@@ -17,6 +17,15 @@ export const WORK_ROUTE_I18N_NAMESPACES = [
 export const WORK_LIST_PATH_PATTERN = /^\/agent\/projects\/[^/]+\/work\/?$/;
 
 /**
+ * Work-route modules rendered before any namespace boundary (the board layout and the side-pane
+ * shell). The build adds their chunks' static closures to the first-paint set the guard scans.
+ */
+export const WORK_ROUTE_BOUNDARY_FREE_MODULES = [
+  "/components/work-item/work-item-board.tsx",
+  "/components/work-item/work-item-side-pane.tsx",
+] as const;
+
+/**
  * Modules that are part of the work route's first-paint chunks and still refer to a deferred
  * namespace, with the namespaces they may refer to. The build fails for any other module (see
  * `findDeferredNamespaceUsers`), so adding a deferred-namespace string to a first-paint screen

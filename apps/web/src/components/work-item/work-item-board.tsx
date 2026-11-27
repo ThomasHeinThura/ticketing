@@ -347,9 +347,7 @@ export default function WorkItemBoard({
                             />
                           )}
                           {onCreateInState && !combined ? (
-                            <ActionTooltip
-                              label={t("tasksExtra:kanban.addTask")}
-                            >
+                            <ActionTooltip label={t("tasks:kanban.addTask")}>
                               <Button
                                 variant="ghost"
                                 type="button"
@@ -360,7 +358,7 @@ export default function WorkItemBoard({
                                   )
                                 }
                                 className="flex items-center rounded-md px-2 py-1 text-left text-muted-foreground transition-colors hover:bg-accent/50"
-                                aria-label={`${t("tasksExtra:kanban.addTask")}: ${state.name}`}
+                                aria-label={`${t("tasks:kanban.addTask")}: ${state.name}`}
                                 data-testid="work-item-board-column-create"
                               >
                                 <Plus className="w-4 h-4 text-muted-foreground" />

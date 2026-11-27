@@ -11692,6 +11692,32 @@
 						}
 					},
 					"required": ["label", "by", "fields", "none"]
+				},
+				"kanban": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"addTask": {
+							"type": "string"
+						}
+					},
+					"required": ["addTask"]
+				},
+				"actions": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"archive": {
+							"type": "string"
+						},
+						"markAsPlanned": {
+							"type": "string"
+						},
+						"delete": {
+							"type": "string"
+						}
+					},
+					"required": ["archive", "markAsPlanned", "delete"]
 				}
 			},
 			"required": [
@@ -11704,7 +11730,9 @@
 				"assignee",
 				"dueDate",
 				"bulk",
-				"group"
+				"group",
+				"kanban",
+				"actions"
 			]
 		},
 		"tasksExtra": {
@@ -13030,16 +13058,6 @@
 					},
 					"required": []
 				},
-				"kanban": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"addTask": {
-							"type": "string"
-						}
-					},
-					"required": ["addTask"]
-				},
 				"labels": {
 					"type": "object",
 					"additionalProperties": false,
@@ -13081,22 +13099,6 @@
 						}
 					},
 					"required": ["copyLink", "copyLinkSuccess"]
-				},
-				"actions": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"archive": {
-							"type": "string"
-						},
-						"markAsPlanned": {
-							"type": "string"
-						},
-						"delete": {
-							"type": "string"
-						}
-					},
-					"required": ["archive", "markAsPlanned", "delete"]
 				},
 				"editor": {
 					"type": "object",
@@ -13160,11 +13162,9 @@
 				"gantt",
 				"delete",
 				"archive",
-				"kanban",
 				"labels",
 				"update",
 				"contextMenu",
-				"actions",
 				"editor"
 			]
 		},
@@ -15847,6 +15847,22 @@
 						"invalidLocalTime",
 						"datetime"
 					]
+				},
+				"sidePane": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"ariaLabel": {
+							"type": "string"
+						},
+						"openFullPage": {
+							"type": "string"
+						},
+						"close": {
+							"type": "string"
+						}
+					},
+					"required": ["ariaLabel", "openFullPage", "close"]
 				}
 			},
 			"required": [
@@ -15862,7 +15878,8 @@
 				"openChildren",
 				"sla",
 				"journey",
-				"customFieldValue"
+				"customFieldValue",
+				"sidePane"
 			]
 		},
 		"workItemsExtra": {
@@ -16256,22 +16273,6 @@
 						"controls"
 					]
 				},
-				"sidePane": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"ariaLabel": {
-							"type": "string"
-						},
-						"openFullPage": {
-							"type": "string"
-						},
-						"close": {
-							"type": "string"
-						}
-					},
-					"required": ["ariaLabel", "openFullPage", "close"]
-				},
 				"priority": {
 					"type": "object",
 					"additionalProperties": false,
@@ -16619,7 +16620,6 @@
 				"hierarchy",
 				"deletion",
 				"legacyView",
-				"sidePane",
 				"priority",
 				"backlog",
 				"auditHistory",

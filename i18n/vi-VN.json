@@ -2832,6 +2832,14 @@
 			},
 			"label": "Group",
 			"none": "None"
+		},
+		"kanban": {
+			"addTask": "Thêm công việc"
+		},
+		"actions": {
+			"archive": "Lưu trữ",
+			"markAsPlanned": "Đánh dấu đã lên kế hoạch",
+			"delete": "Xóa..."
 		}
 	},
 	"tasksExtra": {
@@ -3130,9 +3138,6 @@
 		"archive": {
 			"success": "Đã lưu trữ {{count}} công việc"
 		},
-		"kanban": {
-			"addTask": "Thêm công việc"
-		},
 		"labels": {
 			"label": "Nhãn",
 			"empty": "Không có nhãn khả dụng"
@@ -3145,11 +3150,6 @@
 		"contextMenu": {
 			"copyLink": "Sao chép liên kết",
 			"copyLinkSuccess": "Đã sao chép liên kết công việc!"
-		},
-		"actions": {
-			"archive": "Lưu trữ",
-			"markAsPlanned": "Đánh dấu đã lên kế hoạch",
-			"delete": "Xóa..."
 		},
 		"editor": {
 			"table": {
@@ -3863,6 +3863,11 @@
 			"minute": "Phút",
 			"invalidLocalTime": "Thời điểm này bị bỏ qua khi đổi giờ. Hãy chọn thời điểm khác.",
 			"datetime": "Date and time"
+		},
+		"sidePane": {
+			"ariaLabel": "{{term_work_item_one}} {{key}}",
+			"close": "Close {{term_work_item_one}}",
+			"openFullPage": "Open full page"
 		}
 	},
 	"workItemsExtra": {
@@ -3951,11 +3956,6 @@
 			"unavailable": "This {{term_project_one}} or {{term_work_item_one}} is unavailable.",
 			"unsupportedDescription": "These controls cannot be applied to the current {{term_project_one}} view: {{controls}}.",
 			"unsupportedTitle": "Some saved controls need attention"
-		},
-		"sidePane": {
-			"ariaLabel": "{{term_work_item_one}} {{key}}",
-			"close": "Close {{term_work_item_one}}",
-			"openFullPage": "Open full page"
 		},
 		"priority": {
 			"urgent": "Urgent",
