@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"managedServiceUnused": "매니지드 서비스에는 사이클과 종료일을 사용하지 않습니다. 이미 있는 항목은 여기에 계속 표시되며 삭제되지 않습니다.",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "취소",
@@ -156,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, such as an implementation or a migration.",
+				"kindDeliveryHint": "합의된 범위, 사이클, 종료일이 있는 계획된 작업입니다. 예: 구축 또는 마이그레이션.",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and service hours.",
+				"kindManagedHint": "지원 수준과 서비스 캘린더가 있는 고객 대상 지속 지원입니다. 사이클이나 종료일 없이 계속 운영됩니다.",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1136,10 +1137,8 @@
 				"health": "Health",
 				"kind": "{{term_project_one}} kind",
 				"loadError": "Could not load the engagement settings.",
-				"managedService": "Managed service",
 				"noCalendars": "No service calendars exist in this workspace yet.",
 				"none": "None",
-				"project": "{{term_project_one}}",
 				"readOnly": "You can view these settings but need the {{term_project_one}} update permission to change them.",
 				"red": "Red",
 				"retry": "Retry",
@@ -1169,6 +1168,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
+					"managedEndDate": "매니지드 서비스는 계속 운영되므로 새 종료일을 지정할 수 없습니다. 대신 종료일을 지우세요.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -3524,7 +3524,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "{{column}} 위로 이동",
+			"moveColumnDown": "{{column}} 아래로 이동"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3739,7 +3741,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "활성 필터",
+			"addFilter": "필터",
+			"searchFields": "필드 검색",
+			"searchValues": "값 검색",
+			"advanced": "고급",
+			"advancedFilter": "고급 필터",
+			"me": "나"
 		},
 		"properties": {
 			"clearDate": "Clear date",
@@ -4659,7 +4668,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Project"
+				"project": "딜리버리 프로젝트"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10405,6 +10414,7 @@
 			"plugins": {
 				"azureDevops": "Azure DevOps",
 				"azureDevopsHint": "REST API with a personal access token. Read-only.",
+				"bundle": "TaskDesk bundle",
 				"csv": "Generic CSV",
 				"csvHint": "Upload a CSV file (up to 5 MB). The universal fallback.",
 				"jira": "Jira",
@@ -10606,6 +10616,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
+			"runsContinuously": "계속 운영",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

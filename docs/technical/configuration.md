@@ -62,6 +62,7 @@ These names configure deployment tooling or an external client. Registering them
 | `TASKDESK_HSTS_PRELOAD` | Compose, into the Traefik headers middleware | Explicit opt-in to HSTS subdomains/preload commitments. |
 | `TASKDESK_LOCAL_HTTP_PORT` · `TASKDESK_LOCAL_HTTPS_PORT` | Compose, `deploy/compose.traefik.yml` (`local` mode only) | Local proxy listener ports, default 80/443; verify availability before starting. |
 | `TASKDESK_API_URL` · `TASKDESK_API_KEY` | `@taskdesk/mcp`, on the user's own machine | External MCP client's instance URL and scoped API credential; the API server reads neither name. |
+| `TASKDESK_IMPORT_DIR` | `@taskdesk/mcp`, on the user's own machine | Optional. The only directory the import bundle tools read bundle files from; unset means they refuse every path. The API server does not read it. |
 
 ### Switching storage drivers
 

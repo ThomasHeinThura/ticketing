@@ -1,0 +1,4 @@
+ALTER TABLE "import_run" DROP CONSTRAINT "import_run_plugin_allowed";--> statement-breakpoint
+ALTER TABLE "import_source_connection" DROP CONSTRAINT "import_source_connection_plugin_allowed";--> statement-breakpoint
+ALTER TABLE "import_run" ADD CONSTRAINT "import_run_plugin_allowed" CHECK ("import_run"."plugin_id" IN ('import.csv','import.jira','import.jsm','import.azure-devops','import.plane','import.planner','import.power-apps','import.mcp','import.bundle'));--> statement-breakpoint
+ALTER TABLE "import_source_connection" ADD CONSTRAINT "import_source_connection_plugin_allowed" CHECK ("import_source_connection"."plugin_id" IN ('import.csv','import.jira','import.jsm','import.azure-devops','import.plane','import.planner','import.power-apps','import.mcp','import.bundle'));

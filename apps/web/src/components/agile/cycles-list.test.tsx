@@ -4,7 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CycleList } from "@/fetchers/agile";
 import { headingLevels } from "@/test/headings";
 
-const mocks = vi.hoisted(() => ({ getCycles: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getCycles: vi.fn(),
+  kind: "project" as "project" | "managed_service",
+}));
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: React.ReactNode }) => (
@@ -18,6 +21,9 @@ vi.mock("react-i18next", async () => ({
       options ? `${key} ${JSON.stringify(options)}` : key,
     i18n: { language: "en-US" },
   }),
+}));
+vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
+  default: () => ({ project: { kind: mocks.kind } }),
 }));
 vi.mock("@/components/page-title", () => ({ default: () => null }));
 vi.mock("./use-can-manage-project-features", () => ({
@@ -85,6 +91,7 @@ function renderList() {
 afterEach(() => {
   cleanup();
   mocks.getCycles.mockReset();
+  mocks.kind = "project";
 });
 
 describe("CyclesList", () => {
@@ -110,6 +117,15 @@ describe("CyclesList", () => {
     expect(screen.getByText("cycles.status.active")).toBeTruthy();
     expect(screen.getByText(/summary.unestimated/)).toBeTruthy();
     expect(screen.getByRole("button", { name: /cycles.create/ })).toBeTruthy();
+  });
+
+  it("keeps a managed service's cycles visible with a warning and no create button", async () => {
+    mocks.kind = "managed_service";
+    mocks.getCycles.mockResolvedValue(listOf());
+    renderList();
+    expect(await screen.findByText("Sprint 4")).toBeTruthy();
+    expect(screen.getByTestId("managed-service-unused-notice")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /cycles.create/ })).toBeNull();
   });
 
   it("explains when the latest-three window includes a late snapshot", async () => {

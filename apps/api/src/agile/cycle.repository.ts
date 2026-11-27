@@ -423,7 +423,12 @@ export async function createCycle(
   assertDates(input.startDate, input.endDate);
   return db.transaction(async (tx) => {
     // CY-2 is checked under the project row lock so two concurrent creates cannot both pass.
-    await lockProject(tx, scope.projectId);
+    const project = await lockProject(tx, scope.projectId);
+    // A managed service runs continuously; existing cycles stay, new ones are refused.
+    if (project.kind === "managed_service")
+      throw new HTTPException(422, {
+        message: "managed_service_has_no_cycles",
+      });
     const others = await projectCycles(tx, scope.projectId);
     const candidate: CycleRange = {
       id: "",

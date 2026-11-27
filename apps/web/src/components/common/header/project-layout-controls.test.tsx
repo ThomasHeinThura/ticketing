@@ -24,6 +24,7 @@ const featureState = vi.hoisted(() => ({
   calendar: true,
   timeline: true,
 }));
+const cycleState = vi.hoisted(() => ({ count: 0 as number | undefined }));
 const viewportState = vi.hoisted(() => ({ width: 1440 }));
 const routerState = vi.hoisted(() => ({
   pathname: "/agent/projects/ENG/work",
@@ -94,6 +95,10 @@ vi.mock("@/hooks/queries/agile/use-agile-features", () => ({
   }),
 }));
 
+vi.mock("@/hooks/queries/agile/use-cycle-count", () => ({
+  default: () => cycleState.count,
+}));
+
 vi.mock("@/hooks/queries/feature-flag/use-project-pages-feature", () => ({
   default: () => featureState.pages,
   useProjectFeature: (_projectId: string, feature: string) =>
@@ -112,7 +117,12 @@ const projectsState = vi.hoisted(() => ({
   data: [
     { id: "project-1", workspaceId: "workspace-1", slug: "ENG" },
     { id: "project-2", workspaceId: "workspace-1", slug: "OPS" },
-  ] as Array<{ id: string; workspaceId?: string; slug: string }>,
+  ] as Array<{
+    id: string;
+    workspaceId?: string;
+    slug: string;
+    kind?: string;
+  }>,
 }));
 
 vi.mock("@/lib/auth-client", () => ({
@@ -203,6 +213,7 @@ beforeEach(() => {
   );
   toastError.mockReset();
   mobileNavState.lastProps = null;
+  cycleState.count = 0;
   featureState.cycles = false;
   featureState.modules = false;
   featureState.pages = false;
@@ -309,6 +320,25 @@ describe("ProjectLayoutControls permissions", () => {
       "data-add-project-enabled",
       "true",
     );
+  });
+
+  it("hides Cycles for a managed service without cycles and keeps it once cycles exist", () => {
+    featureState.cycles = true;
+    const original = projectsState.data[0].kind;
+    projectsState.data[0].kind = "managed_service";
+    try {
+      const { rerender } = render(
+        <ProjectLayoutControls {...props} showViewSwitcher />,
+      );
+      expect(screen.queryByRole("button", { name: "Cycles" })).toBeNull();
+      cycleState.count = 2;
+      rerender(<ProjectLayoutControls {...props} showViewSwitcher />);
+      expect(
+        screen.getByRole("button", { name: "Cycles" }),
+      ).toBeInTheDocument();
+    } finally {
+      projectsState.data[0].kind = original;
+    }
   });
 
   it("renders feature tabs from the deferred controls' resolved feature flags", () => {

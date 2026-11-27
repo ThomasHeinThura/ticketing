@@ -113,6 +113,10 @@ const project = {
   statusNote: "Waiting for VPN",
   statusNoteAt: "2026-10-30T10:00:00.000Z",
 };
+const cycleState = vi.hoisted(() => ({ count: 0 }));
+vi.mock("@/hooks/queries/agile/use-cycle-count", () => ({
+  default: () => cycleState.count,
+}));
 vi.mock("@/hooks/queries/agile/use-project-by-key", () => ({
   default: () => ({ project, workspaceId: "w1", isLoading: false }),
 }));
@@ -578,6 +582,27 @@ describe("ProjectOverviewPage", () => {
     expect(screen.getByTestId("project-overview-edit-summary")).toBeVisible();
     expect(screen.queryByTestId("project-overview-new-item")).toBeNull();
     expect(screen.queryByTestId("project-overview-more")).toBeNull();
+  });
+
+  it("shows a managed service as running continuously, and warns only when it keeps an end date or cycles", async () => {
+    const data = overview("managed_service");
+    mocks.getProjectOverview.mockResolvedValue(data);
+    const { unmount } = renderPage();
+    const facts = await screen.findByTestId("project-facts-panel");
+    expect(facts).toHaveTextContent("facts.runsContinuously");
+    expect(screen.queryByTestId("managed-service-unused-notice")).toBeNull();
+    unmount();
+
+    cycleState.count = 2;
+    mocks.getProjectOverview.mockResolvedValue({
+      ...data,
+      facts: { ...data.facts, endDate: "2026-12-31" },
+    });
+    renderPage();
+    expect(
+      await screen.findByTestId("managed-service-unused-notice"),
+    ).toBeVisible();
+    cycleState.count = 0;
   });
 
   it("shows read-only service levels for a managed service", async () => {

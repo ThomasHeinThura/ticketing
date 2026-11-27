@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"managedServiceUnused": "Οι κύκλοι και η ημερομηνία λήξης δεν χρησιμοποιούνται στις διαχειριζόμενες υπηρεσίες. Όσα υπάρχουν ήδη παραμένουν ορατά εδώ και δεν αφαιρούνται ποτέ.",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "Ακύρωση",
@@ -156,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, such as an implementation or a migration.",
+				"kindDeliveryHint": "Προγραμματισμένη εργασία με συμφωνημένο εύρος, κύκλους και ημερομηνία λήξης, όπως μια υλοποίηση ή μια μετάβαση.",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and service hours.",
+				"kindManagedHint": "Συνεχής υποστήριξη για έναν πελάτη, με επίπεδο υποστήριξης και ημερολόγιο υπηρεσίας. Λειτουργεί συνεχώς, χωρίς κύκλους ή ημερομηνία λήξης.",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1136,10 +1137,8 @@
 				"health": "Health",
 				"kind": "{{term_project_one}} kind",
 				"loadError": "Could not load the engagement settings.",
-				"managedService": "Managed service",
 				"noCalendars": "No service calendars exist in this workspace yet.",
 				"none": "None",
-				"project": "{{term_project_one}}",
 				"readOnly": "You can view these settings but need the {{term_project_one}} update permission to change them.",
 				"red": "Red",
 				"retry": "Retry",
@@ -1169,6 +1168,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
+					"managedEndDate": "Μια διαχειριζόμενη υπηρεσία λειτουργεί συνεχώς, επομένως δεν δέχεται νέα ημερομηνία λήξης. Διαγράψτε αντί γι' αυτό την ημερομηνία λήξης.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -3535,7 +3535,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "Μετακίνηση του {{column}} προς τα πάνω",
+			"moveColumnDown": "Μετακίνηση του {{column}} προς τα κάτω"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3751,7 +3753,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Ενεργά φίλτρα",
+			"addFilter": "Φίλτρο",
+			"searchFields": "Αναζήτηση πεδίων",
+			"searchValues": "Αναζήτηση τιμών",
+			"advanced": "Για προχωρημένους",
+			"advancedFilter": "Φίλτρο για προχωρημένους",
+			"me": "Εγώ"
 		},
 		"properties": {
 			"clearDate": "Clear date",
@@ -4674,7 +4683,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Project"
+				"project": "Έργο παράδοσης"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10485,6 +10494,7 @@
 			"plugins": {
 				"azureDevops": "Azure DevOps",
 				"azureDevopsHint": "REST API with a personal access token. Read-only.",
+				"bundle": "TaskDesk bundle",
 				"csv": "Generic CSV",
 				"csvHint": "Upload a CSV file (up to 5 MB). The universal fallback.",
 				"jira": "Jira",
@@ -10688,6 +10698,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
+			"runsContinuously": "Λειτουργεί συνεχώς",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

@@ -43,7 +43,7 @@ test("maintained environment contract preserves bootstrap and external-reader bo
     [...reference.postgresImage],
     ["POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD"],
   );
-  assert.equal(reference.notReadByApplication.size, 14);
+  assert.equal(reference.notReadByApplication.size, 15);
   for (const name of [
     "DOMAIN",
     "TASKDESK_IMAGE_DIGEST",
@@ -52,6 +52,7 @@ test("maintained environment contract preserves bootstrap and external-reader bo
     "TASKDESK_IMAGE",
     "TASKDESK_COSIGN_IDENTITY",
     "TASKDESK_REPOSITORY",
+    "TASKDESK_IMPORT_DIR",
   ]) {
     assert.ok(reference.notReadByApplication.has(name));
     assert.equal(

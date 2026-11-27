@@ -2,6 +2,7 @@ import { and, eq, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { schema } from "../../database";
 import type { Transaction } from "../../database/executor";
 import type { ImportRecord } from "../schema";
+import { inSameStaleSlice } from "./stale-scope.repository";
 import { type ImportWriterContext, recordLoss } from "./types";
 
 const LINK = schema.importProvenanceTable;
@@ -235,6 +236,11 @@ export async function markMissingImportSourcesStale(
     pluginId: string;
     sourceRef: string;
     currentRunId: string;
+    /**
+     * Config entries naming the slice of the source this run covers (adapter `staleScope`). Only
+     * records last seen by an earlier run of the same slice are eligible; absent means every run.
+     */
+    scope?: Record<string, string> | null;
     now?: Date;
   },
 ): Promise<{ links: number; provenance: number }> {
@@ -249,6 +255,7 @@ export async function markMissingImportSourcesStale(
         eq(RECORD_LINK.sourceRef, input.sourceRef),
         ne(RECORD_LINK.importRunId, input.currentRunId),
         isNull(RECORD_LINK.staleAt),
+        inSameStaleSlice(RECORD_LINK.importRunId, input),
       ),
     )
     .returning({ id: RECORD_LINK.id });
@@ -264,6 +271,7 @@ export async function markMissingImportSourcesStale(
         ne(LINK.importRunId, input.currentRunId),
         isNull(LINK.staleAt),
         isNotNull(LINK.importRunId),
+        inSameStaleSlice(LINK.importRunId, input),
       ),
     )
     .returning({ id: LINK.id });

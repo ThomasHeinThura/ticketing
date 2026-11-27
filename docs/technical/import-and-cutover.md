@@ -136,6 +136,7 @@ Stated up front, because expectations here are the main source of disappointment
 | **MS Planner** | Graph API, or CSV | Flat; becomes work items in one project |
 | **Power Apps ticketing** | CSV export | Bespoke; agent-assisted is the realistic path |
 | **Generic CSV** | Upload | The universal fallback |
+| **TaskDesk bundle** | NDJSON file (`import.bundle`) | What an agent writes for any source it can read; see [bundle](#field-mapping-taskdesk-bundle) |
 
 <a id="import-strategy-agent-assisted-import"></a>
 ### Agent-assisted import
@@ -160,6 +161,14 @@ Requirements that make this safe:
 - `IM-11` Every agent-originated write is audited and marked as such.
 - `IM-12` The agent writes `import_mapping` rows through `create_import_mapping`, so its
   work is as resumable as a structured import.
+
+For a whole source (projects, comments, attachments, relations, history) the agent converts it
+to a [TaskDesk bundle](#field-mapping-taskdesk-bundle) and loads it with six tools that wrap the
+engine routes below: `validate_import_bundle`, `import_bundle_start`, `import_bundle_mapping`,
+`import_bundle_dry_run`, `import_bundle_apply` and `import_bundle_status`. They read the file from
+`TASKDESK_IMPORT_DIR` (a file directly in that directory, no sub-directories, no symbolic links) on the machine that runs `@taskdesk/mcp`, so the contents never pass through
+the model, and they never approve a pending action. `bulk_create_work_items` stays the small
+ad-hoc path.
 
 <a id="import-strategy-screens"></a>
 ### Screens
@@ -458,6 +467,79 @@ cf_<key>           any number of custom field columns
 ```
 
 Anything not in this list is reported and ignored rather than silently dropped.
+
+<a id="field-mapping-taskdesk-bundle"></a>
+### TaskDesk bundle (`import.bundle`)
+
+A TaskDesk-native file. A converter (the first is `scripts/import/plane-to-bundle.mjs`) or an
+agent writes it, and the engine loads it through the same pipeline as every other source: discover,
+mapping, whole-run dry run, execute, losses, and the approval above 50 writes. The schema is
+`apps/api/src/imports/adapters/bundle/schema.ts`; `validate_import_bundle` runs it without any API call.
+
+**File.** NDJSON, one object per line, `t` names the line type, `bundleVersion` is `1`, at most 8 MB
+and 50,000 items. The first line is the header; strict objects, so an unknown field is an error with a
+line number.
+
+```
+header      bundleVersion, source { system, version?, instance, workspace, exportedAt? }
+person      id, email?, name?              the only place emails live
+project     id, key, name, url?
+membership  project, person, role (lead|member|viewer), sourceRole?
+state       project, id, name, group (backlog|unstarted|started|completed|cancelled)
+label       project, id, name, color?
+item        project, id, title, state, type?, description?, priority?, url?,
+            assignee?, requester?, createdBy?, createdAt?, updatedAt?, resolvedAt?,
+            startDate?, dueDate?, parent?, labels?, estimate?, cycle?, modules?,
+            comments[], attachments[], relations[], history[], links[]
+```
+
+IDs are source-local strings. Items refer to people, states and labels by id, and a missing
+reference is an error. A `parent` or relation target that is not in the file is only a warning,
+because a bundle is one file per project. Caps equal record v2: 500 comments, 100 attachments, 200
+relations and 1,000 history rows per item, 100,000 characters per comment. Attachments are https
+links the writer downloads through the SSRF-guarded fetch; there is no inline file.
+
+**Runs.** A run is bound to one existing TaskDesk project, so a bundle with several projects needs one
+source and one run per `projectKey` (`config.bundleText`, `config.projectKey`; the key may be left out
+when the file holds one project). The source's `sourceRef` is `<system>:<instance>:<workspace>` from the
+header and each item's id is its source id, so a second run of the same bundle updates what the first
+created instead of duplicating it (IM-1). Every project of a source shares that one `sourceRef`, so a relation or parent in one project's file resolves to an item imported from another's. The end-of-run stale sweep is scoped by the adapter's `staleScope` to the canonical project: when the source is created the adapter stores `config.scopeProjectKey`, the project's key exactly as written in the file (resolved case-insensitively from `projectKey`, or the sole project when it is omitted; a client-supplied value is overwritten), and only runs with the same canonical key are matched. Importing one project never marks another project's records stale, `WEB` and `web` are the same project, and a record dropped from a project's file still goes stale on that project's next run. A source created before this field existed has none: its run marks nothing stale and its records are never marked stale by a scoped run.
+
+**Mapping.** Facets are `type`, `state` (`<name> (<group>)`), `priority`, `person` (email) and
+`label`. The adapter proposes only exact matches: the declared state group, the four priorities, a
+type whose key equals the bundle's, and a person whose email matches an active staff member. Everything
+else, including every label, stays unmapped and blocks execute. An unmatched person is mapped to a
+placeholder (IM-7) or ignored by the operator; the bundle never creates a login, a membership or an
+administrator.
+
+**Reported, not written (nothing is silent).** The requester (`writer_unavailable` / `requester`),
+`estimate_not_carried`, `cycle_not_carried`, `module_not_carried`, `links_not_carried` and
+`person_email_missing` (a person without an email keeps their name only) are losses on the record.
+Project, state and label definitions and memberships are counted at discovery as
+`membership_not_written`, `state_not_written` and `label_not_written`. Slice 1 creates no project and
+no membership; those are slice 2 and need Thomas's decision.
+
+**Permissions.** No new route, policy or capability. Every step needs `instance:admin` plus the
+destination project's `work_item:create`, a key never exceeds its owner, and a run that writes more
+than 50 records stays a pending action bound to the dry-run digest, count and mapping version. The
+MCP tools cannot approve it and cannot confirm proposals in bulk.
+
+**Flow.**
+
+```
+plane-to-bundle.mjs  ->  validate_import_bundle  ->  import_bundle_start
+  ->  import_bundle_mapping (explicit entries)  ->  import_bundle_dry_run  (owner reads the losses)
+  ->  import_bundle_apply  ->  owner approves above 50 writes  ->  import_bundle_status
+```
+
+**`plane-to-bundle.mjs`.** Node 20 or later, no dependencies, GET only against the Plane v1 API:
+`node scripts/import/plane-to-bundle.mjs --base https://plane.example --workspace <slug> --token-file <file> --out <dir> [--project KEY] [--no-attachments]`.
+It runs where Plane is reachable, so the key never leaves that machine and the server's SSRF rules do
+not apply to the fetch. It writes `<KEY>.ndjson` per project (self-contained) and `people.ndjson`, and
+prints counts only. The key is read from the file, sent only as `X-API-Key`, and never printed, logged or
+written; errors name a status and a path. Redirects are refused and a 429 is retried with backoff. Any other failed request fails the conversion with its status and path; only a 404 on an optional endpoint (members, issue types, cycles, modules, attachments, relations, activities) is tolerated, and it is reported. Unsupported endpoints and every truncated list (comments, attachments, relations, history: item and omitted count) are printed in the summary and recorded in the project file's header `warnings`; the adapter counts them as `converter_warnings` at discovery.
+Plane `none` priority becomes `medium`, `triage` states become `backlog` (counted), and attachments
+point at Plane's asset URLs, so a download that needs the key fails and is reported.
 
 <a id="field-mapping-related"></a>
 ### Related
