@@ -32,6 +32,7 @@ This maintained contract registers bootstrap environment names for `check:env` a
 | `TASKDESK_STORAGE_FILESYSTEM_ROOT` | `/app/data/attachments` | Writable filesystem-storage root; mount persistent storage for durable bytes. |
 | `TASKDESK_POLICY_SHADOW` | `off` | Interim `on`/`off` policy comparison. Records disagreements without changing responses; invalid values fail startup. |
 | `TASKDESK_POLICY_ENFORCE` | empty | Exact comma-separated registry source paths. Reject unknown, duplicate, empty or whitespace-padded members; the task source must be last after all other sources. Requires separately verified policy cutover evidence. |
+| `E2E_SET` | unset | Browser-test harness only (`apps/web/playwright.config.ts`); the application never reads it. `smoke` skips the `*-persisted.spec.ts` journeys, `persisted` runs only them, unset runs every test. CI uses it to shard the two sets separately. |
 | `TASKDESK_SEED_CONFIRM_DATABASE` | unset | Demo seed (`seed-uat`) only: must equal the connected database name or the seed refuses to run. Never set it on a serving deployment. |
 
 The storage and policy switches are bounded bootstrap compatibility, not permission to add customer-specific environment configuration. Environment names that remain in `scripts/ci/env-baseline.json` are inherited migration debt; that baseline only shrinks.

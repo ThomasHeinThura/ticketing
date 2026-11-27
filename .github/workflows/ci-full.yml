@@ -1,13 +1,18 @@
 # The full stage of the pull-request pipeline.
 #
 # docs/04-engineering/ci-cd.md: Full runs on pull request opened/reopened/labeled/
-# synchronize/ready_for_review events and on the merge queue, target under 45 minutes,
-# sharded four ways.
+# synchronize/ready_for_review events and on the merge queue. Required checks target under
+# 10 minutes and must finish within 20: integration runs in 8 shards and the browser e2e
+# suite in 8 shards (4 of the smoke set and 4 of the persisted-journey set, selected by
+# E2E_SET) plus a separate shipping-image job. Every shard is an explicit job (the
+# workflow scanner refuses `needs` and `strategy` on a gate-bearing job) and a non-gate
+# aggregator keeps the original required check name and fails closed unless every shard
+# succeeded. Sharding removes, skips and weakens no gate, test or threshold.
 #
-# The E2E job runs the logged-out redirect smoke. G8 snapshots cover every exported UI
-# Storybook story and deterministic fixtures for implemented inventory routes; future
-# inventory routes activate their baseline when their route is introduced. G11 measures
-# the seeded work-item list journeys and initial bundle.
+# The E2E jobs run the whole browser suite, @a11y specs included, split by test. G8 snapshots
+# cover every exported UI Storybook story and deterministic fixtures for implemented inventory
+# routes; future inventory routes activate their baseline when their route is introduced. G11
+# measures the seeded work-item list journeys and initial bundle.
 
 name: CI - full
 
@@ -30,7 +35,7 @@ env:
 
 jobs:
   integration-1:
-    name: integration shard 1/4
+    name: integration shard 1/8
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -41,12 +46,12 @@ jobs:
         uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
         if: ${{ steps.scope.outputs.full != 'false' }}
-      - name: Run integration shard 1/4
+      - name: Run integration shard 1/8
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: pnpm test:integration -- --shard=1/4
+        run: pnpm test:integration -- --shard=1/8
 
   integration-2:
-    name: integration shard 2/4
+    name: integration shard 2/8
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -57,12 +62,12 @@ jobs:
         uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
         if: ${{ steps.scope.outputs.full != 'false' }}
-      - name: Run integration shard 2/4
+      - name: Run integration shard 2/8
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: pnpm test:integration -- --shard=2/4
+        run: pnpm test:integration -- --shard=2/8
 
   integration-3:
-    name: integration shard 3/4
+    name: integration shard 3/8
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -73,12 +78,12 @@ jobs:
         uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
         if: ${{ steps.scope.outputs.full != 'false' }}
-      - name: Run integration shard 3/4
+      - name: Run integration shard 3/8
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: pnpm test:integration -- --shard=3/4
+        run: pnpm test:integration -- --shard=3/8
 
   integration-4:
-    name: integration shard 4/4
+    name: integration shard 4/8
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -89,25 +94,91 @@ jobs:
         uses: ./.github/actions/change-scope
       - uses: ./.github/actions/setup
         if: ${{ steps.scope.outputs.full != 'false' }}
-      - name: Run integration shard 4/4
+      - name: Run integration shard 4/8
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: pnpm test:integration -- --shard=4/4
+        run: pnpm test:integration -- --shard=4/8
+
+  integration-5:
+    name: integration shard 5/8
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Run integration shard 5/8
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:integration -- --shard=5/8
+
+  integration-6:
+    name: integration shard 6/8
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Run integration shard 6/8
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:integration -- --shard=6/8
+
+  integration-7:
+    name: integration shard 7/8
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Run integration shard 7/8
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:integration -- --shard=7/8
+
+  integration-8:
+    name: integration shard 8/8
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Run integration shard 8/8
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:integration -- --shard=8/8
 
   integration:
     name: integration - Postgres 18
-    needs: [integration-1, integration-2, integration-3, integration-4]
+    needs: [integration-1, integration-2, integration-3, integration-4, integration-5, integration-6, integration-7, integration-8]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-      - name: Require every integration shard to succeed
+      - name: Require every integration job to succeed
         run: node scripts/ci/assert-integration-shards.mjs
         env:
-          INTEGRATION_SHARD_RESULTS: ${{ toJSON(needs) }}
+          GATE_LABEL: integration
+          GATE_EXPECTED_JOBS: integration-1,integration-2,integration-3,integration-4,integration-5,integration-6,integration-7,integration-8
+          GATE_JOB_RESULTS: ${{ toJSON(needs) }}
 
-  e2e:
-    name: e2e - protected-route redirect
+  e2e-1:
+    name: e2e smoke shard 1/4
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -130,11 +201,304 @@ jobs:
       - name: Install Chromium
         if: ${{ steps.scope.outputs.full != 'false' }}
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
-      - name: Run browser smoke
+      - name: Run browser smoke shard 1/4
         if: ${{ steps.scope.outputs.full != 'false' }}
-        run: pnpm test:e2e
-      # always(): a browser-smoke failure must not hide the deploy verdict (each failing step
-      # fails the job on its own, so this cannot turn a failure into a pass).
+        run: pnpm test:e2e --shard=1/4
+        env:
+          E2E_SET: smoke
+      - name: Upload browser evidence
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-smoke-1
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  e2e-2:
+    name: e2e smoke shard 2/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Build the web app and workspace dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm build
+        env:
+          VITE_API_URL: ""
+      - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
+      - name: Install Chromium
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Run browser smoke shard 2/4
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:e2e --shard=2/4
+        env:
+          E2E_SET: smoke
+      - name: Upload browser evidence
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-smoke-2
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  e2e-3:
+    name: e2e smoke shard 3/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Build the web app and workspace dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm build
+        env:
+          VITE_API_URL: ""
+      - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
+      - name: Install Chromium
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Run browser smoke shard 3/4
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:e2e --shard=3/4
+        env:
+          E2E_SET: smoke
+      - name: Upload browser evidence
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-smoke-3
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  e2e-4:
+    name: e2e smoke shard 4/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Build the web app and workspace dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm build
+        env:
+          VITE_API_URL: ""
+      - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
+      - name: Install Chromium
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Run browser smoke shard 4/4
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:e2e --shard=4/4
+        env:
+          E2E_SET: smoke
+      - name: Upload browser evidence
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-smoke-4
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  e2e-5:
+    name: e2e persisted shard 1/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Build the web app and workspace dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm build
+        env:
+          VITE_API_URL: ""
+      - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
+      - name: Install Chromium
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Run browser persisted shard 1/4
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:e2e --shard=1/4
+        env:
+          E2E_SET: persisted
+      - name: Upload browser evidence
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-persisted-1
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  e2e-6:
+    name: e2e persisted shard 2/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Build the web app and workspace dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm build
+        env:
+          VITE_API_URL: ""
+      - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
+      - name: Install Chromium
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Run browser persisted shard 2/4
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:e2e --shard=2/4
+        env:
+          E2E_SET: persisted
+      - name: Upload browser evidence
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-persisted-2
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  e2e-7:
+    name: e2e persisted shard 3/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Build the web app and workspace dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm build
+        env:
+          VITE_API_URL: ""
+      - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
+      - name: Install Chromium
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Run browser persisted shard 3/4
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:e2e --shard=3/4
+        env:
+          E2E_SET: persisted
+      - name: Upload browser evidence
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-persisted-3
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  e2e-8:
+    name: e2e persisted shard 4/4
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Build the web app and workspace dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm build
+        env:
+          VITE_API_URL: ""
+      - name: Normalize Ubuntu APT mirror for Chromium dependencies
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
+      - name: Install Chromium
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Run browser persisted shard 4/4
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: pnpm test:e2e --shard=4/4
+        env:
+          E2E_SET: persisted
+      - name: Upload browser evidence
+        if: ${{ always() && steps.scope.outputs.full != 'false' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-persisted-4
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+  e2e-image:
+    name: e2e image - deploy helpers and shipping image
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # The change-scope step reads landed commits from the merge base.
+          fetch-depth: 0
+      - id: scope
+        uses: ./.github/actions/change-scope
+      - uses: ./.github/actions/setup
+        if: ${{ steps.scope.outputs.full != 'false' }}
+      - name: Normalize Ubuntu APT mirror for the deploy helper's apt downloads
+        if: ${{ steps.scope.outputs.full != 'false' }}
+        run: sudo -- "$(command -v node)" scripts/ci/normalize-ubuntu-apt-mirror.mjs
+      # always(): a deploy-helper failure must not hide the shipping-image verdict (each failing
+      # step fails the job on its own, so this cannot turn a failure into a pass).
       - name: Verify the deploy helpers against a real Docker engine
         if: ${{ always() && steps.scope.outputs.full != 'false' }}
         run: scripts/ci/run-deploy-real-docker.sh
@@ -149,14 +513,21 @@ jobs:
           path: ${{ runner.temp }}/taskdesk-image-proof-${{ github.run_id }}-${{ github.run_attempt }}.json
           if-no-files-found: ignore
           retention-days: 7
-      - name: Upload browser evidence
-        if: ${{ always() && steps.scope.outputs.full != 'false' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: playwright-smoke
-          path: apps/web/test-results/
-          if-no-files-found: warn
-          retention-days: 7
+
+  e2e:
+    name: e2e - protected-route redirect
+    needs: [e2e-1, e2e-2, e2e-3, e2e-4, e2e-5, e2e-6, e2e-7, e2e-8, e2e-image]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Require every e2e job to succeed
+        run: node scripts/ci/assert-integration-shards.mjs
+        env:
+          GATE_LABEL: e2e
+          GATE_EXPECTED_JOBS: e2e-1,e2e-2,e2e-3,e2e-4,e2e-5,e2e-6,e2e-7,e2e-8,e2e-image
+          GATE_JOB_RESULTS: ${{ toJSON(needs) }}
 
   a11y:
     name: a11y - accessibility (G4, axe)
