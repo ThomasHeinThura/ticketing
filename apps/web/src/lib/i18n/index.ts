@@ -5,7 +5,7 @@ import {
   loadLocale,
   supportedLocales,
 } from "@i18n/resources";
-import type { i18n as I18nInstance } from "i18next";
+import type { i18n as I18nInstance, Resource } from "i18next";
 import i18n from "i18next";
 import resourcesToBackend from "i18next-resources-to-backend";
 import { initReactI18next } from "react-i18next";
@@ -210,7 +210,7 @@ export async function createScopedI18n(
   // language's deferred namespaces must be available at once, or content that stays mounted across
   // a language change would show raw keys until this instance fetched them. Bundles are cloned,
   // so the instance's own terminology overlays never touch the shared store.
-  const seedResources: Record<string, Record<string, unknown>> = {};
+  const seedResources: Resource = {};
   for (const language of Object.keys(i18n.store?.data ?? {})) {
     const loaded = i18n.getDataByLanguage(language);
     if (!loaded) continue;

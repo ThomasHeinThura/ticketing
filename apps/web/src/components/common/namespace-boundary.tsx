@@ -60,11 +60,13 @@ export default function NamespaceBoundary({
       active = false;
     };
   }, [revealed, attempt]);
-  if (revealed) return children;
   return (
     <>
-      {state === "pending" ? (fallback ?? <DefaultFallback />) : null}
-      {state === "failed" ? (
+      {revealed ? children : null}
+      {!revealed && state === "pending"
+        ? (fallback ?? <DefaultFallback />)
+        : null}
+      {!revealed && state === "failed" ? (
         <div className="bg-background p-4">
           <Alert variant="error">
             <AlertDescription>

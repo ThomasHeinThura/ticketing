@@ -16,17 +16,17 @@ export default function PendingActionApprovalDialog() {
   const finalFocus = usePendingActionDialogStore((state) => state.finalFocus);
   if (!pendingActionId) return null;
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) close();
-      }}
-    >
-      <DialogContent
-        closeLabel={t("common:actions.close")}
-        {...(finalFocus ? { finalFocus } : {})}
+    <NamespaceBoundary>
+      <Dialog
+        open
+        onOpenChange={(open) => {
+          if (!open) close();
+        }}
       >
-        <NamespaceBoundary>
+        <DialogContent
+          closeLabel={t("common:actions.close")}
+          {...(finalFocus ? { finalFocus } : {})}
+        >
           <PendingActionTerminologyBoundary id={pendingActionId}>
             <PendingActionApproval
               id={pendingActionId}
@@ -41,8 +41,8 @@ export default function PendingActionApprovalDialog() {
               }}
             />
           </PendingActionTerminologyBoundary>
-        </NamespaceBoundary>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </NamespaceBoundary>
   );
 }

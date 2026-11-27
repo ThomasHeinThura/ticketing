@@ -1,5 +1,6 @@
 import en from "@i18n/en-US.json";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Button } from "@taskdesk/ui";
 import {
   act,
   cleanup,
@@ -74,7 +75,7 @@ const SURFACES = [
         <Menu items={[row as never]}>
           <div>
             <div data-task-id="row">
-              <button type="button">Real row</button>
+              <Button type="button">Real row</Button>
             </div>
           </div>
         </Menu>,
