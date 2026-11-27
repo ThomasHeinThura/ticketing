@@ -123,6 +123,25 @@ describe("i18n group mode on the work list", () => {
     expect(added).not.toContain("settings");
     i18n.addResourceBundle("en-US", "tasks", { probe: "x" }, true, true);
     expect(added).toContain("tasks");
+    // A shell string read before its namespace arrived (the notification menu) re-renders.
+    i18n.t("notifications:probeMissing");
+    i18n.addResourceBundle(
+      "en-US",
+      "notifications",
+      { probe: "x" },
+      true,
+      true,
+    );
+    expect(added).toContain("notifications");
+    added.length = 0;
+    i18n.addResourceBundle(
+      "en-US",
+      "notifications",
+      { probe: "y" },
+      true,
+      true,
+    );
+    expect(added).not.toContain("notifications");
     // Off the work list a late namespace still re-renders, so no screen keeps raw keys.
     window.history.pushState({}, "", "/agent/settings");
     i18n.addResourceBundle("en-US", "settings", { probe: "x" }, true, true);

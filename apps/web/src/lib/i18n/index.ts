@@ -236,19 +236,44 @@ const WORK_ROUTE_NAMESPACE_SET: ReadonlySet<string> = new Set(
 /** The store event the React bindings follow (`react.bindI18nStore`). */
 const RENDER_RELEVANT_ADDED = "renderRelevantAdded";
 
+/** Namespaces a translation call found missing, per instance, until they arrive. */
+const missedNamespaces = new WeakMap<I18nInstance, Set<string>>();
+function missedBy(instance: I18nInstance) {
+  let missed = missedNamespaces.get(instance);
+  if (!missed) {
+    missed = new Set();
+    missedNamespaces.set(instance, missed);
+  }
+  return missed;
+}
+
+/**
+ * Init options that record which namespaces a component read before they loaded. With a handler
+ * set, `saveMissing` only calls it; nothing is sent to the backend.
+ */
+function recordMissedNamespaces(instance: () => I18nInstance) {
+  return {
+    saveMissing: true,
+    missingKeyHandler: (_languages: readonly string[], namespace: string) => {
+      missedBy(instance()).add(namespace);
+    },
+  };
+}
+
 /**
  * Re-emits the store's `added` for the namespaces mounted components can be waiting on. On the
- * work list everything outside a namespace boundary paints with the work-route namespaces only
- * (render-graph guard), so the later group re-renders nothing that reads it; without this filter
- * it re-rendered every row in one long task (G11 list-to-detail paint). Elsewhere every namespace
- * still re-renders, so a screen that painted before its strings arrived never keeps raw keys.
+ * work list a late namespace re-renders only when it is a work-route one or a component already
+ * read it and got a key back; the rest of the deferred group re-rendered every row in one long
+ * task (G11 list-to-detail paint). Elsewhere every namespace still re-renders.
  */
 function followRenderRelevantNamespaces(instance: I18nInstance) {
   const store = instance.store as I18nInstance["store"] & {
     emit(event: string, ...args: unknown[]): void;
   };
   store.on("added", (lng, ns) => {
+    const missed = missedBy(instance).delete(ns);
     if (
+      !missed &&
       typeof location !== "undefined" &&
       WORK_LIST_PATH_PATTERN.test(location.pathname) &&
       !WORK_ROUTE_NAMESPACE_SET.has(ns)
@@ -311,6 +336,7 @@ export async function createScopedI18n(
       resources: hasSeed ? seedResources : undefined,
       partialBundledLanguages: hasSeed,
       react: { bindI18nStore: RENDER_RELEVANT_ADDED },
+      ...recordMissedNamespaces(() => scopedI18n),
       interpolation: {
         escapeValue: false,
         skipOnVariables: true,
@@ -359,6 +385,7 @@ void i18n
           // A namespace that arrives after first paint re-renders the components that
           // already asked for it instead of leaving their keys on screen.
           react: { bindI18nStore: RENDER_RELEVANT_ADDED },
+          ...recordMissedNamespaces(() => i18n),
         }
       : {}),
     interpolation: {
