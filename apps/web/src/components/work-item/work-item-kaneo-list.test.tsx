@@ -37,6 +37,7 @@ const preference = vi.hoisted(() => ({
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  warm: vi.fn(),
   rank: vi.fn(),
   transition: vi.fn(),
   offers: vi.fn(),
@@ -128,6 +129,9 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
   initReactI18next: { type: "3rdParty", init: vi.fn() },
 }));
+vi.mock("./warm-work-item-detail-on-intent", () => ({
+  warmWorkItemDetailOnIntent: (...args: unknown[]) => mocks.warm(...args),
+}));
 vi.mock("./work-item-list", () => ({
   default: () => <div data-testid="table-fallback">Table fallback</div>,
 }));
@@ -194,6 +198,7 @@ const baseProps = () => ({
 afterEach(cleanup);
 beforeEach(() => {
   mocks.navigate.mockClear();
+  mocks.warm.mockClear();
   mocks.rank.mockReset();
   mocks.rank.mockResolvedValue({});
   mocks.transition.mockReset();
@@ -646,4 +651,66 @@ it("preserves structured-search key order and refuses hidden ranking when positi
     toStateTemplateId: "template-done",
   });
   expect(mocks.rank).not.toHaveBeenCalled();
+});
+
+describe("detail read on intent", () => {
+  const row = (key: string) =>
+    screen.getByText(key).closest("[data-task-id]") as HTMLElement;
+
+  it("starts the read for a mouse over, a mouse press and keyboard focus on a row", () => {
+    render(<WorkItemKaneoList {...baseProps()} onOpenItem={vi.fn()} />);
+    fireEvent.pointerOver(row("WLP-1"), { pointerType: "mouse" });
+    expect(mocks.warm).toHaveBeenLastCalledWith(expect.anything(), "WLP-1");
+    mocks.warm.mockClear();
+    fireEvent.pointerDown(row("WLP-2"), { pointerType: "mouse" });
+    expect(mocks.warm).toHaveBeenLastCalledWith(expect.anything(), "WLP-2");
+  });
+
+  it("reads on keyboard focus only, not on focus from a pointer", () => {
+    render(<WorkItemKaneoList {...baseProps()} onOpenItem={vi.fn()} />);
+    const fieldset = row("WLP-1").querySelector("fieldset") as HTMLElement;
+    const matches = Element.prototype.matches;
+    let focusVisible = false;
+    const spy = vi
+      .spyOn(Element.prototype, "matches")
+      .mockImplementation(function (this: Element, selector: string) {
+        return selector === ":focus-visible"
+          ? focusVisible
+          : matches.call(this, selector);
+      });
+    try {
+      act(() => fieldset.focus());
+      expect(mocks.warm).not.toHaveBeenCalled();
+      act(() => fieldset.blur());
+      focusVisible = true;
+      act(() => fieldset.focus());
+      expect(mocks.warm).toHaveBeenLastCalledWith(expect.anything(), "WLP-1");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("never reads on touch or pen, nor without a side pane to open into", () => {
+    const { rerender } = render(
+      <WorkItemKaneoList {...baseProps()} onOpenItem={vi.fn()} />,
+    );
+    for (const pointerType of ["touch", "pen"]) {
+      fireEvent.pointerOver(row("WLP-1"), { pointerType });
+      fireEvent.pointerDown(row("WLP-1"), { pointerType });
+    }
+    expect(mocks.warm).not.toHaveBeenCalled();
+    rerender(<WorkItemKaneoList {...baseProps()} />);
+    fireEvent.pointerOver(row("WLP-1"), { pointerType: "mouse" });
+    expect(mocks.warm).not.toHaveBeenCalled();
+  });
+
+  it("ignores moves inside the same row", () => {
+    render(<WorkItemKaneoList {...baseProps()} onOpenItem={vi.fn()} />);
+    const target = row("WLP-1");
+    fireEvent.pointerOver(screen.getByText("WLP-1"), {
+      pointerType: "mouse",
+      relatedTarget: target,
+    });
+    expect(mocks.warm).not.toHaveBeenCalled();
+  });
 });

@@ -10048,6 +10048,9 @@
 						"kindCab",
 						"kindCustomer"
 					]
+				},
+				"openNotifications": {
+					"type": "string"
 				}
 			},
 			"required": [
@@ -10065,7 +10068,8 @@
 				"mobileProjectNav",
 				"keyboardShortcuts",
 				"inbox",
-				"myWork"
+				"myWork",
+				"openNotifications"
 			]
 		},
 		"notifications": {
@@ -10113,16 +10117,6 @@
 				},
 				"clearDialogDescription": {
 					"type": "string"
-				},
-				"shortcuts": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"open": {
-							"type": "string"
-						}
-					},
-					"required": ["open"]
 				},
 				"reminderLeadTime": {
 					"type": "object",
@@ -10332,7 +10326,6 @@
 				"clearAll",
 				"clearDialogTitle",
 				"clearDialogDescription",
-				"shortcuts",
 				"reminderLeadTime",
 				"events"
 			]

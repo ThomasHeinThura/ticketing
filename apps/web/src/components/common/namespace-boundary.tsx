@@ -46,6 +46,7 @@ export default function NamespaceBoundary({
   fallback,
   preload,
   errorFallback,
+  renderError,
 }: {
   children: ReactNode;
   /** Translated loading state shown while pending; defaults to a status-only announcement. */
@@ -54,6 +55,11 @@ export default function NamespaceBoundary({
   preload?: () => Promise<unknown>;
   /** Rendered with the error alert, e.g. an accessible name the surface's own copy would give. */
   errorFallback?: ReactNode;
+  /**
+   * Replaces the default error alert, e.g. so a menu keeps its error and retry inside its own
+   * popup. Receives the retry action.
+   */
+  renderError?: (retry: () => void) => ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
@@ -62,9 +68,10 @@ export default function NamespaceBoundary({
   const [failed, setFailed] = useState(false);
   // Started during the first render, not after the commit: the import is cached, so a repeat call
   // (StrictMode, remount) is free, and it runs a frame earlier than an effect would.
+  // `Promise.resolve`: a loaded module's loader answers with a bare synchronous thenable.
   const [code] = useState(() =>
     !ready && preload
-      ? preload().then(
+      ? Promise.resolve(preload()).then(
           () => undefined,
           () => undefined,
         )
@@ -100,8 +107,11 @@ export default function NamespaceBoundary({
           ? fallback(placeholderVisible)
           : (fallback ?? <DefaultFallback visible={placeholderVisible} />)
         : null}
-      {failed ? errorFallback : null}
-      {failed ? (
+      {failed && renderError
+        ? renderError(() => setAttempt((value) => value + 1))
+        : null}
+      {failed && !renderError ? errorFallback : null}
+      {failed && !renderError ? (
         <div className="bg-background p-4">
           <Alert variant="error">
             <AlertDescription>

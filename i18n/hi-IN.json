@@ -2475,7 +2475,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "सूचनाएँ खोलें"
 	},
 	"notifications": {
 		"title": "सूचनाएँ",
@@ -2488,9 +2489,6 @@
 		"clearAll": "सभी सूचनाएँ साफ़ करें",
 		"clearDialogTitle": "सभी सूचनाएँ साफ़ करें?",
 		"clearDialogDescription": "यह सभी सूचनाओं को स्थायी रूप से हटा देगा। यह कार्रवाई पूर्ववत नहीं की जा सकती।",
-		"shortcuts": {
-			"open": "सूचनाएँ खोलें"
-		},
 		"reminderLeadTime": {
 			"minutes_one": "{{count}} मिनट",
 			"minutes_other": "{{count}} मिनट",

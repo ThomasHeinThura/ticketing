@@ -2475,7 +2475,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Bildirimleri aç"
 	},
 	"notifications": {
 		"title": "Bildirimler",
@@ -2488,9 +2489,6 @@
 		"clearAll": "Tüm bildirimleri temizle",
 		"clearDialogTitle": "Tüm bildirimler temizlensin mi?",
 		"clearDialogDescription": "Bu, tüm bildirimleri kalıcı olarak kaldıracak. Bu işlemi geri alamazsınız.",
-		"shortcuts": {
-			"open": "Bildirimleri aç"
-		},
 		"events": {
 			"task_created": {
 				"title": "Yeni Talep Oluşturuldu",

@@ -85,9 +85,13 @@ export function findBoundaryElements(source: string): BoundaryElement[] {
   return elements;
 }
 
+/** Escapes every RegExp metacharacter, so source text can be matched literally. */
+export const escapeRegExp = (text: string) =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /** Local names the module binds to the component imported from `specifier`. */
 function boundNames(source: string, specifier: string): string[] {
-  const quoted = specifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const quoted = escapeRegExp(specifier);
   const names: string[] = [];
   const statics = new RegExp(
     `\\bimport\\s+(?!type\\b)([^;]*?)\\s+from\\s*["']${quoted}["']`,
@@ -117,9 +121,19 @@ function boundNames(source: string, specifier: string): string[] {
     `([A-Za-z_$][\\w$]*)\\s*=\\s*\\(\\)\\s*=>\\s*import\\(\\s*["']${quoted}["']`,
     "g",
   );
-  for (const [, loader] of source.matchAll(loaders)) {
+  // `function load() { if (done) return done; return import("spec")... }`: a loader that answers
+  // synchronously once loaded, so `React.lazy` never suspends for a warmed surface. Only the
+  // binding is recognised here; the boundary containment check below is unchanged.
+  const declared = new RegExp(
+    `function\\s+([A-Za-z_$][\\w$]*)\\s*\\([^)]*\\)[^{]*\\{[^}]*?import\\(\\s*["']${quoted}["']`,
+    "g",
+  );
+  for (const [, loader] of [
+    ...source.matchAll(loaders),
+    ...source.matchAll(declared),
+  ]) {
     const lazyOf = new RegExp(
-      `([A-Za-z_$][\\w$]*)\\s*=\\s*lazy\\(\\s*${loader.replace(/\$/g, "\\$")}\\s*\\)`,
+      `([A-Za-z_$][\\w$]*)\\s*=\\s*lazy\\(\\s*${escapeRegExp(loader)}\\s*\\)`,
       "g",
     );
     for (const match of source.matchAll(lazyOf)) names.push(match[1]);
@@ -143,7 +157,7 @@ export function isContainedInBoundary(
   let uses = 0;
   for (const name of names) {
     for (const match of source.matchAll(
-      new RegExp(`<${name}(?![\\w$.])`, "g"),
+      new RegExp(`<${escapeRegExp(name)}(?![\\w$.])`, "g"),
     )) {
       uses += 1;
       const at = match.index ?? 0;

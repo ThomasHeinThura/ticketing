@@ -2470,7 +2470,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Mở thông báo"
 	},
 	"notifications": {
 		"title": "Thông báo",
@@ -2482,9 +2483,6 @@
 		"clearAll": "Xóa tất cả thông báo",
 		"clearDialogTitle": "Xóa tất cả thông báo?",
 		"clearDialogDescription": "Thao tác này sẽ xóa vĩnh viễn tất cả thông báo. Bạn không thể hoàn tác hành động này.",
-		"shortcuts": {
-			"open": "Mở thông báo"
-		},
 		"reminderLeadTime": {
 			"minutes_other": "{{count}} phút",
 			"hours_other": "{{count}} giờ",

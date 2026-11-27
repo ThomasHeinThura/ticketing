@@ -2,13 +2,14 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  escapeRegExp,
   findBoundaryElements,
   findUngatedDeferredReads,
   importSpecifiers,
   isContainedInBoundary,
 } from "../../../vite/namespace-render-graph";
 import {
-  SPLIT_OUT_NAMESPACES,
+  BOUNDARY_ONLY_NAMESPACES,
   WORK_ROUTE_GATED_SURFACES,
   WORK_ROUTE_RENDER_ROOTS,
 } from "./work-route-namespaces";
@@ -30,7 +31,7 @@ function scan(overrides: Record<string, (source: string) => string> = {}) {
     roots: WORK_ROUTE_RENDER_ROOTS,
     gated: WORK_ROUTE_GATED_SURFACES,
     known,
-    only: SPLIT_OUT_NAMESPACES,
+    only: BOUNDARY_ONLY_NAMESPACES,
     read: (target) => {
       const source = readFileSync(target, "utf8");
       return byFile.get(target)?.(source) ?? source;
@@ -80,6 +81,11 @@ const SURFACES = [
     name: "legacy task sheet",
     importer: "components/task/task-details-sheet.tsx",
     surface: "components/task/task-details-sheet-body.tsx",
+  },
+  {
+    name: "notification menu",
+    importer: "components/notification/notification-dropdown.tsx",
+    surface: "components/notification/notification-menu.tsx",
   },
 ] as const;
 
@@ -171,6 +177,43 @@ describe("work route render graph guard", () => {
     ).toBe(false);
   });
 
+  it("recognises a declared loader that answers synchronously once loaded", () => {
+    const declared = (body: string) =>
+      `let done;\nfunction load() {\n  if (done) return done;\n  return import("./surface");\n}\nconst Surface = lazy(load);\n${body}`;
+    expect(
+      isContainedInBoundary(
+        declared(
+          "<NamespaceBoundary preload={load}><Surface /></NamespaceBoundary>",
+        ),
+        "./surface",
+      ),
+    ).toBe(true);
+    expect(isContainedInBoundary(declared("<Surface />"), "./surface")).toBe(
+      false,
+    );
+  });
+
+  it("matches source text literally: every RegExp metacharacter is escaped", () => {
+    const text = "load$1.x(a|b)[c]{2}+*?^\\";
+    expect(new RegExp(`^${escapeRegExp(text)}$`).test(text)).toBe(true);
+    // `.` is not "any character" and `$` is not an anchor once escaped.
+    expect(new RegExp(escapeRegExp("load$1.x")).test("load$1Zx")).toBe(false);
+    const shared = (loader: string, body: string) =>
+      `const ${loader} = () => import("./surface");\nconst Surface = lazy(${loader});\n${body}`;
+    const inside =
+      "<NamespaceBoundary preload={load$1}><Surface /></NamespaceBoundary>";
+    expect(isContainedInBoundary(shared("load$1", inside), "./surface")).toBe(
+      true,
+    );
+    // A loader whose name is only a regex-lookalike of another one is not the same binding.
+    expect(
+      isContainedInBoundary(
+        `const load$1 = () => import("./surface");\nconst Surface = lazy(loadX1);\n${inside}`,
+        "./surface",
+      ),
+    ).toBe(false);
+  });
+
   it("follows dynamic imports and stops only at the boundary component", () => {
     // The form and its label picker are only reached through `lazy(() => import(...))`.
     expect(
@@ -178,6 +221,27 @@ describe("work route render graph guard", () => {
         "components/work-item/create-work-item-dialog.tsx": stripBoundary,
       }),
     ).toContain("components/work-item/create-work-item-properties.tsx");
+  });
+
+  it("fails when the shell's notification dropdown reads its namespace outside a boundary", () => {
+    const notificationsRead = (source: string) =>
+      `${source}\nexport const injected = () => t("notifications:title");\n`;
+    expect(
+      scan({
+        "components/notification/notification-dropdown.tsx": notificationsRead,
+      }),
+    ).toContain("components/notification/notification-dropdown.tsx");
+    // The clear dialog is gated too: stripping its boundary exposes its reads.
+    expect(
+      scan({
+        "components/notification/notification-dropdown.tsx": stripBoundary,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        "components/notification/notification-menu.tsx",
+        "components/notification/notification-clear-dialog.tsx",
+      ]),
+    );
   });
 
   it("fails for a deferred read in the work route itself", () => {

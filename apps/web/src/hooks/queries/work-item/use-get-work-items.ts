@@ -162,6 +162,55 @@ export function workListPageFingerprint(
   });
 }
 
+type ListPage = Awaited<ReturnType<typeof fetchWorkItemsListPage>>;
+type SearchPage = Awaited<
+  ReturnType<Awaited<ReturnType<typeof loadSearchWorkItems>>>
+>;
+
+// Module-level, so each select keeps one identity: an inline arrow re-ran on every render and
+// handed the list a fresh `items` array each time, re-rendering every row (G11 list-to-detail).
+function selectListPages(data: InfiniteData<ListPage>): WorkItemsResult {
+  const seen = new Set<string>();
+  const last = data.pages.at(-1);
+  return {
+    items: data.pages
+      .flatMap((page) => page.items)
+      .filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      }),
+    hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
+    hasMore: last?.hasMore ?? false,
+  };
+}
+
+function selectSearchPages(data: InfiniteData<SearchPage>): WorkItemsResult {
+  const last = data.pages.at(-1);
+  const customFieldColumns = data.pages.find(
+    (page) => page.customFieldColumns,
+  )?.customFieldColumns;
+  const people = new Map(
+    data.pages
+      .flatMap((page) => page.customFieldPeople ?? [])
+      .map((person) => [`${person.projectId}\0${person.personId}`, person]),
+  );
+  const seen = new Set<string>();
+  return {
+    items: data.pages
+      .flatMap((page) => page.items)
+      .filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      }),
+    hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
+    hasMore: last?.hasMore ?? false,
+    ...(customFieldColumns ? { customFieldColumns } : {}),
+    ...(people.size > 0 ? { customFieldPeople: [...people.values()] } : {}),
+  };
+}
+
 /** Canonical list and structured search retain independent cursor caches beneath the
  * project invalidation prefix. Previous ordering is a same-project placeholder only;
  * it must never become a writable rank ordering or appear under a different project. */
@@ -218,21 +267,7 @@ function useGetWorkItems({
       last.hasMore && last.nextCursor && !pageParams.includes(last.nextCursor)
         ? last.nextCursor
         : undefined,
-    select: (data): WorkItemsResult => {
-      const seen = new Set<string>();
-      const last = data.pages.at(-1);
-      return {
-        items: data.pages
-          .flatMap((page) => page.items)
-          .filter((item) => {
-            if (seen.has(item.id)) return false;
-            seen.add(item.id);
-            return true;
-          }),
-        hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
-        hasMore: last?.hasMore ?? false,
-      };
-    },
+    select: selectListPages,
     enabled: readEnabled && !useSearch,
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[1] === projectId ? previousData : undefined,
@@ -260,31 +295,7 @@ function useGetWorkItems({
     },
     getNextPageParam: (last) =>
       last.hasMore ? (last.nextCursor ?? undefined) : undefined,
-    select: (data): WorkItemsResult => {
-      const last = data.pages.at(-1);
-      const customFieldColumns = data.pages.find(
-        (page) => page.customFieldColumns,
-      )?.customFieldColumns;
-      const people = new Map(
-        data.pages
-          .flatMap((page) => page.customFieldPeople ?? [])
-          .map((person) => [`${person.projectId}\0${person.personId}`, person]),
-      );
-      const seen = new Set<string>();
-      return {
-        items: data.pages
-          .flatMap((page) => page.items)
-          .filter((item) => {
-            if (seen.has(item.id)) return false;
-            seen.add(item.id);
-            return true;
-          }),
-        hasPartialFailure: data.pages.some((page) => page.hasPartialFailure),
-        hasMore: last?.hasMore ?? false,
-        ...(customFieldColumns ? { customFieldColumns } : {}),
-        ...(people.size > 0 ? { customFieldPeople: [...people.values()] } : {}),
-      };
-    },
+    select: selectSearchPages,
     enabled: readEnabled && useSearch && !!workspaceId && !!projectSlug,
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[1] === projectId ? previousData : undefined,

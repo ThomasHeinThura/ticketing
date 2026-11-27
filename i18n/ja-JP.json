@@ -2470,7 +2470,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "通知を開く"
 	},
 	"notifications": {
 		"title": "通知",
@@ -2482,9 +2483,6 @@
 		"clearAll": "すべての通知を消去",
 		"clearDialogTitle": "すべての通知を消去しますか？",
 		"clearDialogDescription": "これにより、すべての通知が完全に削除されます。この操作は取り消せません。",
-		"shortcuts": {
-			"open": "通知を開く"
-		},
 		"reminderLeadTime": {
 			"minutes_other": "{{count}} 分",
 			"hours_other": "{{count}} 時間",

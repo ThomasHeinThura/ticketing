@@ -1,6 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Button, DelayedSuspense, useDelayedPending } from "@taskdesk/ui";
+import {
+  Badge,
+  Button,
+  DelayedSuspense,
+  useDelayedPending,
+} from "@taskdesk/ui";
 import { Maximize2, X } from "lucide-react";
 import { lazy, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,16 +16,52 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import { HttpError } from "@/lib/http-error";
 import { routes } from "@/lib/routes";
+import type { WorkItemRow } from "@/types/work-item";
 import WorkItemActions from "./work-item-actions";
 
 const WorkItemDetail = lazy(loadWorkItemDetail);
 
+/** Starts the detail view's code ahead of the first open (see `warmWorkItemSidePane`). */
+export const warmWorkItemDetail = () => loadWorkItemDetail();
+
+/**
+ * What the list already shows for the row (title, status, assignee), so the pane's header is on
+ * screen with the sheet's motion while the item loads. It is display only: never the detail
+ * query's data, never written to the cache, and gone as soon as the item is refused or missing.
+ */
+function ListRowHeader({ row }: { row: WorkItemRow }) {
+  const missing = row.unavailableFields;
+  return (
+    <div
+      className="flex flex-col gap-2 px-4 pt-4"
+      data-testid="work-item-side-pane-list-row"
+    >
+      {missing.includes("title") ? null : (
+        <p className="font-semibold text-foreground text-lg leading-snug">
+          {row.title}
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-sm">
+        {missing.includes("stateName") ? null : (
+          <Badge variant="outline">{row.stateName}</Badge>
+        )}
+        {row.assigneeName && !missing.includes("assigneeName") ? (
+          <span>{row.assigneeName}</span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export default function WorkItemSidePaneBody({
   itemKey,
   onClose,
+  listRow,
 }: {
   itemKey: string;
   onClose: () => void;
+  /** The list's row for this item, used for the header only while the item loads. */
+  listRow?: WorkItemRow;
 }) {
   const { t } = useTranslation();
   const [activityFilter, setActivityFilter] =
@@ -54,6 +95,13 @@ export default function WorkItemSidePaneBody({
   const placeholderVisible = useDelayedPending(
     !item && !isNotFound && !isError,
   );
+  // Held while the placeholder is up, even once the item arrived, so the header never turns into
+  // skeleton blocks; a refusal or a missing item removes it at once.
+  const showListRow =
+    listRow !== undefined &&
+    !isNotFound &&
+    !isError &&
+    (!item || placeholderVisible);
 
   return (
     <div
@@ -100,11 +148,16 @@ export default function WorkItemSidePaneBody({
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {showListRow ? <ListRowHeader row={listRow} /> : null}
         {!isNotFound && !isError && (!item || placeholderVisible) ? (
           <div
+            className={showListRow ? "px-4 pt-3" : undefined}
             style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
           >
-            <WorkItemDetailLoading visible={placeholderVisible} />
+            <WorkItemDetailLoading
+              visible={placeholderVisible}
+              withHeader={!showListRow}
+            />
           </div>
         ) : (
           <DelayedSuspense

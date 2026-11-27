@@ -2475,7 +2475,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Meldingen openen"
 	},
 	"notifications": {
 		"title": "Meldingen",
@@ -2488,9 +2489,6 @@
 		"clearAll": "Alle meldingen wissen",
 		"clearDialogTitle": "Alle meldingen wissen?",
 		"clearDialogDescription": "Dit zal alle meldingen permanent verwijderen. Dit kan niet ongedaan worden gemaakt.",
-		"shortcuts": {
-			"open": "Meldingen openen"
-		},
 		"events": {
 			"task_created": {
 				"title": "Nieuwe {{term_work_item_one}} aangemaakt",

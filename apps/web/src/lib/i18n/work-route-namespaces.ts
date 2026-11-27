@@ -31,6 +31,16 @@ export const WORK_ROUTE_BOUNDARY_FREE_MODULES = [
  */
 export const SPLIT_OUT_NAMESPACES = ["tasksExtra", "workItemsExtra"] as const;
 
+/**
+ * Namespaces the render-graph guard enforces: the split-out ones, plus deferred namespaces read by
+ * shell surfaces a user can open before the deferred group lands (the notification menu). A read
+ * of these on the work route or shell outside a namespace boundary fails the build.
+ */
+export const BOUNDARY_ONLY_NAMESPACES = [
+  ...SPLIT_OUT_NAMESPACES,
+  "notifications",
+] as const;
+
 /** Entry points of the agent work route and shell render graph (relative to `apps/web/src`). */
 export const WORK_ROUTE_RENDER_ROOTS = [
   "main.tsx",
@@ -54,6 +64,8 @@ export const WORK_ROUTE_GATED_SURFACES = [
   "/components/pending-action/pending-action-approval.tsx",
   "/components/work-item/create-work-item-dialog-form.tsx",
   "/components/task/task-details-sheet-body.tsx",
+  "/components/notification/notification-menu.tsx",
+  "/components/notification/notification-clear-dialog.tsx",
 ] as const;
 
 /**

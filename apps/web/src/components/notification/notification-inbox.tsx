@@ -15,7 +15,7 @@ import {
   getNotificationTitle,
   isLegacyTaskNotification,
   useNotificationClick,
-} from "@/components/notification/notification-dropdown";
+} from "@/components/notification/notification-content";
 import { PageLoading } from "@/components/page-loading";
 import PageTitle from "@/components/page-title";
 import useMarkAllNotificationsAsRead from "@/hooks/mutations/notification/use-mark-all-notifications-as-read";

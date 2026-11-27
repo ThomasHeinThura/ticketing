@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { onFactorEnrollmentRequired } from "@taskdesk/libs";
 import { authClient } from "@/lib/auth-client";
+import { purgeWorkItemDetailReads } from "@/query-client/detail-authority";
 import { retireIdentity } from "@/query-client/identity-boundary";
 
 /**
@@ -438,6 +439,8 @@ export function followAgentSession(
   const stopSignal = atoms.$sessionSignal.listen(() => {
     supersedeReads(queryClient);
     clearAgentSession(queryClient);
+    // A workspace switch signals here: item reads of the workspace left must not answer later.
+    purgeWorkItemDetailReads(queryClient);
   });
   const stopFactorRefusal = onFactorEnrollmentRequired(() => {
     recoverFactorEnrollment(queryClient, onChanged);

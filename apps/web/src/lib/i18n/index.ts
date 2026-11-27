@@ -230,6 +230,59 @@ export async function switchLanguage(localeInput: string): Promise<boolean> {
   return true;
 }
 
+const WORK_ROUTE_NAMESPACE_SET: ReadonlySet<string> = new Set(
+  WORK_ROUTE_I18N_NAMESPACES,
+);
+/** The store event the React bindings follow (`react.bindI18nStore`). */
+const RENDER_RELEVANT_ADDED = "renderRelevantAdded";
+
+/** Namespaces a translation call found missing, per instance, until they arrive. */
+const missedNamespaces = new WeakMap<I18nInstance, Set<string>>();
+function missedBy(instance: I18nInstance) {
+  let missed = missedNamespaces.get(instance);
+  if (!missed) {
+    missed = new Set();
+    missedNamespaces.set(instance, missed);
+  }
+  return missed;
+}
+
+/**
+ * Init options that record which namespaces a component read before they loaded. With a handler
+ * set, `saveMissing` only calls it; nothing is sent to the backend.
+ */
+function recordMissedNamespaces(instance: () => I18nInstance) {
+  return {
+    saveMissing: true,
+    missingKeyHandler: (_languages: readonly string[], namespace: string) => {
+      missedBy(instance()).add(namespace);
+    },
+  };
+}
+
+/**
+ * Re-emits the store's `added` for the namespaces mounted components can be waiting on. On the
+ * work list a late namespace re-renders only when it is a work-route one or a component already
+ * read it and got a key back; the rest of the deferred group re-rendered every row in one long
+ * task (G11 list-to-detail paint). Elsewhere every namespace still re-renders.
+ */
+function followRenderRelevantNamespaces(instance: I18nInstance) {
+  const store = instance.store as I18nInstance["store"] & {
+    emit(event: string, ...args: unknown[]): void;
+  };
+  store.on("added", (lng, ns) => {
+    const missed = missedBy(instance).delete(ns);
+    if (
+      !missed &&
+      typeof location !== "undefined" &&
+      WORK_LIST_PATH_PATTERN.test(location.pathname) &&
+      !WORK_ROUTE_NAMESPACE_SET.has(ns)
+    )
+      return;
+    store.emit(RENDER_RELEVANT_ADDED, lng, ns);
+  });
+}
+
 /**
  * Create a runtime-scoped i18next instance with its own backend connector and resource store.
  * Loaded locale bundles are copied by value; lazy namespaces use the shared immutable group
@@ -282,12 +335,14 @@ export async function createScopedI18n(
       ns: initialNamespaces,
       resources: hasSeed ? seedResources : undefined,
       partialBundledLanguages: hasSeed,
-      react: { bindI18nStore: "added" },
+      react: { bindI18nStore: RENDER_RELEVANT_ADDED },
+      ...recordMissedNamespaces(() => scopedI18n),
       interpolation: {
         escapeValue: false,
         skipOnVariables: true,
       },
     });
+  followRenderRelevantNamespaces(scopedI18n);
 
   if (useNamespaceGroups && !initialNamespacesOverride) {
     const instances = scopedGroupInstances.get(locale) ?? new Set();
@@ -329,7 +384,8 @@ void i18n
           ns: [...WORK_ROUTE_I18N_NAMESPACES],
           // A namespace that arrives after first paint re-renders the components that
           // already asked for it instead of leaving their keys on screen.
-          react: { bindI18nStore: "added" },
+          react: { bindI18nStore: RENDER_RELEVANT_ADDED },
+          ...recordMissedNamespaces(() => i18n),
         }
       : {}),
     interpolation: {
@@ -338,5 +394,7 @@ void i18n
     },
   })
   .then(() => preloadNamespaces(initialLocale));
+// The store exists once `init` has been called; follow it before any later namespace lands.
+if (useNamespaceGroups) followRenderRelevantNamespaces(i18n);
 
 export { i18n };

@@ -77,3 +77,19 @@ describe("Sheet", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 });
+
+describe("Sheet motion", () => {
+  it("slides on the house spring, not a generic ease-out", () => {
+    render(
+      <Sheet defaultOpen>
+        <SheetPopup closeLabel="Close">
+          <SheetTitle>Filters</SheetTitle>
+        </SheetPopup>
+      </Sheet>,
+    );
+
+    const popup = document.querySelector('[data-slot="sheet-popup"]');
+    expect(popup).toHaveClass("ease-spring", "duration-base");
+    expect(popup).not.toHaveClass("ease-out");
+  });
+});

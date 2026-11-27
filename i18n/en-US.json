@@ -2475,7 +2475,8 @@
 			"columnExpires": "Expires",
 			"kindCab": "CAB",
 			"kindCustomer": "Customer"
-		}
+		},
+		"openNotifications": "Open notifications"
 	},
 	"notifications": {
 		"title": "Notifications",
@@ -2488,9 +2489,6 @@
 		"clearAll": "Clear all notifications",
 		"clearDialogTitle": "Clear all notifications?",
 		"clearDialogDescription": "This will permanently remove all notifications. You can't undo this action.",
-		"shortcuts": {
-			"open": "Open notifications"
-		},
 		"reminderLeadTime": {
 			"minutes_one": "{{count}} minute",
 			"minutes_other": "{{count}} minutes",

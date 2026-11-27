@@ -2485,7 +2485,8 @@
 				"watchingDescription": "{{term_work_item_other}} you watch in any {{term_project_one}} will show up here.",
 				"watchingTitle": "You are not watching anything"
 			}
-		}
+		},
+		"openNotifications": "Відкрити сповіщення"
 	},
 	"notifications": {
 		"title": "Сповіщення",
@@ -2500,9 +2501,6 @@
 		"clearAll": "Очистити всі сповіщення",
 		"clearDialogTitle": "Очистити всі сповіщення?",
 		"clearDialogDescription": "Це назавжди видалить усі сповіщення. Цю дію неможливо скасувати.",
-		"shortcuts": {
-			"open": "Відкрити сповіщення"
-		},
 		"events": {
 			"task_created": {
 				"title": "Створено нове {{term_work_item_one}}",
