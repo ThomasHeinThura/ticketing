@@ -17,6 +17,7 @@ import {
   untrustedContent,
   wrapUntrusted,
 } from "../utils/untrusted.js";
+import { registerImportBundleTools } from "./import-bundle.js";
 import {
   PENDING_DELETION_NOTICE,
   requestPendingDeletion,
@@ -957,6 +958,14 @@ export function registerTools(
         return compact(result, false);
       }),
   );
+
+  registerImportBundleTools({
+    client,
+    registerTool,
+    run: (fn) => run(fn),
+    writeInit,
+    scopedKey: scopedIdempotencyKey,
+  });
 
   registerTool(
     "create_work_item",

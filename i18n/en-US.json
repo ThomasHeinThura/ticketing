@@ -10604,6 +10604,7 @@
 				"plane": "Plane",
 				"planeHint": "REST API with a workspace API token. Read-only.",
 				"mcp": "MCP agent",
+				"bundle": "TaskDesk bundle",
 				"unknown": "Unknown source"
 			},
 			"fields": {

@@ -27,6 +27,7 @@ describe("startup registration", () => {
       "import.jsm",
       "import.azure-devops",
       "import.plane",
+      "import.bundle",
     ])
       expect(getImportAdapter(id)?.pluginId, id).toBe(id);
   });
