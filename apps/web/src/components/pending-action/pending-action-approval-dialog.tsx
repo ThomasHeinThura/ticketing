@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from "@taskdesk/ui";
+import { Dialog, DialogContent, DialogTitle } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
 import NamespaceBoundary from "@/components/common/namespace-boundary";
 import { PendingActionTerminologyBoundary } from "@/components/pending-action/pending-action-terminology-boundary";
@@ -28,6 +28,11 @@ export default function PendingActionApprovalDialog() {
         {...(finalFocus ? { finalFocus } : {})}
       >
         <NamespaceBoundary
+          errorFallback={
+            <DialogTitle className="sr-only">
+              {t("common:pendingActionTitle")}
+            </DialogTitle>
+          }
           fallback={(visible) => (
             <PendingActionApprovalSkeleton visible={visible} />
           )}

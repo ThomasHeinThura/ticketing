@@ -86,7 +86,10 @@ describe("direct-link detail translations", () => {
       instance.addResourceBundle("en-US", "workItemExtras", en.workItemExtras);
       resolve();
     });
-    expect(screen.getByText(/Project Unassigned/)).toBeVisible();
+    // The placeholder was shown, so it holds for its ~300 ms minimum before the detail appears.
+    await waitFor(() =>
+      expect(screen.getByText(/Project Unassigned/)).toBeVisible(),
+    );
     expect(document.body.textContent).not.toMatch(/\w+:[\w.]+/);
   });
   it("shows a translated failure and retries without painting keys", async () => {
@@ -105,7 +108,10 @@ describe("direct-link detail translations", () => {
       instance.addResourceBundle("en-US", "workItemExtras", en.workItemExtras);
       resolve();
     });
-    expect(screen.getByText(/Project Unassigned/)).toBeVisible();
+    // The placeholder was shown, so it holds for its ~300 ms minimum before the detail appears.
+    await waitFor(() =>
+      expect(screen.getByText(/Project Unassigned/)).toBeVisible(),
+    );
     expect(document.body.textContent).not.toMatch(/\w+:[\w.]+/);
   });
   it("never hides revealed detail on a language change", async () => {

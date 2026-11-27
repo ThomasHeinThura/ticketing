@@ -1,6 +1,7 @@
 import {
   DialogHeader,
   DialogPanel,
+  DialogTitle,
   LoadingStatus,
   Skeleton,
 } from "@taskdesk/ui";
@@ -21,17 +22,23 @@ export default function PendingActionApprovalSkeleton({
   const { t } = useTranslation();
   const hidden = { visibility: visible ? "visible" : "hidden" } as const;
   return (
-    <LoadingStatus visible={visible} label={t("common:empty.loading")}>
-      <DialogHeader>
-        <Skeleton className="h-5 w-44" style={hidden} />
-      </DialogHeader>
-      <DialogPanel aria-busy="true">
-        <Skeleton
-          className="h-32 w-full"
-          style={hidden}
-          data-testid="pending-action-approval-loading"
-        />
-      </DialogPanel>
-    </LoadingStatus>
+    <>
+      {/* Outside LoadingStatus (aria-hidden): the dialog needs its name from the first frame. */}
+      <DialogTitle className="sr-only">
+        {t("common:pendingActionTitle")}
+      </DialogTitle>
+      <LoadingStatus visible={visible} label={t("common:empty.loading")}>
+        <DialogHeader>
+          <Skeleton className="h-5 w-44" style={hidden} />
+        </DialogHeader>
+        <DialogPanel aria-busy="true">
+          <Skeleton
+            className="h-32 w-full"
+            style={hidden}
+            data-testid="pending-action-approval-loading"
+          />
+        </DialogPanel>
+      </LoadingStatus>
+    </>
   );
 }
