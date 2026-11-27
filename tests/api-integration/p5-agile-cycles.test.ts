@@ -154,6 +154,7 @@ describe("cycle CRUD, status and overlap (CY-1..CY-3)", () => {
         kind: "managed_service",
         supportLevel: "L1",
         serviceCalendarId: calendar.id,
+        serviceCalendarMode: "override",
       })
       .where(eq(schema.projectTable.id, w.project.id));
     const refused = await createCycle("After managed", 10, 12);

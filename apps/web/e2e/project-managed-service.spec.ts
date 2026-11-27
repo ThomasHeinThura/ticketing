@@ -339,10 +339,13 @@ const saveButton = (page: Page) =>
 async function choose(
   page: Page,
   trigger: ReturnType<typeof kind>,
-  option: string,
+  option: string | RegExp,
 ) {
   await trigger.click();
-  await page.getByRole("option", { name: option, exact: true }).click();
+  // "Delivery {{term_project_one}}" depends on the workspace terminology, so it is matched by regex.
+  await page
+    .getByRole("option", { name: option, exact: typeof option === "string" })
+    .click();
 }
 
 test.describe("project engagement controls (PR-9)", () => {
@@ -351,7 +354,7 @@ test.describe("project engagement controls (PR-9)", () => {
   }) => {
     const { requests } = await mockApi(page);
     await open(page);
-    await expect(kind(page)).toContainText("Delivery project");
+    await expect(kind(page)).toContainText(/Delivery /);
     await expect(health(page)).toContainText("Not set");
     await expect(saveButton(page)).toBeDisabled();
 
@@ -440,7 +443,7 @@ test.describe("project engagement controls (PR-9)", () => {
       )
       .toBe(true);
 
-    await choose(page, kind(page), "Delivery project");
+    await choose(page, kind(page), /^Delivery /);
     await choose(page, supportLevel(page), "None");
     await saveButton(page).click();
     await expect(page.getByText("Engagement settings saved.")).toBeVisible();
