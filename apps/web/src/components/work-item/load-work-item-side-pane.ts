@@ -45,9 +45,9 @@ export async function warmWorkItemSidePane(signal?: AbortSignal) {
   try {
     // The detail code is warmed through the body (which owns that import), so it stays behind the
     // namespace boundary in the render-graph guard.
-    const body = await loadWorkItemSidePane().then((m) =>
-      m.loadWorkItemSidePaneBody(),
-    );
+    const shell = await loadWorkItemSidePane();
+    if (signal?.aborted) return;
+    const body = await shell.loadWorkItemSidePaneBody();
     if (signal?.aborted) return;
     await body.warmWorkItemDetail();
     if (signal?.aborted) return;

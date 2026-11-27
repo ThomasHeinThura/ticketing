@@ -5,15 +5,19 @@ const mocks = vi.hoisted(() => ({
   strings: vi.fn(() => Promise.resolve()),
   detail: vi.fn(() => Promise.resolve()),
   body: vi.fn(),
+  shellGate: Promise.resolve() as Promise<void>,
 }));
 vi.mock("@/lib/i18n", () => ({ whenAllNamespacesLoaded: mocks.strings }));
-vi.mock("./work-item-side-pane", () => ({
-  default: () => null,
-  loadWorkItemSidePaneBody: async () => {
-    mocks.body();
-    return { warmWorkItemDetail: mocks.detail };
-  },
-}));
+vi.mock("./work-item-side-pane", async () => {
+  await mocks.shellGate;
+  return {
+    default: () => null,
+    loadWorkItemSidePaneBody: async () => {
+      mocks.body();
+      return { warmWorkItemDetail: mocks.detail };
+    },
+  };
+});
 
 function connection(value: object | undefined) {
   Object.defineProperty(navigator, "connection", {
@@ -73,6 +77,25 @@ describe("warmWorkItemSidePane", () => {
     await warmWorkItemSidePane(left.signal);
     expect(mocks.detail).not.toHaveBeenCalled();
     expect(mocks.strings).not.toHaveBeenCalled();
+  });
+
+  it("starts no body download when the user leaves while the pane shell is still downloading", async () => {
+    vi.resetModules();
+    let release: () => void = () => {};
+    mocks.shellGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { warmWorkItemSidePane: warmFresh } = await import(
+      "./load-work-item-side-pane"
+    );
+    const left = new AbortController();
+    const warming = warmFresh(left.signal);
+    left.abort();
+    release();
+    await warming;
+    mocks.shellGate = Promise.resolve();
+    expect(mocks.body).not.toHaveBeenCalled();
+    expect(mocks.detail).not.toHaveBeenCalled();
   });
 
   it("swallows a failed download: the pane loads normally when opened", async () => {
