@@ -30,9 +30,12 @@ vi.mock("@/components/work-item/work-item-side-pane-body", () => {
   events.list.push("pane-code");
   return { default: () => <p>real pane body</p> };
 });
-vi.mock("@/components/pending-action/pending-action-approval", () => ({
-  PendingActionApproval: () => <p>real approval</p>,
-}));
+vi.mock("@/components/pending-action/pending-action-approval", async () => {
+  const { DialogTitle } = await import("@taskdesk/ui");
+  return {
+    PendingActionApproval: () => <DialogTitle>Real approval title</DialogTitle>,
+  };
+});
 vi.mock(
   "@/components/pending-action/pending-action-terminology-boundary",
   () => ({
@@ -344,9 +347,52 @@ describe("deletion approval placeholder", () => {
     await act(async () => resolve());
     await tick(350);
     expect(screen.queryByTestId("pending-action-approval-loading")).toBeNull();
-    expect(screen.getByText("real approval")).toBeVisible();
+    expect(screen.getByText("Real approval title")).toBeVisible();
     // Same dialog element: the shell never remounted.
     expect(screen.getByRole("dialog")).toBe(dialogBefore);
+  });
+
+  it("is named from the first frame, after a failed load, and by exactly one title once revealed", async () => {
+    const { default: Dialog } = await import(
+      "@/components/pending-action/pending-action-approval-dialog"
+    );
+    const titles = () => document.querySelectorAll("[data-slot=dialog-title]");
+    usePendingActionDialogStore.getState().open("action-1");
+    render(<Dialog />, { wrapper: Wrapper });
+    // Loading, inside the delay and after the skeleton appears: an eager-namespace name.
+    expect(
+      screen.getByRole("dialog", { name: en.common.pendingActionTitle }),
+    ).toBeInTheDocument();
+    expect(titles()).toHaveLength(1);
+    await tick(200);
+    expect(
+      screen.getByRole("dialog", { name: en.common.pendingActionTitle }),
+    ).toBeInTheDocument();
+    expect(titles()).toHaveLength(1);
+    // Revealed: the approval's own title is the one and only name.
+    await act(async () => resolve());
+    await tick(350);
+    expect(
+      screen.getByRole("dialog", { name: "Real approval title" }),
+    ).toBeInTheDocument();
+    expect(titles()).toHaveLength(1);
+  });
+
+  it("keeps the dialog named when the strings fail to load", async () => {
+    const { default: Dialog } = await import(
+      "@/components/pending-action/pending-action-approval-dialog"
+    );
+    loader.mockImplementation(() => Promise.reject(new Error("offline")));
+    usePendingActionDialogStore.getState().open("action-1");
+    render(<Dialog />, { wrapper: Wrapper });
+    await tick(0);
+    expect(screen.getByRole("alert")).toBeVisible();
+    expect(
+      screen.getByRole("dialog", { name: en.common.pendingActionTitle }),
+    ).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-slot=dialog-title]")).toHaveLength(
+      1,
+    );
   });
 });
 

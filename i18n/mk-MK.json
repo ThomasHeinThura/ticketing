@@ -271,7 +271,8 @@
 				"title": "This could not be loaded",
 				"description": "Check your connection and try again."
 			}
-		}
+		},
+		"pendingActionTitle": "Дејство на чекање"
 	},
 	"auth": {
 		"signIn": {

@@ -45,12 +45,15 @@ export default function NamespaceBoundary({
   children,
   fallback,
   preload,
+  errorFallback,
 }: {
   children: ReactNode;
   /** Translated loading state shown while pending; defaults to a status-only announcement. */
   fallback?: ReactNode | ((visible: boolean) => ReactNode);
   /** Starts loading the surface's code now, in parallel with the strings. */
   preload?: () => Promise<unknown>;
+  /** Rendered with the error alert, e.g. an accessible name the surface's own copy would give. */
+  errorFallback?: ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language;
@@ -97,6 +100,7 @@ export default function NamespaceBoundary({
           ? fallback(placeholderVisible)
           : (fallback ?? <DefaultFallback visible={placeholderVisible} />)
         : null}
+      {failed ? errorFallback : null}
       {failed ? (
         <div className="bg-background p-4">
           <Alert variant="error">
