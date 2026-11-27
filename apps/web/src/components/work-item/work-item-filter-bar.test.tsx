@@ -50,6 +50,7 @@ describe("WorkItemFilterBar (SV-11 chips)", () => {
     fireEvent.click(await screen.findByRole("option", { name: "urgent" }));
     expect(onApply).toHaveBeenCalledWith(
       "AND(priority:in(high,urgent),state:started)",
+      { replace: false },
     );
   });
 
@@ -58,20 +59,24 @@ describe("WorkItemFilterBar (SV-11 chips)", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Remove Priority filter" }),
     );
-    expect(onApply).toHaveBeenCalledWith("state:started");
+    expect(onApply).toHaveBeenCalledWith("state:started", {
+      replace: false,
+    });
     cleanup();
     const last = renderBar("priority:high");
     fireEvent.click(
       screen.getByRole("button", { name: "Remove Priority filter" }),
     );
-    expect(last).toHaveBeenCalledWith("");
+    expect(last).toHaveBeenCalledWith("", { replace: false });
   });
 
   it("adds a field from the + Filter list and applies Me at once", async () => {
     const onApply = renderBar("priority:high");
     fireEvent.click(screen.getByRole("button", { name: "Filter" }));
     fireEvent.click(await screen.findByRole("option", { name: "Assignee" }));
-    expect(onApply).toHaveBeenCalledWith("AND(priority:high,assignee:@me)");
+    expect(onApply).toHaveBeenCalledWith("AND(priority:high,assignee:@me)", {
+      replace: false,
+    });
   });
 
   it("adds a valued field as a pending chip that applies with its first value and stays open", async () => {
@@ -80,7 +85,9 @@ describe("WorkItemFilterBar (SV-11 chips)", () => {
     fireEvent.click(await screen.findByRole("option", { name: "Priority" }));
     expect(onApply).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole("option", { name: "high" }));
-    expect(onApply).toHaveBeenCalledWith("priority:high");
+    expect(onApply).toHaveBeenCalledWith("priority:high", {
+      replace: false,
+    });
   });
 
   it("shows a filter it cannot chip as one Advanced filter chip that opens the editor", async () => {
@@ -100,5 +107,36 @@ describe("WorkItemFilterBar (SV-11 chips)", () => {
     renderBar("");
     fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
     expect(await screen.findByTestId("filter-editor")).toBeInTheDocument();
+  });
+
+  it("replaces the value of an eq-only field such as lifecycle instead of building an in filter", async () => {
+    const onApply = renderBar("lifecycle:active");
+    fireEvent.click(screen.getByTestId("work-item-filter-chip"));
+    fireEvent.click(await screen.findByRole("option", { name: "archived" }));
+    expect(onApply).toHaveBeenCalledWith("lifecycle:archived", {
+      replace: false,
+    });
+  });
+
+  it("exposes which values are selected to assistive tech", async () => {
+    renderBar("priority:high");
+    fireEvent.click(screen.getByTestId("work-item-filter-chip"));
+    expect(
+      await screen.findByRole("option", { name: "high", selected: true }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "urgent", selected: false }),
+    ).toBeInTheDocument();
+  });
+
+  it("pushes the first live change of a session and replaces the later ones", async () => {
+    const onApply = renderBar("priority:high");
+    fireEvent.click(screen.getByTestId("work-item-filter-chip"));
+    fireEvent.click(await screen.findByRole("option", { name: "urgent" }));
+    fireEvent.click(await screen.findByRole("option", { name: "low" }));
+    expect(onApply.mock.calls.map(([, options]) => options)).toEqual([
+      { replace: false },
+      { replace: true },
+    ]);
   });
 });

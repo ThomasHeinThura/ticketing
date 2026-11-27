@@ -3548,8 +3548,8 @@
 				"assignee": "Assignee"
 			},
 			"columnUnavailable": "Unavailable",
-			"moveColumnUp": "Move {{column}} up",
-			"moveColumnDown": "Move {{column}} down"
+			"moveColumnUp": "{{column}} को ऊपर ले जाएँ",
+			"moveColumnDown": "{{column}} को नीचे ले जाएँ"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3766,13 +3766,13 @@
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
 			},
-			"chipsLabel": "Active filters",
-			"addFilter": "Filter",
-			"searchFields": "Search fields",
-			"searchValues": "Search values",
-			"advanced": "Advanced",
-			"advancedFilter": "Advanced filter",
-			"me": "Me"
+			"chipsLabel": "सक्रिय फ़िल्टर",
+			"addFilter": "फ़िल्टर",
+			"searchFields": "फ़ील्ड खोजें",
+			"searchValues": "मान खोजें",
+			"advanced": "उन्नत",
+			"advancedFilter": "उन्नत फ़िल्टर",
+			"me": "मैं"
 		},
 		"properties": {
 			"clearDate": "Clear date",

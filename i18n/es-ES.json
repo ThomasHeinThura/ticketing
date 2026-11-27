@@ -3559,8 +3559,8 @@
 				"assignee": "Assignee"
 			},
 			"columnUnavailable": "Unavailable",
-			"moveColumnUp": "Move {{column}} up",
-			"moveColumnDown": "Move {{column}} down"
+			"moveColumnUp": "Subir {{column}}",
+			"moveColumnDown": "Bajar {{column}}"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3778,13 +3778,13 @@
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
 			},
-			"chipsLabel": "Active filters",
-			"addFilter": "Filter",
-			"searchFields": "Search fields",
-			"searchValues": "Search values",
-			"advanced": "Advanced",
-			"advancedFilter": "Advanced filter",
-			"me": "Me"
+			"chipsLabel": "Filtros activos",
+			"addFilter": "Filtro",
+			"searchFields": "Buscar campos",
+			"searchValues": "Buscar valores",
+			"advanced": "Avanzado",
+			"advancedFilter": "Filtro avanzado",
+			"me": "Yo"
 		},
 		"properties": {
 			"clearDate": "Clear date",

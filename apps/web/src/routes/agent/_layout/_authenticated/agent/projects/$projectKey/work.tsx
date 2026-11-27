@@ -682,16 +682,16 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     [navigate],
   );
 
-  // Chips apply live, so a filter write replaces the history entry instead of burying the back
-  // button under one entry per click (`VW-1`); switching the editor mode stays a navigation.
+  // The filter bar pushes the first change of a session and replaces the rest, so the back
+  // button is not buried under one entry per click (`VW-1`).
   const handleFilterApply = useCallback(
-    (nextFilter: string) => {
+    (nextFilter: string, options?: { replace?: boolean }) => {
       navigate({
         search: (prev: WorkItemListSearch) => ({
           ...prev,
           filter: nextFilter.trim() ? nextFilter : undefined,
         }),
-        replace: true,
+        replace: options?.replace ?? false,
       });
     },
     [navigate],

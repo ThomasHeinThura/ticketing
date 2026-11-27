@@ -245,7 +245,7 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
     });
   });
 
-  it("applying a filter replaces the history entry and keeps sort, columns and mode", async () => {
+  it("applying a filter keeps sort, columns and mode, and replaces the history entry only when asked", async () => {
     state.search = {
       layout: "list",
       sort: "priority",
@@ -255,7 +255,7 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
     };
     await renderRoute();
     await screen.findByTestId("controls");
-    callControl("onApply", "priority:high");
+    callControl("onApply", "priority:high", { replace: true });
     const { next, replace } = navigatedSearch();
     expect(replace).toBe(true);
     expect(next).toEqual({
@@ -266,6 +266,8 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
       filterMode: "text",
       filter: "priority:high",
     });
+    callControl("onApply", "priority:low", { replace: false });
+    expect(navigatedSearch(1).replace).toBe(false);
   });
 
   it("applying an empty filter removes it from the URL", async () => {

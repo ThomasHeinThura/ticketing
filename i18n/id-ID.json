@@ -3537,8 +3537,8 @@
 				"assignee": "Assignee"
 			},
 			"columnUnavailable": "Unavailable",
-			"moveColumnUp": "Move {{column}} up",
-			"moveColumnDown": "Move {{column}} down"
+			"moveColumnUp": "Pindahkan {{column}} ke atas",
+			"moveColumnDown": "Pindahkan {{column}} ke bawah"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3754,13 +3754,13 @@
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
 			},
-			"chipsLabel": "Active filters",
+			"chipsLabel": "Filter aktif",
 			"addFilter": "Filter",
-			"searchFields": "Search fields",
-			"searchValues": "Search values",
-			"advanced": "Advanced",
-			"advancedFilter": "Advanced filter",
-			"me": "Me"
+			"searchFields": "Cari bidang",
+			"searchValues": "Cari nilai",
+			"advanced": "Lanjutan",
+			"advancedFilter": "Filter lanjutan",
+			"me": "Saya"
 		},
 		"properties": {
 			"clearDate": "Clear date",

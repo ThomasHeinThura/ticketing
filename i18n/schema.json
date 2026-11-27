@@ -14587,6 +14587,12 @@
 						},
 						"columnUnavailable": {
 							"type": "string"
+						},
+						"moveColumnUp": {
+							"type": "string"
+						},
+						"moveColumnDown": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -14648,7 +14654,9 @@
 						"cursorChanged",
 						"reload",
 						"columns",
-						"columnUnavailable"
+						"columnUnavailable",
+						"moveColumnUp",
+						"moveColumnDown"
 					]
 				},
 				"create": {
@@ -15506,6 +15514,27 @@
 								}
 							},
 							"required": ["invalid", "forbidden", "unavailable"]
+						},
+						"chipsLabel": {
+							"type": "string"
+						},
+						"addFilter": {
+							"type": "string"
+						},
+						"searchFields": {
+							"type": "string"
+						},
+						"searchValues": {
+							"type": "string"
+						},
+						"advanced": {
+							"type": "string"
+						},
+						"advancedFilter": {
+							"type": "string"
+						},
+						"me": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -15545,7 +15574,14 @@
 						"boardNotice",
 						"toggle",
 						"toggleActive",
-						"errors"
+						"errors",
+						"chipsLabel",
+						"addFilter",
+						"searchFields",
+						"searchValues",
+						"advanced",
+						"advancedFilter",
+						"me"
 					]
 				},
 				"properties": {

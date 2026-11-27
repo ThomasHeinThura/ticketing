@@ -71,7 +71,7 @@ export default function WorkItemListControls({
   /** Escape in the editor closes it. */
   onClose?: () => void;
   onModeChange: (mode: WorkItemFilterMode) => void;
-  onApply: (filter: string) => void;
+  onApply: (filter: string, options?: { replace?: boolean }) => void;
   columns?: WorkItemSearchColumn[];
   onColumnsChange?: (columns: WorkItemSearchColumn[] | undefined) => void;
   workspaceId?: string;

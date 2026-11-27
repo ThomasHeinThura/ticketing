@@ -3537,8 +3537,8 @@
 				"assignee": "Assignee"
 			},
 			"columnUnavailable": "Unavailable",
-			"moveColumnUp": "Move {{column}} up",
-			"moveColumnDown": "Move {{column}} down"
+			"moveColumnUp": "{{column}} 위로 이동",
+			"moveColumnDown": "{{column}} 아래로 이동"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3754,13 +3754,13 @@
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
 			},
-			"chipsLabel": "Active filters",
-			"addFilter": "Filter",
-			"searchFields": "Search fields",
-			"searchValues": "Search values",
-			"advanced": "Advanced",
-			"advancedFilter": "Advanced filter",
-			"me": "Me"
+			"chipsLabel": "활성 필터",
+			"addFilter": "필터",
+			"searchFields": "필드 검색",
+			"searchValues": "값 검색",
+			"advanced": "고급",
+			"advancedFilter": "고급 필터",
+			"me": "나"
 		},
 		"properties": {
 			"clearDate": "Clear date",

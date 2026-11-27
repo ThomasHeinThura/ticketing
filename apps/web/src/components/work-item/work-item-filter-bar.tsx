@@ -102,6 +102,7 @@ function ValueChecklist({
             <CommandItem
               key={option.value}
               value={option.value}
+              aria-selected={checked}
               className="flex items-center gap-2"
               onClick={() =>
                 onChange(
@@ -218,7 +219,9 @@ function FilterChip({
   const operators = [
     ...new Set(field.operators.map((op) => (op === "in" ? "eq" : op))),
   ];
-  const multiple = leaf.op === "eq" || leaf.op === "in";
+  // Only fields whose table allows `in` can hold several values; an `eq`-only field swaps its value.
+  const multiple =
+    field.operators.includes("in") && (leaf.op === "eq" || leaf.op === "in");
   return (
     <Badge
       variant="outline"
@@ -333,7 +336,8 @@ export default function WorkItemFilterBar({
   /** Escape outside a popover closes the surface. */
   onClose?: () => void;
   onModeChange: (mode: WorkItemFilterMode) => void;
-  onApply: (filter: string) => void;
+  /** `replace` is false for the first change of a filter session and for Advanced applies. */
+  onApply: (filter: string, options?: { replace?: boolean }) => void;
 }) {
   const { t } = useTranslation();
   const addRef = useRef<HTMLButtonElement>(null);
@@ -351,9 +355,14 @@ export default function WorkItemFilterBar({
     }
   }, [filter]);
 
+  // The first live chip change pushes a history entry so Back restores the earlier view; the
+  // rest of the session replaces it, so Back does not step through every click (`VW-1`).
+  const pushedRef = useRef(false);
   const apply = (leaves: readonly FilterLeaf[]) => {
     try {
-      onApply(printWorkItemFilterText(fromChips(leaves)));
+      const text = printWorkItemFilterText(fromChips(leaves));
+      onApply(text, { replace: pushedRef.current });
+      pushedRef.current = true;
     } catch {
       // A value the grammar refuses is never applied; the input marks itself invalid.
     }
@@ -394,7 +403,8 @@ export default function WorkItemFilterBar({
           fallbackSurface="card"
           onModeChange={onModeChange}
           onApply={(next) => {
-            onApply(next);
+            onApply(next, { replace: false });
+            pushedRef.current = true;
             setAdvancedOpen(false);
           }}
         />
