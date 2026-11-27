@@ -1988,8 +1988,11 @@
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
 			},
-			"roleGroupBuiltIn": "Built-in",
-			"roleGroupCustom": "Custom roles"
+			"roleGroupBuiltIn": "Вбудовані",
+			"roleGroupCustom": "Власні ролі",
+			"roleDescriptionLead": "Керує {{term_project_one}}: керує учасниками та налаштуваннями, призначає й сортує {{term_work_item_other}}.",
+			"roleDescriptionMember": "Створює й оновлює {{term_work_item_other}}, коментує всередині команди та бере роботу.",
+			"roleDescriptionViewer": "Доступ лише для читання до {{term_project_one}}."
 		},
 		"workflows": {
 			"add": {
@@ -2404,7 +2407,7 @@
 			"instanceUsers": "Користувачі екземпляра",
 			"selectWorkspace": "Обрати робочий простір",
 			"switchFailed": "Could not switch workspace. Check your access and try again.",
-			"pendingInvitations": "Pending invitations: {{count}}"
+			"pendingInvitations": "Запрошення в очікуванні: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3202,8 +3205,9 @@
 				"week": "Week"
 			},
 			"viewGroup": "Calendar range",
-			"stateDone": "Completed",
-			"stateOpen": "Open"
+			"stateDone": "Завершено",
+			"stateOpen": "Відкрито",
+			"stateCancelled": "Скасовано"
 		},
 		"group": {
 			"by": "Group by",
@@ -3295,8 +3299,8 @@
 			"actions": "Actions",
 			"archived": "Archived",
 			"completion": "{{name}} completion",
-			"joinNamed": "Join {{name}}",
-			"joinShort": "Join"
+			"joinNamed": "Приєднатися до {{name}}",
+			"joinShort": "Приєднатися"
 		},
 		"search": {
 			"pageTitle": "Пошук",

@@ -4,6 +4,7 @@ import {
   groupRosterRoles,
   isAuthorityReplacingWorkspaceRole,
   projectMemberErrorKey,
+  roleDescriptionText,
   rosterRoleItems,
 } from "./project-members-model";
 
@@ -86,6 +87,36 @@ describe("project members model", () => {
       "project-viewer",
     ]);
     expect(custom.map((r) => r.roleKey)).toEqual(["uat-agent"]);
+  });
+
+  it("describes built-in roles by key and custom roles from the API", () => {
+    const t = (key: string) => `t:${key}`;
+    const base = { roleName: "x", roleRank: 1, roleId: null };
+    expect(
+      roleDescriptionText(
+        {
+          ...base,
+          roleKey: "project-lead",
+          isSystem: true,
+          roleDescription: "English",
+        },
+        t,
+      ),
+    ).toBe("t:settings:projectMembers.roleDescriptionLead");
+    expect(
+      roleDescriptionText(
+        {
+          ...base,
+          roleKey: "uat-agent",
+          isSystem: false,
+          roleDescription: "Custom text",
+        },
+        t,
+      ),
+    ).toBe("Custom text");
+    expect(
+      roleDescriptionText({ ...base, roleKey: "uat-agent" }, t),
+    ).toBeNull();
   });
 
   it("maps server refusals to i18n keys without exposing server text", () => {

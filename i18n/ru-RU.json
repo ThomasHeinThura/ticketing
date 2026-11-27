@@ -1996,8 +1996,11 @@
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
 			},
-			"roleGroupBuiltIn": "Built-in",
-			"roleGroupCustom": "Custom roles"
+			"roleGroupBuiltIn": "Встроенные",
+			"roleGroupCustom": "Пользовательские роли",
+			"roleDescriptionLead": "Руководит {{term_project_one}}: управляет участниками и настройками, назначает и сортирует {{term_work_item_other}}.",
+			"roleDescriptionMember": "Создаёт и обновляет {{term_work_item_other}}, комментирует внутри команды и берёт работу.",
+			"roleDescriptionViewer": "Доступ только для чтения к {{term_project_one}}."
 		},
 		"workflows": {
 			"add": {
@@ -2412,7 +2415,7 @@
 			"instanceUsers": "Пользователи экземпляра",
 			"selectWorkspace": "Выберите рабочую область",
 			"switchFailed": "Could not switch workspace. Check your access and try again.",
-			"pendingInvitations": "Pending invitations: {{count}}"
+			"pendingInvitations": "Ожидающие приглашения: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3258,8 +3261,9 @@
 				"week": "Week"
 			},
 			"viewGroup": "Calendar range",
-			"stateDone": "Completed",
-			"stateOpen": "Open"
+			"stateDone": "Завершено",
+			"stateOpen": "Открыто",
+			"stateCancelled": "Отменено"
 		},
 		"group": {
 			"by": "Group by",
@@ -3351,8 +3355,8 @@
 			"actions": "Actions",
 			"archived": "Archived",
 			"completion": "{{name}} completion",
-			"joinNamed": "Join {{name}}",
-			"joinShort": "Join"
+			"joinNamed": "Присоединиться к {{name}}",
+			"joinShort": "Присоединиться"
 		},
 		"search": {
 			"pageTitle": "Поиск",

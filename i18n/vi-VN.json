@@ -1979,8 +1979,11 @@
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
 			},
-			"roleGroupBuiltIn": "Built-in",
-			"roleGroupCustom": "Custom roles"
+			"roleGroupBuiltIn": "Tích hợp sẵn",
+			"roleGroupCustom": "Vai trò tùy chỉnh",
+			"roleDescriptionLead": "Điều hành {{term_project_one}}: quản lý thành viên và cài đặt, giao và phân loại {{term_work_item_other}}.",
+			"roleDescriptionMember": "Tạo và cập nhật {{term_work_item_other}}, bình luận nội bộ và nhận việc.",
+			"roleDescriptionViewer": "Quyền chỉ đọc đối với {{term_project_one}}."
 		},
 		"workflows": {
 			"add": {
@@ -2389,7 +2392,7 @@
 			"instanceUsers": "Người dùng phiên bản",
 			"selectWorkspace": "Chọn không gian làm việc",
 			"switchFailed": "Could not switch workspace. Check your access and try again.",
-			"pendingInvitations": "Pending invitations: {{count}}"
+			"pendingInvitations": "Lời mời đang chờ: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3172,8 +3175,9 @@
 				"week": "Week"
 			},
 			"viewGroup": "Calendar range",
-			"stateDone": "Completed",
-			"stateOpen": "Open"
+			"stateDone": "Hoàn thành",
+			"stateOpen": "Mở",
+			"stateCancelled": "Đã hủy"
 		},
 		"group": {
 			"by": "Group by",
@@ -3265,8 +3269,8 @@
 			"actions": "Actions",
 			"archived": "Archived",
 			"completion": "{{name}} completion",
-			"joinNamed": "Join {{name}}",
-			"joinShort": "Join"
+			"joinNamed": "Tham gia {{name}}",
+			"joinShort": "Tham gia"
 		},
 		"search": {
 			"pageTitle": "Tìm kiếm",

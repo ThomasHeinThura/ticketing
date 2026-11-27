@@ -63,6 +63,7 @@ import {
   projectMemberErrorKey,
   type RosterMemberView,
   type RosterRoleView,
+  roleDescriptionText,
   rosterRoleItems,
 } from "./project-members-model";
 
@@ -612,16 +613,19 @@ function RoleSelectOptions({ roles }: { roles: readonly RosterRoleView[] }) {
     .map((group) => (
       <SelectGroup key={group.key}>
         <SelectGroupLabel>{group.label}</SelectGroupLabel>
-        {group.roles.map((role) => (
-          <SelectItem key={role.roleKey} value={role.roleKey}>
-            <span className="block">{role.roleName}</span>
-            {role.roleDescription ? (
-              <span className="line-clamp-2 block text-muted-foreground text-xs">
-                {role.roleDescription}
-              </span>
-            ) : null}
-          </SelectItem>
-        ))}
+        {group.roles.map((role) => {
+          const description = roleDescriptionText(role, t);
+          return (
+            <SelectItem key={role.roleKey} value={role.roleKey}>
+              <span className="block">{role.roleName}</span>
+              {description ? (
+                <span className="line-clamp-2 block text-muted-foreground text-xs">
+                  {description}
+                </span>
+              ) : null}
+            </SelectItem>
+          );
+        })}
       </SelectGroup>
     ));
 }

@@ -1982,8 +1982,11 @@
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
 			},
-			"roleGroupBuiltIn": "Built-in",
-			"roleGroupCustom": "Custom roles"
+			"roleGroupBuiltIn": "Ingebouwd",
+			"roleGroupCustom": "Aangepaste rollen",
+			"roleDescriptionLead": "Leidt het {{term_project_one}}: beheert leden en instellingen, wijst {{term_work_item_other}} toe en triageert ze.",
+			"roleDescriptionMember": "Maakt en werkt {{term_work_item_other}} bij, reageert intern en pakt werk op.",
+			"roleDescriptionViewer": "Alleen-lezentoegang tot het {{term_project_one}}."
 		},
 		"workflows": {
 			"add": {
@@ -2394,7 +2397,7 @@
 			"instanceUsers": "Instantiegebruikers",
 			"selectWorkspace": "Werkruimte selecteren",
 			"switchFailed": "Could not switch workspace. Check your access and try again.",
-			"pendingInvitations": "Pending invitations: {{count}}"
+			"pendingInvitations": "Openstaande uitnodigingen: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3182,8 +3185,9 @@
 				"week": "Week"
 			},
 			"viewGroup": "Calendar range",
-			"stateDone": "Completed",
-			"stateOpen": "Open"
+			"stateDone": "Voltooid",
+			"stateOpen": "Open",
+			"stateCancelled": "Geannuleerd"
 		},
 		"group": {
 			"by": "Group by",
@@ -3275,8 +3279,8 @@
 			"actions": "Actions",
 			"archived": "Archived",
 			"completion": "{{name}} completion",
-			"joinNamed": "Join {{name}}",
-			"joinShort": "Join"
+			"joinNamed": "Deelnemen aan {{name}}",
+			"joinShort": "Deelnemen"
 		},
 		"search": {
 			"pageTitle": "Zoeken",

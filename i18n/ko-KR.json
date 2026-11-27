@@ -1979,8 +1979,11 @@
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
 			},
-			"roleGroupBuiltIn": "Built-in",
-			"roleGroupCustom": "Custom roles"
+			"roleGroupBuiltIn": "기본 제공",
+			"roleGroupCustom": "사용자 지정 역할",
+			"roleDescriptionLead": "{{term_project_one}}를 운영하고 멤버와 설정을 관리하며 {{term_work_item_other}}을(를) 배정하고 분류합니다.",
+			"roleDescriptionMember": "{{term_work_item_other}}을(를) 만들고 업데이트하며 내부 댓글을 달고 작업을 맡습니다.",
+			"roleDescriptionViewer": "{{term_project_one}}에 대한 읽기 전용 액세스."
 		},
 		"workflows": {
 			"add": {
@@ -2389,7 +2392,7 @@
 			"instanceUsers": "인스턴스 사용자",
 			"selectWorkspace": "워크스페이스 선택",
 			"switchFailed": "Could not switch workspace. Check your access and try again.",
-			"pendingInvitations": "Pending invitations: {{count}}"
+			"pendingInvitations": "대기 중인 초대: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3048,8 +3051,9 @@
 				"week": "Week"
 			},
 			"viewGroup": "Calendar range",
-			"stateDone": "Completed",
-			"stateOpen": "Open"
+			"stateDone": "완료됨",
+			"stateOpen": "열림",
+			"stateCancelled": "취소됨"
 		},
 		"gantt": {
 			"pageTitle": "{{name}} – 간트",
@@ -3265,8 +3269,8 @@
 			"actions": "Actions",
 			"archived": "Archived",
 			"completion": "{{name}} completion",
-			"joinNamed": "Join {{name}}",
-			"joinShort": "Join"
+			"joinNamed": "{{name}} 참여",
+			"joinShort": "참여"
 		},
 		"search": {
 			"pageTitle": "검색",

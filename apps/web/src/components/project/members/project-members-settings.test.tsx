@@ -367,7 +367,11 @@ it("does not submit an unchanged role", async () => {
   expect(
     screen.getByText("settings:projectMembers.roleGroupBuiltIn"),
   ).toBeTruthy();
-  expect(screen.getByText("Creates work.")).toBeTruthy();
+  // Built-in descriptions come from i18n by role key, not the API's English text.
+  expect(
+    screen.getByText("settings:projectMembers.roleDescriptionMember"),
+  ).toBeTruthy();
+  expect(screen.queryByText("Creates work.")).toBeNull();
   fireEvent.click(option);
   expect(mocks.updateRole).not.toHaveBeenCalled();
 });

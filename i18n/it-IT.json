@@ -1985,8 +1985,11 @@
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
 			},
-			"roleGroupBuiltIn": "Built-in",
-			"roleGroupCustom": "Custom roles"
+			"roleGroupBuiltIn": "Predefiniti",
+			"roleGroupCustom": "Ruoli personalizzati",
+			"roleDescriptionLead": "Gestisce il {{term_project_one}}: amministra membri e impostazioni, assegna e smista {{term_work_item_other}}.",
+			"roleDescriptionMember": "Crea e aggiorna {{term_work_item_other}}, commenta internamente e prende in carico il lavoro.",
+			"roleDescriptionViewer": "Accesso in sola lettura al {{term_project_one}}."
 		},
 		"workflows": {
 			"add": {
@@ -2399,7 +2402,7 @@
 			"instanceUsers": "Utenti dell’istanza",
 			"selectWorkspace": "Seleziona workspace",
 			"switchFailed": "Could not switch workspace. Check your access and try again.",
-			"pendingInvitations": "Pending invitations: {{count}}"
+			"pendingInvitations": "Inviti in sospeso: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3192,8 +3195,9 @@
 				"week": "Week"
 			},
 			"viewGroup": "Calendar range",
-			"stateDone": "Completed",
-			"stateOpen": "Open"
+			"stateDone": "Completato",
+			"stateOpen": "Aperto",
+			"stateCancelled": "Annullato"
 		},
 		"group": {
 			"by": "Group by",
@@ -3285,8 +3289,8 @@
 			"actions": "Actions",
 			"archived": "Archived",
 			"completion": "{{name}} completion",
-			"joinNamed": "Join {{name}}",
-			"joinShort": "Join"
+			"joinNamed": "Partecipa a {{name}}",
+			"joinShort": "Partecipa"
 		},
 		"search": {
 			"pageTitle": "Cerca",

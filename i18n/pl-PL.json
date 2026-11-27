@@ -673,7 +673,7 @@
 			"instanceUsers": "Użytkownicy instancji",
 			"selectWorkspace": "Wybierz obszar roboczy",
 			"switchFailed": "Could not switch workspace. Check your access and try again.",
-			"pendingInvitations": "Pending invitations: {{count}}"
+			"pendingInvitations": "Oczekujące zaproszenia: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -868,8 +868,8 @@
 			"actions": "Actions",
 			"archived": "Archived",
 			"completion": "{{name}} completion",
-			"joinNamed": "Join {{name}}",
-			"joinShort": "Join"
+			"joinNamed": "Dołącz do {{name}}",
+			"joinShort": "Dołącz"
 		},
 		"search": {
 			"pageTitle": "Szukaj",
@@ -2709,8 +2709,11 @@
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
 			},
-			"roleGroupBuiltIn": "Built-in",
-			"roleGroupCustom": "Custom roles"
+			"roleGroupBuiltIn": "Wbudowane",
+			"roleGroupCustom": "Role niestandardowe",
+			"roleDescriptionLead": "Prowadzi {{term_project_one}}: zarządza członkami i ustawieniami, przydziela i kwalifikuje {{term_work_item_other}}.",
+			"roleDescriptionMember": "Tworzy i aktualizuje {{term_work_item_other}}, komentuje wewnętrznie i podejmuje pracę.",
+			"roleDescriptionViewer": "Dostęp tylko do odczytu do {{term_project_one}}."
 		},
 		"workflows": {
 			"add": {
@@ -3272,8 +3275,9 @@
 				"week": "Week"
 			},
 			"viewGroup": "Calendar range",
-			"stateDone": "Completed",
-			"stateOpen": "Open"
+			"stateDone": "Ukończone",
+			"stateOpen": "Otwarte",
+			"stateCancelled": "Anulowane"
 		},
 		"gantt": {
 			"hideTasks": "Ukryj {{term_work_item_other}}",

@@ -1419,6 +1419,9 @@
 		"projectMembers": {
 			"roleGroupBuiltIn": "Built-in",
 			"roleGroupCustom": "Custom roles",
+			"roleDescriptionLead": "Runs the {{term_project_one}}: manages members and settings, assigns and triages {{term_work_item_other}}.",
+			"roleDescriptionMember": "Creates and updates {{term_work_item_other}}, comments internally and picks up work.",
+			"roleDescriptionViewer": "Read-only access to the {{term_project_one}}.",
 			"pageTitle": "{{term_project_one}} Members",
 			"title": "Members",
 			"subtitle": "Manage who is on this {{term_project_one}}'s roster and what role they hold.",
@@ -3058,7 +3061,8 @@
 			"previousDay": "Previous day",
 			"nextDay": "Next day",
 			"stateDone": "Completed",
-			"stateOpen": "Open"
+			"stateOpen": "Open",
+			"stateCancelled": "Cancelled"
 		},
 		"gantt": {
 			"pageTitle": "{{name}} – Gantt",

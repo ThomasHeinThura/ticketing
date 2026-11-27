@@ -80,17 +80,18 @@ describe("CalendarTaskBar", () => {
   });
 
   it.each([
-    [true, "bg-success/15"],
-    [false, "bg-info/15"],
-    [undefined, "bg-info/15"],
-  ])(
-    "colours isFinal=%s by column state, not slug",
-    (isFinal, expectedClass) => {
+    ["completed", "bg-success/15", /Completed$/],
+    ["cancelled", "bg-muted/60", /Cancelled$/],
+    ["open", "bg-info/15", /Open$/],
+    [undefined, "bg-info/15", null],
+  ] as const)(
+    "colours and names stateCategory=%s by category, not state name",
+    (stateCategory, expectedClass, label) => {
       render(
         <CalendarTaskBar
           segment={{
             ...segment,
-            task: { ...segment.task, status: "custom-status", isFinal },
+            task: { ...segment.task, status: "custom-status", stateCategory },
           }}
           projectSlug="KAN"
           onOpenTask={vi.fn()}
@@ -99,11 +100,8 @@ describe("CalendarTaskBar", () => {
 
       const taskBar = screen.getByRole("button");
       expect(taskBar).toHaveClass(expectedClass);
-      if (isFinal !== undefined) {
-        expect(taskBar.getAttribute("aria-label")).toMatch(
-          isFinal ? /Completed$/ : /Open$/,
-        );
-      }
+      if (label) expect(taskBar.getAttribute("aria-label")).toMatch(label);
+      else expect(taskBar.getAttribute("aria-label")).not.toMatch(/Open$/);
     },
   );
 
@@ -112,7 +110,12 @@ describe("CalendarTaskBar", () => {
       <CalendarTaskBar
         segment={{
           ...segment,
-          task: { ...segment.task, status: "frozen", isFinal: false },
+          task: {
+            ...segment.task,
+            status: "frozen",
+            changeKind: "frozen",
+            stateCategory: "open",
+          },
         }}
         projectSlug="KAN"
         onOpenTask={vi.fn()}
@@ -124,6 +127,26 @@ describe("CalendarTaskBar", () => {
       /Open$/,
     );
   });
+
+  it.each(["freeze", "frozen", "conflict"])(
+    "ignores a project state named %s without an explicit change kind",
+    (status) => {
+      render(
+        <CalendarTaskBar
+          segment={{
+            ...segment,
+            task: { ...segment.task, status, stateCategory: "completed" },
+          }}
+          projectSlug="KAN"
+          onOpenTask={vi.fn()}
+        />,
+      );
+
+      const taskBar = screen.getByRole("button");
+      expect(taskBar).toHaveClass("bg-success/15");
+      expect(taskBar.getAttribute("aria-label")).toMatch(/Completed$/);
+    },
+  );
 
   it("insets continuing bars and squares only the continuing side", () => {
     render(
