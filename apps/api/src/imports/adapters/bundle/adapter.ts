@@ -220,10 +220,23 @@ export function createBundleAdapter(
       }
     },
 
-    // One sourceRef per bundle source (relations resolve across projects); the stale sweep is per project.
+    // The canonical project key (as written in the file, however the client spelled it, or the sole
+    // project when none was given) is stored at creation; a client-supplied value is overwritten.
+    normalizeConfig(config) {
+      const { scopeProjectKey: _client, ...rest } = config;
+      try {
+        return { ...rest, scopeProjectKey: readBundle(config).project.key };
+      } catch {
+        return rest;
+      }
+    },
+
+    // One sourceRef per bundle source (relations resolve across projects); the stale sweep is per
+    // project, matched on the canonical key only. A source created before it existed has none: the
+    // empty value matches no run, so such a run never marks anything stale and is never marked.
     staleScope(connection) {
-      const key = connection.config.projectKey;
-      return typeof key === "string" ? { projectKey: key } : null;
+      const key = connection.config.scopeProjectKey;
+      return { scopeProjectKey: typeof key === "string" ? key : "" };
     },
 
     async discover(connection): Promise<DiscoveryResult> {

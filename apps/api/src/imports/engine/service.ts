@@ -156,7 +156,8 @@ export async function createSourceConnection(
       .catch(() => ({ ok: false as const, reason: undefined }));
     if (!connected.ok) throw new ImportConnectError(connected.reason);
   }
-  const config = input.config ?? {};
+  const config =
+    adapter?.normalizeConfig?.(input.config ?? {}) ?? input.config ?? {};
   const changedKeys = [
     "pluginId",
     "name",

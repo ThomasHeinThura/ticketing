@@ -368,6 +368,55 @@ describe("import.bundle end to end", () => {
     expect(stale).toEqual(["w4"]);
   });
 
+  it("the stale scope is the file's canonical project: omitted key, other case and omitted-then-explicit all agree", async () => {
+    const f = await engineFixture();
+    const { app } = createApp();
+    const full = bundleFor(f);
+    const sourceRef = "plane:plane.lan:acme";
+    const without = (text: string, id: string) =>
+      text
+        .split("\n")
+        .filter((l) => !l.includes(`"id":"${id}"`))
+        .join("\n");
+    // A file holding only WEB, so the project key can be omitted.
+    const webOnly = full
+      .split("\n")
+      .filter((l) => !/"(p2|s4|s5|l3|o1|o2)"/.test(l))
+      .join("\n");
+    const run = async (bundleText: string, projectKey?: string) => {
+      const r = await startBundleRun(app, f, {
+        bundleText,
+        ...(projectKey ? { projectKey } : {}),
+        projectId: f.project.id,
+        sourceRef,
+      });
+      await decide(app, f, r.run.id, r.mapping, f.type.id, {
+        persons: "placeholder",
+      });
+      await execute(app, f, r.run.id);
+    };
+    const staleIds = async () =>
+      (await db.select().from(schema.importRecordLinkTable))
+        .filter((l) => l.staleAt !== null)
+        .map((l) => l.sourceId)
+        .sort();
+
+    // (a) Omitted key on a single-project file, then OPS: WEB stays fresh.
+    await run(webOnly);
+    await run(full, "OPS");
+    expect(await staleIds()).toEqual([]);
+
+    // (b) "WEB" then "web" with a dropped item: only that item goes stale.
+    await run(full, "WEB");
+    await run(without(full, "w4"), "web");
+    expect(await staleIds()).toEqual(["w4"]);
+    await db.update(schema.importRecordLinkTable).set({ staleAt: null });
+
+    // (c) The omitted-key run above and an explicit one agree: dropping w3 stales only w3.
+    await run(without(webOnly, "w3"), "WEB");
+    expect(await staleIds()).toEqual(["w3"]);
+  });
+
   it("a placeholder person has no login, no membership and is not assignable", async () => {
     const f = await engineFixture();
     const { app } = createApp();

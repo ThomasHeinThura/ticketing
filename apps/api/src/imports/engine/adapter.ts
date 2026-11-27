@@ -273,6 +273,12 @@ export interface ImportSourceAdapter {
    * Absent or `null`: the sweep covers the whole `sourceRef`, as before.
    */
   staleScope?(connection: AdapterConnection): Record<string, string> | null;
+  /**
+   * Called once when a source is created, after `connect` succeeded: returns the config to store
+   * (for example with a canonical field derived from the source itself, which a client must not be
+   * able to choose). Absent: the config is stored as given.
+   */
+  normalizeConfig?(config: Record<string, unknown>): Record<string, unknown>;
 }
 
 const registry = new Map<string, () => ImportSourceAdapter>();

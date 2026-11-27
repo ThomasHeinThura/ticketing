@@ -214,10 +214,34 @@ describe("import.bundle adapter", () => {
     });
   });
 
-  it("scopes the stale sweep to the run's project key, and to nothing when no key is set", () => {
-    expect(adapter.staleScope?.(conn())).toEqual({ projectKey: "WEB" });
+  it("stores the canonical project key at creation and scopes the stale sweep to it only", () => {
+    const stored = (config: Record<string, unknown>) =>
+      adapter.normalizeConfig?.({ bundleText, ...config });
+    // However the client spells the key, the file's own spelling is stored.
+    expect(stored({ projectKey: "web" })?.scopeProjectKey).toBe("WEB");
+    expect(stored({ projectKey: "WEB" })?.scopeProjectKey).toBe("WEB");
+    // A client cannot choose it.
     expect(
-      adapter.staleScope?.(connection("import.bundle", { bundleText })),
-    ).toBeNull();
+      stored({ projectKey: "OPS", scopeProjectKey: "WEB" })?.scopeProjectKey,
+    ).toBe("OPS");
+    // Omitted with several projects: nothing is stored (connect refuses such a source anyway).
+    expect(stored({})).not.toHaveProperty("scopeProjectKey");
+    // Omitted with a single project: that project.
+    const single = bundleText
+      .split("\n")
+      .filter((l) => !/"(p2|o1|o2|s4|s5|l3)"/.test(l))
+      .join("\n");
+    expect(
+      adapter.normalizeConfig?.({ bundleText: single })?.scopeProjectKey,
+    ).toBe("WEB");
+
+    const scoped = connection("import.bundle", {
+      bundleText,
+      projectKey: "web",
+      scopeProjectKey: "WEB",
+    });
+    expect(adapter.staleScope?.(scoped)).toEqual({ scopeProjectKey: "WEB" });
+    // The raw selector is never used; a source without the canonical field matches no run.
+    expect(adapter.staleScope?.(conn())).toEqual({ scopeProjectKey: "" });
   });
 });
