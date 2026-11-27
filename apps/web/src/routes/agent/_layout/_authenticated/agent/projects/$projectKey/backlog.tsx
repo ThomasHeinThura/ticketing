@@ -448,6 +448,7 @@ function ProjectBacklogRoute({ projectKey }: { projectKey: string }) {
                       ...prev,
                       filter: nextFilter.trim() ? nextFilter : undefined,
                     }),
+                    replace: true,
                   })
                 }
                 workspaceId={workspace?.id}

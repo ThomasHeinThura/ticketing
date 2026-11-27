@@ -10,7 +10,7 @@ import {
   Button,
   useDelayedPending,
 } from "@taskdesk/ui";
-import { Filter, PanelsTopLeft, Rows3, Table2 } from "lucide-react";
+import { PanelsTopLeft, Rows3, Table2 } from "lucide-react";
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
@@ -267,20 +267,6 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
   const isFiltered = !!filter?.trim();
   const boardSort = isFiltered && sort === "position" ? "key" : sort;
   const boardDir = isFiltered && sort === "position" ? "asc" : dir;
-  const [isFilterOpen, setIsFilterOpen] = useState(isFiltered);
-  // Focus moves into the editor only when the user opens it, never when the URL did.
-  const [focusFilterEditor, setFocusFilterEditor] = useState(false);
-  const filterToggleRef = useRef<HTMLButtonElement>(null);
-  const toggleFilter = useCallback(() => {
-    if (isFilterOpen) {
-      setIsFilterOpen(false);
-      setFocusFilterEditor(false);
-      filterToggleRef.current?.focus();
-    } else {
-      setFocusFilterEditor(true);
-      setIsFilterOpen(true);
-    }
-  }, [isFilterOpen]);
   const navigate = Route.useNavigate();
   const routeContentRef = useRef<HTMLDivElement>(null);
   const openerCandidateRef = useRef<HTMLElement | undefined>(undefined);
@@ -696,8 +682,8 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
     [navigate],
   );
 
-  // Applying a filter or switching the editor mode is a navigation, not a replacement, so the
-  // back button steps through the queries the user tried (`VW-1`, AGENTS.md rule 4).
+  // Chips apply live, so a filter write replaces the history entry instead of burying the back
+  // button under one entry per click (`VW-1`); switching the editor mode stays a navigation.
   const handleFilterApply = useCallback(
     (nextFilter: string) => {
       navigate({
@@ -705,6 +691,7 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           ...prev,
           filter: nextFilter.trim() ? nextFilter : undefined,
         }),
+        replace: true,
       });
     },
     [navigate],
@@ -995,22 +982,25 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
           <div className="flex min-h-10 items-center px-2 py-1.5 md:px-3">
             <div className="flex w-full flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-1.5">
-                <Button
-                  ref={filterToggleRef}
-                  variant="ghost"
-                  type="button"
-                  className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-foreground text-xs font-medium outline-none ring-0 hover:bg-accent/60"
-                  aria-expanded={isFilterOpen}
-                  aria-controls={
-                    isFilterOpen ? "work-item-filter-controls" : undefined
-                  }
-                  onClick={toggleFilter}
-                >
-                  <Filter className="h-3 w-3" />
-                  {isFiltered
-                    ? t("workItems:filter.toggleActive")
-                    : t("common:actions.filter")}
-                </Button>
+                <Suspense fallback={null}>
+                  <WorkItemListControls
+                    filter={filter ?? ""}
+                    mode={filterMode ?? "visual"}
+                    workItemsError={
+                      layout === "board" ? boardFilterError : workItemsError
+                    }
+                    onModeChange={handleFilterModeChange}
+                    onApply={handleFilterApply}
+                    columns={columns}
+                    onColumnsChange={
+                      layout === "table" ? handleColumnsChange : undefined
+                    }
+                    workspaceId={workspace?.id}
+                    projectSlug={project?.slug}
+                    sort={sort}
+                    dir={dir}
+                  />
+                </Suspense>
                 <Suspense fallback={null}>
                   <SortControl
                     fields={
@@ -1122,31 +1112,6 @@ function ProjectWorkItemsRoute({ projectKey }: { projectKey: string }) {
             </div>
           </div>
         </div>
-        {isFilterOpen ? (
-          <div id="work-item-filter-controls">
-            <Suspense fallback={null}>
-              <WorkItemListControls
-                autoFocus={focusFilterEditor}
-                onClose={toggleFilter}
-                filter={filter ?? ""}
-                mode={filterMode ?? "visual"}
-                workItemsError={
-                  layout === "board" ? boardFilterError : workItemsError
-                }
-                onModeChange={handleFilterModeChange}
-                onApply={handleFilterApply}
-                columns={columns}
-                onColumnsChange={
-                  layout === "table" ? handleColumnsChange : undefined
-                }
-                workspaceId={workspace?.id}
-                projectSlug={project?.slug}
-                sort={sort}
-                dir={dir}
-              />
-            </Suspense>
-          </div>
-        ) : null}
         {createDialogLoad === "failed" ? (
           <div
             role="alert"

@@ -75,13 +75,23 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
         onColumnsChange={onColumnsChange}
       />,
     );
-    await screen.findByTestId("filter-editor");
-    expect(screen.getByTestId("work-item-column-controls")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Columns" }));
+    expect(
+      await screen.findByTestId("work-item-column-controls"),
+    ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Move Title left" }));
+    // The reorder buttons are real buttons, visible without hover.
+    fireEvent.click(screen.getByRole("button", { name: "Move Title up" }));
     expect(onColumnsChange).toHaveBeenCalledWith(["title", "key", "priority"]);
+    expect(screen.getByRole("button", { name: "Move Key up" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Move Priority down" }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Move State down" }),
+    ).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "State" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "State" }));
     expect(onColumnsChange).toHaveBeenCalledWith([
       "key",
       "title",
@@ -89,13 +99,46 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
       "state",
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Asset tag" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Asset tag" }));
     expect(onColumnsChange).toHaveBeenLastCalledWith([
       "key",
       "title",
       "priority",
       "cf.constructor",
     ]);
+  });
+
+  it("resets chosen columns and keeps the last visible column on", async () => {
+    const onColumnsChange = vi.fn();
+    render(
+      <WorkItemListControls
+        filter=""
+        mode="visual"
+        onModeChange={vi.fn()}
+        onApply={vi.fn()}
+        columns={["title"]}
+        onColumnsChange={onColumnsChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Columns" }));
+    expect(
+      await screen.findByRole("checkbox", { name: "Title" }),
+    ).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Reset columns" }));
+    expect(onColumnsChange).toHaveBeenCalledWith(undefined);
+  });
+
+  it("offers no Columns popover without onColumnsChange", () => {
+    render(
+      <WorkItemListControls
+        filter=""
+        mode="visual"
+        onModeChange={vi.fn()}
+        onApply={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Columns" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Filter" })).toBeInTheDocument();
   });
 
   it("hides the Export CSV button without exportTasks capability and exports CSV when permitted", async () => {
@@ -112,7 +155,6 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
         columns={["key", "title", "cf.asset_tag"]}
       />,
     );
-    await screen.findByTestId("filter-editor");
     expect(screen.queryByTestId("work-item-export-csv")).toBeNull();
 
     mocks.canExport = true;
@@ -161,7 +203,6 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
         projectSlug="WLP"
       />,
     );
-    await screen.findByTestId("filter-editor");
     fireEvent.click(screen.getByTestId("work-item-export-csv"));
     const alert = await screen.findByTestId("work-item-export-error");
     expect(alert).toHaveTextContent(
@@ -185,7 +226,6 @@ describe("WorkItemListControls (VW-19 columns and D1 CSV export)", () => {
         projectSlug="WLP"
       />,
     );
-    await screen.findByTestId("filter-editor");
     fireEvent.click(screen.getByTestId("work-item-export-csv"));
     expect(
       await screen.findByTestId("work-item-export-error"),

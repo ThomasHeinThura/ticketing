@@ -1,11 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
 
@@ -199,7 +193,7 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
     });
   });
 
-  it("reads through the list route when no filter is set, and keeps the editor unloaded", async () => {
+  it("reads through the list route when no filter is set, with the filter bar always mounted", async () => {
     await renderRoute();
     expect(state.hookArgs).toMatchObject({
       projectId: "proj_1",
@@ -208,11 +202,8 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
       filter: undefined,
     });
     expect(state.panelProps?.isFiltered).toBe(false);
-    expect(screen.queryByTestId("controls")).toBeNull();
-    expect(screen.getByRole("button", { name: "Filter" })).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
+    expect(await screen.findByTestId("controls")).toBeInTheDocument();
+    expect(state.controlsProps).toMatchObject({ filter: "", mode: "visual" });
     expect(state.getCustomFields).not.toHaveBeenCalled();
   });
 
@@ -224,7 +215,7 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
     );
   });
 
-  it("passes the URL filter, columns and scope to the read and the panel, and opens the editor", async () => {
+  it("passes the URL filter, columns and scope to the read and the panel, and the controls", async () => {
     state.search = {
       layout: "list",
       sort: "priority",
@@ -252,26 +243,9 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
       filter: "assignee:@me",
       mode: "text",
     });
-    // A filtered list never looks unfiltered, even with the editor collapsed (VW-34).
-    expect(
-      screen.getByRole("button", { name: "Filter (on)" }),
-    ).toBeInTheDocument();
   });
 
-  it("opens and closes the editor from the Filter control", async () => {
-    await renderRoute();
-    fireEvent.click(screen.getByRole("button", { name: "Filter" }));
-    await screen.findByTestId("controls");
-    expect(state.controlsProps?.mode).toBe("visual");
-    expect(screen.getByRole("button", { name: "Filter" })).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Filter" }));
-    await waitFor(() => expect(screen.queryByTestId("controls")).toBeNull());
-  });
-
-  it("applying a filter navigates (a history entry) and keeps sort, columns and mode", async () => {
+  it("applying a filter replaces the history entry and keeps sort, columns and mode", async () => {
     state.search = {
       layout: "list",
       sort: "priority",
@@ -280,11 +254,10 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
       filterMode: "text",
     };
     await renderRoute();
-    fireEvent.click(screen.getByRole("button", { name: "Filter" }));
     await screen.findByTestId("controls");
     callControl("onApply", "priority:high");
     const { next, replace } = navigatedSearch();
-    expect(replace).toBeUndefined();
+    expect(replace).toBe(true);
     expect(next).toEqual({
       layout: "list",
       sort: "priority",
@@ -347,9 +320,6 @@ describe("work route structured filter (SV-11, SV-12, VW-1)", () => {
     await renderRoute();
     await screen.findByTestId("controls");
     expect(screen.queryByTestId("board-filter-notice")).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Filter (on)" }),
-    ).toBeInTheDocument();
     expect(state.controlsProps).toMatchObject({
       filter: "priority:high",
       workspaceId: "ws_1",
@@ -400,52 +370,11 @@ describe("work route chosen columns persist per person and project (VW-19)", () 
   it("stores a column change, and clears the stored choice when reset", async () => {
     state.search = { layout: "table", sort: "key", dir: "asc" };
     await renderRoute();
-    await screen.findByTestId("panel");
-    fireEvent.click(screen.getByRole("button", { name: "Filter" }));
     await screen.findByTestId("controls");
     callControl("onColumnsChange", ["key", "state"]);
     expect(state.setColumns).toHaveBeenLastCalledWith(["key", "state"]);
     callControl("onColumnsChange", undefined);
     expect(state.setColumns).toHaveBeenLastCalledWith(null);
-  });
-});
-
-describe("work route filter disclosure (aria-expanded, focus)", () => {
-  it("is a disclosure: expanded state and a controlled id only while it exists, never aria-pressed", async () => {
-    await renderRoute();
-    const toggle = screen.getByRole("button", { name: "Filter" });
-    expect(toggle).not.toHaveAttribute("aria-pressed");
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(toggle).not.toHaveAttribute("aria-controls");
-    fireEvent.click(toggle);
-    await screen.findByTestId("controls");
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
-    const controlled = toggle.getAttribute("aria-controls");
-    expect(controlled).toBeTruthy();
-    expect(document.getElementById(controlled ?? "")).not.toBeNull();
-  });
-
-  it("asks the editor to take focus when the user opens it, not when the URL did", async () => {
-    await renderRoute();
-    fireEvent.click(screen.getByRole("button", { name: "Filter" }));
-    await screen.findByTestId("controls");
-    expect(state.controlsProps?.autoFocus).toBe(true);
-    cleanup();
-    state.search = { layout: "list", sort: "key", dir: "asc", filter: "x:y" };
-    await renderRoute();
-    await screen.findByTestId("controls");
-    expect(state.controlsProps?.autoFocus).toBe(false);
-  });
-
-  it("returns focus to the toggle when the editor closes, by the toggle or by the editor", async () => {
-    await renderRoute();
-    const toggle = screen.getByRole("button", { name: "Filter" });
-    fireEvent.click(toggle);
-    await screen.findByTestId("controls");
-    callControl("onClose");
-    await waitFor(() => expect(screen.queryByTestId("controls")).toBeNull());
-    expect(toggle).toHaveFocus();
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 });
 

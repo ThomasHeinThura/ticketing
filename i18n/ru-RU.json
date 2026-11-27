@@ -3625,7 +3625,9 @@
 				"priority": "Priority",
 				"assignee": "Assignee"
 			},
-			"columnUnavailable": "Unavailable"
+			"columnUnavailable": "Unavailable",
+			"moveColumnUp": "Move {{column}} up",
+			"moveColumnDown": "Move {{column}} down"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -3843,7 +3845,14 @@
 				"forbidden": "You don't have access to filter by one of these fields.",
 				"invalid": "This filter could not be applied. Check its syntax and values.",
 				"unavailable": "A field in this filter isn't available yet."
-			}
+			},
+			"chipsLabel": "Active filters",
+			"addFilter": "Filter",
+			"searchFields": "Search fields",
+			"searchValues": "Search values",
+			"advanced": "Advanced",
+			"advancedFilter": "Advanced filter",
+			"me": "Me"
 		},
 		"properties": {
 			"clearDate": "Clear date",
