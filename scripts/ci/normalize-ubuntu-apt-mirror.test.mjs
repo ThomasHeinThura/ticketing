@@ -222,10 +222,25 @@ test("source walk rejects hard-linked config rather than replacing an external a
 
 test("every Playwright dependency install has the bounded Ubuntu mirror pre-step", async () => {
   const workflowPaths = [
-    [path.resolve(".github/workflows/ci-fast.yml"), { static: "sudo" }],
+    [
+      path.resolve(".github/workflows/ci-fast.yml"),
+      { "static-tokens": "sudo" },
+    ],
     [
       path.resolve(".github/workflows/ci-full.yml"),
-      { e2e: "sudo", a11y: "sudo", visual: "root", performance: "sudo" },
+      {
+        "e2e-1": "sudo",
+        "e2e-2": "sudo",
+        "e2e-3": "sudo",
+        "e2e-4": "sudo",
+        "e2e-5": "sudo",
+        "e2e-6": "sudo",
+        "e2e-7": "sudo",
+        "e2e-8": "sudo",
+        a11y: "sudo",
+        visual: "root",
+        performance: "sudo",
+      },
     ],
   ];
   for (const [workflowPath, expectedExecutors] of workflowPaths) {

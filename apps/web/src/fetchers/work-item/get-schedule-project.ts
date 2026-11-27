@@ -8,6 +8,8 @@ import type Task from "@/types/task";
 type ScheduleTask = Task & {
   epic: { id: string; key: string; title: string } | null;
   epicAvailable: boolean;
+  /** The state category, so the calendar can tell completed from cancelled. */
+  stateCategory: "open" | "completed" | "cancelled";
 };
 
 /** Adapt canonical rows to Kaneo's existing calendar/timeline rendering contract. */
@@ -72,6 +74,11 @@ export async function getScheduleProject(
         number: item.number,
         description: null,
         status: item.stateName,
+        stateCategory:
+          item.stateCategory === "completed" ||
+          item.stateCategory === "cancelled"
+            ? item.stateCategory
+            : "open",
         priority: item.priority,
         startDate: item.startDate,
         dueDate: item.dueDate,

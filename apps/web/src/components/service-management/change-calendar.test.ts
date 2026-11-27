@@ -75,4 +75,28 @@ describe("change calendar bars", () => {
     );
     expect(task?.scheduleEnd.toISOString()).toBe("2031-01-10T23:59:59.999Z");
   });
+
+  it("marks freezes, frozen and conflicting windows with an explicit change kind", () => {
+    const tasks = buildTasks(
+      [
+        change({ key: "A", frozen: true }),
+        change({ key: "B", conflict: true }),
+        change({ key: "C" }),
+      ],
+      [
+        {
+          id: "f",
+          name: "F",
+          startsAt: "2031-01-09T00:00:00.000Z",
+          endsAt: "2031-01-12T00:00:00.000Z",
+        },
+      ],
+    );
+    expect(tasks.map((task) => task.changeKind)).toEqual([
+      "freeze",
+      "frozen",
+      "conflict",
+      undefined,
+    ]);
+  });
 });

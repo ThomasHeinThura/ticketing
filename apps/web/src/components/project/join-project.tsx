@@ -10,10 +10,16 @@ export function JoinProject({
   projectId,
   workspaceId,
   canJoin = false,
+  projectName,
+  compact = false,
 }: {
   projectId: string;
   workspaceId: string;
   canJoin?: boolean;
+  /** Names the button for assistive tech ("Join Customer Support"). */
+  projectName?: string;
+  /** List rows: only a small Join button, no membership text. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation("workspace");
   const queryClient = useQueryClient();
@@ -44,23 +50,36 @@ export function JoinProject({
     },
     onError: () => toast.error(t("projects.joinFailed")),
   });
-  if (mutation.isSuccess) return null;
+  if (mutation.isSuccess || (compact && !canJoin)) return null;
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
-      <span className="text-muted-foreground text-xs">
-        {t("projects.notMember")}
-      </span>
+      {compact ? null : (
+        <span className="text-muted-foreground text-xs">
+          {t("projects.notMember")}
+        </span>
+      )}
       {canJoin ? (
         <Button
-          variant="outline"
+          variant={compact ? "ghost" : "outline"}
           size="sm"
+          aria-label={
+            compact && projectName
+              ? t("projects.joinNamed", { name: projectName })
+              : undefined
+          }
           disabled={mutation.isPending}
           onClick={(event) => {
             event.stopPropagation();
             mutation.mutate({ projectId, workspaceId });
           }}
         >
-          {t(mutation.isPending ? "projects.joining" : "projects.join")}
+          {t(
+            mutation.isPending
+              ? "projects.joining"
+              : compact
+                ? "projects.joinShort"
+                : "projects.join",
+          )}
         </Button>
       ) : null}
     </span>
