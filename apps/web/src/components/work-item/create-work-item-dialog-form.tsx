@@ -8,8 +8,15 @@ import {
   LoadingStatus,
   Skeleton,
 } from "@taskdesk/ui";
-import { Layers, TriangleAlert } from "lucide-react";
-import { lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Layers, Paperclip, TriangleAlert } from "lucide-react";
+import {
+  lazy,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   CREATE_TASK_PROPERTY_BUTTON_CLASS,
@@ -48,6 +55,12 @@ import {
 
 const CommentEditor = lazy(
   () => import("@/components/activity/comment-editor"),
+);
+// Description box: starts about 6.5rem tall and grows with its content; the
+// attach control lives in the property row, so no room is kept for a paperclip.
+const CREATE_DESCRIPTION_CLASS = cn(
+  TASK_DESCRIPTION_EDITOR_CLASS,
+  "[&_.taskdesk-comment-editor-content_.ProseMirror]:min-h-[6.5rem] [&_.taskdesk-comment-editor-content_.ProseMirror]:pb-2",
 );
 const PRIORITY_OPTIONS = ["low", "medium", "high", "urgent"] as const;
 type Priority = (typeof PRIORITY_OPTIONS)[number];
@@ -107,6 +120,12 @@ export default function CreateWorkItemDialogForm({
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [createUnconfirmed, setCreateUnconfirmed] = useState(false);
+  // The editor owns the file picker; the property row's Attach button calls it.
+  const [attachAction, setAttachAction] = useState<(() => void) | null>(null);
+  const registerAttach = useCallback(
+    (attach: (() => void) | null) => setAttachAction(() => attach),
+    [],
+  );
   const attachments = useCreateWorkItemAttachments(
     `${workspaceId}:${projectId}`,
   );
@@ -396,14 +415,14 @@ export default function CreateWorkItemDialogForm({
           disabled={locked}
           data-testid="create-work-item-title"
         />
-        <div className="min-h-[200px]">
+        <div>
           <DelayedSuspense
             fallback={(visible) => (
               <LoadingStatus
                 visible={visible}
                 label={t("common:empty.loading")}
               >
-                <Skeleton className="min-h-44 w-full" />
+                <Skeleton className="min-h-24 w-full" />
               </LoadingStatus>
             )}
           >
@@ -420,8 +439,9 @@ export default function CreateWorkItemDialogForm({
               onFilesSelected={
                 canAttach && !locked ? attachments.stage : undefined
               }
-              showQuickAttachButton={canAttach && !locked}
-              className={TASK_DESCRIPTION_EDITOR_CLASS}
+              showQuickAttachButton={false}
+              onAttachActionChange={registerAttach}
+              className={CREATE_DESCRIPTION_CLASS}
               disabled={locked}
             />
           </DelayedSuspense>
@@ -460,6 +480,21 @@ export default function CreateWorkItemDialogForm({
               previous.includes(label.id) ? previous : [...previous, label.id],
             );
           }}
+          attachControl={
+            canAttach && !locked && attachAction ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground"
+                aria-label={t("activity:comment.attachFile")}
+                onClick={attachAction}
+                data-testid="create-work-item-attach"
+              >
+                <Paperclip className="size-3.5" />
+              </Button>
+            ) : null
+          }
           onLabelBusyChange={setLabelBusy}
           onLabelDraftChange={setLabelDraftDirty}
           options={options}
