@@ -97884,7 +97884,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -98004,7 +98004,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -103771,7 +103771,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
@@ -103891,7 +103891,7 @@
 				"category": "non-text",
 				"chain": [
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
-					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemSidePaneBody[0]",
+					"jsx:TaskDetailsSheetFrame[0]/DelayedSuspense[0]/WorkItemNamespaceBoundary[0]/WorkItemSidePaneBody[0]",
 					"component-slot:apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheetFrame.children",
 					"component-slot:packages/ui/src/components/sheet.tsx:SheetPopup.children"
 				],
