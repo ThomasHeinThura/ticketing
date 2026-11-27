@@ -142,6 +142,11 @@ function ValueInput({
   const current = chipValues(leaf)[0] ?? "";
   const [draft, setDraft] = useState(current);
   const [invalid, setInvalid] = useState(false);
+  // Back/Forward can change the applied value while the popover is open; follow it.
+  useEffect(() => {
+    setDraft(current);
+    setInvalid(false);
+  }, [current]);
   const isDate = field.id === "dueDate" || field.id === "createdAt";
   const commit = (value: string) => {
     const next = { ...leaf, value };

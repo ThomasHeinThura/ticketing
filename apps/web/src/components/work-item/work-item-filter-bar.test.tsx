@@ -159,4 +159,22 @@ describe("WorkItemFilterBar (SV-11 chips)", () => {
       { replace: false },
     ]);
   });
+
+  it("follows Back while a value popover stays open", async () => {
+    const onApply = vi.fn();
+    const props = { mode: "visual" as const, onModeChange: vi.fn(), onApply };
+    const { rerender } = render(
+      <WorkItemFilterBar filter="dueDate:<2026-12-01" {...props} />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-filter-chip"));
+    const input = await screen.findByRole("textbox", { name: /Due date/ });
+    fireEvent.change(input, { target: { value: "2026-12-24" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    rerender(<WorkItemFilterBar filter="dueDate:<2026-12-24" {...props} />);
+    // Back restores the earlier filter with the popover still open.
+    rerender(<WorkItemFilterBar filter="dueDate:<2026-12-01" {...props} />);
+    expect(screen.getByRole("textbox", { name: /Due date/ })).toHaveValue(
+      "2026-12-01",
+    );
+  });
 });
