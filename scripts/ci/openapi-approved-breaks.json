@@ -806,5 +806,77 @@
 		"pr": 1201,
 		"reason": "Owner-requested #1199 extends new project keys from 2-8 to 2-15 uppercase ASCII letters. The accepted set is a strict superset; the minimum, alphabet, existing keys, legacy update exemption and permanent claims remain unchanged. No other API change is covered.",
 		"decision": "The product owner requested longer project short names with support for at least 10 characters; #1199 records the bounded 15-letter maximum and retained short/legacy keys. PR #1201 implements that direction; docs/technical/feature-contracts-p1.md PR-13."
+	},
+	{
+		"operation": "GET /imports",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "214e578cf260",
+		"pr": 1275,
+		"reason": "Additive: adds the import.bundle plugin id to the import run list response enum. Existing clients tolerate unknown enum values in these responses.",
+		"decision": "Owner-approved 27 Nov 2026 in the coordinator session (Thomas: \"continue all and approved all\") for PR #1275, import bundle slice 1"
+	},
+	{
+		"operation": "POST /imports",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "f54327ccfbdd",
+		"pr": 1275,
+		"reason": "Additive: adds the import.bundle plugin id to the created import run response enum. Existing clients tolerate unknown enum values in these responses.",
+		"decision": "Owner-approved 27 Nov 2026 in the coordinator session (Thomas: \"continue all and approved all\") for PR #1275, import bundle slice 1"
+	},
+	{
+		"operation": "GET /imports/{id}",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "1ba3e15d0155",
+		"pr": 1275,
+		"reason": "Additive: adds the import.bundle plugin id to the import run detail response enum. Existing clients tolerate unknown enum values in these responses.",
+		"decision": "Owner-approved 27 Nov 2026 in the coordinator session (Thomas: \"continue all and approved all\") for PR #1275, import bundle slice 1"
+	},
+	{
+		"operation": "GET /instance/mcp/usage",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "6fe1d23662c3",
+		"pr": 1275,
+		"reason": "Additive: adds the import_bundle_apply MCP tool name to the usage response enum. Existing clients tolerate unknown enum values in these responses.",
+		"decision": "Owner-approved 27 Nov 2026 in the coordinator session (Thomas: \"continue all and approved all\") for PR #1275, import bundle slice 1"
+	},
+	{
+		"operation": "GET /instance/mcp/usage",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "d4f504450cd3",
+		"pr": 1275,
+		"reason": "Additive: adds the import_bundle_dry_run MCP tool name to the usage response enum. Existing clients tolerate unknown enum values in these responses.",
+		"decision": "Owner-approved 27 Nov 2026 in the coordinator session (Thomas: \"continue all and approved all\") for PR #1275, import bundle slice 1"
+	},
+	{
+		"operation": "GET /instance/mcp/usage",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "04d2d88d9b1f",
+		"pr": 1275,
+		"reason": "Additive: adds the import_bundle_mapping MCP tool name to the usage response enum. Existing clients tolerate unknown enum values in these responses.",
+		"decision": "Owner-approved 27 Nov 2026 in the coordinator session (Thomas: \"continue all and approved all\") for PR #1275, import bundle slice 1"
+	},
+	{
+		"operation": "GET /instance/mcp/usage",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "3796485eb45d",
+		"pr": 1275,
+		"reason": "Additive: adds the import_bundle_start MCP tool name to the usage response enum. Existing clients tolerate unknown enum values in these responses.",
+		"decision": "Owner-approved 27 Nov 2026 in the coordinator session (Thomas: \"continue all and approved all\") for PR #1275, import bundle slice 1"
+	},
+	{
+		"operation": "GET /instance/mcp/usage",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "6eb2b17ce75a",
+		"pr": 1275,
+		"reason": "Additive: adds the import_bundle_status MCP tool name to the usage response enum. Existing clients tolerate unknown enum values in these responses.",
+		"decision": "Owner-approved 27 Nov 2026 in the coordinator session (Thomas: \"continue all and approved all\") for PR #1275, import bundle slice 1"
+	},
+	{
+		"operation": "GET /instance/mcp/usage",
+		"rule": "response-property-enum-value-added",
+		"fingerprint": "72c563e6977d",
+		"pr": 1275,
+		"reason": "Additive: adds the validate_import_bundle MCP tool name to the usage response enum. Existing clients tolerate unknown enum values in these responses.",
+		"decision": "Owner-approved 27 Nov 2026 in the coordinator session (Thomas: \"continue all and approved all\") for PR #1275, import bundle slice 1"
 	}
 ]
