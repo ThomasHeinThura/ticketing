@@ -39,6 +39,7 @@ vi.mock("@taskdesk/libs", async () => ({
 
 const { mocks } = vi.hoisted(() => ({
   mocks: {
+    cycleCount: 0 as number | undefined,
     canManage: true,
     canUpdate: true,
     checking: false,
@@ -169,6 +170,9 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     isCheckingPermissions: mocks.checking,
   }),
 }));
+vi.mock("@/hooks/queries/agile/use-cycle-count", () => ({
+  default: () => mocks.cycleCount,
+}));
 vi.mock("@/hooks/queries/project/use-get-project", () => ({
   default: () => ({
     data: mocks.project,
@@ -230,6 +234,7 @@ const save = () => screen.getByRole("button", { name: `${KEY}.save` });
 
 describe("ProjectEngagementSettings", () => {
   beforeEach(() => {
+    mocks.cycleCount = 0;
     mocks.canUpdate = true;
     mocks.canManage = true;
     mocks.checking = false;
@@ -320,6 +325,29 @@ describe("ProjectEngagementSettings", () => {
     expect(calendar()).toHaveValue("__inherit__");
     expect(health()).toHaveValue("red");
     expect(save()).toBeDisabled();
+  });
+
+  it("warns, without removing anything, when a managed service keeps an end date or cycles", () => {
+    mocks.project = {
+      ...mocks.project,
+      kind: "managed_service",
+      supportLevel: "L2",
+      serviceCalendarId: "cal-1",
+    };
+    const { unmount } = render_();
+    expect(screen.queryByTestId("managed-service-unused-notice")).toBeNull();
+    unmount();
+    mocks.cycleCount = 1;
+    render_();
+    expect(screen.getByTestId("managed-service-unused-notice")).toBeTruthy();
+  });
+
+  it("warns when the kind is switched to managed on a project that has an end date", () => {
+    mocks.project = { ...mocks.project, endDate: "2026-12-31" };
+    render_();
+    expect(screen.queryByTestId("managed-service-unused-notice")).toBeNull();
+    fireEvent.change(kind(), { target: { value: "managed_service" } });
+    expect(screen.getByTestId("managed-service-unused-notice")).toBeTruthy();
   });
 
   it("keeps the original edit baseline when the project refetches", async () => {

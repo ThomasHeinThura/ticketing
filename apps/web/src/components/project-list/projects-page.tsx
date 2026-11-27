@@ -734,14 +734,14 @@ export default function ProjectsPage({
                                 compact
                               />
                             ) : null}
-                            {project.kind === "managed_service" ? (
-                              <Badge
-                                variant="secondary"
-                                data-testid="project-kind-badge"
-                              >
-                                {t("workspace:projects.managedServiceBadge")}
-                              </Badge>
-                            ) : null}
+                            <Badge
+                              variant="secondary"
+                              data-testid="project-kind-badge"
+                            >
+                              {project.kind === "managed_service"
+                                ? t("workspace:projects.managedServiceBadge")
+                                : t("common:modals.createProject.kindDelivery")}
+                            </Badge>
                             {project.parentId &&
                               projectNameById.has(project.parentId) && (
                                 <Badge

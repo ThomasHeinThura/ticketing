@@ -244,7 +244,7 @@ const createCycleRoute = createRoute({
     403: errorResponse("Missing project:manage_settings permission"),
     404: errorResponse("Project not found, or feature.cycles is off"),
     409: jsonResponse("Overlaps another cycle", cycleOverlapSchema),
-    422: errorResponse("Invalid dates"),
+    422: errorResponse("Invalid dates, or managed_service_has_no_cycles"),
   },
 });
 const getCycleRoute = createRoute({

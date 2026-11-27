@@ -2661,7 +2661,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/project/project-planning-settings.tsx:ProjectPlanningSettings",
-					"jsx:section[0]/div[1]/div[4]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:section[0]/div[1]/div[3]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -5745,7 +5745,7 @@
 					"packages/ui/src/components/select.tsx:SelectItem",
 					"jsx:SelectPrimitive.Item[0]>data-highlighted:bg-accent",
 					"apps/web/src/components/project/project-planning-settings.tsx:ProjectPlanningSettings",
-					"jsx:section[0]/div[1]/div[4]/Select[0]/SelectContent[0]/SelectItem[0]",
+					"jsx:section[0]/div[1]/div[3]/Select[0]/SelectContent[0]/SelectItem[0]",
 					"component-slot:packages/ui/src/components/select.tsx:SelectPopup.children",
 					"opaque-backdrop:bg-popover"
 				],
@@ -16214,7 +16214,7 @@
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#0",
-			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-destructive#0",
+			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#1",
 			"apps/web/src/components/project/project-states-editor.tsx::ProjectStatesEditor::div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[2]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[2]/div[1]/div[0]/Button[0]::text-destructive#0",
@@ -16288,7 +16288,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
-				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-destructive#0",
+				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/project-planning-settings.tsx"
 			},
@@ -16544,7 +16544,7 @@
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[1]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/project-engagement-settings.tsx::ProjectEngagementSettings::section[0]/div[1]/div[2]/p[0]::text-destructive#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#0",
-			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-destructive#0",
+			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#1",
 			"apps/web/src/components/project/project-states-editor.tsx::ProjectStatesEditor::div[0]/div[0]/p[0]::text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[2]/div[1]/div[0]/Button[0]::hover:text-destructive#0",
 			"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account/information.tsx::RouteComponent::div[0]/div[2]/div[1]/div[0]/Button[0]::text-destructive#0",
@@ -16618,7 +16618,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
-				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-destructive#0",
+				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-destructive#1",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/project-planning-settings.tsx"
 			},
@@ -109288,7 +109288,7 @@
 			"apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverTrigger[0]/Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[4]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-states-editor.tsx::ProjectStatesEditor::div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-states-editor.tsx::SortableStateRow::li[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/workspace-state-templates-panel.tsx::WorkspaceStateTemplatesPanel::section[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -109833,7 +109833,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
-				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[4]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/project-planning-settings.tsx"
 			},
@@ -110451,7 +110451,7 @@
 			"apps/web/src/components/project/project-planning-settings.tsx::DateField::Popover[0]/PopoverTrigger[0]/Button[0]/span[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[4]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-states-editor.tsx::ProjectStatesEditor::div[0]/div[0]/div[0]/p[1]::text-muted-foreground#0",
 			"apps/web/src/components/project/project-states-editor.tsx::SortableStateRow::li[0]/Button[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/workspace-state-templates-panel.tsx::WorkspaceStateTemplatesPanel::section[0]/div[0]/div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -110996,7 +110996,7 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
 					"jsx:div[0]/div[1]/div[1]/ProjectPlanningSettings[0]"
 				],
-				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[4]/div[0]/p[0]::text-muted-foreground#0",
+				"id": "apps/web/src/components/project/project-planning-settings.tsx::ProjectPlanningSettings::section[0]/div[1]/div[3]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/project/project-planning-settings.tsx"
 			},
@@ -112568,6 +112568,39 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/managed-service-unused-notice.tsx:ManagedServiceUnusedNotice",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/managed-service-unused-notice.tsx:ManagedServiceUnusedNotice",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -113654,6 +113687,20 @@
 				"backdropLayers": ["bg-sidebar"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/project/managed-service-unused-notice.tsx:ManagedServiceUnusedNotice",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
+					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]",
+					"opaque-backdrop:bg-sidebar"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-sidebar"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/project/project-planning-settings.tsx:ProjectPlanningSettings",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
@@ -114126,6 +114173,39 @@
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/account.tsx:/_layout/_authenticated/dashboard/settings/account",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/managed-service-unused-notice.tsx:ManagedServiceUnusedNotice",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/managed-service-unused-notice.tsx:ManagedServiceUnusedNotice",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey/cycles.tsx:/_layout/_authenticated/agent/projects/$projectKey/cycles",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx:/_layout/_authenticated/agent/projects/$projectKey",
+					"apps/web/src/routes/agent/_layout/_authenticated/agent.tsx:/_layout/_authenticated/agent",
 					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
 					"apps/web/src/routes/agent/_layout.tsx:/_layout",
 					"apps/web/src/index.css:body>@apply bg-background"
@@ -115208,6 +115288,20 @@
 			"packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0"
 		],
 		"occurrences": [
+			{
+				"backdropLayers": ["bg-sidebar"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/project/managed-service-unused-notice.tsx:ManagedServiceUnusedNotice",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/projects/$projectId/general.tsx:ProjectGeneral",
+					"jsx:div[0]/div[1]/div[1]/ProjectEngagementSettings[0]",
+					"opaque-backdrop:bg-sidebar"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
 			{
 				"backdropLayers": ["bg-sidebar"],
 				"category": "body",

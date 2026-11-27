@@ -332,7 +332,12 @@ test("S5 creates managed services from the catalogue and filters them by kind on
     await expect(rows.filter({ hasText: "Acme managed support" })).toHaveCount(
       0,
     );
-    await expect(page.getByTestId("project-kind-badge")).toHaveCount(0);
+    // Both kinds carry a badge; a delivery project's reads "Delivery ...".
+    await expect(
+      rows
+        .filter({ hasText: "Website rebuild" })
+        .getByTestId("project-kind-badge"),
+    ).toHaveText(/^Delivery /);
     await page.reload();
     await expect(page.getByTestId("project-kind-filter")).toContainText(
       /Delivery /,

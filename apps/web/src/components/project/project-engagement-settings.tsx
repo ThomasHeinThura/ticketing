@@ -24,12 +24,14 @@ import {
 import { getServiceCalendars } from "@/fetchers/service-calendar";
 import { getSlaPolicies } from "@/fetchers/sla-policy";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
+import useCycleCount from "@/hooks/queries/agile/use-cycle-count";
 import useWorkspaceFeatures from "@/hooks/queries/feature-flag/use-workspace-features";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import type { HistoryTarget } from "@/hooks/queries/settings/use-settings-history";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import { toast } from "@/lib/toast";
+import { ManagedServiceUnusedNotice } from "./managed-service-unused-notice";
 import {
   buildEngagementPayload,
   classifyEngagementFailure,
@@ -138,6 +140,11 @@ function ProjectEngagementSettings({
   // only chooses which controls are offered.
   const canEditHealth = canUpdateProjects();
   const canEditEngagement = canEditHealth && canManageProjectSettings();
+  const cycleCount = useCycleCount(
+    project?.slug,
+    project?.kind === "managed_service" ||
+      draft?.values.kind === "managed_service",
+  );
 
   const pending = isLoading || (isCheckingPermissions && !project);
   const placeholderVisible = useDelayedPending(pending);
@@ -200,8 +207,8 @@ function ProjectEngagementSettings({
     value,
     label:
       value === "managed_service"
-        ? t("settings:projectGeneral.engagement.managedService")
-        : t("settings:projectGeneral.engagement.project"),
+        ? t("common:modals.createProject.kindManaged")
+        : t("common:modals.createProject.kindDelivery"),
   }));
   const supportItems = [
     { value: NONE, label: t("settings:projectGeneral.engagement.none") },
@@ -319,6 +326,11 @@ function ProjectEngagementSettings({
           </AlertDescription>
         </Alert>
       )}
+
+      {values.kind === "managed_service" &&
+      (project.endDate || (cycleCount ?? 0) > 0) ? (
+        <ManagedServiceUnusedNotice />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">

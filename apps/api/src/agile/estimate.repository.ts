@@ -165,12 +165,13 @@ export async function setAgileSettings(
 /** Serialises concurrent estimate and cycle writes for one project. */
 export async function lockProject(tx: Executor, projectId: string) {
   const [row] = await tx
-    .select({ id: projectTable.id })
+    .select({ id: projectTable.id, kind: projectTable.kind })
     .from(projectTable)
     .where(eq(projectTable.id, projectId))
     .for("update")
     .limit(1);
   if (!row) throw new HTTPException(404, { message: "Project not found" });
+  return row;
 }
 
 /**

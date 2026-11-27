@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"managedServiceUnused": "Les cycles et la date de fin ne sont pas utilisés pour les services gérés. Ceux qui existent déjà restent visibles ici et ne sont jamais supprimés.",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "Annuler",
@@ -156,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, such as an implementation or a migration.",
+				"kindDeliveryHint": "Travail planifié avec un périmètre convenu, des cycles et une date de fin, comme une mise en œuvre ou une migration.",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and service hours.",
+				"kindManagedHint": "Support continu pour un client, avec un niveau de support et un calendrier de service. Il fonctionne en continu, sans cycles ni date de fin.",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1135,10 +1136,8 @@
 				"health": "Health",
 				"kind": "{{term_project_one}} kind",
 				"loadError": "Could not load the engagement settings.",
-				"managedService": "Managed service",
 				"noCalendars": "No service calendars exist in this workspace yet.",
 				"none": "None",
-				"project": "{{term_project_one}}",
 				"readOnly": "You can view these settings but need the {{term_project_one}} update permission to change them.",
 				"red": "Red",
 				"retry": "Retry",
@@ -1168,6 +1167,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
+					"managedEndDate": "Un service géré fonctionne en continu et n'accepte donc pas de nouvelle date de fin. Effacez plutôt la date de fin.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -4698,7 +4698,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Project"
+				"project": "Projet de livraison"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10787,6 +10787,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
+			"runsContinuously": "Fonctionne en continu",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

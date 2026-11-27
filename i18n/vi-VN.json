@@ -1,6 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
+		"managedServiceUnused": "Dịch vụ được quản lý không dùng chu kỳ và ngày kết thúc. Những mục đã có vẫn hiển thị ở đây và không bao giờ bị xóa.",
 		"pageLoading": "Loading page",
 		"boolean": {
 			"false": "False",
@@ -160,10 +161,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, such as an implementation or a migration.",
+				"kindDeliveryHint": "Công việc có kế hoạch với phạm vi đã thống nhất, chu kỳ và ngày kết thúc, chẳng hạn triển khai hoặc di chuyển hệ thống.",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and service hours.",
+				"kindManagedHint": "Hỗ trợ liên tục cho khách hàng, có mức hỗ trợ và lịch dịch vụ. Chạy liên tục, không có chu kỳ hay ngày kết thúc.",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1300,10 +1301,8 @@
 				"health": "Health",
 				"kind": "{{term_project_one}} kind",
 				"loadError": "Could not load the engagement settings.",
-				"managedService": "Managed service",
 				"noCalendars": "No service calendars exist in this workspace yet.",
 				"none": "None",
-				"project": "{{term_project_one}}",
 				"readOnly": "You can view these settings but need the {{term_project_one}} update permission to change them.",
 				"red": "Red",
 				"retry": "Retry",
@@ -1333,6 +1332,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
+					"managedEndDate": "Dịch vụ được quản lý chạy liên tục nên không nhận ngày kết thúc mới. Hãy xóa ngày kết thúc thay vào đó.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -4667,7 +4667,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Project"
+				"project": "Dự án triển khai"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10614,6 +10614,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
+			"runsContinuously": "Chạy liên tục",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

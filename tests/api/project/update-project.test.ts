@@ -251,6 +251,48 @@ describe("update project controller: field intent (PTM-04)", () => {
     expect(setValues()).toBeUndefined();
   });
 
+  it("refuses a new or changed end date on a managed service, but keeps a stored one", async () => {
+    const managed = {
+      ...stored,
+      kind: "managed_service",
+      supportLevel: "L2",
+      serviceCalendarId: "cal-1",
+      serviceCalendarMode: "override",
+      endDate: "2026-12-31",
+    };
+    const call = (endDate: string | null) => {
+      seed({ ...managed });
+      queued("project")[0] = [managed];
+      return updateProject(
+        "p1",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        "w1",
+        {
+          endDate,
+        },
+      );
+    };
+    await expect(call("2027-01-31")).rejects.toMatchObject({
+      status: 422,
+      message: "managed_service_has_no_end_date",
+    });
+    expect(setValues()).toBeUndefined();
+    // Re-sending the stored value and clearing it are not "setting" one: nothing is forced out.
+    await expect(call("2026-12-31")).resolves.toBeDefined();
+    await expect(call(null)).resolves.toBeDefined();
+    // Switching a dated delivery project to managed keeps its end date.
+    seed({ ...managed });
+    queued("project")[0] = [{ ...managed, kind: "project" }];
+    await expect(
+      updateProject("p1", undefined, undefined, undefined, undefined, "w1", {
+        kind: "managed_service",
+      }),
+    ).resolves.toBeDefined();
+  });
+
   it("a soft-deleted or missing project is 404 whatever the body", async () => {
     seed({ ...stored });
     queued("project")[0] = [];
