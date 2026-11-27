@@ -32,4 +32,19 @@ describe("comment editor stacking and focus indicator", () => {
     expect(body).toContain("var(--ring)");
     expect(body).toContain("height: 1px");
   });
+
+  it("tints the whole editing area on keyboard focus, motion-safe, except in the composer", () => {
+    const tint = ruleBody(
+      ".taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible)",
+    );
+    expect(tint).toContain("var(--accent)");
+    expect(tint).toContain("transparent");
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: no-preference\)\s*\{[^@]*transition: background-color/u,
+    );
+    const composer = ruleBody(
+      ".taskdesk-comment-composer\n    .taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible)",
+    );
+    expect(composer).toContain("background: transparent");
+  });
 });

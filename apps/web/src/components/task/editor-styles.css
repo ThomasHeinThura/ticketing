@@ -818,9 +818,28 @@
     z-index: 80;
   }
 
-  /* One borderless keyboard-focus cue for every editor surface: a 1px --ring
-     underline (the ProseMirror node itself has outline: none). The comment
-     composer keeps its own card focus treatment. */
+  /* One borderless keyboard-focus cue for every editor surface (the ProseMirror
+     node itself has outline: none): a low-alpha --accent tint over the whole
+     editing area, so focus is visible wherever the viewport sits in a long
+     document, plus a 1px --ring underline. The comment composer keeps its own
+     card focus treatment. */
+  .taskdesk-tiptap-shell,
+  .taskdesk-comment-editor-shell {
+    border-radius: 0.375rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .taskdesk-tiptap-shell,
+    .taskdesk-comment-editor-shell {
+      transition: background-color 0.15s ease;
+    }
+  }
+
+  .taskdesk-tiptap-shell:has(.ProseMirror:focus-visible),
+  .taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible) {
+    background: color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+
   .taskdesk-tiptap-shell:has(.ProseMirror:focus-visible)::after,
   .taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible)::after {
     content: "";
@@ -831,7 +850,13 @@
     background: var(--ring);
   }
 
-  .taskdesk-comment-composer .taskdesk-comment-editor-shell::after {
+  .taskdesk-comment-composer
+    .taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible) {
+    background: transparent;
+  }
+
+  .taskdesk-comment-composer
+    .taskdesk-comment-editor-shell:has(.ProseMirror:focus-visible)::after {
     content: none;
   }
 
