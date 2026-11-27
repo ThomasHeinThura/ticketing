@@ -351,7 +351,7 @@ test.describe("project engagement controls (PR-9)", () => {
   }) => {
     const { requests } = await mockApi(page);
     await open(page);
-    await expect(kind(page)).toContainText("Project");
+    await expect(kind(page)).toContainText("Delivery project");
     await expect(health(page)).toContainText("Not set");
     await expect(saveButton(page)).toBeDisabled();
 
@@ -440,7 +440,7 @@ test.describe("project engagement controls (PR-9)", () => {
       )
       .toBe(true);
 
-    await choose(page, kind(page), "Project");
+    await choose(page, kind(page), "Delivery project");
     await choose(page, supportLevel(page), "None");
     await saveButton(page).click();
     await expect(page.getByText("Engagement settings saved.")).toBeVisible();

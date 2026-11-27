@@ -348,6 +348,9 @@ function ProjectPlanningSettings({
 
   const startDay = isoToDay(values.startDate);
   const endDay = isoToDay(values.endDate);
+  // A managed service runs continuously: its end date shows only while one is already stored.
+  const showEndDate =
+    project.kind !== "managed_service" || Boolean(saved.endDate);
 
   return (
     <section
@@ -486,32 +489,36 @@ function ProjectPlanningSettings({
           </div>
         </div>
 
-        <Separator />
+        {showEndDate ? (
+          <>
+            <Separator />
 
-        <div className={ROW}>
-          <div className="space-y-0.5">
-            <Label htmlFor="project-planning-end" className="font-medium">
-              {t("settings:projectGeneral.planning.endDate")}
-            </Label>
-            {errors.endBeforeStart && (
-              <p role="alert" className="text-xs text-destructive">
-                {t("settings:projectGeneral.planning.failure.datesOrdered")}
-              </p>
-            )}
-          </div>
-          <div className="w-full sm:w-64">
-            <DateField
-              id="project-planning-end"
-              value={values.endDate}
-              disabled={!canEditPlanning || isSaving}
-              placeholder={t("settings:projectGeneral.planning.noDate")}
-              clearLabel={t("settings:projectGeneral.planning.clearDate")}
-              bound={startDay ? { before: startDay } : undefined}
-              invalid={errors.endBeforeStart}
-              onChange={(value) => void commit({ endDate: value })}
-            />
-          </div>
-        </div>
+            <div className={ROW}>
+              <div className="space-y-0.5">
+                <Label htmlFor="project-planning-end" className="font-medium">
+                  {t("settings:projectGeneral.planning.endDate")}
+                </Label>
+                {errors.endBeforeStart && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {t("settings:projectGeneral.planning.failure.datesOrdered")}
+                  </p>
+                )}
+              </div>
+              <div className="w-full sm:w-64">
+                <DateField
+                  id="project-planning-end"
+                  value={values.endDate}
+                  disabled={!canEditPlanning || isSaving}
+                  placeholder={t("settings:projectGeneral.planning.noDate")}
+                  clearLabel={t("settings:projectGeneral.planning.clearDate")}
+                  bound={startDay ? { before: startDay } : undefined}
+                  invalid={errors.endBeforeStart}
+                  onChange={(value) => void commit({ endDate: value })}
+                />
+              </div>
+            </div>
+          </>
+        ) : null}
 
         <Separator />
 

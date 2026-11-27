@@ -10971,7 +10971,7 @@
             }
           },
           "422": {
-            "description": "PR-9, same-workspace service calendar, manager or default assignee not an active roster member, or end date before start date",
+            "description": "PR-9, same-workspace service calendar, manager or default assignee not an active roster member, end date before start date, or managed_service_has_no_end_date (a managed service takes no new end date)",
             "content": {
               "text/plain": {
                 "schema": {
@@ -102129,7 +102129,7 @@
             }
           },
           "422": {
-            "description": "Invalid dates",
+            "description": "Invalid dates, or managed_service_has_no_cycles",
             "content": {
               "text/plain": {
                 "schema": {

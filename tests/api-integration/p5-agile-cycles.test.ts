@@ -132,6 +132,25 @@ describe("cycle CRUD, status and overlap (CY-1..CY-3)", () => {
     expect(rubbish.status).toBe(422);
   });
 
+  it("refuses a new cycle on a managed service and keeps the existing ones", async () => {
+    const existing = await makeCycle("Before managed", -2, 5);
+    await db
+      .update(schema.projectTable)
+      .set({ kind: "managed_service", supportLevel: "L1" })
+      .where(eq(schema.projectTable.id, w.project.id));
+    const refused = await createCycle("After managed", 10, 12);
+    expect(refused.status).toBe(422);
+    expect((await refused.json()).message).toBe(
+      "managed_service_has_no_cycles",
+    );
+    const list = await w.call(
+      w.manager.user,
+      `/api/projects/${w.project.slug}/cycles`,
+    );
+    expect(list.status).toBe(200);
+    expect(JSON.stringify(await list.json())).toContain(existing.id);
+  });
+
   it("refuses an overlapping cycle and names the conflicting one (CY-2)", async () => {
     const first = await makeCycle("Sprint 1", 0, 13);
     const overlap = await createCycle("Sprint 1b", 13, 20);

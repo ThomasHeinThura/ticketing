@@ -44,6 +44,7 @@ import {
   type ProjectOverview,
   projectOverviewKeys,
 } from "@/fetchers/project/overview";
+import useCycleCount from "@/hooks/queries/agile/use-cycle-count";
 import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
 import { projectOverviewOptions } from "@/hooks/queries/project/project-overview-options";
 import useGetProject from "@/hooks/queries/project/use-get-project";
@@ -55,6 +56,7 @@ import { formatPortalDuration } from "@/lib/portal-duration";
 import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import { JoinProject } from "../join-project";
+import { ManagedServiceUnusedNotice } from "../managed-service-unused-notice";
 import { ContractPanel } from "./contract-panel";
 import { EditSummaryDialog } from "./edit-summary-dialog";
 import { MilestonesPanel } from "./milestones-panel";
@@ -209,7 +211,11 @@ function FactsPanel({ overview }: { overview: ProjectOverview }) {
         <FactRow
           label={t("facts.end")}
           value={
-            facts.endDate ? formatDate(facts.endDate, i18n.language) : notSet
+            facts.endDate
+              ? formatDate(facts.endDate, i18n.language)
+              : overview.kind === "managed_service"
+                ? t("facts.runsContinuously")
+                : notSet
           }
         />
         <FactRow
@@ -356,6 +362,10 @@ export function ProjectOverviewPage({
   });
   const project = (detail ?? listed) as ProjectDetail | undefined;
   const projectId = project?.id ?? "";
+  const cycleCount = useCycleCount(
+    projectKey,
+    project?.kind === "managed_service",
+  );
   // Read for this project, not the workspace at large: the server intersects the work-item
   // flags (create included) with the caller's effective role in this project, the same read the
   // work page's Create button and the palette make.
@@ -597,6 +607,11 @@ export function ProjectOverviewPage({
               .join(" ")}
           </AlertDescription>
         </Alert>
+      ) : null}
+
+      {data.kind === "managed_service" &&
+      (data.facts.endDate || (cycleCount ?? 0) > 0) ? (
+        <ManagedServiceUnusedNotice />
       ) : null}
 
       {/* Six figures: two rows of three on wide screens, never a short orphan row. The last two

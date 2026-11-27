@@ -103,6 +103,7 @@ export type PlanningSaveFailure =
   | "notFound"
   | "personNotEligible"
   | "datesOrdered"
+  | "managedEndDate"
   | "keyFormat"
   | "keyTaken"
   | "generic";
@@ -119,6 +120,8 @@ export function classifyPlanningFailure(
   if (status === 400 && message?.includes("PR-13")) return "keyFormat";
   if (status === 422) {
     if (message?.includes("end_date_before_start_date")) return "datesOrdered";
+    if (message?.includes("managed_service_has_no_end_date"))
+      return "managedEndDate";
     if (message?.includes("must_be_active_project_member"))
       return "personNotEligible";
   }

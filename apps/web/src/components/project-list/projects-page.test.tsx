@@ -355,15 +355,18 @@ describe("ProjectsPage engagement kind (S5)", () => {
     );
   });
 
-  it("badges managed services and leaves delivery projects unbadged", () => {
+  it("badges both kinds with the same names the create dialog uses", () => {
     mocks.projects = [delivery, managed];
     render(<ProjectsPage workspaceId="workspace-1" />);
     const badges = screen.getAllByTestId("project-kind-badge");
-    expect(badges).toHaveLength(1);
+    expect(badges).toHaveLength(2);
     expect(badges[0]).toHaveTextContent(
+      translate("common:modals.createProject.kindDelivery"),
+    );
+    expect(badges[1]).toHaveTextContent(
       translate("workspace:projects.managedServiceBadge"),
     );
-    expect(badges[0].closest("tr")).toHaveTextContent("Acme support");
+    expect(badges[1].closest("tr")).toHaveTextContent("Acme support");
   });
 
   it("puts Recently deleted beside the kind filter on phones, out of the header (U-14)", () => {

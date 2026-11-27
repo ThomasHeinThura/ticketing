@@ -20,11 +20,13 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import { ManagedServiceUnusedNotice } from "@/components/project/managed-service-unused-notice";
 import {
   FeatureDisabledError,
   getCycles,
   type Velocity,
 } from "@/fetchers/agile";
+import useProjectByKey from "@/hooks/queries/agile/use-project-by-key";
 import { getDefaultAgentTerm } from "@/lib/i18n/agent-translation";
 import {
   CYCLE_STATUS_VARIANT,
@@ -64,6 +66,8 @@ export function VelocityText({ velocity }: { velocity: Velocity }) {
 export function CyclesList({ projectKey }: { projectKey: string }) {
   const { t, i18n } = useTranslation("agile");
   const [creating, setCreating] = useState(false);
+  const managed =
+    useProjectByKey(projectKey).project?.kind === "managed_service";
   const query = useQuery({
     queryKey: ["agile", "cycles", projectKey],
     queryFn: () => getCycles(projectKey),
@@ -121,13 +125,14 @@ export function CyclesList({ projectKey }: { projectKey: string }) {
             <VelocityText velocity={meta.velocity} />
           </p>
         </div>
-        {meta.canManage ? (
+        {meta.canManage && !managed ? (
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus aria-hidden="true" />
             {t("cycles.create")}
           </Button>
         ) : null}
       </div>
+      {managed ? <ManagedServiceUnusedNotice /> : null}
       {cycles.length === 0 ? (
         <Empty data-testid="cycles-empty">
           <EmptyHeader>
