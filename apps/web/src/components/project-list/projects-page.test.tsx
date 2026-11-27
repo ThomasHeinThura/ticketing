@@ -129,13 +129,15 @@ function render(element: React.ReactNode) {
 }
 
 describe("ProjectsPage recovery mode", () => {
-  it("shows the see-all hint only on the matching project", () => {
+  it("offers only a small named Join button on the unjoined project row", () => {
     mocks.projects = [
       {
         ...deletedProject,
         id: "unjoined",
+        name: "Customer Support",
         deletedAt: null,
         seenOnlyViaWorkspaceRole: true,
+        canJoin: true,
       },
       {
         ...deletedProject,
@@ -145,8 +147,15 @@ describe("ProjectsPage recovery mode", () => {
       },
     ];
     render(<ProjectsPage workspaceId="workspace-1" />);
+    expect(screen.queryByText(translate("workspace:projects.notMember"))).toBe(
+      null,
+    );
     expect(
-      screen.getAllByText(translate("workspace:projects.notMember")),
+      screen.getAllByRole("button", {
+        name: translate("workspace:projects.joinNamed", {
+          name: "Customer Support",
+        }),
+      }),
     ).toHaveLength(1);
   });
   it("shows a separate visible project-tree progress aggregate when supplied", () => {

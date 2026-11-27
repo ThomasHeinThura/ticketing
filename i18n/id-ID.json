@@ -1978,7 +1978,12 @@
 				"roleExceedsAuthority": "You cannot grant, change or remove a role above your own.",
 				"roleNotFound": "That role is no longer available. Reload and try again.",
 				"targetChanged": "The roster changed while you were working. Reload and try again."
-			}
+			},
+			"roleGroupBuiltIn": "Bawaan",
+			"roleGroupCustom": "Peran kustom",
+			"roleDescriptionLead": "Menjalankan {{term_project_one}}: mengelola anggota dan pengaturan, menugaskan dan memilah {{term_work_item_other}}.",
+			"roleDescriptionMember": "Membuat dan memperbarui {{term_work_item_other}}, berkomentar secara internal, dan mengambil pekerjaan.",
+			"roleDescriptionViewer": "Akses hanya-baca ke {{term_project_one}}."
 		},
 		"workflows": {
 			"add": {
@@ -2386,7 +2391,8 @@
 			"workspaceSettings": "Pengaturan Ruang Kerja",
 			"instanceUsers": "Pengguna instans",
 			"selectWorkspace": "Pilih ruang kerja",
-			"switchFailed": "Could not switch workspace. Check your access and try again."
+			"switchFailed": "Could not switch workspace. Check your access and try again.",
+			"pendingInvitations": "Undangan tertunda: {{count}}"
 		},
 		"page": {
 			"projectsTitle": "{{term_project_other}}",
@@ -3168,7 +3174,10 @@
 				"month": "Month",
 				"week": "Week"
 			},
-			"viewGroup": "Calendar range"
+			"viewGroup": "Calendar range",
+			"stateDone": "Selesai",
+			"stateOpen": "Terbuka",
+			"stateCancelled": "Dibatalkan"
 		},
 		"group": {
 			"by": "Group by",
@@ -3259,7 +3268,9 @@
 			"showAllKinds": "Show all kinds",
 			"actions": "Actions",
 			"archived": "Archived",
-			"completion": "{{name}} completion"
+			"completion": "{{name}} completion",
+			"joinNamed": "Gabung ke {{name}}",
+			"joinShort": "Gabung"
 		},
 		"search": {
 			"pageTitle": "Cari",

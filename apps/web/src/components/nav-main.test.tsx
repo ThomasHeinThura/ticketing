@@ -78,9 +78,6 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
     canTriageIntake: () => mocks.triage,
   }),
 }));
-vi.mock("@/hooks/queries/invitation/use-pending-invitations", () => ({
-  usePendingInvitations: () => ({ data: [] }),
-}));
 vi.mock("@/lib/i18n/after-first-paint", () => ({
   afterFirstPaint: () =>
     new Promise<void>((resolve) => {
@@ -463,30 +460,8 @@ describe("NavMain settings entry (L-03)", () => {
       screen.queryByRole("button", { name: "Project settings" }),
     ).toBeNull();
     expect(screen.queryByRole("button", { name: "God Mode" })).toBeNull();
-    // The workspace pages that have no settings frame of their own keep their entries.
-    expect(screen.getByRole("button", { name: "Members" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Invitations" }),
-    ).toBeInTheDocument();
-  });
-
-  it("opens Members on the canonical workspace settings page and stays highlighted there", () => {
-    router.state.pathname = "/dashboard/settings/workspace/members";
-    renderNav();
-    const members = screen.getByRole("button", { name: "Members" });
-    expect(members).toHaveAttribute("data-active", "true");
-    fireEvent.click(members);
-    expect(mocks.navigate).toHaveBeenCalledWith({
-      to: "/dashboard/settings/workspace/members",
-    });
-  });
-
-  it("keeps Members highlighted on an old per-workspace members link", () => {
-    router.state.pathname = "/dashboard/workspace/ws-2/members";
-    renderNav();
-    expect(screen.getByRole("button", { name: "Members" })).toHaveAttribute(
-      "data-active",
-      "true",
-    );
+    // Members lives in workspace settings and Invitations in the workspace menu (27 Nov 2026).
+    expect(screen.queryByRole("button", { name: "Members" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Invitations" })).toBeNull();
   });
 });
