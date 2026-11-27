@@ -216,18 +216,21 @@ test("visual and text modes keep sort, direction and columns through history and
     page.getByRole("button", { name: "Group operator" }).first(),
   ).toContainText("all (AND)");
 
-  // A filter write replaces the history entry; a mode switch is a navigation.
+  // An Advanced apply and a mode switch each push an entry.
   await page.goBack();
   await expect(page).toHaveURL(/filterMode=text/u);
   await expect(
     page.getByRole("textbox", { name: "Filter work items" }),
   ).toHaveValue("(priority:high OR assignee:@me) AND due:>=7d");
   await page.goBack();
+  await expect(page).toHaveURL(/filter=assignee%3A%40me&filterMode=text/u);
+  await page.goBack();
   await expect(page).not.toHaveURL(/filterMode=/u);
   await expect(page.getByTestId("work-item-filter-chip")).toHaveText(
     "Assignee: @me",
   );
 
+  await page.goForward();
   await page.goForward();
   await page.goForward();
   await page.reload();
@@ -490,7 +493,7 @@ test("the Advanced button is a popover: Escape closes the editor and focus retur
   await expect(advanced).toBeFocused();
 });
 
-test("chips apply live: add a field, pick values, remove it, all with replace navigation (SV-11)", async ({
+test("chips apply live: add a field, pick values, remove it, the first change pushes, later ones replace (SV-11)", async ({
   page,
 }) => {
   await installPerformanceApiFixture(page);
@@ -509,5 +512,6 @@ test("chips apply live: add a field, pick values, remove it, all with replace na
   );
   await page.getByRole("button", { name: "Remove Priority filter" }).click();
   await expect(page).not.toHaveURL(/filter=/u);
-  expect(await page.evaluate(() => window.history.length)).toBe(before);
+  // One entry for the whole session: Back returns to the unfiltered list.
+  expect(await page.evaluate(() => window.history.length)).toBe(before + 1);
 });

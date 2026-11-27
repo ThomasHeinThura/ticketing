@@ -371,6 +371,18 @@ export default function WorkItemFilterBar({
       appliedRef.current = filter;
     }
   }, [filter]);
+  // The pending chip stays rendered until the URL carries its field, so its popover is not remounted.
+  const shown = useMemo(
+    () =>
+      pending && !chips?.some((leaf) => leaf.field === pending.field)
+        ? [...(chips ?? []), pending]
+        : (chips ?? []),
+    [chips, pending],
+  );
+  useEffect(() => {
+    if (pending && chips?.some((leaf) => leaf.field === pending.field))
+      setPending(undefined);
+  }, [chips, pending]);
   const apply = (leaves: readonly FilterLeaf[]) => {
     try {
       const text = printWorkItemFilterText(fromChips(leaves));
@@ -388,9 +400,8 @@ export default function WorkItemFilterBar({
     apply(leaves);
   };
   const updatePending = (next: FilterLeaf | undefined) => {
-    if (!next || isEmpty(next)) return setPending(next);
-    setPending(undefined);
-    apply([...(chips ?? []), next]);
+    setPending(next);
+    if (next && !isEmpty(next)) apply([...(chips ?? []), next]);
   };
   const addField = (id: string) => {
     const field = FILTER_FIELDS.find((candidate) => candidate.id === id);
@@ -486,7 +497,7 @@ export default function WorkItemFilterBar({
           ) : (
             // The pending chip is the last row, so once it has a value it becomes the same
             // element and its popover stays open for more values.
-            [...chips, ...(pending ? [pending] : [])].map((leaf, index) => (
+            shown.map((leaf, index) => (
               <FilterChip
                 // biome-ignore lint/suspicious/noArrayIndexKey: a chip has no id; its position is its identity.
                 key={`${leaf.field}:${index}`}
