@@ -128,7 +128,12 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
       actual.useMutation(options, client),
   };
 });
-vi.mock("react-i18next", () => ({
+vi.mock("@/lib/i18n", () => ({
+  areAllNamespacesLoaded: () => true,
+  whenAllNamespacesLoaded: () => Promise.resolve(),
+}));
+vi.mock("react-i18next", async () => ({
+  I18nContext: (await import("react")).createContext(undefined),
   useTranslation: () => ({
     i18n: { language: "en", resolvedLanguage: "en" },
     t: (key: string) => key,

@@ -1,5 +1,6 @@
 import { Dialog, DialogContent } from "@taskdesk/ui";
 import { useTranslation } from "react-i18next";
+import NamespaceBoundary from "@/components/common/namespace-boundary";
 import { PendingActionTerminologyBoundary } from "@/components/pending-action/pending-action-terminology-boundary";
 import { toast } from "@/lib/toast";
 import usePendingActionDialogStore from "@/store/pending-action-dialog";
@@ -25,20 +26,22 @@ export default function PendingActionApprovalDialog() {
         closeLabel={t("common:actions.close")}
         {...(finalFocus ? { finalFocus } : {})}
       >
-        <PendingActionTerminologyBoundary id={pendingActionId}>
-          <PendingActionApproval
-            id={pendingActionId}
-            layout="dialog"
-            onExecuted={() => {
-              toast.success(t("pendingActions:dialog.executed"));
-              close();
-            }}
-            onCancelled={() => {
-              toast.success(t("pendingActions:dialog.cancelled"));
-              close();
-            }}
-          />
-        </PendingActionTerminologyBoundary>
+        <NamespaceBoundary>
+          <PendingActionTerminologyBoundary id={pendingActionId}>
+            <PendingActionApproval
+              id={pendingActionId}
+              layout="dialog"
+              onExecuted={() => {
+                toast.success(t("pendingActions:dialog.executed"));
+                close();
+              }}
+              onCancelled={() => {
+                toast.success(t("pendingActions:dialog.cancelled"));
+                close();
+              }}
+            />
+          </PendingActionTerminologyBoundary>
+        </NamespaceBoundary>
       </DialogContent>
     </Dialog>
   );
