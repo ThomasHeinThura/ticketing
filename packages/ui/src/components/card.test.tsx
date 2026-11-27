@@ -155,4 +155,12 @@ describe("Card", () => {
       styles.cleanup();
     }
   });
+
+  it("uses a hairline ring instead of a border", () => {
+    const { container } = render(<Card />);
+    const card = container.querySelector('[data-slot="card"]');
+
+    expect(card).toHaveClass("ring-1", "ring-foreground/5");
+    expect(card).not.toHaveClass("border");
+  });
 });

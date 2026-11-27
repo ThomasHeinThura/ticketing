@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
 import CreateWorkItemDialogForm from "./create-work-item-dialog-form";
@@ -28,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   canManageLabels: false,
   canAttach: true,
   uploadAttachment: vi.fn(),
+  openPicker: vi.fn(),
   createLabel: vi.fn(),
   options: {
     states: [
@@ -102,42 +104,50 @@ vi.mock("@/components/activity/comment-editor", () => ({
     onContentChange,
     disabled,
     onFilesSelected,
+    onAttachActionChange,
   }: {
     value: string;
+    onAttachActionChange?: (attach: (() => void) | null) => void;
     onContentChange: (snapshot: { text: string; document: unknown }) => void;
     disabled?: boolean;
     onFilesSelected?: (files: File[]) => void;
-  }) => (
-    <>
-      <Textarea
-        data-testid="create-work-item-description"
-        value={value}
-        disabled={disabled}
-        onChange={(event) =>
-          onContentChange({
-            text: event.target.value,
-            document: mocks.editorDocument ?? {
-              type: "doc",
-              content: event.target.value.split("\n").map((text) => ({
-                type: "paragraph",
-                content: [{ type: "text", text }],
-              })),
-            },
-          })
-        }
-      />
-      {onFilesSelected ? (
-        <Input
-          data-testid="stage-files"
-          type="file"
-          multiple
+  }) => {
+    useEffect(() => {
+      onAttachActionChange?.(() => mocks.openPicker());
+      return () => onAttachActionChange?.(null);
+    }, [onAttachActionChange]);
+    return (
+      <>
+        <Textarea
+          data-testid="create-work-item-description"
+          value={value}
+          disabled={disabled}
           onChange={(event) =>
-            onFilesSelected(Array.from(event.target.files ?? []))
+            onContentChange({
+              text: event.target.value,
+              document: mocks.editorDocument ?? {
+                type: "doc",
+                content: event.target.value.split("\n").map((text) => ({
+                  type: "paragraph",
+                  content: [{ type: "text", text }],
+                })),
+              },
+            })
           }
         />
-      ) : null}
-    </>
-  ),
+        {onFilesSelected ? (
+          <Input
+            data-testid="stage-files"
+            type="file"
+            multiple
+            onChange={(event) =>
+              onFilesSelected(Array.from(event.target.files ?? []))
+            }
+          />
+        ) : null}
+      </>
+    );
+  },
 }));
 vi.mock(
   "@/hooks/queries/work-item-template/use-work-item-template-options",
@@ -1456,10 +1466,21 @@ it("stages locally then retries failed files against one confirmed created item"
     mocks.uploadAttachment.mock.calls.every((call) => call[0] === "HELP-1"),
   ).toBe(true);
 });
+it("attaches from a ghost button in the property row, not a floating paperclip", async () => {
+  renderDialog();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "activity:comment.attachFile" }),
+  );
+  expect(mocks.openPicker).toHaveBeenCalledTimes(1);
+});
+
 it("hides staging for denied attachment authority and blocks repeat ambiguous creates", async () => {
   mocks.canAttach = false;
   renderDialog();
   expect(screen.queryByTestId("stage-files")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "activity:comment.attachFile" }),
+  ).not.toBeInTheDocument();
   fireEvent.change(screen.getByTestId("create-work-item-title"), {
     target: { value: "Unknown outcome" },
   });

@@ -170,6 +170,11 @@ async function afterAutosaveDelay() {
   });
 }
 
+/** History lives in a sheet opened from the header button. */
+async function openHistory() {
+  fireEvent.click(await screen.findByRole("button", { name: "history.title" }));
+}
+
 function editBody(document: unknown = editedBody) {
   act(() => mocks.editor.current?.onDocumentChange(document));
 }
@@ -187,6 +192,8 @@ describe("PageDetail", () => {
     setup(false);
     renderDetail();
     expect(await screen.findByText("Step one")).toBeTruthy();
+    expect(screen.queryByText("history.current")).toBeNull();
+    await openHistory();
     expect(
       await screen.findByText(/history.version .*"number":2/),
     ).toBeTruthy();
@@ -228,6 +235,8 @@ describe("PageDetail", () => {
     );
     renderDetail();
     await screen.findByTestId("editor");
+    await openHistory();
+    await screen.findByText(/history.version .*"number":2/);
     const versionCalls = mocks.getPageVersions.mock.calls.length;
     const initialDocument = mocks.editor.current?.documentValue;
 
@@ -311,6 +320,7 @@ describe("PageDetail", () => {
     setup(true);
     mocks.getPageVersion.mockRejectedValue(new HttpError(404, "Not found"));
     renderDetail();
+    await openHistory();
     const [, older] = await screen.findAllByText("history.view");
     const versionCalls = mocks.getPageVersions.mock.calls.length;
     fireEvent.click(older as HTMLElement);
@@ -331,6 +341,7 @@ describe("PageDetail", () => {
     });
     mocks.restorePageVersion.mockRejectedValue(new HttpError(404, "Not found"));
     renderDetail();
+    await openHistory();
     const [, older] = await screen.findAllByText("history.view");
     const versionCalls = mocks.getPageVersions.mock.calls.length;
     fireEvent.click(older as HTMLElement);
@@ -362,7 +373,9 @@ describe("PageDetail", () => {
       ],
     });
     renderDetail();
-    const trigger = await screen.findByRole("combobox");
+    const trigger = await screen.findByRole("combobox", {
+      name: "fields.parent",
+    });
     await waitFor(() => expect(trigger).toHaveTextContent("Runbooks"));
     expect(trigger).not.toHaveTextContent("pg0");
   });
