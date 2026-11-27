@@ -358,11 +358,20 @@ export default function WorkItemFilterBar({
   // The first live chip change pushes a history entry so Back restores the earlier view; the
   // rest of the session replaces it, so Back does not step through every click (`VW-1`).
   const pushedRef = useRef(false);
+  // A filter the bar did not apply itself (Back, Forward, a link) starts a new session.
+  const appliedRef = useRef(filter);
+  useEffect(() => {
+    if (filter !== appliedRef.current) {
+      pushedRef.current = false;
+      appliedRef.current = filter;
+    }
+  }, [filter]);
   const apply = (leaves: readonly FilterLeaf[]) => {
     try {
       const text = printWorkItemFilterText(fromChips(leaves));
       onApply(text, { replace: pushedRef.current });
       pushedRef.current = true;
+      appliedRef.current = text;
     } catch {
       // A value the grammar refuses is never applied; the input marks itself invalid.
     }
@@ -405,6 +414,7 @@ export default function WorkItemFilterBar({
           onApply={(next) => {
             onApply(next, { replace: false });
             pushedRef.current = true;
+            appliedRef.current = next;
             setAdvancedOpen(false);
           }}
         />

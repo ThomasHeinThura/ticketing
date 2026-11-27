@@ -139,4 +139,24 @@ describe("WorkItemFilterBar (SV-11 chips)", () => {
       { replace: true },
     ]);
   });
+
+  it("starts a new session after Back restores an earlier filter", async () => {
+    const onApply = vi.fn();
+    const props = { mode: "visual" as const, onModeChange: vi.fn(), onApply };
+    const { rerender } = render(
+      <WorkItemFilterBar filter="priority:high" {...props} />,
+    );
+    fireEvent.click(screen.getByTestId("work-item-filter-chip"));
+    fireEvent.click(await screen.findByRole("option", { name: "urgent" }));
+    // The parent re-renders with the applied filter, then Back restores the original one.
+    rerender(
+      <WorkItemFilterBar filter="priority:in(high,urgent)" {...props} />,
+    );
+    rerender(<WorkItemFilterBar filter="priority:high" {...props} />);
+    fireEvent.click(await screen.findByRole("option", { name: "low" }));
+    expect(onApply.mock.calls.map(([, options]) => options)).toEqual([
+      { replace: false },
+      { replace: false },
+    ]);
+  });
 });
