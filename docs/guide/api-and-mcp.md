@@ -59,6 +59,7 @@ Two areas follow the same pattern as deletion. Approvals are requested with `POS
    | --- | --- |
    | `TASKDESK_API_KEY` | Required. The only supported authentication. |
    | `TASKDESK_API_URL` | Origin of your agent host. Defaults to `http://localhost:1337`, so set it for any real install. |
+| `TASKDESK_IMPORT_DIR` | Optional. The folder the import bundle tools may read from. |
 
 `taskdesk-mcp serve` runs the server directly when you want to test stdio. Tools cover projects, work items, states, comments, labels, relations, time logging, approvals, saved views and imports. Deleting tools only ask TaskDesk to open a pending deletion, and the key's owner approves it in the web app. See `packages/mcp/README.md` for the full package notes.
 

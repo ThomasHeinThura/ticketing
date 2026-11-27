@@ -10647,6 +10647,7 @@
 			"plugins": {
 				"azureDevops": "Azure DevOps",
 				"azureDevopsHint": "REST API with a personal access token. Read-only.",
+				"bundle": "TaskDesk bundle",
 				"csv": "Generic CSV",
 				"csvHint": "Upload a CSV file (up to 5 MB). The universal fallback.",
 				"jira": "Jira",

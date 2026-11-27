@@ -145,6 +145,8 @@ export const SOURCE_PLUGINS: readonly SourcePluginInfo[] = [
 
 export function pluginLabelKey(pluginId: string): string {
   if (pluginId === "import.mcp") return "mcp";
+  // Loaded by the MCP bundle tools, not offered in the wizard.
+  if (pluginId === "import.bundle") return "bundle";
   return SOURCE_PLUGINS.find((p) => p.id === pluginId)?.labelKey ?? "unknown";
 }
 

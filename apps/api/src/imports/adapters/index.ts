@@ -2,7 +2,7 @@
  * CSV-family import adapters (P6 Lane C1): generic CSV, Planner CSV, Power Apps CSV.
  *
  * Wiring: `ensureImportAdaptersRegistered()` registers every adapter (CSV family, Jira and JSM, Azure
- * DevOps, Plane) once per process. It is called when the import router is built and when the runner
+ * DevOps, Plane, TaskDesk bundle) once per process. It is called when the import router is built and when the runner
  * starts, so any process role can resolve an adapter by plugin id. Registration never replaces an
  * adapter registered earlier (tests, deployment hooks).
  *
@@ -15,6 +15,7 @@ import {
   registerMissingImportAdapters,
 } from "../engine/adapter";
 import { registerAzureDevOpsAdapter } from "./azure-devops";
+import { registerBundleAdapter } from "./bundle";
 import { createCsvAdapter } from "./csv";
 import { registerJiraAdapters } from "./jira";
 import { registerPlaneAdapter } from "./plane";
@@ -39,5 +40,6 @@ export function ensureImportAdaptersRegistered() {
     registerJiraAdapters({ loadExportFile: async () => null });
     registerAzureDevOpsAdapter();
     registerPlaneAdapter();
+    registerBundleAdapter();
   });
 }

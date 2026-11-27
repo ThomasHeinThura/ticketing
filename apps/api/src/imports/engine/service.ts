@@ -88,7 +88,7 @@ export type ImportRunApprovalRequest = (
 // --- source connections -----------------------------------------------------------------------
 
 /** Config keys that carry bulky file contents; never echoed back, only their size. */
-const INLINE_TEXT_KEYS = ["csvText", "exportText"] as const;
+const INLINE_TEXT_KEYS = ["csvText", "exportText", "bundleText"] as const;
 const SECRET_LIKE_KEY =
   /(?:secret|token|password|credential|api[-_]?key|authorization)/iu;
 

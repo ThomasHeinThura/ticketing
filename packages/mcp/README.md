@@ -47,6 +47,7 @@ You can also write the entry by hand:
 | --- | --- |
 | `TASKDESK_API_KEY` | Required. An API key is the only supported way to authenticate. |
 | `TASKDESK_API_URL` | Origin of the agent host. Defaults to `http://localhost:1337`. |
+| `TASKDESK_IMPORT_DIR` | Optional. The directory the import bundle tools may read bundle files from. Without it they refuse every path. |
 
 ## Commands
 
@@ -62,6 +63,8 @@ You can also write the entry by hand:
 Read tools: `whoami`, `list_projects`, `get_project`, `search_work_items`, `get_work_item`, `list_states`, `list_work_item_types`, `list_work_item_transitions`, `list_request_types`, `list_people`, `list_time_activities`, `get_sla_status`, `list_approvals`, `list_saved_views`, `list_work_item_relations`, `get_import_link`, `get_pending_action`.
 
 Write tools: `create_work_item`, `bulk_create_work_items`, `update_work_item`, `set_custom_field`, `add_label`, `transition_work_item`, `assign_work_item`, `add_comment`, `log_time`, `create_relation`, `decide_approval`, `create_import_link`.
+
+Import bundle tools: `validate_import_bundle` (reads a file, no API call), `import_bundle_start`, `import_bundle_mapping`, `import_bundle_dry_run`, `import_bundle_apply`, `import_bundle_status`. They load a TaskDesk import bundle (NDJSON, written by a converter such as `scripts/import/plane-to-bundle.mjs` in the TaskDesk repository) through the existing import routes. The file must be a regular file under `TASKDESK_IMPORT_DIR` (symbolic links and files over 8 MB are refused) and its contents go from this server to TaskDesk without passing through the model. Writes need an instance administrator's key and the destination project's `work_item:create`; a run that writes more than 50 records waits for the key owner to approve it in TaskDesk, which these tools cannot do. Values copied from the bundle come back inside `untrusted_content`.
 
 Delete tools: `delete_work_item`, `delete_comment`, `delete_relation`. These never delete. They ask TaskDesk to open a pending action, and the key's owner approves it in the TaskDesk web app. Use `get_pending_action` to check the outcome.
 
