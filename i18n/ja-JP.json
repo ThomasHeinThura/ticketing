@@ -1,7 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
-		"managedServiceUnused": "Cycles and an end date are not used for managed services. Any that already exist stay visible here and are never removed.",
+		"managedServiceUnused": "マネージドサービスではサイクルと終了日は使用しません。すでにあるものはここに表示されたままで、削除されることはありません。",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "キャンセル",
@@ -157,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, cycles and an end date, such as an implementation or a migration.",
+				"kindDeliveryHint": "合意した範囲、サイクル、終了日がある計画的な作業です。たとえば導入や移行などが該当します。",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and a service calendar. It runs continuously, with no cycles or end date.",
+				"kindManagedHint": "サポートレベルとサービスカレンダーを持つ、顧客向けの継続的なサポートです。サイクルや終了日はなく、継続して運用されます。",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1332,7 +1332,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
-					"managedEndDate": "A managed service runs continuously, so it takes no new end date. Clear the end date instead.",
+					"managedEndDate": "マネージドサービスは継続して運用されるため、新しい終了日は設定できません。代わりに終了日をクリアしてください。",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -4643,7 +4643,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Delivery project"
+				"project": "デリバリープロジェクト"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10590,7 +10590,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
-			"runsContinuously": "Runs continuously",
+			"runsContinuously": "継続運用",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

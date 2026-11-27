@@ -1,7 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
-		"managedServiceUnused": "Cycles and an end date are not used for managed services. Any that already exist stay visible here and are never removed.",
+		"managedServiceUnused": "I cicli e la data di fine non sono usati per i servizi gestiti. Quelli già esistenti restano visibili qui e non vengono mai rimossi.",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "Annulla",
@@ -157,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, cycles and an end date, such as an implementation or a migration.",
+				"kindDeliveryHint": "Lavoro pianificato con un ambito concordato, cicli e una data di fine, come un'implementazione o una migrazione.",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and a service calendar. It runs continuously, with no cycles or end date.",
+				"kindManagedHint": "Supporto continuativo per un cliente, con un livello di supporto e un calendario di servizio. Funziona in modo continuo, senza cicli né data di fine.",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1334,7 +1334,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
-					"managedEndDate": "A managed service runs continuously, so it takes no new end date. Clear the end date instead.",
+					"managedEndDate": "Un servizio gestito funziona in modo continuo, quindi non accetta una nuova data di fine. Cancella invece la data di fine.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -4674,7 +4674,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Delivery project"
+				"project": "Progetto di consegna"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10763,7 +10763,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
-			"runsContinuously": "Runs continuously",
+			"runsContinuously": "Funziona in modo continuo",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

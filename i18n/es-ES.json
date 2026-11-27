@@ -1,7 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
-		"managedServiceUnused": "Cycles and an end date are not used for managed services. Any that already exist stay visible here and are never removed.",
+		"managedServiceUnused": "Los ciclos y la fecha de fin no se usan en los servicios gestionados. Los que ya existen siguen visibles aquí y nunca se eliminan.",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "Cancelar",
@@ -157,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, cycles and an end date, such as an implementation or a migration.",
+				"kindDeliveryHint": "Trabajo planificado con un alcance acordado, ciclos y fecha de fin, como una implantación o una migración.",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and a service calendar. It runs continuously, with no cycles or end date.",
+				"kindManagedHint": "Soporte continuo para un cliente, con un nivel de soporte y un calendario de servicio. Funciona de forma continua, sin ciclos ni fecha de fin.",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1056,7 +1056,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
-					"managedEndDate": "A managed service runs continuously, so it takes no new end date. Clear the end date instead.",
+					"managedEndDate": "Un servicio gestionado funciona de forma continua, por lo que no admite una nueva fecha de fin. Borra la fecha de fin en su lugar.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -4674,7 +4674,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Delivery project"
+				"project": "Proyecto de entrega"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10763,7 +10763,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
-			"runsContinuously": "Runs continuously",
+			"runsContinuously": "Funciona de forma continua",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

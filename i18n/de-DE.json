@@ -1,7 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
-		"managedServiceUnused": "Cycles and an end date are not used for managed services. Any that already exist stay visible here and are never removed.",
+		"managedServiceUnused": "Zyklen und ein Enddatum werden für Managed Services nicht verwendet. Bereits vorhandene bleiben hier sichtbar und werden nie entfernt.",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "Abbrechen",
@@ -157,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, cycles and an end date, such as an implementation or a migration.",
+				"kindDeliveryHint": "Geplante Arbeit mit vereinbartem Umfang, Zyklen und einem Enddatum, z. B. eine Implementierung oder eine Migration.",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and a service calendar. It runs continuously, with no cycles or end date.",
+				"kindManagedHint": "Laufender Support für einen Kunden, mit Supportstufe und Servicekalender. Er läuft kontinuierlich, ohne Zyklen oder Enddatum.",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1167,7 +1167,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
-					"managedEndDate": "A managed service runs continuously, so it takes no new end date. Clear the end date instead.",
+					"managedEndDate": "Ein Managed Service läuft kontinuierlich und erhält daher kein neues Enddatum. Löschen Sie stattdessen das Enddatum.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -4658,7 +4658,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Delivery project"
+				"project": "Lieferprojekt"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10672,7 +10672,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
-			"runsContinuously": "Runs continuously",
+			"runsContinuously": "Läuft kontinuierlich",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

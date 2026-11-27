@@ -1,7 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
-		"managedServiceUnused": "Cycles and an end date are not used for managed services. Any that already exist stay visible here and are never removed.",
+		"managedServiceUnused": "托管服务不使用周期和结束日期。已有的周期和结束日期仍会显示在此处，不会被删除。",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "取消",
@@ -157,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, cycles and an end date, such as an implementation or a migration.",
+				"kindDeliveryHint": "范围已约定、有周期和结束日期的计划性工作，例如实施或迁移。",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and a service calendar. It runs continuously, with no cycles or end date.",
+				"kindManagedHint": "面向客户的持续支持，包含支持级别和服务日历。它持续运行，没有周期或结束日期。",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1332,7 +1332,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
-					"managedEndDate": "A managed service runs continuously, so it takes no new end date. Clear the end date instead.",
+					"managedEndDate": "托管服务持续运行，因此不能设置新的结束日期。请改为清除结束日期。",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -4643,7 +4643,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Delivery project"
+				"project": "交付项目"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10590,7 +10590,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
-			"runsContinuously": "Runs continuously",
+			"runsContinuously": "持续运行",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

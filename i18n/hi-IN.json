@@ -1,7 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
-		"managedServiceUnused": "Cycles and an end date are not used for managed services. Any that already exist stay visible here and are never removed.",
+		"managedServiceUnused": "प्रबंधित सेवाओं के लिए साइकिल और समाप्ति तिथि का उपयोग नहीं होता। जो पहले से मौजूद हैं वे यहाँ दिखते रहेंगे और कभी हटाए नहीं जाएँगे।",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "रद्द करें",
@@ -157,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, cycles and an end date, such as an implementation or a migration.",
+				"kindDeliveryHint": "सहमत दायरे, साइकिल और समाप्ति तिथि वाला नियोजित कार्य, जैसे कोई कार्यान्वयन या माइग्रेशन।",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and a service calendar. It runs continuously, with no cycles or end date.",
+				"kindManagedHint": "ग्राहक के लिए सतत सहायता, जिसमें सहायता स्तर और सेवा कैलेंडर होता है। यह लगातार चलती है, इसमें कोई साइकिल या समाप्ति तिथि नहीं होती।",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1333,7 +1333,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
-					"managedEndDate": "A managed service runs continuously, so it takes no new end date. Clear the end date instead.",
+					"managedEndDate": "प्रबंधित सेवा लगातार चलती है, इसलिए इसमें नई समाप्ति तिथि नहीं जोड़ी जा सकती। इसके बजाय समाप्ति तिथि साफ़ करें।",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -4658,7 +4658,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Delivery project"
+				"project": "डिलीवरी प्रोजेक्ट"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10672,7 +10672,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
-			"runsContinuously": "Runs continuously",
+			"runsContinuously": "लगातार चलती है",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

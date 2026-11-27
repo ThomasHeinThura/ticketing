@@ -1,7 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
-		"managedServiceUnused": "Cycles and an end date are not used for managed services. Any that already exist stay visible here and are never removed.",
+		"managedServiceUnused": "Yönetilen hizmetlerde döngüler ve bitiş tarihi kullanılmaz. Önceden var olanlar burada görünmeye devam eder ve asla kaldırılmaz.",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "İptal",
@@ -157,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, cycles and an end date, such as an implementation or a migration.",
+				"kindDeliveryHint": "Üzerinde anlaşılmış kapsamı, döngüleri ve bitiş tarihi olan planlı iş; örneğin bir uygulama veya geçiş.",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and a service calendar. It runs continuously, with no cycles or end date.",
+				"kindManagedHint": "Bir müşteri için destek seviyesi ve hizmet takvimi olan sürekli destek. Kesintisiz çalışır; döngü veya bitiş tarihi yoktur.",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1167,7 +1167,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
-					"managedEndDate": "A managed service runs continuously, so it takes no new end date. Clear the end date instead.",
+					"managedEndDate": "Yönetilen hizmet kesintisiz çalıştığı için yeni bir bitiş tarihi alamaz. Bunun yerine bitiş tarihini temizleyin.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -4658,7 +4658,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Delivery project"
+				"project": "Teslimat projesi"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10672,7 +10672,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
-			"runsContinuously": "Runs continuously",
+			"runsContinuously": "Kesintisiz çalışır",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

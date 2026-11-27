@@ -1,7 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
-		"managedServiceUnused": "Cycles and an end date are not used for managed services. Any that already exist stay visible here and are never removed.",
+		"managedServiceUnused": "Cykle i data zakończenia nie są używane w usługach zarządzanych. Już istniejące pozostają tu widoczne i nigdy nie są usuwane.",
 		"pageLoading": "Loading page",
 		"actions": {
 			"cancel": "Anuluj",
@@ -157,10 +157,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, cycles and an end date, such as an implementation or a migration.",
+				"kindDeliveryHint": "Zaplanowana praca o uzgodnionym zakresie, z cyklami i datą zakończenia, na przykład wdrożenie lub migracja.",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and a service calendar. It runs continuously, with no cycles or end date.",
+				"kindManagedHint": "Stałe wsparcie dla klienta, z poziomem wsparcia i kalendarzem usługi. Działa w trybie ciągłym, bez cykli i daty zakończenia.",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -2093,7 +2093,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
-					"managedEndDate": "A managed service runs continuously, so it takes no new end date. Clear the end date instead.",
+					"managedEndDate": "Usługa zarządzana działa w trybie ciągłym, więc nie przyjmuje nowej daty zakończenia. Zamiast tego wyczyść datę zakończenia.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -4690,7 +4690,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Delivery project"
+				"project": "Projekt wdrożeniowy"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10854,7 +10854,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
-			"runsContinuously": "Runs continuously",
+			"runsContinuously": "Działa w trybie ciągłym",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",

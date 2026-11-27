@@ -1,7 +1,7 @@
 {
 	"common": {
 		"appName": "TaskDesk",
-		"managedServiceUnused": "Cycles and an end date are not used for managed services. Any that already exist stay visible here and are never removed.",
+		"managedServiceUnused": "Dịch vụ được quản lý không dùng chu kỳ và ngày kết thúc. Những mục đã có vẫn hiển thị ở đây và không bao giờ bị xóa.",
 		"pageLoading": "Loading page",
 		"boolean": {
 			"false": "False",
@@ -161,10 +161,10 @@
 				"calendarsLoading": "Loading service calendars...",
 				"calendarsRetry": "Retry",
 				"kindDelivery": "Delivery {{term_project_one}}",
-				"kindDeliveryHint": "Planned work with an agreed scope, cycles and an end date, such as an implementation or a migration.",
+				"kindDeliveryHint": "Công việc có kế hoạch với phạm vi đã thống nhất, chu kỳ và ngày kết thúc, chẳng hạn triển khai hoặc di chuyển hệ thống.",
 				"kindLabel": "Kind",
 				"kindManaged": "Managed service",
-				"kindManagedHint": "Ongoing support for a customer, with a support level and a service calendar. It runs continuously, with no cycles or end date.",
+				"kindManagedHint": "Hỗ trợ liên tục cho khách hàng, có mức hỗ trợ và lịch dịch vụ. Chạy liên tục, không có chu kỳ hay ngày kết thúc.",
 				"managedServiceIncomplete": "A managed service needs a support level and a service calendar.",
 				"supportLevelLabel": "Support level",
 				"supportLevelOption": "{{level}} support",
@@ -1332,7 +1332,7 @@
 				"endDate": "End date",
 				"failure": {
 					"datesOrdered": "The end date cannot be before the start date.",
-					"managedEndDate": "A managed service runs continuously, so it takes no new end date. Clear the end date instead.",
+					"managedEndDate": "Dịch vụ được quản lý chạy liên tục nên không nhận ngày kết thúc mới. Hãy xóa ngày kết thúc thay vào đó.",
 					"forbidden": "You do not have permission to change these settings.",
 					"generic": "Could not save the planning settings.",
 					"keyFormat": "Key must be 2-15 uppercase letters (A-Z)",
@@ -4643,7 +4643,7 @@
 			},
 			"kind": {
 				"managed_service": "Managed service",
-				"project": "Delivery project"
+				"project": "Dự án triển khai"
 			},
 			"loadFailed": "Projects could not be loaded.",
 			"noMatches": {
@@ -10590,7 +10590,7 @@
 			"customer": "Customer",
 			"defaultAssignee": "New work lands on",
 			"end": "Target end",
-			"runsContinuously": "Runs continuously",
+			"runsContinuously": "Chạy liên tục",
 			"internal": "Internal",
 			"manager": "Manager",
 			"notSet": "Not set",
