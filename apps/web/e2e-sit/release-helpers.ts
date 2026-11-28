@@ -66,6 +66,17 @@ function findAccount(role: Role): Account | undefined {
 /** Whether SIT_ACCOUNTS_FILE holds an account for one of the optional roles. */
 export const hasAccount = (role: Role) => findAccount(role) !== undefined;
 
+/** Whether a role's account is the same person as the `instance-admin` entry (email compared, never printed). */
+export const isInstanceAdminIdentity = (role: Role) => {
+  const candidate = findAccount(role);
+  const root = findAccount("instance-admin");
+  return (
+    !!candidate &&
+    !!root &&
+    candidate.email.toLowerCase() === root.email.toLowerCase()
+  );
+};
+
 function account(role: Role): Account {
   const found = findAccount(role);
   if (!found) throw new Error(`No ${role} account in SIT_ACCOUNTS_FILE.`);
