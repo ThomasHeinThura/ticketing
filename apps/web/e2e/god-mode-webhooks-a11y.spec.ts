@@ -47,8 +47,15 @@ test("the webhook security table scrolls in a named, focusable region @a11y", as
   const region = page.getByRole("region", { name: "Webhook security posture" });
   await expect(region.getByText("Incident receiver 1")).toBeVisible();
   const viewport = region.locator('[data-slot="scroll-area-viewport"]');
-  await viewport.focus();
-  await expect(viewport).toBeFocused();
+  // Reachable by Tab, not only programmatically: tab from the page start until it is focused.
+  let reached = false;
+  for (let stop = 0; stop < 60 && !reached; stop++) {
+    await page.keyboard.press("Tab");
+    reached = await viewport.evaluate(
+      (node) => node === document.activeElement,
+    );
+  }
+  expect(reached, "the table scroll region is a Tab stop").toBe(true);
   await page.keyboard.press("ArrowRight");
   await expect
     .poll(() => viewport.evaluate((node) => node.scrollLeft))
