@@ -177,6 +177,10 @@ export async function appendRoleAudit(
     holderCount?: number;
     /** Rank change, recorded when a save moves it. */
     rank?: { before: number | null; after: number | null };
+    /** Set by project-role writes; absent on workspace roles so their rows are unchanged. */
+    scope?: "workspace" | "project";
+    name?: { before: string | null; after: string | null };
+    description?: { before: string | null; after: string | null };
   },
 ): Promise<void> {
   const { added, removed } = diffCapabilities(input.before, input.after);
@@ -188,6 +192,11 @@ export async function appendRoleAudit(
       ? {}
       : { holderCount: input.holderCount }),
     ...(input.rank === undefined ? {} : { rank: input.rank }),
+    ...(input.scope === undefined ? {} : { scope: input.scope }),
+    ...(input.name === undefined ? {} : { name: input.name }),
+    ...(input.description === undefined
+      ? {}
+      : { description: input.description }),
   } satisfies JsonValue;
   await appendAuditLog(tx, {
     actorId: input.actor.userId,
@@ -198,7 +207,11 @@ export async function appendRoleAudit(
     entityType: "workspace_role",
     entityId: input.roleId,
     before: input.before
-      ? { role: input.roleName, capabilities: sortedCapabilities(input.before) }
+      ? {
+          role: input.roleName,
+          capabilities: sortedCapabilities(input.before),
+          ...(input.scope === undefined ? {} : { scope: input.scope }),
+        }
       : null,
     after:
       input.action === "role.deleted"

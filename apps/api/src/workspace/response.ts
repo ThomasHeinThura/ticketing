@@ -166,7 +166,14 @@ export const workspaceRoleSchema = z
     }),
     isSystem: z.boolean(),
     isEditable: z.boolean(),
-    holderCount: z.number().int(),
+    holderCount: z.number().int().openapi({
+      description:
+        "Holders of a workspace role, or distinct people holding a project role in this workspace's projects.",
+    }),
+    projectCount: z.number().int().optional().openapi({
+      description: "Project roles only: distinct projects that use the role.",
+    }),
+    scope: z.enum(["workspace", "project"]),
     version: z.string().openapi({
       description:
         "Optimistic-concurrency token; echo it as `expectedVersion` on PATCH.",

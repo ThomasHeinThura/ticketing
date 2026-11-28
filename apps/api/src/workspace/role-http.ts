@@ -7,6 +7,9 @@ import {
   InsufficientPermissionToGrantError,
   InvalidCapabilityError,
   InvalidPermissionResourceError,
+  ProjectRoleDetailsOnlyError,
+  ProjectRoleInUseError,
+  ProjectRoleRevokedGrantsError,
   RoleChangedError,
   RoleInIdentityUseError,
   RoleInUseError,
@@ -85,6 +88,21 @@ export function roleErrorToHttp(error: unknown): never {
   }
   if (error instanceof RoleInIdentityUseError) {
     throw coded(409, "role_in_identity_use", error.message);
+  }
+  if (error instanceof ProjectRoleDetailsOnlyError) {
+    throw coded(400, "project_role_details_only", error.message);
+  }
+  if (error instanceof ProjectRoleInUseError) {
+    throw coded(409, "role_in_use", error.message, {
+      holderCount: error.holderCount,
+      projectCount: error.projectCount,
+      projects: error.projects,
+    });
+  }
+  if (error instanceof ProjectRoleRevokedGrantsError) {
+    throw coded(409, "role_has_revoked_grants", error.message, {
+      revokedGrantCount: error.revokedGrantCount,
+    });
   }
   if (error instanceof RoleInUseError) {
     throw coded(409, "role_in_use", error.message, {

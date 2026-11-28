@@ -178,6 +178,8 @@ export async function resolveRosterRole(
           eq(roleTable.key, key),
         ),
       )
+      // A role delete holds this row FOR UPDATE: wait for it, then re-read (gone is `null`).
+      .for("share")
       .limit(1);
     return row;
   };

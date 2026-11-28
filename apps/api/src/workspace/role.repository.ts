@@ -21,11 +21,22 @@ import { automationTable } from "../database/schema";
 
 type RoleRow = typeof schema.roleTable.$inferSelect;
 
-export type RoleWithHolders = RoleRow & { holderCount: number };
+/** `projectCount` is set for project-scope roles only. */
+export type RoleWithHolders = RoleRow & {
+  holderCount: number;
+  projectCount?: number;
+};
 
-const workspaceScope = (workspaceId: string) =>
+export type RoleScope = "workspace" | "project";
+
+/**
+ * Always keeps `workspace_id`: a role of another workspace is never visible. The scope defaults
+ * to `workspace`, so every workspace-only caller (reassign, holders, preview, create, RL-7) stays
+ * untouched; only the project branches pass `"project"`. Never widen this to both scopes.
+ */
+const workspaceScope = (workspaceId: string, scope: RoleScope = "workspace") =>
   and(
-    eq(schema.roleTable.scope, "workspace"),
+    eq(schema.roleTable.scope, scope),
     eq(schema.roleTable.workspaceId, workspaceId),
   );
 
@@ -70,15 +81,125 @@ export async function getRoleWithHolderCount(
   };
 }
 
+/**
+ * Who holds a project-scope role, from project memberships and active (not revoked) grants of
+ * THIS workspace's projects. Never the `workspace_member.role` key, which is a different space.
+ */
+export async function listProjectRoleHolds(
+  executor: Executor,
+  workspaceId: string,
+  roleId: string,
+): Promise<Array<{ personId: string; projectId: string }>> {
+  const inWorkspace = (scopeId: Parameters<typeof eq>[0]) =>
+    sql`${scopeId} in (select id from ${schema.projectTable} where ${schema.projectTable.workspaceId} = ${workspaceId})`;
+  const memberships = await executor
+    .select({
+      personId: schema.membershipTable.personId,
+      projectId: schema.membershipTable.scopeId,
+    })
+    .from(schema.membershipTable)
+    .where(
+      and(
+        eq(schema.membershipTable.scope, "project"),
+        eq(schema.membershipTable.roleId, roleId),
+        inWorkspace(schema.membershipTable.scopeId),
+      ),
+    );
+  const grants = await executor
+    .select({
+      personId: schema.membershipGrantTable.personId,
+      projectId: schema.membershipGrantTable.scopeId,
+    })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.scope, "project"),
+        eq(schema.membershipGrantTable.roleId, roleId),
+        isNull(schema.membershipGrantTable.revokedAt),
+        inWorkspace(schema.membershipGrantTable.scopeId),
+      ),
+    );
+  return [...memberships, ...grants];
+}
+
+export function summariseProjectRoleHolds(
+  holds: ReadonlyArray<{ personId: string; projectId: string }>,
+): { holderCount: number; projectCount: number } {
+  return {
+    holderCount: new Set(holds.map((hold) => hold.personId)).size,
+    projectCount: new Set(holds.map((hold) => hold.projectId)).size,
+  };
+}
+
+export async function listProjectRolesWithHolderCounts(
+  executor: Executor,
+  workspaceId: string,
+): Promise<RoleWithHolders[]> {
+  const roles = await executor
+    .select()
+    .from(schema.roleTable)
+    .where(workspaceScope(workspaceId, "project"))
+    .orderBy(desc(schema.roleTable.rank), schema.roleTable.key);
+  const out: RoleWithHolders[] = [];
+  for (const role of roles) {
+    const holds = await listProjectRoleHolds(executor, workspaceId, role.id);
+    out.push({ ...role, ...summariseProjectRoleHolds(holds) });
+  }
+  return out;
+}
+
+export async function getProjectRoleWithHolderCount(
+  executor: Executor,
+  workspaceId: string,
+  roleId: string,
+): Promise<RoleWithHolders | undefined> {
+  const [role] = await executor
+    .select()
+    .from(schema.roleTable)
+    .where(
+      and(
+        workspaceScope(workspaceId, "project"),
+        eq(schema.roleTable.id, roleId),
+      ),
+    )
+    .limit(1);
+  if (!role) return undefined;
+  return {
+    ...role,
+    ...summariseProjectRoleHolds(
+      await listProjectRoleHolds(executor, workspaceId, role.id),
+    ),
+  };
+}
+
+/**
+ * Every project-scope role of the workspace, locked in id order (the one deterministic order for
+ * rename and delete) so concurrent renames cannot both pass the duplicate-name check.
+ */
+export async function lockProjectRoleRows(
+  tx: Executor,
+  workspaceId: string,
+): Promise<RoleRow[]> {
+  return tx
+    .select()
+    .from(schema.roleTable)
+    .where(workspaceScope(workspaceId, "project"))
+    .orderBy(schema.roleTable.id)
+    .for("update");
+}
+
 export async function lockRoleRow(
   tx: Executor,
   workspaceId: string,
   roleId: string,
+  scope: RoleScope = "workspace",
 ): Promise<RoleRow | undefined> {
   const [role] = await tx
     .select()
     .from(schema.roleTable)
-    .where(and(workspaceScope(workspaceId), eq(schema.roleTable.id, roleId)))
+    .where(
+      and(workspaceScope(workspaceId, scope), eq(schema.roleTable.id, roleId)),
+    )
     .for("update")
     .limit(1);
   return role;
@@ -133,10 +254,13 @@ export async function deleteRoleRow(
   tx: Executor,
   workspaceId: string,
   roleId: string,
+  scope: RoleScope = "workspace",
 ): Promise<boolean> {
   const deleted = await tx
     .delete(schema.roleTable)
-    .where(and(workspaceScope(workspaceId), eq(schema.roleTable.id, roleId)))
+    .where(
+      and(workspaceScope(workspaceId, scope), eq(schema.roleTable.id, roleId)),
+    )
     .returning({ id: schema.roleTable.id });
   return deleted.length > 0;
 }
@@ -248,6 +372,23 @@ export async function countRoleReferences(
       schema.workflowTransitionTable.roleId,
     ),
   };
+}
+
+/** Revoked grants keep `role_id` (RESTRICT FK), so they block a delete until a human decides. */
+export async function countRevokedGrants(
+  tx: Executor,
+  roleId: string,
+): Promise<number> {
+  const [row] = await tx
+    .select({ value: count() })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.roleId, roleId),
+        sql`${schema.membershipGrantTable.revokedAt} is not null`,
+      ),
+    );
+  return Number(row?.value ?? 0);
 }
 
 /**

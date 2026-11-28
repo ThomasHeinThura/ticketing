@@ -5111,7 +5111,19 @@
             "type": "boolean"
           },
           "holderCount": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Holders of a workspace role, or distinct people holding a project role in this workspace's projects."
+          },
+          "projectCount": {
+            "type": "integer",
+            "description": "Project roles only: distinct projects that use the role."
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "workspace",
+              "project"
+            ]
           },
           "version": {
             "type": "string",
@@ -5138,6 +5150,7 @@
           "isSystem",
           "isEditable",
           "holderCount",
+          "scope",
           "version",
           "createdAt",
           "updatedAt"
@@ -35850,7 +35863,7 @@
           "Workspaces"
         ],
         "summary": "List a workspace's roles",
-        "description": "List every workspace-scope role (the six built-ins and the custom ones) with capabilities, rank and holder count. Capabilities live in the canonical role row; `permission` is a deprecated derived view. Never ordering-guaranteed beyond rank descending.",
+        "description": "List every workspace-scope role (the six built-ins and the custom ones) with capabilities, rank and holder count. Capabilities live in the canonical role row; `permission` is a deprecated derived view. Never ordering-guaranteed beyond rank descending. `?scope=project` lists this workspace's project-scope roles instead, with holder and project counts taken from project memberships.",
         "parameters": [
           {
             "schema": {
@@ -35859,6 +35872,18 @@
             "required": true,
             "name": "workspaceId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "workspace",
+                "project"
+              ]
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
           }
         ],
         "responses": {
@@ -36111,7 +36136,7 @@
           "Workspaces"
         ],
         "summary": "Update a workspace role's permissions",
-        "description": "Elevated: spends a one-use PA-15 step-up proof (`workspace_role_update`) sent in `X-TaskDesk-Step-Up-Token`. Replace -- never merge -- a role's capability set, and/or rename it, re-describe it or change its rank. RL-3, RL-4, RL-7 and RL-14 apply; a stale `expectedVersion` is a 409 carrying the current role; removing capabilities from your own role needs `confirmSelfEdit`. Built-in roles are cloned, not edited. `?dryRun=true` validates the same draft and CAS without spending proof or writing, and returns affected active holders and their current canonical-reach projects/work items.",
+        "description": "Elevated: spends a one-use PA-15 step-up proof (`workspace_role_update`) sent in `X-TaskDesk-Step-Up-Token`. Replace -- never merge -- a role's capability set, and/or rename it, re-describe it or change its rank. RL-3, RL-4, RL-7 and RL-14 apply; a stale `expectedVersion` is a 409 carrying the current role; removing capabilities from your own role needs `confirmSelfEdit`. Built-in roles are cloned, not edited. `?dryRun=true` validates the same draft and CAS without spending proof or writing, and returns affected active holders and their current canonical-reach projects/work items. A project-scope role (id from `GET ...?scope=project`) takes the same step-up operation but only a new `name` and `description`: `capabilities`, `rank` and `permission` are a 400 `project_role_details_only`, built-in project roles are a 403 `role_not_editable`, a name already used by another project role is a 409, and the role key never changes.",
         "parameters": [
           {
             "schema": {
@@ -36302,7 +36327,7 @@
           "Workspaces"
         ],
         "summary": "Delete a workspace role",
-        "description": "Request deletion of a custom role (202 pending action, executed on the requester's click approval). Refused for 'owner' and for a role still assigned to any member, at request and again at approval. Identified by the role's opaque id, not its name. Native replacement for authClient.organization.deleteRole().",
+        "description": "Request deletion of a custom role (202 pending action, executed on the requester's click approval). Refused for 'owner' and for a role still assigned to any member, at request and again at approval. Identified by the role's opaque id, not its name. Native replacement for authClient.organization.deleteRole(). A project-scope role is refused with a 409 `role_in_use` (holder, project counts and the projects) while anyone holds it, a 409 `role_has_revoked_grants` while revoked grants reference it, and a 400 `role_not_deletable` for a built-in project role.",
         "parameters": [
           {
             "schema": {
@@ -36410,7 +36435,7 @@
             }
           },
           "409": {
-            "description": "An equivalent deletion is already pending",
+            "description": "An equivalent deletion is already pending, or a project role is still held or referenced",
             "content": {
               "text/plain": {
                 "schema": {
