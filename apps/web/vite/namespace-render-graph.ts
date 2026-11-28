@@ -174,16 +174,20 @@ export function isContainedInBoundary(
  * the imported component sits inside a namespace boundary element of the importer; traversal
  * stops there. Route modules other than the roots and the generated route tree are not
  * followed: they render only after navigation, which the root route gates on the deferred group.
+ * `skip` lists screens that render only on other paths (see `WORK_ROUTE_NON_WORK_SCREENS`); they
+ * are not followed either.
  */
 export function collectUngatedRenderModules({
   srcDir,
   roots,
   gated,
+  skip = [],
   read = (file) => readFileSync(file, "utf8"),
 }: {
   srcDir: string;
   roots: readonly string[];
   gated: readonly string[];
+  skip?: readonly string[];
   read?: (file: string) => string;
 }): Map<string, string> {
   const rootSet = new Set(roots.map((root) => path.join(srcDir, root)));
@@ -201,6 +205,7 @@ export function collectUngatedRenderModules({
       if (/\.test\.tsx?$/.test(normalized)) continue;
       if (normalized.includes("/routeTree.")) continue;
       if (normalized.includes("/src/routes/") && !rootSet.has(target)) continue;
+      if (skip.some((suffix) => normalized.endsWith(suffix))) continue;
       if (isGated(target) && isContainedInBoundary(source, specifier)) continue;
       visit(target);
     }
@@ -209,18 +214,20 @@ export function collectUngatedRenderModules({
   return modules;
 }
 
-/** Deferred-namespace reads reachable on the work route and shell without a boundary. */
+/**
+ * Deferred-namespace reads (any namespace outside the first-paint group, minus the reviewed
+ * allowlist) reachable on the work route and shell without a boundary.
+ */
 export function findUngatedDeferredReads(options: {
   srcDir: string;
   roots: readonly string[];
   gated: readonly string[];
   known: readonly string[];
-  /** Only these namespaces are reported; the others predate the split. */
-  only: readonly string[];
+  skip?: readonly string[];
   read?: (file: string) => string;
 }) {
   return findDeferredNamespaceUsers(
     collectUngatedRenderModules(options),
     options.known,
-  ).filter((violation) => options.only.includes(violation.namespace));
+  );
 }

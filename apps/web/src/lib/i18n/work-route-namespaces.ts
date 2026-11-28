@@ -26,19 +26,23 @@ export const WORK_ROUTE_BOUNDARY_FREE_MODULES = [
 ] as const;
 
 /**
- * Namespaces split out of the first-paint ones to keep the work list small. Any module that reads
- * them must be unreachable from the work route and shell except through a namespace boundary.
+ * Namespaces split out of the first-paint ones to keep the work list small. Like every deferred
+ * namespace, a read of them on the work route or shell must sit behind a namespace boundary (or
+ * be allowlisted below with a reason); the render-graph guard fails the build otherwise.
  */
 export const SPLIT_OUT_NAMESPACES = ["tasksExtra", "workItemsExtra"] as const;
 
 /**
- * Namespaces the render-graph guard enforces: the split-out ones, plus deferred namespaces read by
- * shell surfaces a user can open before the deferred group lands (the notification menu). A read
- * of these on the work route or shell outside a namespace boundary fails the build.
+ * Screens that render only on other paths. `routes/agent/__root.tsx` (beforeLoad) awaits
+ * `whenAllNamespacesLoaded()` for every path except the work list, so these cannot paint before
+ * the deferred group lands and the render-graph guard does not follow imports into them. A module
+ * they share with the work path is still scanned through that path. Removing the root gate means
+ * removing this list.
  */
-export const BOUNDARY_ONLY_NAMESPACES = [
-  ...SPLIT_OUT_NAMESPACES,
-  "notifications",
+export const WORK_ROUTE_NON_WORK_SCREENS = [
+  "/components/project-list/projects-page.tsx",
+  "/components/project/overview/project-overview-page.tsx",
+  "/components/agent-not-found.tsx",
 ] as const;
 
 /** Entry points of the agent work route and shell render graph (relative to `apps/web/src`). */
@@ -66,6 +70,7 @@ export const WORK_ROUTE_GATED_SURFACES = [
   "/components/task/task-details-sheet-body.tsx",
   "/components/notification/notification-menu.tsx",
   "/components/notification/notification-clear-dialog.tsx",
+  "/components/shared/modals/create-workspace-modal.tsx",
 ] as const;
 
 /**
@@ -85,4 +90,16 @@ export const DEFERRED_NAMESPACE_ALLOWLIST: Readonly<
   // the user selects work items, long after the deferred group has landed.
   "/components/agile/bulk-agile-actions.tsx": ["agile"],
   "/components/agile/bulk-agile-dialog.tsx": ["agile"],
+  // The only read is the toast after a drag-reorder request fails, which needs a user drag first.
+  "/components/nav-projects-sortable.tsx": ["workspace"],
+  // The two reads are the toasts after the user confirms inside the approval, which sits behind
+  // its own namespace boundary in this module.
+  "/components/pending-action/pending-action-approval-dialog.tsx": [
+    "pendingActions",
+  ],
+  // The shell imports only `isForbiddenError`; the `settings` strings are in the access-denied
+  // components, which render on settings routes (gated by the root route).
+  "/components/settings/settings-access.tsx": ["settings"],
+  // The keys are the fallback message of a failed holiday import, which the user triggers.
+  "/fetchers/service-calendar.ts": ["serviceCalendars"],
 };

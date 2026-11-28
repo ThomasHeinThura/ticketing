@@ -51,6 +51,9 @@ vi.mock(
       children,
   }),
 );
+vi.mock("@/components/shared/modals/create-workspace-modal", () => ({
+  default: reads("workspace:create.ownerLabel"),
+}));
 vi.mock("@/components/work-item/create-work-item-dialog-form", () => ({
   default: reads("tasksExtra:popover.labels.updateError"),
 }));
@@ -111,6 +114,17 @@ const SURFACES = [
     },
   },
   {
+    name: "create workspace dialog",
+    text: new RegExp(`^${en.workspace.create.ownerLabel}$`),
+    rawKey: "create.ownerLabel",
+    mount: async () => {
+      const { default: Gate } = await import(
+        "@/components/shared/modals/create-workspace-modal-gate"
+      );
+      return render(<Gate onClose={() => undefined} />, { wrapper: Wrapper });
+    },
+  },
+  {
     name: "create work item form (label failure text)",
     text: /^Failed to update label$/,
     rawKey: "popover.labels.updateError",
@@ -162,6 +176,7 @@ async function release(language = "en-US") {
   await act(async () => {
     instance.addResourceBundle(language, "tasksExtra", en.tasksExtra);
     instance.addResourceBundle(language, "workItemsExtra", en.workItemsExtra);
+    instance.addResourceBundle(language, "workspace", en.workspace);
     resolve();
   });
 }
@@ -196,7 +211,7 @@ describe.each(SURFACES)("$name", (surface) => {
     for (const element of screen.queryAllByText(rawKey))
       expect(element).not.toBeVisible();
     expect(document.body.textContent).not.toMatch(
-      /(?:tasksExtra|workItemsExtra):/,
+      /(?:tasksExtra|workItemsExtra|workspace):/,
     );
   };
 
