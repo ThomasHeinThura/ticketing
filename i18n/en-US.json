@@ -7648,7 +7648,14 @@
 			"blockedHistoryTitle": "Kept for history",
 			"blockedHistoryDescription_one": "{{count}} past assignment from a removed member still points to this role, so it cannot be deleted yet. The role keeps that history.",
 			"blockedHistoryDescription_other": "{{count}} past assignments from removed members still point to this role, so it cannot be deleted yet. The role keeps that history.",
-			"openMembers": "Open the Members page of {{name}}"
+			"openMembers": "Open the Members page of {{name}}",
+			"blockedRefsDescription": "No one holds this role, but other settings still use it. Remove it from them first:",
+			"refWorkflowTransitions_one": "{{count}} workflow transition",
+			"refWorkflowTransitions_other": "{{count}} workflow transitions",
+			"refAutomations_one": "{{count}} automation",
+			"refAutomations_other": "{{count}} automations",
+			"refIdentityMappings_one": "{{count}} identity group mapping",
+			"refIdentityMappings_other": "{{count}} identity group mappings"
 		}
 	},
 	"agile": {

@@ -48,6 +48,8 @@ import { routes } from "@/lib/routes";
 import { toast } from "@/lib/toast";
 import { auditEntity } from "@/query-client/audit-invalidation";
 
+import { isReferenceOnly, roleReferencePhrases } from "./role-refusal";
+
 type ProjectRef = { id: string; name: string };
 
 /** Project rosters show roles by name, so they refetch with the role list. */
@@ -238,7 +240,19 @@ function DeleteBlockedDialog({
     : [];
   let title = t("roles:projectRoles.blockedBuiltInTitle");
   let content = <p>{t("roles:projectRoles.blockedBuiltInDescription")}</p>;
-  if (error.code === "role_in_use") {
+  if (isReferenceOnly(error.code, body)) {
+    title = t("roles:projectRoles.blockedInUseTitle");
+    content = (
+      <>
+        <p>{t("roles:projectRoles.blockedRefsDescription")}</p>
+        <ul className="list-disc space-y-1 pl-5">
+          {roleReferencePhrases(t, body).map((phrase) => (
+            <li key={phrase}>{phrase}</li>
+          ))}
+        </ul>
+      </>
+    );
+  } else if (error.code === "role_in_use") {
     title = t("roles:projectRoles.blockedInUseTitle");
     content = (
       <>

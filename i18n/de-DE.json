@@ -7648,7 +7648,14 @@
 			"blockedHistoryTitle": "Wegen des Verlaufs behalten",
 			"blockedHistoryDescription_one": "{{count}} frühere Zuweisung eines entfernten Mitglieds verweist noch auf diese Rolle, daher kann sie noch nicht gelöscht werden. Die Rolle bewahrt diesen Verlauf.",
 			"blockedHistoryDescription_other": "{{count}} frühere Zuweisungen entfernter Mitglieder verweisen noch auf diese Rolle, daher kann sie noch nicht gelöscht werden. Die Rolle bewahrt diesen Verlauf.",
-			"openMembers": "Seite „Mitglieder“ von {{name}} öffnen"
+			"openMembers": "Seite „Mitglieder“ von {{name}} öffnen",
+			"blockedRefsDescription": "Niemand hat diese Rolle, aber andere Einstellungen verwenden sie noch. Entfernen Sie sie dort zuerst:",
+			"refWorkflowTransitions_one": "{{count}} Workflow-Übergang",
+			"refWorkflowTransitions_other": "{{count}} Workflow-Übergänge",
+			"refAutomations_one": "{{count}} Automatisierung",
+			"refAutomations_other": "{{count}} Automatisierungen",
+			"refIdentityMappings_one": "{{count}} Identitätsgruppen-Zuordnung",
+			"refIdentityMappings_other": "{{count}} Identitätsgruppen-Zuordnungen"
 		}
 	},
 	"agile": {

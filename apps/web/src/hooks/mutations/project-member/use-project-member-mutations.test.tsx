@@ -28,7 +28,7 @@ function setup() {
   );
   const audits = () =>
     client.getMutationCache().getAll().at(-1)?.options.meta?.audits;
-  return { wrapper, audits };
+  return { wrapper, audits, client };
 }
 
 it("targets the existing row and the direct row the answered roster shows, and never sends the row id", async () => {
@@ -78,4 +78,22 @@ it("targets the removed row from the variables because the answered roster no lo
   expect(
     audits()?.targets(variables as never, { members: [] } as never),
   ).toEqual([target("row")]);
+});
+
+it("refreshes the project role counts after a roster change", async () => {
+  const { wrapper, client } = setup();
+  mocks.remove.mockResolvedValue({ members: [] });
+  const invalidate = vi.spyOn(client, "invalidateQueries");
+  const { result } = renderHook(() => useRemoveProjectMember(), { wrapper });
+  await act(() =>
+    result.current.mutateAsync({
+      workspaceId: "w",
+      projectId: "p",
+      personId: "person",
+      membershipId: "m",
+    } as never),
+  );
+  expect(invalidate).toHaveBeenCalledWith({
+    queryKey: ["workspace-roles", "w", "project"],
+  });
 });

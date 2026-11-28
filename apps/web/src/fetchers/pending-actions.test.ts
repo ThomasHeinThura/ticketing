@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   approveOwnPendingAction,
   createPendingActionProof,
+  PendingActionRefusal,
 } from "./pending-actions";
 
 const mocks = vi.hoisted(() => ({
@@ -132,5 +133,28 @@ describe("approveOwnPendingAction", () => {
       header: {},
       json: {},
     });
+  });
+});
+
+describe("approveOwnPendingAction role refusals", () => {
+  it("keeps the role code and body of a 409 refusal", async () => {
+    const body = {
+      error: "role_in_use",
+      holderCount: 0,
+      references: { automations: 1 },
+    };
+    mocks.approvePost.mockResolvedValue(
+      new Response(JSON.stringify(body), { status: 409 }),
+    );
+    const error = await approveOwnPendingAction({ id: "pa-1" }).catch((e) => e);
+    expect(error).toBeInstanceOf(PendingActionRefusal);
+    expect(error).toMatchObject({ status: 409, code: "role_in_use", body });
+  });
+
+  it("leaves other 409s as plain HttpErrors", async () => {
+    mocks.approvePost.mockResolvedValue(new Response("{}", { status: 409 }));
+    const error = await approveOwnPendingAction({ id: "pa-1" }).catch((e) => e);
+    expect(error).not.toBeInstanceOf(PendingActionRefusal);
+    expect(error.status).toBe(409);
   });
 });

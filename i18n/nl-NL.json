@@ -7648,7 +7648,14 @@
 			"blockedHistoryTitle": "Bewaard voor de geschiedenis",
 			"blockedHistoryDescription_one": "{{count}} eerdere toewijzing van een verwijderd lid verwijst nog naar deze rol, dus de rol kan nog niet worden verwijderd. De rol bewaart die geschiedenis.",
 			"blockedHistoryDescription_other": "{{count}} eerdere toewijzingen van verwijderde leden verwijzen nog naar deze rol, dus de rol kan nog niet worden verwijderd. De rol bewaart die geschiedenis.",
-			"openMembers": "Pagina Leden van {{name}} openen"
+			"openMembers": "Pagina Leden van {{name}} openen",
+			"blockedRefsDescription": "Niemand heeft deze rol, maar andere instellingen gebruiken haar nog. Verwijder haar daar eerst:",
+			"refWorkflowTransitions_one": "{{count}} workflowovergang",
+			"refWorkflowTransitions_other": "{{count}} workflowovergangen",
+			"refAutomations_one": "{{count}} automatisering",
+			"refAutomations_other": "{{count}} automatiseringen",
+			"refIdentityMappings_one": "{{count}} identiteitsgroepkoppeling",
+			"refIdentityMappings_other": "{{count}} identiteitsgroepkoppelingen"
 		}
 	},
 	"agile": {

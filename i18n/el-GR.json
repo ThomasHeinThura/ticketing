@@ -7648,7 +7648,14 @@
 			"blockedHistoryTitle": "Διατηρείται για το ιστορικό",
 			"blockedHistoryDescription_one": "{{count}} παλιά ανάθεση αφαιρεμένου μέλους δείχνει ακόμη σε αυτόν τον ρόλο, γι' αυτό δεν μπορεί να διαγραφεί ακόμη. Ο ρόλος κρατά αυτό το ιστορικό.",
 			"blockedHistoryDescription_other": "{{count}} παλιές αναθέσεις αφαιρεμένων μελών δείχνουν ακόμη σε αυτόν τον ρόλο, γι' αυτό δεν μπορεί να διαγραφεί ακόμη. Ο ρόλος κρατά αυτό το ιστορικό.",
-			"openMembers": "Άνοιγμα της σελίδας Μέλη του {{name}}"
+			"openMembers": "Άνοιγμα της σελίδας Μέλη του {{name}}",
+			"blockedRefsDescription": "Κανείς δεν έχει αυτόν τον ρόλο, αλλά άλλες ρυθμίσεις τον χρησιμοποιούν ακόμη. Αφαιρέστε τον πρώτα από εκεί:",
+			"refWorkflowTransitions_one": "{{count}} μετάβαση ροής εργασίας",
+			"refWorkflowTransitions_other": "{{count}} μεταβάσεις ροής εργασίας",
+			"refAutomations_one": "{{count}} αυτοματισμός",
+			"refAutomations_other": "{{count}} αυτοματισμοί",
+			"refIdentityMappings_one": "{{count}} αντιστοίχιση ομάδας ταυτότητας",
+			"refIdentityMappings_other": "{{count}} αντιστοιχίσεις ομάδων ταυτότητας"
 		}
 	},
 	"agile": {

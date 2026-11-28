@@ -7690,7 +7690,17 @@
 			"blockedHistoryDescription_one": "{{count}} ancienne attribution d’un membre retiré pointe encore vers ce rôle, il ne peut donc pas encore être supprimé. Le rôle garde cet historique.",
 			"blockedHistoryDescription_many": "{{count}} d’anciennes attributions de membres retirés pointent encore vers ce rôle, il ne peut donc pas encore être supprimé. Le rôle garde cet historique.",
 			"blockedHistoryDescription_other": "{{count}} anciennes attributions de membres retirés pointent encore vers ce rôle, il ne peut donc pas encore être supprimé. Le rôle garde cet historique.",
-			"openMembers": "Ouvrir la page Membres de {{name}}"
+			"openMembers": "Ouvrir la page Membres de {{name}}",
+			"blockedRefsDescription": "Personne n’a ce rôle, mais d’autres paramètres l’utilisent encore. Retirez-le d’abord de ceux-ci :",
+			"refWorkflowTransitions_one": "{{count}} transition de workflow",
+			"refWorkflowTransitions_many": "{{count}} de transitions de workflow",
+			"refWorkflowTransitions_other": "{{count}} transitions de workflow",
+			"refAutomations_one": "{{count}} automatisation",
+			"refAutomations_many": "{{count}} d’automatisations",
+			"refAutomations_other": "{{count}} automatisations",
+			"refIdentityMappings_one": "{{count}} correspondance de groupe d’identité",
+			"refIdentityMappings_many": "{{count}} de correspondances de groupe d’identité",
+			"refIdentityMappings_other": "{{count}} correspondances de groupe d’identité"
 		}
 	},
 	"agile": {

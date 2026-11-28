@@ -7615,7 +7615,11 @@
 			"blockedInUseMore_other": "另有 {{count}} 个项目",
 			"blockedHistoryTitle": "为保留历史而保留",
 			"blockedHistoryDescription_other": "已移除成员的 {{count}} 条过往分配仍指向此角色，因此暂时无法删除。该角色会保留这些历史记录。",
-			"openMembers": "打开 {{name}} 的“成员”页面"
+			"openMembers": "打开 {{name}} 的“成员”页面",
+			"blockedRefsDescription": "没有人拥有此角色，但其他设置仍在使用它。请先从这些设置中移除：",
+			"refWorkflowTransitions_other": "{{count}} 个工作流转换",
+			"refAutomations_other": "{{count}} 个自动化",
+			"refIdentityMappings_other": "{{count}} 个身份组映射"
 		}
 	},
 	"agile": {

@@ -7732,7 +7732,20 @@
 			"blockedHistoryDescription_few": "{{count}} минулі призначення видалених учасників досі посилаються на цю роль, тому її поки не можна видалити. Роль зберігає цю історію.",
 			"blockedHistoryDescription_many": "{{count}} минулих призначень видалених учасників досі посилаються на цю роль, тому її поки не можна видалити. Роль зберігає цю історію.",
 			"blockedHistoryDescription_other": "{{count}} минулого призначення видалених учасників досі посилаються на цю роль, тому її поки не можна видалити. Роль зберігає цю історію.",
-			"openMembers": "Відкрити сторінку «Учасники» проєкту «{{name}}»"
+			"openMembers": "Відкрити сторінку «Учасники» проєкту «{{name}}»",
+			"blockedRefsDescription": "Цю роль ніхто не має, але інші налаштування досі її використовують. Спершу приберіть її звідти:",
+			"refWorkflowTransitions_one": "{{count}} перехід робочого процесу",
+			"refWorkflowTransitions_few": "{{count}} переходи робочого процесу",
+			"refWorkflowTransitions_many": "{{count}} переходів робочого процесу",
+			"refWorkflowTransitions_other": "{{count}} переходу робочого процесу",
+			"refAutomations_one": "{{count}} автоматизація",
+			"refAutomations_few": "{{count}} автоматизації",
+			"refAutomations_many": "{{count}} автоматизацій",
+			"refAutomations_other": "{{count}} автоматизації",
+			"refIdentityMappings_one": "{{count}} зіставлення групи ідентифікації",
+			"refIdentityMappings_few": "{{count}} зіставлення груп ідентифікації",
+			"refIdentityMappings_many": "{{count}} зіставлень груп ідентифікації",
+			"refIdentityMappings_other": "{{count}} зіставлення групи ідентифікації"
 		}
 	},
 	"agile": {

@@ -7615,7 +7615,11 @@
 			"blockedInUseMore_other": "ほか {{count}} 件のプロジェクト",
 			"blockedHistoryTitle": "履歴のため保持されています",
 			"blockedHistoryDescription_other": "削除されたメンバーの過去の割り当て {{count}} 件がまだこのロールを参照しているため、今は削除できません。ロールはその履歴を保持します。",
-			"openMembers": "{{name}} のメンバーページを開く"
+			"openMembers": "{{name}} のメンバーページを開く",
+			"blockedRefsDescription": "このロールを持つ人はいませんが、ほかの設定がまだ使っています。先にそこから外してください:",
+			"refWorkflowTransitions_other": "ワークフロー遷移 {{count}} 件",
+			"refAutomations_other": "オートメーション {{count}} 件",
+			"refIdentityMappings_other": "ID グループのマッピング {{count}} 件"
 		}
 	},
 	"agile": {

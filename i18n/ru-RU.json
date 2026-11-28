@@ -7788,7 +7788,20 @@
 			"blockedHistoryDescription_few": "{{count}} прошлых назначения удалённых участников всё ещё ссылаются на эту роль, поэтому её пока нельзя удалить. Роль хранит эту историю.",
 			"blockedHistoryDescription_many": "{{count}} прошлых назначений удалённых участников всё ещё ссылаются на эту роль, поэтому её пока нельзя удалить. Роль хранит эту историю.",
 			"blockedHistoryDescription_other": "{{count}} прошлого назначения удалённых участников всё ещё ссылаются на эту роль, поэтому её пока нельзя удалить. Роль хранит эту историю.",
-			"openMembers": "Открыть страницу «Участники» проекта «{{name}}»"
+			"openMembers": "Открыть страницу «Участники» проекта «{{name}}»",
+			"blockedRefsDescription": "Эту роль никто не имеет, но другие настройки всё ещё её используют. Сначала уберите её оттуда:",
+			"refWorkflowTransitions_one": "{{count}} переход рабочего процесса",
+			"refWorkflowTransitions_few": "{{count}} перехода рабочего процесса",
+			"refWorkflowTransitions_many": "{{count}} переходов рабочего процесса",
+			"refWorkflowTransitions_other": "{{count}} перехода рабочего процесса",
+			"refAutomations_one": "{{count}} автоматизация",
+			"refAutomations_few": "{{count}} автоматизации",
+			"refAutomations_many": "{{count}} автоматизаций",
+			"refAutomations_other": "{{count}} автоматизации",
+			"refIdentityMappings_one": "{{count}} сопоставление группы идентификации",
+			"refIdentityMappings_few": "{{count}} сопоставления групп идентификации",
+			"refIdentityMappings_many": "{{count}} сопоставлений групп идентификации",
+			"refIdentityMappings_other": "{{count}} сопоставления группы идентификации"
 		}
 	},
 	"agile": {

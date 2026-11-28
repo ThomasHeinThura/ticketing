@@ -7620,7 +7620,14 @@
 			"blockedHistoryTitle": "Được giữ lại để lưu lịch sử",
 			"blockedHistoryDescription_one": "{{count}} lần gán trước đây của thành viên đã bị gỡ vẫn trỏ tới vai trò này nên chưa thể xóa. Vai trò giữ lại lịch sử đó.",
 			"blockedHistoryDescription_other": "{{count}} lần gán trước đây của các thành viên đã bị gỡ vẫn trỏ tới vai trò này nên chưa thể xóa. Vai trò giữ lại lịch sử đó.",
-			"openMembers": "Mở trang Thành viên của {{name}}"
+			"openMembers": "Mở trang Thành viên của {{name}}",
+			"blockedRefsDescription": "Không ai giữ vai trò này, nhưng các cài đặt khác vẫn dùng nó. Hãy gỡ nó khỏi đó trước:",
+			"refWorkflowTransitions_one": "{{count}} bước chuyển quy trình",
+			"refWorkflowTransitions_other": "{{count}} bước chuyển quy trình",
+			"refAutomations_one": "{{count}} tự động hóa",
+			"refAutomations_other": "{{count}} tự động hóa",
+			"refIdentityMappings_one": "{{count}} ánh xạ nhóm danh tính",
+			"refIdentityMappings_other": "{{count}} ánh xạ nhóm danh tính"
 		}
 	},
 	"agile": {

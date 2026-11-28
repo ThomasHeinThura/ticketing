@@ -31418,6 +31418,63 @@
 						},
 						"openMembers": {
 							"type": "string"
+						},
+						"blockedRefsDescription": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_one": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_zero": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_two": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_few": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_many": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_other": {
+							"type": "string"
+						},
+						"refAutomations_one": {
+							"type": "string"
+						},
+						"refAutomations_zero": {
+							"type": "string"
+						},
+						"refAutomations_two": {
+							"type": "string"
+						},
+						"refAutomations_few": {
+							"type": "string"
+						},
+						"refAutomations_many": {
+							"type": "string"
+						},
+						"refAutomations_other": {
+							"type": "string"
+						},
+						"refIdentityMappings_one": {
+							"type": "string"
+						},
+						"refIdentityMappings_zero": {
+							"type": "string"
+						},
+						"refIdentityMappings_two": {
+							"type": "string"
+						},
+						"refIdentityMappings_few": {
+							"type": "string"
+						},
+						"refIdentityMappings_many": {
+							"type": "string"
+						},
+						"refIdentityMappings_other": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -31443,7 +31500,8 @@
 						"blockedBuiltInDescription",
 						"blockedInUseTitle",
 						"blockedHistoryTitle",
-						"openMembers"
+						"openMembers",
+						"blockedRefsDescription"
 					]
 				}
 			},

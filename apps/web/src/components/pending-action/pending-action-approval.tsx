@@ -31,6 +31,11 @@ import { parseCommentDeletionSummary } from "@/components/pending-action/comment
 import { parseImportChunkSummary } from "@/components/pending-action/import-chunk-summary";
 import { parseImportRunSummary } from "@/components/pending-action/import-run-summary";
 import {
+  type Body,
+  roleRefusalOf,
+  roleRefusalText,
+} from "@/components/settings/roles/role-refusal";
+import {
   getCurrentFactorStatus,
   getInstanceUser,
   type StepUpMethod,
@@ -877,12 +882,14 @@ export function PendingActionApproval({
     } catch (cause) {
       if (!isCurrentIntent()) return;
       setError(
-        t(
-          approvalErrorKey(
-            cause,
-            isRegisteredTypedName || isHardPurgeTypedName,
-          ),
-        ),
+        roleRefusalOf(cause)
+          ? roleRefusalText(t, ...(roleRefusalOf(cause) as [string, Body]))
+          : t(
+              approvalErrorKey(
+                cause,
+                isRegisteredTypedName || isHardPurgeTypedName,
+              ),
+            ),
       );
       setSecret("");
     }

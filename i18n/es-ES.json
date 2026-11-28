@@ -7690,7 +7690,17 @@
 			"blockedHistoryDescription_one": "{{count}} asignación anterior de un miembro eliminado sigue apuntando a este rol, así que todavía no se puede eliminar. El rol conserva ese historial.",
 			"blockedHistoryDescription_many": "{{count}} de asignaciones anteriores de miembros eliminados siguen apuntando a este rol, así que todavía no se puede eliminar. El rol conserva ese historial.",
 			"blockedHistoryDescription_other": "{{count}} asignaciones anteriores de miembros eliminados siguen apuntando a este rol, así que todavía no se puede eliminar. El rol conserva ese historial.",
-			"openMembers": "Abrir la página Miembros de {{name}}"
+			"openMembers": "Abrir la página Miembros de {{name}}",
+			"blockedRefsDescription": "Nadie tiene este rol, pero otros ajustes todavía lo usan. Quítelo de ellos primero:",
+			"refWorkflowTransitions_one": "{{count}} transición de flujo de trabajo",
+			"refWorkflowTransitions_many": "{{count}} de transiciones de flujo de trabajo",
+			"refWorkflowTransitions_other": "{{count}} transiciones de flujo de trabajo",
+			"refAutomations_one": "{{count}} automatización",
+			"refAutomations_many": "{{count}} de automatizaciones",
+			"refAutomations_other": "{{count}} automatizaciones",
+			"refIdentityMappings_one": "{{count}} asignación de grupo de identidad",
+			"refIdentityMappings_many": "{{count}} de asignaciones de grupo de identidad",
+			"refIdentityMappings_other": "{{count}} asignaciones de grupo de identidad"
 		}
 	},
 	"agile": {

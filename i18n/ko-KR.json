@@ -7615,7 +7615,11 @@
 			"blockedInUseMore_other": "그 외 프로젝트 {{count}}개",
 			"blockedHistoryTitle": "기록 보존을 위해 유지됨",
 			"blockedHistoryDescription_other": "제거된 구성원의 이전 할당 {{count}}건이 아직 이 역할을 가리키고 있어 지금은 삭제할 수 없습니다. 역할은 그 기록을 보관합니다.",
-			"openMembers": "{{name}}의 구성원 페이지 열기"
+			"openMembers": "{{name}}의 구성원 페이지 열기",
+			"blockedRefsDescription": "이 역할을 가진 사람은 없지만 다른 설정에서 아직 사용 중입니다. 먼저 그곳에서 제거해 주세요:",
+			"refWorkflowTransitions_other": "워크플로 전환 {{count}}개",
+			"refAutomations_other": "자동화 {{count}}개",
+			"refIdentityMappings_other": "ID 그룹 매핑 {{count}}개"
 		}
 	},
 	"agile": {

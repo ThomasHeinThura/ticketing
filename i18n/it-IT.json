@@ -7690,7 +7690,17 @@
 			"blockedHistoryDescription_one": "{{count}} assegnazione passata di un membro rimosso punta ancora a questo ruolo, quindi non può essere eliminato per ora. Il ruolo conserva quella cronologia.",
 			"blockedHistoryDescription_many": "{{count}} di assegnazioni passate di membri rimossi puntano ancora a questo ruolo, quindi non può essere eliminato per ora. Il ruolo conserva quella cronologia.",
 			"blockedHistoryDescription_other": "{{count}} assegnazioni passate di membri rimossi puntano ancora a questo ruolo, quindi non può essere eliminato per ora. Il ruolo conserva quella cronologia.",
-			"openMembers": "Apri la pagina Membri di {{name}}"
+			"openMembers": "Apri la pagina Membri di {{name}}",
+			"blockedRefsDescription": "Nessuno ha questo ruolo, ma altre impostazioni lo usano ancora. Rimuovilo prima da lì:",
+			"refWorkflowTransitions_one": "{{count}} transizione di workflow",
+			"refWorkflowTransitions_many": "{{count}} di transizioni di workflow",
+			"refWorkflowTransitions_other": "{{count}} transizioni di workflow",
+			"refAutomations_one": "{{count}} automazione",
+			"refAutomations_many": "{{count}} di automazioni",
+			"refAutomations_other": "{{count}} automazioni",
+			"refIdentityMappings_one": "{{count}} mappatura di gruppo di identità",
+			"refIdentityMappings_many": "{{count}} di mappature di gruppo di identità",
+			"refIdentityMappings_other": "{{count}} mappature di gruppo di identità"
 		}
 	},
 	"agile": {

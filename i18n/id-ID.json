@@ -7615,7 +7615,11 @@
 			"blockedInUseMore_other": "dan {{count}} proyek lainnya",
 			"blockedHistoryTitle": "Disimpan untuk riwayat",
 			"blockedHistoryDescription_other": "{{count}} penugasan lama dari anggota yang sudah dihapus masih merujuk ke peran ini, sehingga belum bisa dihapus. Peran ini menyimpan riwayat tersebut.",
-			"openMembers": "Buka halaman Anggota {{name}}"
+			"openMembers": "Buka halaman Anggota {{name}}",
+			"blockedRefsDescription": "Tidak ada yang memegang peran ini, tetapi pengaturan lain masih menggunakannya. Hapus dulu dari sana:",
+			"refWorkflowTransitions_other": "{{count}} transisi alur kerja",
+			"refAutomations_other": "{{count}} otomatisasi",
+			"refIdentityMappings_other": "{{count}} pemetaan grup identitas"
 		}
 	},
 	"agile": {

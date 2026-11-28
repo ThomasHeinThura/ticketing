@@ -7648,7 +7648,14 @@
 			"blockedHistoryTitle": "Се чува заради историјата",
 			"blockedHistoryDescription_one": "{{count}} минато доделување од отстранет член сè уште покажува кон оваа улога, па засега не може да се избрише. Улогата ја чува таа историја.",
 			"blockedHistoryDescription_other": "{{count}} минати доделувања од отстранети членови сè уште покажуваат кон оваа улога, па засега не може да се избрише. Улогата ја чува таа историја.",
-			"openMembers": "Отвори ја страницата Членови на {{name}}"
+			"openMembers": "Отвори ја страницата Членови на {{name}}",
+			"blockedRefsDescription": "Никој не ја има оваа улога, но други поставки сè уште ја користат. Прво отстранете ја од нив:",
+			"refWorkflowTransitions_one": "{{count}} премин на работен тек",
+			"refWorkflowTransitions_other": "{{count}} премини на работен тек",
+			"refAutomations_one": "{{count}} автоматизација",
+			"refAutomations_other": "{{count}} автоматизации",
+			"refIdentityMappings_one": "{{count}} мапирање на група за идентитет",
+			"refIdentityMappings_other": "{{count}} мапирања на групи за идентитет"
 		}
 	},
 	"agile": {

@@ -7648,7 +7648,14 @@
 			"blockedHistoryTitle": "इतिहास के लिए रखी गई",
 			"blockedHistoryDescription_one": "हटाए गए सदस्य का {{count}} पुराना असाइनमेंट अब भी इस भूमिका की ओर इशारा करता है, इसलिए इसे अभी हटाया नहीं जा सकता। भूमिका वह इतिहास सँभालकर रखती है।",
 			"blockedHistoryDescription_other": "हटाए गए सदस्यों के {{count}} पुराने असाइनमेंट अब भी इस भूमिका की ओर इशारा करते हैं, इसलिए इसे अभी हटाया नहीं जा सकता। भूमिका वह इतिहास सँभालकर रखती है।",
-			"openMembers": "{{name}} का सदस्य पेज खोलें"
+			"openMembers": "{{name}} का सदस्य पेज खोलें",
+			"blockedRefsDescription": "इस भूमिका को कोई नहीं रखता, लेकिन दूसरी सेटिंग्स अब भी इसका उपयोग करती हैं। पहले इसे वहाँ से हटाएँ:",
+			"refWorkflowTransitions_one": "{{count}} वर्कफ़्लो ट्रांज़िशन",
+			"refWorkflowTransitions_other": "{{count}} वर्कफ़्लो ट्रांज़िशन",
+			"refAutomations_one": "{{count}} ऑटोमेशन",
+			"refAutomations_other": "{{count}} ऑटोमेशन",
+			"refIdentityMappings_one": "{{count}} पहचान समूह मैपिंग",
+			"refIdentityMappings_other": "{{count}} पहचान समूह मैपिंग"
 		}
 	},
 	"agile": {

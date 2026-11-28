@@ -252,8 +252,8 @@ export function reassignRole(
   );
 }
 
-/** Refusals of a project role delete that carry counts the screen explains in words. */
-const DELETE_REFUSALS = [
+/** Codes a role delete is refused with, at request time and again at approval. */
+export const ROLE_REFUSAL_CODES = [
   "role_not_deletable",
   "role_in_use",
   "role_has_revoked_grants",
@@ -272,7 +272,7 @@ export async function requestRoleDeletion(workspaceId: string, roleId: string) {
       .catch(() => null);
     const code =
       body && typeof body === "object" && "error" in body ? body.error : null;
-    if (typeof code === "string" && DELETE_REFUSALS.includes(code))
+    if (typeof code === "string" && ROLE_REFUSAL_CODES.includes(code))
       throw new RoleApiError(
         response.status,
         "message" in (body as object)

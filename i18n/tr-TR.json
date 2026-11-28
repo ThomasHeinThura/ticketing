@@ -7648,7 +7648,14 @@
 			"blockedHistoryTitle": "Geçmiş için saklanıyor",
 			"blockedHistoryDescription_one": "Kaldırılmış bir üyeye ait {{count}} eski atama hâlâ bu rolü gösteriyor, bu yüzden rol şimdilik silinemez. Rol bu geçmişi korur.",
 			"blockedHistoryDescription_other": "Kaldırılmış üyelere ait {{count}} eski atama hâlâ bu rolü gösteriyor, bu yüzden rol şimdilik silinemez. Rol bu geçmişi korur.",
-			"openMembers": "{{name}} Üyeler sayfasını aç"
+			"openMembers": "{{name}} Üyeler sayfasını aç",
+			"blockedRefsDescription": "Bu role kimse sahip değil, ancak başka ayarlar hâlâ onu kullanıyor. Önce rolü oradan kaldırın:",
+			"refWorkflowTransitions_one": "{{count}} iş akışı geçişi",
+			"refWorkflowTransitions_other": "{{count}} iş akışı geçişi",
+			"refAutomations_one": "{{count}} otomasyon",
+			"refAutomations_other": "{{count}} otomasyon",
+			"refIdentityMappings_one": "{{count}} kimlik grubu eşlemesi",
+			"refIdentityMappings_other": "{{count}} kimlik grubu eşlemesi"
 		}
 	},
 	"agile": {

@@ -312,4 +312,21 @@ describe("ProjectRolesView", () => {
     );
     expect(await screen.findByText("Built-in roles stay")).toBeVisible();
   });
+
+  it("names the real blocker when nobody holds the role but a workflow still uses it", async () => {
+    mocks.remove.mockRejectedValue(
+      new RoleApiError(409, "x", "role_in_use", {
+        references: { workflowTransitions: 2, automations: 1 },
+      }),
+    );
+    setup();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Delete Service desk" }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/No one holds this role/)).toBeVisible();
+    expect(within(dialog).getByText("2 workflow transitions")).toBeVisible();
+    expect(within(dialog).getByText("1 automation")).toBeVisible();
+    expect(within(dialog).queryByText(/people still hold/)).toBeNull();
+  });
 });

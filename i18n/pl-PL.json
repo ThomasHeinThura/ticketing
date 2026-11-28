@@ -7732,7 +7732,20 @@
 			"blockedHistoryDescription_few": "{{count}} dawne przypisania usuniętych członków nadal wskazują tę rolę, więc nie można jej jeszcze usunąć. Rola zachowuje tę historię.",
 			"blockedHistoryDescription_many": "{{count}} dawnych przypisań usuniętych członków nadal wskazuje tę rolę, więc nie można jej jeszcze usunąć. Rola zachowuje tę historię.",
 			"blockedHistoryDescription_other": "{{count}} dawnego przypisania usuniętych członków nadal wskazuje tę rolę, więc nie można jej jeszcze usunąć. Rola zachowuje tę historię.",
-			"openMembers": "Otwórz stronę Członkowie projektu {{name}}"
+			"openMembers": "Otwórz stronę Członkowie projektu {{name}}",
+			"blockedRefsDescription": "Nikt nie ma tej roli, ale inne ustawienia nadal jej używają. Najpierw usuń ją stamtąd:",
+			"refWorkflowTransitions_one": "{{count}} przejście przepływu pracy",
+			"refWorkflowTransitions_few": "{{count}} przejścia przepływu pracy",
+			"refWorkflowTransitions_many": "{{count}} przejść przepływu pracy",
+			"refWorkflowTransitions_other": "{{count}} przejścia przepływu pracy",
+			"refAutomations_one": "{{count}} automatyzacja",
+			"refAutomations_few": "{{count}} automatyzacje",
+			"refAutomations_many": "{{count}} automatyzacji",
+			"refAutomations_other": "{{count}} automatyzacji",
+			"refIdentityMappings_one": "{{count}} mapowanie grupy tożsamości",
+			"refIdentityMappings_few": "{{count}} mapowania grup tożsamości",
+			"refIdentityMappings_many": "{{count}} mapowań grup tożsamości",
+			"refIdentityMappings_other": "{{count}} mapowania grup tożsamości"
 		}
 	},
 	"agile": {

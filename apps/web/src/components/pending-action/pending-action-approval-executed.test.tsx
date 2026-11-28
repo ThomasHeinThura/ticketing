@@ -7,6 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpError } from "@/lib/http-error";
 import { PendingActionApproval } from "./pending-action-approval";
 
 const mocks = vi.hoisted(() => ({
@@ -701,5 +702,56 @@ describe("executed role deletion", () => {
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/dashboard/settings/workspace/roles",
     });
+  });
+});
+
+describe("role deletion refused at approval", () => {
+  beforeEach(() => {
+    mocks.action.current = {
+      id: "pa-role",
+      action: "delete",
+      targetType: "workspace_role",
+      targetIds: ["role-1"],
+      targetWorkspaceId: "workspace-1",
+      confirmation: "click",
+      approvalSupported: true,
+      state: "pending",
+      origin: "web",
+      expiresAt: "2026-10-25T00:00:00.000Z",
+      summary: { name: "Service desk" },
+    };
+    mocks.approve.mockReset();
+    mocks.invalidate.mockReset().mockResolvedValue(undefined);
+  });
+  afterEach(cleanup);
+
+  async function approveWith(error: unknown) {
+    mocks.approve.mockRejectedValue(error);
+    render(<PendingActionApproval id="pa-role" layout="page" />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "common:actions.delete" }),
+    );
+    await waitFor(() => expect(mocks.approve).toHaveBeenCalled());
+    return screen.findByRole("alert");
+  }
+
+  it("explains a role refusal in plain words instead of the stale-approval text", async () => {
+    const error = Object.assign(new HttpError(409, "refused"), {
+      code: "role_in_use",
+      body: { holderCount: 0, references: { workflowTransitions: 2 } },
+    });
+    const alert = await approveWith(error);
+    expect(alert).toHaveTextContent(
+      "roles:projectRoles.blockedRefsDescription",
+    );
+    expect(alert).toHaveTextContent(
+      "roles:projectRoles.refWorkflowTransitions",
+    );
+    expect(alert).not.toHaveTextContent("pendingActions:staleApproval");
+  });
+
+  it("keeps the generic message for other 409s", async () => {
+    const alert = await approveWith(new HttpError(409, "stale"));
+    expect(alert).toHaveTextContent("pendingActions:staleApproval");
   });
 });

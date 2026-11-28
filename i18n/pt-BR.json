@@ -7690,7 +7690,17 @@
 			"blockedHistoryDescription_one": "{{count}} atribuição anterior de um membro removido ainda aponta para este papel, então ele não pode ser excluído por enquanto. O papel guarda esse histórico.",
 			"blockedHistoryDescription_many": "{{count}} de atribuições anteriores de membros removidos ainda apontam para este papel, então ele não pode ser excluído por enquanto. O papel guarda esse histórico.",
 			"blockedHistoryDescription_other": "{{count}} atribuições anteriores de membros removidos ainda apontam para este papel, então ele não pode ser excluído por enquanto. O papel guarda esse histórico.",
-			"openMembers": "Abrir a página Membros de {{name}}"
+			"openMembers": "Abrir a página Membros de {{name}}",
+			"blockedRefsDescription": "Ninguém tem este papel, mas outras configurações ainda o usam. Remova-o delas primeiro:",
+			"refWorkflowTransitions_one": "{{count}} transição de fluxo de trabalho",
+			"refWorkflowTransitions_many": "{{count}} de transições de fluxo de trabalho",
+			"refWorkflowTransitions_other": "{{count}} transições de fluxo de trabalho",
+			"refAutomations_one": "{{count}} automação",
+			"refAutomations_many": "{{count}} de automações",
+			"refAutomations_other": "{{count}} automações",
+			"refIdentityMappings_one": "{{count}} mapeamento de grupo de identidade",
+			"refIdentityMappings_many": "{{count}} de mapeamentos de grupo de identidade",
+			"refIdentityMappings_other": "{{count}} mapeamentos de grupo de identidade"
 		}
 	},
 	"agile": {

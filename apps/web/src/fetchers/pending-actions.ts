@@ -1,6 +1,7 @@
 import { client } from "@taskdesk/libs";
 import type { InferResponseType } from "hono/client";
 import type { StepUpMethod } from "@/fetchers/god-mode/instance-users";
+import { ROLE_REFUSAL_CODES } from "@/fetchers/workspace-roles";
 import { HttpError, readErrorDetail } from "@/lib/http-error";
 
 const pendingActions = client.me["pending-actions"];
@@ -13,6 +14,19 @@ export type OwnPendingAction = InferResponseType<
   (typeof pendingActions)[":id"]["$get"],
   200
 >;
+
+/** An approval refused with a role code (`role_in_use`, ...): the body explains why. */
+export class PendingActionRefusal extends HttpError {
+  constructor(
+    status: number,
+    message: string,
+    readonly code: string,
+    readonly body: Record<string, unknown>,
+  ) {
+    super(status, message);
+    this.name = "PendingActionRefusal";
+  }
+}
 
 async function ensureOk(response: Response, message: string) {
   if (!response.ok) throw new HttpError(response.status, message);
@@ -148,6 +162,21 @@ export async function approveOwnPendingAction(input: {
         : { typedCount: input.typedCount }),
     },
   });
+  if (response.status === 400 || response.status === 409) {
+    const body: unknown = await response
+      .clone()
+      .json()
+      .catch(() => null);
+    const code =
+      body && typeof body === "object" && "error" in body ? body.error : null;
+    if (typeof code === "string" && ROLE_REFUSAL_CODES.includes(code))
+      throw new PendingActionRefusal(
+        response.status,
+        "Unable to approve this pending action",
+        code,
+        body as Record<string, unknown>,
+      );
+  }
   await ensureOk(response, "Unable to approve this pending action");
   return response.json();
 }
