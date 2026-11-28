@@ -20,6 +20,7 @@ vi.mock("../../apps/api/src/database", () => {
 });
 
 import {
+  customerPortalScope,
   featureStateSomewhere,
   invalidateFeatureFlagCache,
 } from "../../apps/api/src/feature-flag/enforce";
@@ -38,4 +39,26 @@ it("does not cache a lookup that started before a flag write", async () => {
 
   queue.next.mockResolvedValueOnce([{ enabled: false, locked: true }]);
   expect(await featureStateSomewhere("feature.customer_portal")).toBe("off");
+});
+
+it("does not cache a portal scope read that started before a flag write", async () => {
+  const releases: Array<(rows: unknown[]) => void> = [];
+  queue.next.mockImplementation(
+    () => new Promise((resolve) => releases.push(resolve)),
+  );
+  const inFlight = customerPortalScope();
+  await vi.waitFor(() => expect(releases).toHaveLength(3));
+  // A project's portal is switched off while the old scope read is pending.
+  invalidateFeatureFlagCache();
+  releases[0]?.([{ enabled: true, locked: false }]);
+  releases[1]?.([]);
+  releases[2]?.([{ id: "project-1", enabled: true }]);
+  expect((await inFlight)?.projects.get("project-1")).toBe(true);
+
+  queue.next.mockReset();
+  queue.next
+    .mockResolvedValueOnce([{ enabled: true, locked: false }])
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([{ id: "project-1", enabled: false }]);
+  expect((await customerPortalScope())?.projects.get("project-1")).toBe(false);
 });
