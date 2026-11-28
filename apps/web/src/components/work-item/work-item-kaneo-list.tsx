@@ -115,6 +115,11 @@ type ListRowProps = {
   openTaskOnLinkClick: boolean;
   onOpenItem: (key: string) => void;
   onToggleSelection: (key: string, selected: boolean) => void;
+  /**
+   * The current hour. The due-date badge reads the clock while rendering, so a parent render
+   * re-renders rows at most once an hour to move a badge across its day threshold.
+   */
+  dueClockHour: number;
 };
 
 /** Only primitives, row objects and callbacks that are stable per list: an unchanged row skips. */
@@ -342,6 +347,7 @@ export default function WorkItemKaneoList({
       <WorkItemListRow
         item={item}
         task={task}
+        dueClockHour={Math.floor(Date.now() / 3_600_000)}
         isFinal={column.isFinal}
         projectSlug={workItemProjectSlug(item)}
         displayPreferences={displayPreferences}

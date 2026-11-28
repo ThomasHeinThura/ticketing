@@ -187,4 +187,18 @@ describe("work list row render cost (G11)", () => {
     expect([...probe.renders.keys()]).toEqual(["id-2"]);
     expect(total()).toBe(1);
   });
+
+  it("re-renders rows on a parent render once the hour changes, for the due-date badge", () => {
+    const now = vi
+      .spyOn(Date, "now")
+      .mockReturnValue(Date.UTC(2026, 10, 28, 9, 10));
+    const view = list();
+    probe.renders.clear();
+    view.rerender({ hasMore: true });
+    expect(total()).toBe(0);
+    now.mockReturnValue(Date.UTC(2026, 10, 28, 10, 1));
+    view.rerender({ hasMore: false });
+    expect(total()).toBe(4);
+    now.mockRestore();
+  });
 });
