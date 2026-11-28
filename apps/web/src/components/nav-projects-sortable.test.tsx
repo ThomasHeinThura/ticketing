@@ -2,7 +2,9 @@ import { SidebarMenu } from "@taskdesk/ui";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/en-translation";
-import SortableProjectList from "./nav-projects-sortable";
+import SortableProjectList, {
+  reorderErrorMessage,
+} from "./nav-projects-sortable";
 
 vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-i18next")>()),
@@ -56,5 +58,26 @@ describe("SortableProjectList accessibility", () => {
     const liveRegion = document.body.querySelector('[role="status"]');
     expect(liveRegion).not.toBeNull();
     expect(menu?.contains(liveRegion)).toBe(false);
+  });
+});
+
+describe("reorder failure toast", () => {
+  it("falls back to the common error text, never the raw key, while the workspace namespace is missing", async () => {
+    const { createInstance } = await import("i18next");
+    const en = (await import("@i18n/en-US.json")).default;
+    const instance = createInstance();
+    await instance.init({
+      lng: "en-US",
+      resources: { "en-US": { common: en.common } },
+      defaultNS: "common",
+      interpolation: { escapeValue: false },
+    });
+    const missing = reorderErrorMessage(instance.t);
+    expect(missing).toBe(en.common.error.messages.unknown);
+    expect(missing).not.toContain("reorderError");
+    instance.addResourceBundle("en-US", "workspace", en.workspace);
+    expect(reorderErrorMessage(instance.t)).toBe(
+      en.workspace.projects.reorderError,
+    );
   });
 });

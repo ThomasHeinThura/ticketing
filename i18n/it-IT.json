@@ -4747,7 +4747,6 @@
 		}
 	},
 	"instanceUsers": {
-		"selectUser": "Apri {{name}}, {{email}}",
 		"copy": {
 			"d094be66b726": "Utenti dell'istanza",
 			"211715f3fe3d": "Cerca e gestisci gli account in questa istanza.",
