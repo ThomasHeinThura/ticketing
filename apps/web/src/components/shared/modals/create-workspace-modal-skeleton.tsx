@@ -1,7 +1,10 @@
 import {
+  Button,
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
+  DialogPanel,
   DialogTitle,
   LoadingStatus,
   Skeleton,
@@ -44,6 +47,44 @@ export default function CreateWorkspaceModalSkeleton({
             <Skeleton className="h-9 w-full" style={hidden} />
           </div>
         </LoadingStatus>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * The dialog when its strings failed to load: the error and a retry sit inside a dialog the user
+ * can dismiss (Escape, backdrop or Close), so a failed load never leaves an open state behind.
+ */
+export function CreateWorkspaceModalError({
+  onRetry,
+  onClose,
+}: {
+  onRetry: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent
+        className="max-w-md"
+        showCloseButton={false}
+        data-testid="create-workspace-modal-error"
+      >
+        <DialogHeader>
+          <DialogTitle>{t("common:modals.createWorkspace.title")}</DialogTitle>
+        </DialogHeader>
+        <DialogPanel role="alert">
+          {t("common:error.messages.unknown")}
+        </DialogPanel>
+        <DialogFooter>
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            {t("common:actions.close")}
+          </Button>
+          <Button type="button" size="sm" onClick={onRetry}>
+            {t("common:actions.retry")}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

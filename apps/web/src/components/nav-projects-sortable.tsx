@@ -21,6 +21,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motionDurationMs, motionEasing, SidebarMenuItem } from "@taskdesk/ui";
+import type { TFunction } from "i18next";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -32,6 +33,13 @@ import { toast } from "@/lib/toast";
 type ProjectRecord = NonNullable<
   Awaited<ReturnType<typeof getProjects>>
 >[number];
+
+/** The `workspace` namespace may not have loaded yet; the common string stands in, never the key. */
+export function reorderErrorMessage(t: TFunction) {
+  return t("workspace:projects.reorderError", {
+    defaultValue: t("common:error.messages.unknown"),
+  });
+}
 
 function SortableProjectItem({
   id,
@@ -124,7 +132,7 @@ export default function SortableProjectList({
 
     const reordered = arrayMove(projects, oldIndex, newIndex);
     reorderProjects(workspaceId, reordered, {
-      onError: () => toast.error(t("workspace:projects.reorderError")),
+      onError: () => toast.error(reorderErrorMessage(t)),
     });
   };
 

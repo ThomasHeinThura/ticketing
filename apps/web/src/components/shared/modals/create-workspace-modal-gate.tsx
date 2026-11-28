@@ -1,6 +1,8 @@
 import { lazy } from "react";
 import NamespaceBoundary from "@/components/common/namespace-boundary";
-import CreateWorkspaceModalSkeleton from "./create-workspace-modal-skeleton";
+import CreateWorkspaceModalSkeleton, {
+  CreateWorkspaceModalError,
+} from "./create-workspace-modal-skeleton";
 
 const loadModal = () => import("./create-workspace-modal");
 const CreateWorkspaceModal = lazy(loadModal);
@@ -20,6 +22,9 @@ export default function CreateWorkspaceModalGate({
       preload={loadModal}
       fallback={(visible) => (
         <CreateWorkspaceModalSkeleton visible={visible} onClose={onClose} />
+      )}
+      renderError={(retry) => (
+        <CreateWorkspaceModalError onRetry={retry} onClose={onClose} />
       )}
     >
       <CreateWorkspaceModal open onClose={onClose} />

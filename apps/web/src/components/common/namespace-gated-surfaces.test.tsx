@@ -295,3 +295,28 @@ describe("create form attachments across a language change", () => {
     expect(api?.rows.map((row) => row.state)).toEqual(["ready"]);
   });
 });
+
+describe("create workspace dialog load failure", () => {
+  it("offers a Close that dismisses the dialog, and Retry that recovers", async () => {
+    const { default: Gate } = await import(
+      "@/components/shared/modals/create-workspace-modal-gate"
+    );
+    const onClose = vi.fn();
+    render(<Gate onClose={onClose} />, { wrapper: Wrapper });
+    await act(async () => reject(new Error("offline")));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      en.common.error.messages.unknown,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: en.common.actions.close }),
+    );
+    expect(onClose).toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: en.common.actions.retry }),
+    );
+    await release();
+    expect(
+      await screen.findByText(en.workspace.create.ownerLabel),
+    ).toBeVisible();
+  });
+});

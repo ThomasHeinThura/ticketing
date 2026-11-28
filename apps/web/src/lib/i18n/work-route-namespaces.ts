@@ -90,7 +90,7 @@ export const DEFERRED_NAMESPACE_ALLOWLIST: Readonly<
   // the user selects work items, long after the deferred group has landed.
   "/components/agile/bulk-agile-actions.tsx": ["agile"],
   "/components/agile/bulk-agile-dialog.tsx": ["agile"],
-  // The only read is the toast after a drag-reorder request fails, which needs a user drag first.
+  // A post-action toast after a failed drag-reorder, with a `common` error string as its fallback.
   "/components/nav-projects-sortable.tsx": ["workspace"],
   // The two reads are the toasts after the user confirms inside the approval, which sits behind
   // its own namespace boundary in this module.
