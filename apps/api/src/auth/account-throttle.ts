@@ -3,6 +3,7 @@ import {
   type createAuthMiddleware,
   getSessionFromCtx,
 } from "better-auth/api";
+import { rateLimitClientAddress } from "../identity/home-realm-rate-limit";
 import { TRUSTED_CLIENT_IP_HEADER } from "../utils/resolve-client-ip";
 import {
   type AuthRateLimitCoordinator,
@@ -36,8 +37,10 @@ type Throttle = Pick<AuthRateLimitCoordinator, "consume" | "reset">;
 export const normaliseAccountKey = (value: string) =>
   value.trim().toLowerCase();
 
+// An IPv6 client owns its /64, as for step-up and API-key limiting: one host rotating addresses
+// inside it must not mint a fresh 10-attempt bucket per address.
 const perIpKey = (key: string, ip: string | null) =>
-  `${normaliseAccountKey(key)}\0${ip ?? "unknown"}`;
+  `${normaliseAccountKey(key)}\0${ip ? rateLimitClientAddress(ip) : "unknown"}`;
 
 export function createAccountThrottle(
   store: Throttle = {

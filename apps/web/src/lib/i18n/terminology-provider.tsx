@@ -5,6 +5,7 @@ import {
   type PropsWithChildren,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { I18nContext, I18nextProvider } from "react-i18next";
@@ -14,7 +15,7 @@ import {
   getWorkspaceRuntimeTerminology,
   type PublicTerminology,
 } from "@/fetchers/terminology";
-import { i18n as baseI18n, createScopedI18n } from "./index";
+import { i18n as baseI18n, createScopedI18n, releaseScopedI18n } from "./index";
 
 type Audience = "agent" | "customer";
 type PortalSelector =
@@ -126,12 +127,21 @@ export function TerminologyProvider({
       ? query.data?.terms
       : undefined;
 
+  // The overlay last installed on the active clone; a repeat install and broadcast would only
+  // re-render every consumer with identical strings.
+  const installedTerms = useRef<{
+    instance: I18nInstance;
+    terms: string;
+  } | null>(null);
+
   useEffect(() => {
     let current = true;
+    let created: I18nInstance | null = null;
     setScopedStore(null);
     void createScopedI18n(locale)
       .then(async (instance) => {
-        if (!current) return;
+        created = instance;
+        if (!current) return releaseScopedI18n(instance);
         const shippedTerms = structuredClone(
           instance.getResourceBundle(locale, "term"),
         );
@@ -140,17 +150,20 @@ export function TerminologyProvider({
           const { installAgentTerminology } = await import(
             "./agent-translation"
           );
-          if (!current) return;
+          if (!current) return releaseScopedI18n(instance);
           installAgentTerminology(instance);
         }
         void instance.changeLanguage(locale);
+        installedTerms.current = { instance, terms: "{}" };
         setScopedStore({ key: cloneKey, instance, shippedTerms });
       })
       .catch(() => {
+        if (created) releaseScopedI18n(created);
         if (current) setScopedStore(null);
       });
     return () => {
       current = false;
+      if (created) releaseScopedI18n(created);
     };
   }, [audience, cloneKey, locale]);
 
@@ -168,6 +181,11 @@ export function TerminologyProvider({
 
   useEffect(() => {
     if (!activeScopedStore || !isolatedI18n) return;
+    const terms = JSON.stringify(effectiveTerms ?? {});
+    const installed = installedTerms.current;
+    if (installed?.instance === isolatedI18n && installed.terms === terms)
+      return;
+    installedTerms.current = { instance: isolatedI18n, terms };
     installAudienceTerms(
       isolatedI18n,
       locale,

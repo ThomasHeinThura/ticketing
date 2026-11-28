@@ -166,6 +166,8 @@ const CLOCK_MARKS = new Set([
   "palette-start",
   "palette-paint",
   "board-paint",
+  "route-start",
+  "route-paint",
 ]);
 
 function safeTimelineAsset(value: string) {
@@ -875,6 +877,8 @@ async function withDiagnosticProfile(
       "palette-start",
       "palette-paint",
       "board-paint",
+      "route-start",
+      "route-paint",
     ]);
     const marks: Array<{
       name: string;
@@ -918,6 +922,8 @@ async function withDiagnosticProfile(
         ["paletteStart", "", "palette-start"],
         ["palettePaint", "paletteStart", "palette-paint"],
         ["boardPaint", "documentStart", "board-paint"],
+        ["routeStart", "", "route-start"],
+        ["routePaint", "routeStart", "route-paint"],
       ] as const) {
         const descriptor = Object.getOwnPropertyDescriptor(metrics, key);
         if (!descriptor || !("value" in descriptor))
@@ -1578,4 +1584,103 @@ test("diagnostic: source-bound command-palette open profile", async ({
     frames.length,
     "The palette interval must contain sampled app JavaScript frames.",
   ).toBeGreaterThan(0);
+});
+
+// The bench's list-to-detail click (G11 route transition), profiled the same way. Logs, for every
+// asset that finished within 5 s before the click or after it, whether it had already landed at
+// click time, so CI shows whether the side-pane chunks are still in flight when the row is opened.
+test("diagnostic: source-bound list-to-detail route transition profile", async ({
+  browser,
+}) => {
+  const capture = await withDiagnosticProfile(
+    browser,
+    "work-list to work-item route click-to-paint",
+    true,
+    async (page) => {
+      await page.goto(WORK_LIST_PATH, {
+        waitUntil: "domcontentloaded",
+        timeout: 45_000,
+      });
+      const list = page.locator("div[data-testid=work-item-list-populated]");
+      await expect(
+        list.getByRole("button", { name: "Backlog 500", exact: true }),
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(
+        list
+          .locator("[data-virtual-item-id]")
+          .first()
+          .getByTestId("work-item-inline-assignee"),
+      ).toBeVisible({ timeout: 30_000 });
+    },
+    async (page) => {
+      await page
+        .locator("div[data-testid=work-item-list-populated]")
+        .locator(`a[href="/agent/work-items/${WORK_ITEM_KEY}"]`)
+        .click();
+      await page.waitForFunction(
+        () =>
+          (window as Window & { __g11Metrics?: { routePaint: number } })
+            .__g11Metrics?.routePaint,
+        undefined,
+        { timeout: 15_000 },
+      );
+      return page.evaluate(() => {
+        const metrics = (
+          window as Window & {
+            __g11Metrics?: { routeStart: number; routePaint: number };
+          }
+        ).__g11Metrics;
+        if (!metrics || metrics.routeStart <= 0 || metrics.routePaint <= 0)
+          throw new Error("The canonical route paint boundary is incomplete.");
+        return {
+          startMark: "route-start",
+          endMark: "route-paint",
+          startPerformanceNowMs: metrics.routeStart,
+          endPerformanceNowMs: metrics.routeStart + metrics.routePaint,
+          source: "canonical routeStart and routePaint recorder fields (ms)",
+        };
+      });
+    },
+  );
+  const clickAt = capture.boundary?.startPerformanceNowMs ?? 0;
+  const paintAt = capture.boundary?.endPerformanceNowMs ?? 0;
+  console.info(
+    "G11 route diagnostic (ms after click)",
+    JSON.stringify({
+      clickToPaint: Math.round(paintAt - clickAt),
+      resources: capture.metrics.resources
+        .filter((resource) => resource.end >= clickAt - 5_000)
+        .map((resource) => ({
+          asset: resource.asset,
+          kind: resource.kind,
+          landedBeforeClick: resource.end < clickAt,
+          start: Math.round(resource.start - clickAt),
+          end: Math.round(resource.end - clickAt),
+        })),
+      longTasks: capture.metrics.longTasks
+        .filter((task) => task.start + task.duration >= clickAt)
+        .map((task) => ({
+          start: Math.round(task.start - clickAt),
+          duration: Math.round(task.duration),
+        })),
+    }),
+  );
+  const assetNames = new Set(
+    capture.traceCpuProfiles.flatMap((profile) =>
+      [...profile.nodes.values()]
+        .map((node) => node.callFrame?.url)
+        .filter(
+          (url): url is string =>
+            typeof url === "string" && url.startsWith(`${ORIGIN}/assets/`),
+        )
+        .map(safeAssetName),
+    ),
+  );
+  const build = await getBuildIdentity(assetNames);
+  await mkdir(RESULT_DIR, { recursive: true });
+  await writeFile(
+    path.join(RESULT_DIR, "route-transition-profile.json"),
+    `${JSON.stringify(createRawCaptureArtifact(capture, 1, build), null, 2)}\n`,
+    { mode: 0o600 },
+  );
 });

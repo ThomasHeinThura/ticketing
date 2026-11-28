@@ -4731,7 +4731,6 @@
 		}
 	},
 	"instanceUsers": {
-		"selectUser": "{{name}}, {{email}} openen",
 		"copy": {
 			"d094be66b726": "Instantiegebruikers",
 			"211715f3fe3d": "Zoek en beheer accounts in deze instantie.",

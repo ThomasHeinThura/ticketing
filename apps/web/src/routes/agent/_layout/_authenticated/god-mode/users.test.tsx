@@ -473,8 +473,8 @@ describe("God Mode Users action context", () => {
     expect(
       (container.firstElementChild as HTMLElement | null)?.className,
     ).toMatch(/\bw-full\b/u);
-    // The mocked Link renders an <a> without href, so query by aria-label.
-    const [link] = screen.getAllByLabelText("instanceUsers:selectUser");
+    // The mocked Link renders an <a> without href; its name comes from its content.
+    const link = container.querySelector("tbody a");
     if (!link) throw new Error("directory row link missing");
     expect(link.className).toMatch(/\bblock\b/u);
     expect(link.className).toMatch(/\bmin-w-0\b/u);

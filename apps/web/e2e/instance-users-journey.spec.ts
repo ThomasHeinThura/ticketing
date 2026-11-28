@@ -259,9 +259,7 @@ async function openInstanceUsers(page: Page) {
 }
 
 async function selectUser(page: Page, user: UserTarget) {
-  await page
-    .getByRole("link", { name: `Open ${user.name}, ${user.email}` })
-    .click();
+  await page.getByRole("link", { name: `${user.name} ${user.email}` }).click();
   await expect(page).toHaveURL(new RegExp(`[?&]user=${user.id}(?:&|$)`, "u"));
   await expect(page.getByTestId("instance-user-details")).toContainText(
     user.email,
