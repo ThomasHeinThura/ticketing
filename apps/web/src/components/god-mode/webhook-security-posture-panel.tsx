@@ -129,7 +129,7 @@ export function WebhookSecurityPosturePanel() {
         </Empty>
       ) : (
         <Frame>
-          <Table>
+          <Table scrollLabel={t("title")}>
             <TableHeader>
               <TableRow>
                 <TableHead>{t("webhook")}</TableHead>

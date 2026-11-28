@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { fillSensitive } from "../../../tests/e2e/helpers/fill-sensitive";
+import { seriousOrCriticalViolations } from "./helpers/axe";
 import { redactSecretErrorContext } from "./helpers/redact-secret-error-context";
 
 test.afterEach(({ browserName: _browserName }, testInfo) => {
@@ -274,13 +275,15 @@ test("God Mode users directory supports filters and audited account actions", as
     path: testInfo.outputPath("instance-users-directory.png"),
     fullPage: true,
   });
+  // The link's accessible name is its visible text (WCAG 2.5.3, #1279).
   const userLink = page.getByRole("link", {
-    name: "Open Taylor Staff, taylor@example.test",
+    name: "Taylor Staff taylor@example.test",
   });
   await userLink.focus();
   await userLink.press("Enter");
   await expect(page).toHaveURL(/user=staff-user-1/);
   await expect(page.getByTestId("instance-user-details")).toBeVisible();
+  expect(await seriousOrCriticalViolations(page)).toEqual([]);
   await page.screenshot({
     path: testInfo.outputPath("instance-user-details.png"),
     fullPage: true,
