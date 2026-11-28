@@ -23,7 +23,9 @@ import CommandPaletteLauncher from "./command-palette-launcher";
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
-  useParams: () => ({}),
+  useParams: (options?: {
+    select?: (params: Record<string, unknown>) => unknown;
+  }) => (options?.select ? options.select({}) : {}),
   useRouter: () => ({ preloadRoute: vi.fn().mockResolvedValue(undefined) }),
 }));
 

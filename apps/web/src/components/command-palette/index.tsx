@@ -129,7 +129,23 @@ export function CommandPalette({
   const navigate = useNavigate();
   const router = useRouter();
   const { data: workspace } = useActiveWorkspace();
-  const { data: workspaces } = useGetWorkspaces(false, open);
+  // Shares the app's always-on workspaces observer, so opening the palette does not refetch the
+  // list inside the keypress (G11 palette click-to-paint). The list is refreshed once the opened
+  // palette has painted, so a workspace granted or removed elsewhere still shows up.
+  const { data: workspaces, refetch: refetchWorkspaces } = useGetWorkspaces();
+  useEffect(() => {
+    if (!open) return;
+    // The animation frame runs before the opened palette's paint; the task queued from it runs
+    // after that paint.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(() => void refetchWorkspaces(), 0);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [open, refetchWorkspaces]);
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const activeWorkspaceId = getActiveOrganizationId(session);
   // Only an instance administrator creates a workspace (owner decision D-A, 12 Nov 2026).
@@ -146,7 +162,16 @@ export function CommandPalette({
   // Create work item acts on the project the router is showing (`/agent/projects/{key}/...`);
   // the work-item dialog has no project picker, so it is offered only inside a project. Outside
   // one, neither the project nor the permission read is enabled: the palette adds no requests.
-  const { projectKey } = useParams({ strict: false });
+  // Select the key itself: the router compares selections by identity, so the whole params object
+  // re-rendered this keep-mounted palette (and re-filtered its list) on every navigation, a
+  // search change such as `?item=` included (G11 list-to-detail paint).
+  const projectKey = useParams({
+    strict: false,
+    select: (params) =>
+      "projectKey" in params && typeof params.projectKey === "string"
+        ? params.projectKey
+        : undefined,
+  });
   const inProject = Boolean(projectKey);
   const { project: routeProject, isLoading: isRouteProjectLoading } =
     useProjectByKey(projectKey ?? "", inProject);
