@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   sessionRole: undefined as string | undefined,
   activeOrganizationId: "w1" as string | null,
   workspaces: [{ id: "w1" }, { id: "w2" }] as Array<{ id: string }>,
+  refetchWorkspaces: vi.fn(),
   activateWorkspace: vi.fn((_workspaceId: string) =>
     Promise.resolve({ id: "w2" }),
   ),
@@ -107,8 +108,14 @@ vi.mock("@/lib/auth-client", () => ({
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "w1" } }),
 }));
+vi.mock("@/lib/i18n/after-first-paint", () => ({
+  afterFirstPaint: () => Promise.resolve(),
+}));
 vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
-  default: () => ({ data: mocks.workspaces }),
+  default: () => ({
+    data: mocks.workspaces,
+    refetch: mocks.refetchWorkspaces,
+  }),
 }));
 vi.mock("@/lib/activate-workspace-for-navigation", () => ({
   activateWorkspaceForNavigation: (workspaceId: string) =>
@@ -390,6 +397,20 @@ describe("CommandPalette (#407)", () => {
       ),
     );
     expect(screen.getByText("PERF-1 性能測試項目")).toBeInTheDocument();
+  });
+
+  it("refreshes the workspace list only after the opened palette has painted", async () => {
+    mocks.refetchWorkspaces.mockClear();
+    render(
+      <KeyboardShortcutsProvider>
+        <CommandPaletteLauncher />
+      </KeyboardShortcutsProvider>,
+    );
+    expect(mocks.refetchWorkspaces).not.toHaveBeenCalled();
+    await openPalette();
+    await vi.waitFor(() =>
+      expect(mocks.refetchWorkspaces).toHaveBeenCalledTimes(1),
+    );
   });
 
   it("mounts inside the real KeyboardShortcutsProvider without hanging or OOMing", () => {

@@ -60,6 +60,7 @@ import useCanCreateWorkspace from "@/hooks/use-can-create-workspace";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { authClient } from "@/lib/auth-client";
+import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { routes } from "@/lib/routes";
 import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -130,8 +131,19 @@ export function CommandPalette({
   const router = useRouter();
   const { data: workspace } = useActiveWorkspace();
   // Shares the app's always-on workspaces observer, so opening the palette does not refetch the
-  // list inside the keypress (G11 palette click-to-paint). Freshness stays with that observer.
-  const { data: workspaces } = useGetWorkspaces();
+  // list inside the keypress (G11 palette click-to-paint). The list is refreshed once the opened
+  // palette has painted, so a workspace granted or removed elsewhere still shows up.
+  const { data: workspaces, refetch: refetchWorkspaces } = useGetWorkspaces();
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void afterFirstPaint().then(() => {
+      if (!cancelled) void refetchWorkspaces();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, refetchWorkspaces]);
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const activeWorkspaceId = getActiveOrganizationId(session);
   // Only an instance administrator creates a workspace (owner decision D-A, 12 Nov 2026).
