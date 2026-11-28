@@ -20,11 +20,8 @@ import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 // that source rather than assumed.
 function useActiveWorkspace() {
   const { data: session, error } = authClient.useSession();
-  const {
-    data: workspaces,
-    isLoading: isWorkspacesLoading,
-    error: workspacesError,
-  } = useGetWorkspaces();
+  const workspaceQuery = useGetWorkspaces();
+  const workspaces = workspaceQuery.data;
   // Select the id itself: the router compares selections by identity, so a fresh object here
   // re-rendered every caller (each list row's permission check) on any navigation, a search
   // change included (G11 list-to-detail paint).
@@ -42,6 +39,11 @@ function useActiveWorkspace() {
     ? workspaces?.find((ws) => ws.id === targetId)
     : undefined;
 
+  // Read the list's loading and error state only while the workspace is unresolved: once it is
+  // found, a failed background refresh keeps the cached workspace and must not re-render every
+  // list row through this hook (G11).
+  const workspacesError = workspace ? null : workspaceQuery.error;
+  const isWorkspacesLoading = workspace ? false : workspaceQuery.isLoading;
   const combinedError = workspacesError ?? error ?? null;
   const isLoading =
     isWorkspacesLoading || (!!targetId && !workspace && !combinedError);

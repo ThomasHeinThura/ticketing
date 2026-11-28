@@ -108,9 +108,6 @@ vi.mock("@/lib/auth-client", () => ({
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "w1" } }),
 }));
-vi.mock("@/lib/i18n/after-first-paint", () => ({
-  afterFirstPaint: () => Promise.resolve(),
-}));
 vi.mock("@/hooks/queries/workspace/use-get-workspaces", () => ({
   default: () => ({
     data: mocks.workspaces,

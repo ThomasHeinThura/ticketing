@@ -60,7 +60,6 @@ import useCanCreateWorkspace from "@/hooks/use-can-create-workspace";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { authClient } from "@/lib/auth-client";
-import { afterFirstPaint } from "@/lib/i18n/after-first-paint";
 import { routes } from "@/lib/routes";
 import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -136,12 +135,15 @@ export function CommandPalette({
   const { data: workspaces, refetch: refetchWorkspaces } = useGetWorkspaces();
   useEffect(() => {
     if (!open) return;
-    let cancelled = false;
-    void afterFirstPaint().then(() => {
-      if (!cancelled) void refetchWorkspaces();
+    // The animation frame runs before the opened palette's paint; the task queued from it runs
+    // after that paint.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(() => void refetchWorkspaces(), 0);
     });
     return () => {
-      cancelled = true;
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
     };
   }, [open, refetchWorkspaces]);
   const { data: session, isPending: sessionPending } = authClient.useSession();
