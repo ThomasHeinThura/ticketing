@@ -279,6 +279,43 @@ describe("terminology resource overlays", () => {
     cloneSpy.mockRestore();
   });
 
+  it("releases its clone when the provider changes scope or unmounts", async () => {
+    terminologyMocks.workspace.mockResolvedValue({ terms: {} });
+    const originalCreate = i18nModule.createScopedI18n;
+    const created: unknown[] = [];
+    const cloneSpy = vi
+      .spyOn(i18nModule, "createScopedI18n")
+      .mockImplementation(async (locale, namespaces) => {
+        const instance = await originalCreate(locale, namespaces);
+        created.push(instance);
+        return instance;
+      });
+    const releaseSpy = vi.spyOn(i18nModule, "releaseScopedI18n");
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const tree = (workspaceId: string) => (
+      <QueryClientProvider client={queryClient}>
+        <TerminologyProvider
+          audience="agent"
+          locale="en-US"
+          workspaceId={workspaceId}
+        >
+          <AgentProviderProbe />
+        </TerminologyProvider>
+      </QueryClientProvider>
+    );
+    const { rerender, unmount } = render(tree("workspace-a"));
+    await waitFor(() => expect(created).toHaveLength(1));
+    rerender(tree("workspace-b"));
+    expect(releaseSpy).toHaveBeenCalledWith(created[0]);
+    await waitFor(() => expect(created).toHaveLength(2));
+    unmount();
+    expect(releaseSpy).toHaveBeenCalledWith(created[1]);
+    cloneSpy.mockRestore();
+    releaseSpy.mockRestore();
+  });
+
   it("keeps inherited instance terms visible while nested workspace clones load or change", async () => {
     terminologyMocks.workspace
       .mockReset()

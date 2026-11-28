@@ -158,6 +158,7 @@ export function TerminologyProvider({
         setScopedStore({ key: cloneKey, instance, shippedTerms });
       })
       .catch(() => {
+        if (created) releaseScopedI18n(created);
         if (current) setScopedStore(null);
       });
     return () => {
