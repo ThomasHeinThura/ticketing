@@ -148,7 +148,16 @@ export function CommandPalette({
   // Create work item acts on the project the router is showing (`/agent/projects/{key}/...`);
   // the work-item dialog has no project picker, so it is offered only inside a project. Outside
   // one, neither the project nor the permission read is enabled: the palette adds no requests.
-  const { projectKey } = useParams({ strict: false });
+  // Select the key itself: the router compares selections by identity, so the whole params object
+  // re-rendered this keep-mounted palette (and re-filtered its list) on every navigation, a
+  // search change such as `?item=` included (G11 list-to-detail paint).
+  const projectKey = useParams({
+    strict: false,
+    select: (params) =>
+      "projectKey" in params && typeof params.projectKey === "string"
+        ? params.projectKey
+        : undefined,
+  });
   const inProject = Boolean(projectKey);
   const { project: routeProject, isLoading: isRouteProjectLoading } =
     useProjectByKey(projectKey ?? "", inProject);

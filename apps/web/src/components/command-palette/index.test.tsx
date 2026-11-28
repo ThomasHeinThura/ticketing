@@ -70,7 +70,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
   // The URL is deliberately not readable here: the project must come from the route match.
-  useParams: () => mocks.params,
+  useParams: (options?: {
+    select?: (params: Record<string, unknown>) => unknown;
+  }) => (options?.select ? options.select(mocks.params) : mocks.params),
   useRouter: () => ({ preloadRoute: mocks.preloadRoute }),
 }));
 
