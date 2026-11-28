@@ -17,7 +17,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
-  useParams: () => mocks.params,
+  useParams: (options?: {
+    select?: (params: Record<string, unknown>) => unknown;
+  }) => (options?.select ? options.select(mocks.params) : mocks.params),
   useRouter: () => ({ preloadRoute: vi.fn().mockResolvedValue(undefined) }),
 }));
 vi.mock("react-i18next", () => ({

@@ -4731,7 +4731,6 @@
 		}
 	},
 	"instanceUsers": {
-		"selectUser": "Öffnen Sie {{name}}, {{email}}",
 		"copy": {
 			"d094be66b726": "Instanzbenutzer",
 			"211715f3fe3d": "Suchen und verwalten Sie Konten in dieser Instanz.",

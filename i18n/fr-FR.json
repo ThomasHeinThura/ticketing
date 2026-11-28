@@ -4747,7 +4747,6 @@
 		}
 	},
 	"instanceUsers": {
-		"selectUser": "Ouvrez {{name}}, {{email}}",
 		"copy": {
 			"d094be66b726": "Utilisateurs de l'instance",
 			"211715f3fe3d": "Recherchez et gérez les comptes dans cette instance.",

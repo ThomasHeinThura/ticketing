@@ -8,9 +8,9 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import packageJson from "../../package.json";
 import {
-  BOUNDARY_ONLY_NAMESPACES,
   WORK_ROUTE_BOUNDARY_FREE_MODULES,
   WORK_ROUTE_GATED_SURFACES,
+  WORK_ROUTE_NON_WORK_SCREENS,
   WORK_ROUTE_RENDER_ROOTS,
 } from "./src/lib/i18n/work-route-namespaces";
 import {
@@ -244,17 +244,17 @@ function preloadWorkRouteForDirectVisits(): Plugin {
                 .join("\n"),
           );
         // Every render dependency of the work route and shell, following dynamic imports, may read
-        // the split-out namespaces only behind the shared namespace boundary.
+        // a deferred namespace only behind the shared namespace boundary.
         const ungatedReads = findUngatedDeferredReads({
           srcDir: path.resolve(__dirname, "src"),
           roots: WORK_ROUTE_RENDER_ROOTS,
           gated: WORK_ROUTE_GATED_SURFACES,
           known: catalogNamespaces,
-          only: BOUNDARY_ONLY_NAMESPACES,
+          skip: WORK_ROUTE_NON_WORK_SCREENS,
         });
         if (ungatedReads.length > 0)
           throw new Error(
-            "These modules render on the work route or shell outside a namespace boundary but read a split-out namespace:\n" +
+            "These modules render on the work route or shell outside a namespace boundary but read a deferred namespace:\n" +
               ungatedReads
                 .map(
                   ({ file, namespace }) =>

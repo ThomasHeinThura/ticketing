@@ -4716,7 +4716,6 @@
 		}
 	},
 	"instanceUsers": {
-		"selectUser": "Buka {{name}}, {{email}}",
 		"copy": {
 			"d094be66b726": "Pengguna instans",
 			"211715f3fe3d": "Cari dan kelola akun di instans ini.",

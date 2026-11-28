@@ -4716,7 +4716,6 @@
 		}
 	},
 	"instanceUsers": {
-		"selectUser": "{{name}}, {{email}} kullanıcısını aç",
 		"copy": {
 			"d094be66b726": "Người dùng trong phiên bản",
 			"211715f3fe3d": "Tìm kiếm và quản lý tài khoản trong phiên bản này.",
