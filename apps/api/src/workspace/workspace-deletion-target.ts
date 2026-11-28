@@ -7,11 +7,13 @@ import {
   registeredDeletionFingerprint,
 } from "../pending-action/click-deletion-executor";
 import { reportPendingActionAuditFailures } from "../pending-action/lifecycle-invalidation";
+import type { PendingActionTransaction } from "../pending-action/service";
 import {
   captureWorkspaceDeletionAccess,
   invalidateWorkspaceDeletionAccessLosses,
 } from "../pending-action/workspace-access-invalidation";
 import { storedCapabilities } from "../permissions/workspace-role-authority.repository";
+import { isRosterRoleKey } from "../project/members/roster.repository";
 import {
   assertWorkspaceNotUnderLegalHold,
   WorkspaceUnderLegalHoldError,
@@ -25,22 +27,30 @@ import {
   WorkspaceInUseByIdentityConnectionError,
 } from "./controllers/delete-workspace-role-dependents";
 import {
+  ProjectRoleInUseError,
+  ProjectRoleRevokedGrantsError,
   RoleAssignedToMembersError,
   RoleInUseError,
   RoleNameReservedError,
   SystemRoleNotDeletableError,
 } from "./controllers/workspace-role-errors";
 import {
+  countRevokedGrants,
   countRoleReferences,
   deleteLegacyWorkspaceRoleRow,
   deleteRoleRow,
+  findRoleAnchor,
+  listProjectRoleHolds,
+  listProjectsForRefusal,
   lockRoleRow,
+  summariseProjectRoleHolds,
 } from "./role.repository";
 import {
   appendRoleAudit,
   assertActiveRoleManagerRemains,
   LastRoleManagerError,
 } from "./role-governance";
+import { roleErrorToHttp } from "./role-http";
 import { lockWorkspaceRoleAssignment } from "./workspace-role-assignment.repository";
 
 export const WORKSPACE_DELETION_ROUTE =
@@ -155,6 +165,35 @@ export const workspaceDeletionTarget: RegisteredDeletionTarget = {
 };
 
 /**
+ * Project-role refusals, run at request time and again at execution under the role row lock:
+ * built-ins never; any active holder (membership or non-revoked grant) is a coded 409 with the
+ * counts and projects; revoked grants and any other reference refuse too, because the FKs are
+ * RESTRICT and erasing history is a human decision. Workspace-only manager logic does not apply.
+ */
+async function assertProjectRoleDeletable(
+  tx: PendingActionTransaction,
+  loaded: { id: string; workspaceId: string },
+  row: { key: string; isSystem: boolean },
+): Promise<void> {
+  if (row.isSystem || isRosterRoleKey(row.key))
+    roleErrorToHttp(new SystemRoleNotDeletableError(row.key));
+  const holds = await listProjectRoleHolds(tx, loaded.workspaceId, loaded.id);
+  const { holderCount, projectCount } = summariseProjectRoleHolds(holds);
+  if (holderCount > 0) {
+    const projectIds = [...new Set(holds.map((hold) => hold.projectId))];
+    const projects = await listProjectsForRefusal(tx, projectIds, 20);
+    roleErrorToHttp(
+      new ProjectRoleInUseError(holderCount, projectCount, projects),
+    );
+  }
+  const revoked = await countRevokedGrants(tx, loaded.id);
+  if (revoked > 0) roleErrorToHttp(new ProjectRoleRevokedGrantsError(revoked));
+  const references = await countRoleReferences(tx, loaded.id);
+  if (Object.values(references).some((value) => value > 0))
+    roleErrorToHttp(new RoleInUseError(references));
+}
+
+/**
  * `DELETE /api/workspace/{workspaceId}/roles/{roleId}`: click-confirmed. Same refusals as
  * `controllers/delete-workspace-role.ts` (reserved `owner`, role still assigned), checked at
  * request time and again under the membership→role lock at execution.
@@ -167,20 +206,16 @@ export const workspaceRoleDeletionTarget: RegisteredDeletionTarget = {
   notFound: "Role not found",
   load: async (tx, id) => {
     // Canonical `role` rows (owner decision, 23 Oct). A legacy `workspace_role` id still
-    // resolves: migration 0145 keeps the id of every migrated row.
-    const [anchor] = await tx
-      .select({ workspaceId: schema.roleTable.workspaceId })
-      .from(schema.roleTable)
-      .where(
-        and(
-          eq(schema.roleTable.id, id),
-          eq(schema.roleTable.scope, "workspace"),
-        ),
-      )
-      .limit(1);
-    if (!anchor?.workspaceId) return undefined;
-    await lockWorkspaceRoleAssignment(tx, anchor.workspaceId);
-    const role = await lockRoleRow(tx, anchor.workspaceId, id);
+    // resolves: migration 0145 keeps the id of every migrated row. Project-scope roles ride the
+    // same target (RL-8 click approval); they are told apart by the scope read here.
+    const anchor = await findRoleAnchor(tx, id);
+    if (!anchor) return undefined;
+    const { scope } = anchor;
+    // The membership/role advisory pair guards `workspace_member.role` references only; a
+    // project role is guarded by its own row lock, taken below.
+    if (scope === "workspace")
+      await lockWorkspaceRoleAssignment(tx, anchor.workspaceId);
+    const role = await lockRoleRow(tx, anchor.workspaceId, id, scope);
     if (!role) return undefined;
     return {
       id: role.id,
@@ -197,19 +232,8 @@ export const workspaceRoleDeletionTarget: RegisteredDeletionTarget = {
     tx,
     id,
   ): Promise<RegisteredDeletionReadScope | undefined> => {
-    const [role] = await tx
-      .select({
-        id: schema.roleTable.id,
-        workspaceId: schema.roleTable.workspaceId,
-      })
-      .from(schema.roleTable)
-      .where(
-        and(
-          eq(schema.roleTable.id, id),
-          eq(schema.roleTable.scope, "workspace"),
-        ),
-      )
-      .limit(1);
+    const anchor = await findRoleAnchor(tx, id);
+    const role = anchor ? { id, workspaceId: anchor.workspaceId } : undefined;
     return role?.workspaceId
       ? {
           id: role.id,
@@ -225,6 +249,13 @@ export const workspaceRoleDeletionTarget: RegisteredDeletionTarget = {
       throw new HTTPException(400, {
         message: new RoleNameReservedError().message,
       });
+    const projectRole = await lockRoleRow(
+      tx,
+      loaded.workspaceId,
+      loaded.id,
+      "project",
+    );
+    if (projectRole) return assertProjectRoleDeletable(tx, loaded, projectRole);
     const row = await lockRoleRow(tx, loaded.workspaceId, loaded.id);
     if (!row) throw new HTTPException(404, { message: "Role not found" });
     // Built-in roles are never deleted.
@@ -265,6 +296,38 @@ export const workspaceRoleDeletionTarget: RegisteredDeletionTarget = {
     }
   },
   execute: async (tx, { loaded, identity }) => {
+    const projectRole = await lockRoleRow(
+      tx,
+      loaded.workspaceId,
+      loaded.id,
+      "project",
+    );
+    if (projectRole) {
+      // Re-check under the row lock: a roster change that committed since the request wins.
+      await assertProjectRoleDeletable(tx, loaded, projectRole);
+      if (!(await deleteRoleRow(tx, loaded.workspaceId, loaded.id, "project")))
+        throw new HTTPException(409, {
+          message: "pending_action_target_changed",
+        });
+      // Never the legacy `workspace_role` row or any workspace-scope row, even if keys match.
+      await appendRoleAudit(tx, {
+        action: "role.deleted",
+        workspaceId: loaded.workspaceId,
+        roleId: loaded.id,
+        roleName: projectRole.key,
+        actor: { userId: identity.userId, actorType: "person" },
+        before: storedCapabilities(projectRole.capabilities),
+        after: null,
+        holderCount: 0,
+        scope: "project",
+        name: { before: projectRole.name, after: null },
+        description: { before: projectRole.description, after: null },
+      });
+      return {
+        afterCommit: () =>
+          invalidateNativeAuthorization({ workspaceId: loaded.workspaceId }),
+      };
+    }
     const existing = await lockRoleRow(tx, loaded.workspaceId, loaded.id);
     if (!existing)
       throw new HTTPException(409, {

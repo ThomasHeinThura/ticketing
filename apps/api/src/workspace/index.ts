@@ -82,6 +82,7 @@ import {
   invitedWorkspaceMemberSchema,
   leftWorkspaceSchema,
   removedWorkspaceMemberSchema,
+  roleRefusalSchema,
   transferredWorkspaceOwnershipSchema,
   workspaceDetailSchema,
   workspaceInvitationCopiedLinkSchema,
@@ -102,7 +103,9 @@ import { assertMayAssignRole } from "./role-assignment-guard";
 import type { RoleAuditActor } from "./role-governance";
 import { roleErrorToHttp } from "./role-http";
 import {
+  assertProjectRoleDetailsOnly,
   createRole,
+  findProjectRole,
   getRole,
   getRoleHistory,
   getRoleHolders,
@@ -110,6 +113,7 @@ import {
   previewCapabilitySet,
   reassignRoleHolders,
   resolveRoleCaller,
+  updateProjectRoleDetails,
   updateRole,
 } from "./role-service";
 import {
@@ -742,6 +746,15 @@ const copyWorkspaceInvitationLinkRoute = createRoute({
 // DELETE is a click-level pending action (RL-8; see `elevated-enforcement.ts`). Capabilities live
 // in the canonical `role` row; `workspace_member.role` holds the role key.
 
+/** A role refusal is coded JSON or a plain message, depending on which guard refused. */
+const roleRefusalResponse = (description: string) => ({
+  description,
+  content: {
+    "text/plain": { schema: z.string() },
+    "application/json": { schema: roleRefusalSchema },
+  },
+});
+
 const listWorkspaceRolesRoute = createRoute({
   method: "get",
   operationId: "listWorkspaceRoles",
@@ -749,7 +762,7 @@ const listWorkspaceRolesRoute = createRoute({
   tags: ["Workspaces"],
   summary: "List a workspace's roles",
   description:
-    "List every workspace-scope role (the six built-ins and the custom ones) with capabilities, rank and holder count. Capabilities live in the canonical role row; `permission` is a deprecated derived view. Never ordering-guaranteed beyond rank descending.",
+    "List every workspace-scope role (the six built-ins and the custom ones) with capabilities, rank and holder count. Capabilities live in the canonical role row; `permission` is a deprecated derived view. Never ordering-guaranteed beyond rank descending. `?scope=project` lists this workspace's project-scope roles instead, with holder and project counts taken from project memberships.",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -758,7 +771,10 @@ const listWorkspaceRolesRoute = createRoute({
     requireWorkspacePermission({ ac: ["read"] }),
     requireWorkspaceRoleAuthority({ ac: ["read"] }),
   ] as const,
-  request: { params: workspaceIdParam },
+  request: {
+    params: workspaceIdParam,
+    query: z.object({ scope: z.enum(["workspace", "project"]).optional() }),
+  },
   responses: {
     200: jsonResponse("The workspace's roles", workspaceRoleListSchema),
     400: errorResponse("Workspace ID could not be determined"),
@@ -961,7 +977,7 @@ const updateWorkspaceRoleRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Update a workspace role's permissions",
   description:
-    "Elevated: spends a one-use PA-15 step-up proof (`workspace_role_update`) sent in `X-TaskDesk-Step-Up-Token`. Replace -- never merge -- a role's capability set, and/or rename it, re-describe it or change its rank. RL-3, RL-4, RL-7 and RL-14 apply; a stale `expectedVersion` is a 409 carrying the current role; removing capabilities from your own role needs `confirmSelfEdit`. Built-in roles are cloned, not edited. `?dryRun=true` validates the same draft and CAS without spending proof or writing, and returns affected active holders and their current canonical-reach projects/work items.",
+    "Elevated: spends a one-use PA-15 step-up proof (`workspace_role_update`) sent in `X-TaskDesk-Step-Up-Token`. Replace -- never merge -- a role's capability set, and/or rename it, re-describe it or change its rank. RL-3, RL-4, RL-7 and RL-14 apply; a stale `expectedVersion` is a 409 carrying the current role; removing capabilities from your own role needs `confirmSelfEdit`. Built-in roles are cloned, not edited. `?dryRun=true` validates the same draft and CAS without spending proof or writing, and returns affected active holders and their current canonical-reach projects/work items. A project-scope role (id from `GET ...?scope=project`) takes the same step-up operation but only a new `name` and `description`: `capabilities`, `rank` and `permission` are a 400 `project_role_details_only`, built-in project roles are a 403 `role_not_editable`, a name already used by another project role is a 409, and the role key never changes.",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -992,14 +1008,16 @@ const updateWorkspaceRoleRoute = createRoute({
         }),
       ]),
     ),
-    400: errorResponse("Invalid body, or an unknown permission resource"),
+    400: roleRefusalResponse(
+      "Invalid body, an unknown permission resource, or (project role) project_role_details_only",
+    ),
     401: errorResponse("No credential at all"),
-    403: errorResponse(
-      "An API key or impersonation session (session_required), no workspace access, missing ac:update permission, granting a permission the caller does not themselves hold, or the step-up proof is missing (step_up_required) or unusable (step_up_unavailable)",
+    403: roleRefusalResponse(
+      "An API key or impersonation session (session_required), no workspace access, missing ac:update permission, granting a permission the caller does not themselves hold, the step-up proof is missing (step_up_required) or unusable (step_up_unavailable), or a built-in or higher-ranked role (role_not_editable, rank_guard)",
     ),
     404: errorResponse("The role does not exist"),
-    409: errorResponse(
-      "RL-7: the save would leave no active person able to manage roles",
+    409: roleRefusalResponse(
+      "RL-7: the save would leave no active person able to manage roles; a stale version (role_changed, carries `current`); or a project role name already in use",
     ),
   },
 });
@@ -1011,7 +1029,7 @@ const deleteWorkspaceRoleRoute = createRoute({
   tags: ["Workspaces"],
   summary: "Delete a workspace role",
   description:
-    "Request deletion of a custom role (202 pending action, executed on the requester's click approval). Refused for 'owner' and for a role still assigned to any member, at request and again at approval. Identified by the role's opaque id, not its name. Native replacement for authClient.organization.deleteRole().",
+    "Request deletion of a custom role (202 pending action, executed on the requester's click approval). Refused for 'owner' and for a role still assigned to any member, at request and again at approval. Identified by the role's opaque id, not its name. Native replacement for authClient.organization.deleteRole(). A project-scope role is refused with a 409 `role_in_use` (holder, project counts and the projects) while anyone holds it, a 409 `role_has_revoked_grants` while revoked grants reference it, and a 400 `role_not_deletable` for a built-in project role.",
   middleware: [
     requireSessionOnly(),
     workspaceAccess.fromParam("workspaceId"),
@@ -1025,15 +1043,17 @@ const deleteWorkspaceRoleRoute = createRoute({
       "Pending deletion; role unchanged",
       registeredDeletionRequestSchema,
     ),
-    400: errorResponse(
-      "The role is 'owner', or is still assigned to one or more members",
+    400: roleRefusalResponse(
+      "The role is 'owner', or is still assigned to one or more members; a built-in project role is role_not_deletable",
     ),
     401: errorResponse("No credential at all"),
     403: errorResponse(
       "An API key or impersonation session (session_required), no workspace access, or missing ac:delete permission",
     ),
     404: errorResponse("The role does not exist"),
-    409: errorResponse("An equivalent deletion is already pending"),
+    409: roleRefusalResponse(
+      "An equivalent deletion is already pending, or a project role is still held (role_in_use with holderCount, projectCount, projects) or has revoked grants (role_has_revoked_grants)",
+    ),
   },
 });
 
@@ -1403,7 +1423,10 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     return c.json(copied, 200);
   })
   .openapi(listWorkspaceRolesRoute, async (c) =>
-    c.json(await listRoles(c.get("workspaceId")), 200),
+    c.json(
+      await listRoles(c.get("workspaceId"), c.req.valid("query").scope),
+      200,
+    ),
   )
   .openapi(getWorkspaceRoleRoute, async (c) => {
     try {
@@ -1486,6 +1509,46 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     const body = c.req.valid("json");
     try {
       const roleId = c.req.valid("param").roleId;
+      if (await findProjectRole(c.get("workspaceId"), roleId)) {
+        assertProjectRoleDetailsOnly(body);
+        const details = {
+          workspaceId: c.get("workspaceId"),
+          roleId,
+          name: body.name,
+          description: body.description,
+          expectedVersion: body.expectedVersion,
+        };
+        const caller = await resolveRoleCaller(
+          c.get("workspaceId"),
+          c.get("userId"),
+          roleAuditActor(c),
+        );
+        if (c.req.valid("query").dryRun === "true") {
+          const preview = await updateProjectRoleDetails({
+            ...details,
+            caller,
+            dryRun: true,
+          });
+          if (!("affected" in preview))
+            throw new Error("Role preview returned a role mutation result");
+          return c.json(preview, 200);
+        }
+        // `workspace_role_update` covers project scope: the proof binds this role and exactly
+        // these details, the same as for a workspace role.
+        const renamed = await runWithStepUp(
+          c,
+          { operation: "workspace_role_update", ...details },
+          async (spend) =>
+            updateProjectRoleDetails({
+              ...details,
+              caller,
+              beforeWrite: spend,
+            }),
+        );
+        if ("affected" in renamed)
+          throw new Error("Role update returned a preview");
+        return c.json(renamed, 200);
+      }
       if (c.req.valid("query").dryRun === "true") {
         const preview = await updateRole({
           workspaceId: c.get("workspaceId"),
