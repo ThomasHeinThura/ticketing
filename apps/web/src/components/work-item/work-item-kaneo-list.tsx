@@ -12,7 +12,9 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
@@ -241,18 +243,29 @@ export default function WorkItemKaneoList({
     })),
   );
 
-  const { onOpenItem, onSelectionChange } = props;
-  // Stable across renders so memoised rows skip when only the URL or an unrelated prop changes.
-  const openItem = useCallback(
-    (key: string) =>
-      onOpenItem
-        ? onOpenItem(key)
-        : void navigate({ href: routes.workItemDetail.build({ key }) }),
-    [onOpenItem, navigate],
-  );
+  // The latest handlers behind identity-stable callbacks, so memoised rows skip even when a caller
+  // (cycle and module lists) passes a fresh handler on every render.
+  const handlers = useRef({
+    onOpenItem: props.onOpenItem,
+    onSelectionChange: props.onSelectionChange,
+    navigate,
+  });
+  useLayoutEffect(() => {
+    handlers.current = {
+      onOpenItem: props.onOpenItem,
+      onSelectionChange: props.onSelectionChange,
+      navigate,
+    };
+  });
+  const openItem = useCallback((key: string) => {
+    const { onOpenItem, navigate: go } = handlers.current;
+    if (onOpenItem) onOpenItem(key);
+    else void go({ href: routes.workItemDetail.build({ key }) });
+  }, []);
   const toggleSelection = useCallback(
-    (key: string, selected: boolean) => onSelectionChange?.(key, selected),
-    [onSelectionChange],
+    (key: string, selected: boolean) =>
+      handlers.current.onSelectionChange?.(key, selected),
+    [],
   );
 
   // Preserve the table's field-level partial/error/empty semantics. A row whose

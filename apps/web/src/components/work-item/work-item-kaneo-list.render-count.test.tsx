@@ -214,4 +214,11 @@ describe("work list row render cost (G11)", () => {
     view.rerender({ workItems: [inserted, ...items] });
     expect([...probe.renders.keys()]).toEqual(["id-0"]);
   });
+
+  it("re-renders no row when the caller passes fresh handlers each render", () => {
+    const view = list();
+    probe.renders.clear();
+    view.rerender({ onOpenItem: vi.fn(), onSelectionChange: vi.fn() });
+    expect(total()).toBe(0);
+  });
 });
