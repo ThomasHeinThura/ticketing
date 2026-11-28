@@ -129,7 +129,9 @@ export function CommandPalette({
   const navigate = useNavigate();
   const router = useRouter();
   const { data: workspace } = useActiveWorkspace();
-  const { data: workspaces } = useGetWorkspaces(false, open);
+  // Shares the app's always-on workspaces observer, so opening the palette does not refetch the
+  // list inside the keypress (G11 palette click-to-paint). Freshness stays with that observer.
+  const { data: workspaces } = useGetWorkspaces();
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const activeWorkspaceId = getActiveOrganizationId(session);
   // Only an instance administrator creates a workspace (owner decision D-A, 12 Nov 2026).
