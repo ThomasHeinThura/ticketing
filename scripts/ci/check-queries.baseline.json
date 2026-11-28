@@ -3167,13 +3167,13 @@
 	"apps/api/src/workspace/role-service.ts :: raw SQL fragment construction is outside an allowed repository or explicit persistence-infrastructure file": 1,
 	"apps/api/src/workspace/role.repository.ts :: exported repository value shape is unresolved or exceeds safe inspection limits; query-builder escape cannot be excluded; exports: listRoleHistory [unknown-type; export:listRoleHistory → call-return[0] → type-argument[0] → type-argument[0] → member:before]": 1,
 	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation delete is outside an allowed repository or explicit persistence-infrastructure file": 1,
-	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation eq is outside an allowed repository or explicit persistence-infrastructure file": 10,
+	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation eq is outside an allowed repository or explicit persistence-infrastructure file": 6,
 	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation for is outside an allowed repository or explicit persistence-infrastructure file": 1,
-	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation from is outside an allowed repository or explicit persistence-infrastructure file": 5,
-	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation limit is outside an allowed repository or explicit persistence-infrastructure file": 4,
+	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation from is outside an allowed repository or explicit persistence-infrastructure file": 3,
+	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation limit is outside an allowed repository or explicit persistence-infrastructure file": 2,
 	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation returning is outside an allowed repository or explicit persistence-infrastructure file": 1,
-	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation select is outside an allowed repository or explicit persistence-infrastructure file": 5,
+	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation select is outside an allowed repository or explicit persistence-infrastructure file": 3,
 	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation set is outside an allowed repository or explicit persistence-infrastructure file": 1,
 	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation update is outside an allowed repository or explicit persistence-infrastructure file": 1,
-	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation where is outside an allowed repository or explicit persistence-infrastructure file": 7
+	"apps/api/src/workspace/workspace-deletion-target.ts :: database operation where is outside an allowed repository or explicit persistence-infrastructure file": 5
 }

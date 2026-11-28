@@ -96,7 +96,7 @@ export type ResolvedFeatureValue = { key: FeatureKey; enabled: boolean };
 
 /**
  * The effective on/off value of every flag for a workspace, open to any workspace reader. This is
- * what navigation reads; the list above needs `workspace:manage_settings`.
+ * what navigation reads; the list above needs the manage-settings capability.
  */
 export async function getWorkspaceResolvedFeatures(workspaceId: string) {
   const response = await apiFetch(

@@ -229,6 +229,93 @@ describe("terminology resource overlays", () => {
     unmount();
   });
 
+  it("broadcasts the language once when the workspace has no overlay, and again when one arrives", async () => {
+    terminologyMocks.workspace
+      .mockResolvedValueOnce({ terms: {} })
+      .mockResolvedValueOnce({ terms: { workItem: { one: "Ticket" } } });
+    const originalCreate = i18nModule.createScopedI18n;
+    const changes: string[] = [];
+    const cloneSpy = vi
+      .spyOn(i18nModule, "createScopedI18n")
+      .mockImplementation(async (locale, namespaces) => {
+        const instance = await originalCreate(locale, namespaces);
+        const change = instance.changeLanguage.bind(instance);
+        instance.changeLanguage = (lng, callback) => {
+          changes.push(String(lng));
+          return change(lng, callback);
+        };
+        return instance;
+      });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { unmount } = render(
+      <QueryClientProvider client={queryClient}>
+        <TerminologyProvider
+          audience="agent"
+          locale="en-US"
+          workspaceId="workspace-a"
+        >
+          <AgentProviderProbe />
+        </TerminologyProvider>
+      </QueryClientProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("agent-noun")).toHaveTextContent("HELP-1"),
+    );
+    await waitFor(() => expect(terminologyMocks.workspace).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(changes).toEqual(["en-US"]);
+
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["terminology-runtime"],
+      });
+    });
+    await waitFor(() => expect(changes).toEqual(["en-US", "en-US"]));
+    unmount();
+    cloneSpy.mockRestore();
+  });
+
+  it("releases its clone when the provider changes scope or unmounts", async () => {
+    terminologyMocks.workspace.mockResolvedValue({ terms: {} });
+    const originalCreate = i18nModule.createScopedI18n;
+    const created: unknown[] = [];
+    const cloneSpy = vi
+      .spyOn(i18nModule, "createScopedI18n")
+      .mockImplementation(async (locale, namespaces) => {
+        const instance = await originalCreate(locale, namespaces);
+        created.push(instance);
+        return instance;
+      });
+    const releaseSpy = vi.spyOn(i18nModule, "releaseScopedI18n");
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const tree = (workspaceId: string) => (
+      <QueryClientProvider client={queryClient}>
+        <TerminologyProvider
+          audience="agent"
+          locale="en-US"
+          workspaceId={workspaceId}
+        >
+          <AgentProviderProbe />
+        </TerminologyProvider>
+      </QueryClientProvider>
+    );
+    const { rerender, unmount } = render(tree("workspace-a"));
+    await waitFor(() => expect(created).toHaveLength(1));
+    rerender(tree("workspace-b"));
+    expect(releaseSpy).toHaveBeenCalledWith(created[0]);
+    await waitFor(() => expect(created).toHaveLength(2));
+    unmount();
+    expect(releaseSpy).toHaveBeenCalledWith(created[1]);
+    cloneSpy.mockRestore();
+    releaseSpy.mockRestore();
+  });
+
   it("keeps inherited instance terms visible while nested workspace clones load or change", async () => {
     terminologyMocks.workspace
       .mockReset()

@@ -67,8 +67,8 @@ import { useUserPreferencesStore } from "@/store/user-preferences";
 const SearchCommandMenu = lazy(
   () => import("@/components/search-command-menu"),
 );
-const CreateWorkspaceModal = lazy(
-  () => import("@/components/shared/modals/create-workspace-modal"),
+const CreateWorkspaceModalGate = lazy(
+  () => import("@/components/shared/modals/create-workspace-modal-gate"),
 );
 const CreateProjectModal = lazy(
   () => import("../shared/modals/create-project-modal"),
@@ -698,8 +698,7 @@ export function CommandPalette({
           />
         ) : null}
         {isCreateWorkspaceOpen ? (
-          <CreateWorkspaceModal
-            open
+          <CreateWorkspaceModalGate
             onClose={() => setIsCreateWorkspaceOpen(false)}
           />
         ) : null}

@@ -40,6 +40,10 @@ import {
   findWorkspaceRoleByKey,
   storedCapabilities,
 } from "../permissions/workspace-role-authority.repository";
+import {
+  isRosterRoleKey,
+  ROSTER_ROLE_DEFINITIONS,
+} from "../project/members/roster.repository";
 import { listLiveProjectReachFacts } from "../user-preference/repository";
 import { resolveMembershipRole } from "../utils/workspace-member-roles";
 import { MAX_WORKSPACE_ROLES_PER_WORKSPACE } from "../utils/workspace-role-limits";
@@ -51,6 +55,7 @@ import {
   InsufficientPermissionToGrantError,
   InvalidCapabilityError,
   InvalidPermissionResourceError,
+  ProjectRoleDetailsOnlyError,
   RoleChangedError,
   RoleInIdentityUseError,
   RoleLimitReachedError,
@@ -67,19 +72,24 @@ import {
   countActiveRoleImpactWorkItems,
   countCustomRoles,
   countRoleHolders,
+  getProjectRoleWithHolderCount,
   getRoleWithHolderCount,
   insertRoleRow,
   listActiveRoleHolderUserIds,
   listActiveRoleImpactProjectIds,
   listPersonNames,
+  listProjectRoleHolds,
+  listProjectRolesWithHolderCounts,
   listRoleHistory,
   listRoleHolders,
   listRolesWithHolderCounts,
   lockLegacySystemPermission,
+  lockProjectRoleRows,
   lockRoleHolderUserIds,
   lockRoleRow,
   setHolderRole,
   setLegacySystemPermission,
+  summariseProjectRoleHolds,
   updateRoleRow,
 } from "./role.repository";
 import {
@@ -246,8 +256,20 @@ export async function resolveRoleCaller(
  * Reads
  * ------------------------------------------------------------------ */
 
-export async function listRoles(workspaceId: string): Promise<RoleView[]> {
-  return (await listRolesWithHolderCounts(db, workspaceId)).map(toRoleView);
+export async function listRoles(
+  workspaceId: string,
+  scope: "workspace" | "project" = "workspace",
+): Promise<RoleView[]> {
+  const rows =
+    scope === "project"
+      ? await listProjectRolesWithHolderCounts(db, workspaceId)
+      : await listRolesWithHolderCounts(db, workspaceId);
+  return rows.map(toRoleView);
+}
+
+/** The project-scope role with this id in this workspace, or undefined (also for another workspace's). */
+export function findProjectRole(workspaceId: string, roleId: string) {
+  return getProjectRoleWithHolderCount(db, workspaceId, roleId);
 }
 
 export async function getRole(
@@ -280,8 +302,22 @@ export type RoleHistoryEntry = {
   added: string[];
   removed: string[];
   rank: { before: number | null; after: number | null } | null;
+  /** Project-role renames and re-descriptions (and the name a delete removed). */
+  name: { before: string | null; after: string | null } | null;
+  description: { before: string | null; after: string | null } | null;
   createdAt: Date;
 };
+
+function change(
+  value: unknown,
+): { before: string | null; after: string | null } | null {
+  if (!value || typeof value !== "object") return null;
+  const { before, after } = value as Record<string, unknown>;
+  return {
+    before: typeof before === "string" ? before : null,
+    after: typeof after === "string" ? after : null,
+  };
+}
 
 function stringList(value: unknown): string[] {
   return Array.isArray(value)
@@ -294,7 +330,10 @@ export async function getRoleHistory(
   roleId: string,
   limit = 50,
 ): Promise<RoleHistoryEntry[]> {
-  const row = await getRoleWithHolderCount(db, workspaceId, roleId);
+  // Both lookups keep `workspace_id`, so another workspace's role is the same 404 as a missing one.
+  const row =
+    (await getRoleWithHolderCount(db, workspaceId, roleId)) ??
+    (await getProjectRoleWithHolderCount(db, workspaceId, roleId));
   if (!row) throw new WorkspaceRoleNotFoundError(roleId);
   const rows = await listRoleHistory(db, workspaceId, roleId, limit);
   const names = await listPersonNames(
@@ -329,6 +368,19 @@ export async function getRoleHistory(
       added: entry.action === "role.created" ? afterCaps : diff.added,
       removed: diff.removed,
       rank,
+      // A delete keeps the plain name and description it removed in `before`.
+      name:
+        entry.action === "role.deleted"
+          ? typeof before.name === "string"
+            ? { before: before.name, after: null }
+            : null
+          : change(after.name),
+      description:
+        entry.action === "role.deleted"
+          ? typeof before.description === "string"
+            ? { before: before.description, after: null }
+            : null
+          : change(after.description),
       createdAt: entry.createdAt,
     };
   });
@@ -1210,6 +1262,135 @@ export async function updateRole(
   if (outcome.kind === "preview") return outcome.preview;
   if (outcome.identityAuditFailed) await reportIdentityAuditFailure();
   return outcome.role;
+}
+
+/* ------------------------------------------------------------------ *
+ * Project-role details (rename / re-describe)
+ * ------------------------------------------------------------------ */
+
+export type UpdateProjectRoleInput = {
+  workspaceId: string;
+  roleId: string;
+  name?: string | undefined;
+  description?: string | null | undefined;
+  expectedVersion?: string | undefined;
+  caller: RoleCaller | null;
+  /** Spends the step-up proof (`workspace_role_update`, which covers project scope too). */
+  beforeWrite?: (tx: StepUpExecutor) => Promise<void>;
+  dryRun?: boolean;
+};
+
+const comparableName = (name: string) =>
+  name.normalize("NFKC").trim().toLowerCase();
+
+/**
+ * Renames or re-describes a project-scope role. Never touches the key, capabilities or rank, and
+ * never a built-in project role (materialised or not). Every project role of the workspace is
+ * locked in id order first, so two renames to the same name serialise and the loser sees the
+ * winner's name. Name uniqueness is an application check under those locks (no DB constraint:
+ * existing data could violate one).
+ */
+export async function updateProjectRoleDetails(
+  input: UpdateProjectRoleInput,
+): Promise<RoleView | RoleImpactPreview> {
+  if (input.name === undefined && input.description === undefined) {
+    throw new InvalidCapabilityError(["nothing to change"]);
+  }
+  const outcome = await withWorkspaceDeletionAccessLifecycle(
+    input.workspaceId,
+    async (tx) => {
+      const rows = await lockProjectRoleRows(tx, input.workspaceId);
+      const existing = rows.find((row) => row.id === input.roleId);
+      if (!existing) throw new WorkspaceRoleNotFoundError(input.roleId);
+      if (
+        existing.isSystem ||
+        !existing.isEditable ||
+        isRosterRoleKey(existing.key)
+      ) {
+        throw new RoleNotEditableError(existing.key);
+      }
+      const summary = summariseProjectRoleHolds(
+        await listProjectRoleHolds(tx, input.workspaceId, existing.id),
+      );
+      if (
+        input.expectedVersion !== undefined &&
+        input.expectedVersion !== String(existing.updatedAt.getTime())
+      ) {
+        throw new RoleChangedError(toRoleView({ ...existing, ...summary }));
+      }
+      // RL-4 on its own terms: workspace and project role keys share no space, so there is no
+      // "own role" exemption here.
+      if (existing.rank >= (input.caller?.rank ?? 0)) {
+        throw new RoleRankError(
+          "You cannot edit a role ranked at or above your own rank",
+        );
+      }
+      const name = input.name?.trim();
+      if (name !== undefined) {
+        const taken = new Set([
+          ...rows
+            .filter((row) => row.id !== existing.id)
+            .map((row) => comparableName(row.name)),
+          ...Object.values(ROSTER_ROLE_DEFINITIONS).map((definition) =>
+            comparableName(definition.name),
+          ),
+        ]);
+        if (taken.has(comparableName(name))) throw new RoleNameTakenError(name);
+      }
+      if (input.dryRun) {
+        // A rename changes no access, so a preview has nothing to count.
+        return {
+          kind: "preview" as const,
+          preview: { affected: { people: 0, workItems: 0, projects: 0 } },
+        };
+      }
+
+      await input.beforeWrite?.(tx);
+      const updated = await updateRoleRow(tx, existing.id, {
+        ...(name === undefined ? {} : { name }),
+        ...(input.description === undefined
+          ? {}
+          : { description: input.description?.trim() || null }),
+      });
+      const capabilities = storedCapabilities(existing.capabilities);
+      await appendRoleAudit(tx, {
+        action: "role.updated",
+        workspaceId: input.workspaceId,
+        roleId: updated.id,
+        roleName: updated.key,
+        actor: input.caller?.actor ?? { userId: "", actorType: "person" },
+        before: capabilities,
+        after: capabilities,
+        holderCount: summary.holderCount,
+        scope: "project",
+        name: { before: existing.name, after: updated.name },
+        description: {
+          before: existing.description,
+          after: updated.description,
+        },
+      });
+      return {
+        kind: "updated" as const,
+        role: toRoleView({ ...updated, ...summary }),
+      };
+    },
+  );
+  return outcome.kind === "preview" ? outcome.preview : outcome.role;
+}
+
+/** Fields a project-role PATCH may not carry: they would silently be ignored otherwise. */
+export function assertProjectRoleDetailsOnly(body: {
+  rank?: unknown;
+  capabilities?: unknown;
+  permission?: unknown;
+}) {
+  if (
+    body.rank !== undefined ||
+    body.capabilities !== undefined ||
+    body.permission !== undefined
+  ) {
+    throw new ProjectRoleDetailsOnlyError();
+  }
 }
 
 /* ------------------------------------------------------------------ *

@@ -35,8 +35,8 @@ import type { Workspace } from "@/types/workspace";
 
 // Workspace creation is an explicit action; its form and mutation hooks need not load
 // while the sidebar and command palette are warming on a cold page.
-const CreateWorkspaceModal = React.lazy(
-  () => import("./shared/modals/create-workspace-modal"),
+const CreateWorkspaceModalGate = React.lazy(
+  () => import("./shared/modals/create-workspace-modal-gate"),
 );
 
 export function WorkspaceSwitcher() {
@@ -58,6 +58,15 @@ export function WorkspaceSwitcher() {
   const { data: invitations = [] } = usePendingInvitations();
   const pendingInvitations = invitations.length;
 
+  // Timers that update this component are cleared on unmount, so none fires after it is gone.
+  const timers = React.useRef<ReturnType<typeof setTimeout>[]>([]);
+  React.useEffect(
+    () => () => {
+      for (const timer of timers.current) clearTimeout(timer);
+    },
+    [],
+  );
+
   const handleWorkspaceChange = React.useCallback(
     async (selectedWorkspace: Workspace) => {
       if (isSwitching) return;
@@ -67,14 +76,16 @@ export function WorkspaceSwitcher() {
         // S8a: native replacement for authClient.organization.setActive().
         await activateWorkspace(selectedWorkspace.id);
 
-        setTimeout(() => {
-          navigate({ to: "/agent" });
-        }, 50);
+        timers.current.push(
+          setTimeout(() => {
+            navigate({ to: "/agent" });
+          }, 50),
+        );
       } catch (error) {
         console.error("Failed to switch workspace:", error);
         toast.error(t("navigation:workspaceSwitcher.switchFailed"));
       } finally {
-        setTimeout(() => setIsSwitching(false), 100);
+        timers.current.push(setTimeout(() => setIsSwitching(false), 100));
       }
     },
     [navigate, isSwitching, t],
@@ -272,8 +283,7 @@ export function WorkspaceSwitcher() {
 
       {isCreateWorkspaceModalOpen && (
         <React.Suspense fallback={null}>
-          <CreateWorkspaceModal
-            open
+          <CreateWorkspaceModalGate
             onClose={() => setIsCreateWorkspaceModalOpen(false)}
           />
         </React.Suspense>

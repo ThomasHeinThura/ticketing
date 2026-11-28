@@ -9,17 +9,21 @@ const DAY_MS = 86_400_000;
 // shortcut: per-replica cache, a lowered cap reaches other replicas within this many ms.
 const CAP_CACHE_MS = 15_000;
 let cached: { days: number; at: number } | null = null;
+// Bumped on reset, so a read that began before the save cannot store the old cap after it.
+let generation = 0;
 
 /** The PATCH route calls this so the replica that saved the cap applies it at once. */
 export function resetStaffSessionCapCache() {
+  generation += 1;
   cached = null;
 }
 
 async function readStaffSessionMaxDays(): Promise<number> {
   if (cached && Date.now() - cached.at < CAP_CACHE_MS) return cached.days;
+  const started = generation;
   const days =
     (await getStaffSessionMaxDaysSetting()) ?? STAFF_SESSION_MAX_DAYS_DEFAULT;
-  cached = { days, at: Date.now() };
+  if (started === generation) cached = { days, at: Date.now() };
   return days;
 }
 

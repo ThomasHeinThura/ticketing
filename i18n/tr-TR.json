@@ -4731,7 +4731,6 @@
 		}
 	},
 	"instanceUsers": {
-		"selectUser": "{{name}}, {{email}} kullanıcısını aç",
 		"copy": {
 			"d094be66b726": "Örnek kullanıcıları",
 			"211715f3fe3d": "Bu örnekteki hesapları arayın ve yönetin.",
