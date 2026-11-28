@@ -19246,9 +19246,6 @@
 			"type": "object",
 			"additionalProperties": false,
 			"properties": {
-				"selectUser": {
-					"type": "string"
-				},
 				"copy": {
 					"type": "object",
 					"additionalProperties": false,
@@ -19733,7 +19730,7 @@
 					]
 				}
 			},
-			"required": ["selectUser", "copy", "dynamic"]
+			"required": ["copy", "dynamic"]
 		},
 		"pendingActions": {
 			"type": "object",

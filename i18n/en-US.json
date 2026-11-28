@@ -4731,7 +4731,6 @@
 		}
 	},
 	"instanceUsers": {
-		"selectUser": "Open {{name}}, {{email}}",
 		"copy": {
 			"d094be66b726": "Instance users",
 			"211715f3fe3d": "Search and manage accounts across this instance.",
