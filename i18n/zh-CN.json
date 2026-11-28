@@ -4716,7 +4716,6 @@
 		}
 	},
 	"instanceUsers": {
-		"selectUser": "打开 {{name}}（{{email}}）",
 		"copy": {
 			"d094be66b726": "实例用户",
 			"211715f3fe3d": "搜索和管理此实例中的账户。",

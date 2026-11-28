@@ -121,6 +121,12 @@ describe("WebhookSecurityPosturePanel", () => {
       screen.getByText("work_item.updated, sla.breached"),
     ).toBeInTheDocument();
     expect(screen.getByText("2026-10-25T12:00:00.000Z")).toBeInTheDocument();
+    // A wide table must scroll in a named region keyboard users can reach (#1279).
+    expect(
+      screen
+        .getByRole("region", { name: "title" })
+        .querySelector('[data-slot="scroll-area-viewport"]'),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/https?:/u)).not.toBeInTheDocument();
     expect(
       screen.queryByText("replacement-secret-value"),

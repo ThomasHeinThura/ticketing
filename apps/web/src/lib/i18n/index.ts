@@ -137,6 +137,12 @@ export function areAllNamespacesLoaded(localeInput = i18n.language): boolean {
  */
 const scopedGroupInstances = new Map<AppLocale, Set<I18nInstance>>();
 
+/** Drop a terminology clone once its provider no longer uses it, so later loads skip it. */
+export function releaseScopedI18n(instance: I18nInstance): void {
+  for (const instances of scopedGroupInstances.values())
+    instances.delete(instance);
+}
+
 /** The deferred group of a locale: one retry, then the full catalog from its own chunk. */
 async function loadRestResources(
   locale: AppLocale,
