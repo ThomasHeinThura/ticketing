@@ -4,12 +4,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import {
+  type ComponentProps,
   type FocusEvent,
   lazy,
+  memo,
   type PointerEvent,
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
@@ -31,6 +34,8 @@ import {
 } from "@/lib/work-item-kaneo-view";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { ProjectWithTasks } from "@/types/project";
+import type Task from "@/types/task";
+import type { WorkItemRow } from "@/types/work-item";
 import loadVirtualizedSortableList, {
   isVirtualizedSortableListLoaded,
 } from "./load-virtualized-sortable-list";
@@ -85,6 +90,76 @@ function useRowModulesSettled() {
   }, [settled]);
   return settled;
 }
+
+// One view object per row object, so an unchanged row keeps its `task` identity across renders.
+const taskViews = new WeakMap<WorkItemRow, Task>();
+function cachedTaskView(item: WorkItemRow) {
+  let task = taskViews.get(item);
+  if (!task) {
+    task = workItemKaneoView(item);
+    taskViews.set(item, task);
+  }
+  return task;
+}
+
+type ListRowProps = {
+  item: WorkItemRow;
+  task: Task;
+  isFinal: boolean;
+  projectSlug: string;
+  displayPreferences: ComponentProps<typeof TaskRow>["displayPreferences"];
+  disableDragDrop: boolean;
+  selectionEnabled: boolean;
+  isSelected: boolean;
+  isPlaceholderData: boolean;
+  openTaskOnLinkClick: boolean;
+  onOpenItem: (key: string) => void;
+  onToggleSelection: (key: string, selected: boolean) => void;
+};
+
+/** Only primitives, row objects and callbacks that are stable per list: an unchanged row skips. */
+const WorkItemListRow = memo(function WorkItemListRow({
+  item,
+  task,
+  isFinal,
+  projectSlug,
+  displayPreferences,
+  disableDragDrop,
+  selectionEnabled,
+  isSelected,
+  isPlaceholderData,
+  openTaskOnLinkClick,
+  onOpenItem,
+  onToggleSelection,
+}: ListRowProps) {
+  const { t } = useTranslation();
+  const rowProps = {
+    task,
+    projectSlug,
+    taskIsCompleted: isFinal,
+    displayPreferences,
+    // Built here, not in the parent, so the SLA badge paints with its row and never later.
+    badges: useMemo(() => <WorkItemSlaBadge sla={item.sla} />, [item.sla]),
+    taskHref: routes.workItemDetail.build({ key: item.key }),
+    openTaskOnLinkClick,
+    onOpenTask: useCallback(() => onOpenItem(item.key), [onOpenItem, item.key]),
+    disableDragDrop,
+    selectionEnabled,
+    isSelected,
+    onToggleSelection: useCallback(
+      () => onToggleSelection(item.key, !isSelected),
+      [onToggleSelection, item.key, isSelected],
+    ),
+    t,
+  };
+  return (
+    <Suspense fallback={<TaskRow {...rowProps} />}>
+      <WorkItemInlineFields item={item} disabled={isPlaceholderData}>
+        {(controls) => <TaskRow {...rowProps} {...controls} />}
+      </WorkItemInlineFields>
+    </Suspense>
+  );
+});
 
 /** Kaneo presentation over canonical rows; all writes stay with canonical actions. */
 export default function WorkItemKaneoList({
@@ -159,6 +234,20 @@ export default function WorkItemKaneoList({
     })),
   );
 
+  const { onOpenItem, onSelectionChange } = props;
+  // Stable across renders so memoised rows skip when only the URL or an unrelated prop changes.
+  const openItem = useCallback(
+    (key: string) =>
+      onOpenItem
+        ? onOpenItem(key)
+        : void navigate({ href: routes.workItemDetail.build({ key }) }),
+    [onOpenItem, navigate],
+  );
+  const toggleSelection = useCallback(
+    (key: string, selected: boolean) => onSelectionChange?.(key, selected),
+    [onSelectionChange],
+  );
+
   // Preserve the table's field-level partial/error/empty semantics. A row whose
   // state is no longer active must remain visible rather than disappearing from groups.
   const hasUngroupedRows = props.workItems?.some(
@@ -210,7 +299,7 @@ export default function WorkItemKaneoList({
         name: state.name,
         isFinal: state.group === "completed" || state.group === "cancelled",
         icon: null,
-        tasks: drag.itemsByState.get(state.id)?.map(workItemKaneoView) ?? [],
+        tasks: drag.itemsByState.get(state.id)?.map(cachedTaskView) ?? [],
       }) satisfies ProjectWithTasks["columns"][number],
   );
   const rowsById = new Map(workItems.map((item) => [item.id, item]));
@@ -249,46 +338,30 @@ export default function WorkItemKaneoList({
   ) => {
     const item = rowsById.get(task.id);
     if (!item) return null;
-    const rowProps = {
-      task,
-      projectSlug: workItemProjectSlug(item),
-      taskIsCompleted: column.isFinal,
-      displayPreferences,
-      badges: <WorkItemSlaBadge sla={item.sla} />,
-      taskHref: routes.workItemDetail.build({ key: item.key }),
-      openTaskOnLinkClick: Boolean(props.onOpenItem),
-      onOpenTask: () =>
-        props.onOpenItem
-          ? props.onOpenItem(item.key)
-          : void navigate({
-              href: routes.workItemDetail.build({ key: item.key }),
-            }),
-      disableDragDrop:
-        props.isPlaceholderData ||
-        drag.pendingItemIds.has(item.id) ||
-        item.unavailableFields.includes("key") ||
-        (!drag.canReorder &&
-          (permission.isCheckingPermissions ||
-            !permission.canTransitionTasks())),
-      selectionEnabled: Boolean(props.canBulkAssign && props.onSelectionChange),
-      isSelected: props.selectedKeys?.includes(item.key) ?? false,
-      onToggleSelection: () =>
-        props.onSelectionChange?.(
-          item.key,
-          !props.selectedKeys?.includes(item.key),
-        ),
-      t,
-    };
-    const row = <TaskRow {...rowProps} />;
     const inlineRow = (
-      <Suspense fallback={row}>
-        <WorkItemInlineFields
-          item={item}
-          disabled={Boolean(props.isPlaceholderData)}
-        >
-          {(controls) => <TaskRow {...rowProps} {...controls} />}
-        </WorkItemInlineFields>
-      </Suspense>
+      <WorkItemListRow
+        item={item}
+        task={task}
+        isFinal={column.isFinal}
+        projectSlug={workItemProjectSlug(item)}
+        displayPreferences={displayPreferences}
+        disableDragDrop={
+          props.isPlaceholderData ||
+          drag.pendingItemIds.has(item.id) ||
+          item.unavailableFields.includes("key") ||
+          (!drag.canReorder &&
+            (permission.isCheckingPermissions ||
+              !permission.canTransitionTasks()))
+        }
+        selectionEnabled={Boolean(
+          props.canBulkAssign && props.onSelectionChange,
+        )}
+        isSelected={props.selectedKeys?.includes(item.key) ?? false}
+        isPlaceholderData={Boolean(props.isPlaceholderData)}
+        openTaskOnLinkClick={Boolean(props.onOpenItem)}
+        onOpenItem={openItem}
+        onToggleSelection={toggleSelection}
+      />
     );
     if (!virtualItem) return inlineRow;
     return (
