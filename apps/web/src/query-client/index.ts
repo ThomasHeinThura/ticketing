@@ -74,12 +74,18 @@ function captureCacheError(error: unknown, context: "query" | "mutation") {
     if (lastSent !== undefined && now - lastSent < NETWORK_REPORT_COOLDOWN_MS) {
       return;
     }
-    networkErrorCooldowns.set(dedupeKey, now);
-    // ponytail: hard cap with full clear; entries older than the cooldown are
+    // shortcut: hard cap with full clear; entries older than the cooldown are
     // useless to keep, and `error.message` can vary across fetchers/CORS
     // failures so the keyspace is unbounded in practice. Ceiling: 50 keys with a full clear.
     // Revisit bounded eviction if >50 distinct errors cause duplicate reports in one cooldown.
-    if (networkErrorCooldowns.size > 50) networkErrorCooldowns.clear();
+    // Clear only to make room for a new key, and before recording, so the cap never drops the
+    // key just written nor the other live cooldowns when an existing key is refreshed.
+    if (
+      networkErrorCooldowns.size >= 50 &&
+      !networkErrorCooldowns.has(dedupeKey)
+    )
+      networkErrorCooldowns.clear();
+    networkErrorCooldowns.set(dedupeKey, now);
   }
 
   // kaneo sent this to Sentry. TaskDesk has no phone-home, so the error stays
