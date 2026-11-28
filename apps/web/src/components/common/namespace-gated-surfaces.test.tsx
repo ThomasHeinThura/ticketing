@@ -51,6 +51,9 @@ vi.mock(
       children,
   }),
 );
+vi.mock("@/components/shared/modals/create-workspace-modal", () => ({
+  default: reads("workspace:create.ownerLabel"),
+}));
 vi.mock("@/components/work-item/create-work-item-dialog-form", () => ({
   default: reads("tasksExtra:popover.labels.updateError"),
 }));
@@ -111,6 +114,17 @@ const SURFACES = [
     },
   },
   {
+    name: "create workspace dialog",
+    text: new RegExp(`^${en.workspace.create.ownerLabel}$`),
+    rawKey: "create.ownerLabel",
+    mount: async () => {
+      const { default: Gate } = await import(
+        "@/components/shared/modals/create-workspace-modal-gate"
+      );
+      return render(<Gate onClose={() => undefined} />, { wrapper: Wrapper });
+    },
+  },
+  {
     name: "create work item form (label failure text)",
     text: /^Failed to update label$/,
     rawKey: "popover.labels.updateError",
@@ -162,6 +176,7 @@ async function release(language = "en-US") {
   await act(async () => {
     instance.addResourceBundle(language, "tasksExtra", en.tasksExtra);
     instance.addResourceBundle(language, "workItemsExtra", en.workItemsExtra);
+    instance.addResourceBundle(language, "workspace", en.workspace);
     resolve();
   });
 }
@@ -196,7 +211,7 @@ describe.each(SURFACES)("$name", (surface) => {
     for (const element of screen.queryAllByText(rawKey))
       expect(element).not.toBeVisible();
     expect(document.body.textContent).not.toMatch(
-      /(?:tasksExtra|workItemsExtra):/,
+      /(?:tasksExtra|workItemsExtra|workspace):/,
     );
   };
 
@@ -278,5 +293,30 @@ describe("create form attachments across a language change", () => {
     expect(uploadMock.mock.calls[0]?.[1]).toBe(file);
     expect(done).toBe(true);
     expect(api?.rows.map((row) => row.state)).toEqual(["ready"]);
+  });
+});
+
+describe("create workspace dialog load failure", () => {
+  it("offers a Close that dismisses the dialog, and Retry that recovers", async () => {
+    const { default: Gate } = await import(
+      "@/components/shared/modals/create-workspace-modal-gate"
+    );
+    const onClose = vi.fn();
+    render(<Gate onClose={onClose} />, { wrapper: Wrapper });
+    await act(async () => reject(new Error("offline")));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      en.common.error.messages.unknown,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: en.common.actions.close }),
+    );
+    expect(onClose).toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: en.common.actions.retry }),
+    );
+    await release();
+    expect(
+      await screen.findByText(en.workspace.create.ownerLabel),
+    ).toBeVisible();
   });
 });

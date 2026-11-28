@@ -9,8 +9,8 @@ import {
   isContainedInBoundary,
 } from "../../../vite/namespace-render-graph";
 import {
-  BOUNDARY_ONLY_NAMESPACES,
   WORK_ROUTE_GATED_SURFACES,
+  WORK_ROUTE_NON_WORK_SCREENS,
   WORK_ROUTE_RENDER_ROOTS,
 } from "./work-route-namespaces";
 
@@ -31,7 +31,7 @@ function scan(overrides: Record<string, (source: string) => string> = {}) {
     roots: WORK_ROUTE_RENDER_ROOTS,
     gated: WORK_ROUTE_GATED_SURFACES,
     known,
-    only: BOUNDARY_ONLY_NAMESPACES,
+    skip: WORK_ROUTE_NON_WORK_SCREENS,
     read: (target) => {
       const source = readFileSync(target, "utf8");
       return byFile.get(target)?.(source) ?? source;
@@ -86,6 +86,11 @@ const SURFACES = [
     name: "notification menu",
     importer: "components/notification/notification-dropdown.tsx",
     surface: "components/notification/notification-menu.tsx",
+  },
+  {
+    name: "create workspace modal",
+    importer: "components/shared/modals/create-workspace-modal-gate.tsx",
+    surface: "components/shared/modals/create-workspace-modal.tsx",
   },
 ] as const;
 
@@ -253,6 +258,48 @@ describe("work route render graph guard", () => {
     ).toContain(
       "routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx",
     );
+  });
+
+  it("fails for an ungated read of a deferred namespace that was never split out", () => {
+    const settingsRead = (source: string) =>
+      `${source}\nexport const injected = () => t("settings:x");\n`;
+    expect(
+      scan({
+        "routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx":
+          settingsRead,
+      }),
+    ).toContain(
+      "routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx",
+    );
+  });
+
+  it("does not follow the non-work screens, but still scans a module they share with the work path", () => {
+    const projectsPage = "components/project-list/projects-page.tsx";
+    const unskipped = findUngatedDeferredReads({
+      srcDir,
+      roots: WORK_ROUTE_RENDER_ROOTS,
+      gated: WORK_ROUTE_GATED_SURFACES,
+      known,
+    });
+    expect(unskipped.map((v) => path.relative(srcDir, v.file))).toContain(
+      projectsPage,
+    );
+    expect(scan()).not.toContain(projectsPage);
+    // A read in the screen itself is not reported, one in a module the shell also renders is.
+    expect(scan({ [projectsPage]: inject })).toEqual([]);
+    // A new importer on the work path is not exempt: the screen's reads become visible again.
+    expect(
+      scan({
+        "routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx":
+          (s) =>
+            `import ProjectsPage from "@/components/project-list/projects-page";\n${s}\nexport const P = ProjectsPage;`,
+      }),
+    ).toContain(projectsPage);
+    expect(
+      scan({
+        "components/nav-main.tsx": (s) => `${s}\nconst x = t("settings:y");`,
+      }),
+    ).toContain("components/nav-main.tsx");
   });
 
   it("does not follow type-only imports or void preloads", () => {
