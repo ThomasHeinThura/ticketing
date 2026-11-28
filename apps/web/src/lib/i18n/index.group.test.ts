@@ -94,6 +94,15 @@ describe("i18n group mode on the work list", () => {
     expect(after.hasLoadedNamespace("settings")).toBe(true);
   });
 
+  it("skips a released terminology instance when the deferred group loads", async () => {
+    const { createScopedI18n, releaseScopedI18n, whenAllNamespacesLoaded } =
+      await importInGroupMode();
+    const released = await createScopedI18n("en-US");
+    releaseScopedI18n(released);
+    await whenAllNamespacesLoaded();
+    expect(released.hasLoadedNamespace("settings")).toBe(false);
+  });
+
   it("retries once, then falls back to the full catalog, never leaving keys unresolved", async () => {
     const { i18n, whenAllNamespacesLoaded } = await importInGroupMode();
     rest.fail = 1;

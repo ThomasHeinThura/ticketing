@@ -166,7 +166,14 @@ export const workspaceRoleSchema = z
     }),
     isSystem: z.boolean(),
     isEditable: z.boolean(),
-    holderCount: z.number().int(),
+    holderCount: z.number().int().openapi({
+      description:
+        "Holders of a workspace role, or distinct people holding a project role in this workspace's projects.",
+    }),
+    projectCount: z.number().int().optional().openapi({
+      description: "Project roles only: distinct projects that use the role.",
+    }),
+    scope: z.enum(["workspace", "project"]),
     version: z.string().openapi({
       description:
         "Optimistic-concurrency token; echo it as `expectedVersion` on PATCH.",
@@ -175,6 +182,28 @@ export const workspaceRoleSchema = z
     updatedAt: responseTimestamp,
   })
   .openapi("WorkspaceRole");
+
+/** The coded JSON body of a structured role refusal (the plain-text refusals stay text/plain). */
+export const roleRefusalSchema = z
+  .object({
+    error: z.string().openapi({
+      description:
+        "Stable code, e.g. role_in_use, role_has_revoked_grants, role_not_deletable, role_not_editable, role_changed, project_role_details_only, rank_guard.",
+    }),
+    message: z.string(),
+    holderCount: z.number().int().optional(),
+    projectCount: z.number().int().optional(),
+    projects: z
+      .array(z.object({ id: z.string(), name: z.string() }))
+      .optional()
+      .openapi({ description: "Up to 20 projects that still use the role." }),
+    revokedGrantCount: z.number().int().optional(),
+    references: z.record(z.string(), z.number().int()).optional(),
+    current: workspaceRoleSchema.optional().openapi({
+      description: "role_changed: the role as it is now.",
+    }),
+  })
+  .openapi("RoleRefusal");
 
 export const workspaceRoleHolderSchema = z
   .object({
@@ -218,6 +247,12 @@ export const workspaceRoleHistorySchema = z
           before: z.number().nullable(),
           after: z.number().nullable(),
         })
+        .nullable(),
+      name: z
+        .object({ before: z.string().nullable(), after: z.string().nullable() })
+        .nullable(),
+      description: z
+        .object({ before: z.string().nullable(), after: z.string().nullable() })
         .nullable(),
       createdAt: responseTimestamp,
     }),

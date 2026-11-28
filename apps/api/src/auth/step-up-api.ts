@@ -50,7 +50,10 @@ import { buildAuthRequest } from "../utils/auth-request";
 import { dbNowUtc } from "../utils/db-time";
 import { requireSessionOnly } from "../utils/require-session-only";
 import { findWebhookWorkspace } from "../webhook/repository";
-import { getRoleWithHolderCount } from "../workspace/role.repository";
+import {
+  getProjectRoleWithHolderCount,
+  getRoleWithHolderCount,
+} from "../workspace/role.repository";
 import {
   type LocalFactorState,
   loadLocalFactorState,
@@ -968,11 +971,14 @@ const routes = apiRouter()
           throw new HTTPException(404, { message: "Webhook not found" });
       }
       if (ext.operation === "workspace_role_update") {
-        const role = await getRoleWithHolderCount(
-          db,
-          ext.workspaceId,
-          ext.roleId,
-        );
+        // The operation also covers project-scope roles (details only).
+        const role =
+          (await getRoleWithHolderCount(db, ext.workspaceId, ext.roleId)) ??
+          (await getProjectRoleWithHolderCount(
+            db,
+            ext.workspaceId,
+            ext.roleId,
+          ));
         if (!role) throw new HTTPException(404, { message: "Role not found" });
       }
       let challenge: Awaited<ReturnType<typeof createExtChallenge>>;

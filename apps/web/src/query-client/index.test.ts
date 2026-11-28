@@ -110,6 +110,26 @@ describe("query cache error log", () => {
   });
 });
 
+it("keeps suppressing the network error that filled the cooldown cap", async () => {
+  const { default: queryClient } = await import("./index");
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  const fail = (index: number) =>
+    queryClient
+      .fetchQuery({
+        queryKey: ["test", "cooldown", index, log.mock.calls.length],
+        queryFn: () =>
+          Promise.reject(new TypeError(`Failed to fetch ${index}`)),
+        retry: false,
+      })
+      .catch(() => undefined);
+  for (let index = 0; index <= 50; index++) await fail(index);
+  const logged = log.mock.calls.length;
+  await fail(50);
+  expect(log).toHaveBeenCalledTimes(logged);
+  log.mockRestore();
+  queryClient.clear();
+});
+
 it("keeps the agent 401 redirect when a query is refused", async () => {
   const { default: client } = await import("./index");
   const { HttpError } = await import("@/lib/http-error");

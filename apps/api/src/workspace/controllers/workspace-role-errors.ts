@@ -184,3 +184,37 @@ export class RoleReassignError extends Error {
     this.name = "RoleReassignError";
   }
 }
+
+/** A project-scope role takes a new name and description only; capabilities and rank stay. */
+export class ProjectRoleDetailsOnlyError extends Error {
+  constructor() {
+    super(
+      "A project role can only be renamed or re-described; its capabilities and rank are not edited here",
+    );
+    this.name = "ProjectRoleDetailsOnlyError";
+  }
+}
+
+/** A project role is still held by people (membership or active grant) and cannot be deleted. */
+export class ProjectRoleInUseError extends Error {
+  constructor(
+    public readonly holderCount: number,
+    public readonly projectCount: number,
+    public readonly projects: readonly { id: string; name: string }[],
+  ) {
+    super(
+      `This project role is still held by ${holderCount} ${holderCount === 1 ? "person" : "people"} in ${projectCount} ${projectCount === 1 ? "project" : "projects"}. Move them to another role first.`,
+    );
+    this.name = "ProjectRoleInUseError";
+  }
+}
+
+/** Revoked grants still reference the role; they are history, so a person decides, not the API. */
+export class ProjectRoleRevokedGrantsError extends Error {
+  constructor(public readonly revokedGrantCount: number) {
+    super(
+      `${revokedGrantCount} revoked grant(s) still reference this project role, so it cannot be deleted automatically`,
+    );
+    this.name = "ProjectRoleRevokedGrantsError";
+  }
+}

@@ -35,8 +35,8 @@ import type { Workspace } from "@/types/workspace";
 
 // Workspace creation is an explicit action; its form and mutation hooks need not load
 // while the sidebar and command palette are warming on a cold page.
-const CreateWorkspaceModal = React.lazy(
-  () => import("./shared/modals/create-workspace-modal"),
+const CreateWorkspaceModalGate = React.lazy(
+  () => import("./shared/modals/create-workspace-modal-gate"),
 );
 
 export function WorkspaceSwitcher() {
@@ -283,8 +283,7 @@ export function WorkspaceSwitcher() {
 
       {isCreateWorkspaceModalOpen && (
         <React.Suspense fallback={null}>
-          <CreateWorkspaceModal
-            open
+          <CreateWorkspaceModalGate
             onClose={() => setIsCreateWorkspaceModalOpen(false)}
           />
         </React.Suspense>

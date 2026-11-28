@@ -20,6 +20,10 @@ export type RoleView = {
   isSystem: boolean;
   isEditable: boolean;
   holderCount: number;
+  /** Project-scope roles only: distinct projects whose roster holds the role. */
+  projectCount?: number;
+  /** `workspace` (default list) or `project` (`?scope=project`). */
+  scope: "workspace" | "project";
   version: string;
   createdAt: Date;
   updatedAt: Date;
@@ -39,6 +43,10 @@ export function toRoleView(row: RoleWithHolders): RoleView {
     isSystem: row.isSystem,
     isEditable: row.isEditable,
     holderCount: row.holderCount,
+    ...(row.projectCount === undefined
+      ? {}
+      : { projectCount: row.projectCount }),
+    scope: row.scope === "project" ? "project" : "workspace",
     version: String(row.updatedAt.getTime()),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

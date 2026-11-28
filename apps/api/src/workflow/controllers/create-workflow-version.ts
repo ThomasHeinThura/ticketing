@@ -13,6 +13,7 @@ import { workflowTable } from "../../database/schema";
 import { appendAuditSavepoint } from "../../events/audit-savepoint";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import type { z } from "../../openapi";
+import { lockReferencedRolesForShare } from "../../workspace/role.repository";
 import {
   findWorkflowWorkspaceId,
   getMaxVersionNumber,
@@ -162,6 +163,23 @@ async function createWorkflowVersion(
       .limit(1);
     if (!current)
       throw new HTTPException(404, { message: "Workflow not found" });
+    // The pre-transaction role check holds no lock. Share-lock every referenced role (id order;
+    // role delete takes only the role row FOR UPDATE, so there is no cycle) and recheck: a role
+    // deleted meanwhile is a clean 409, never an FK violation, and a role locked here makes a
+    // concurrent delete wait and then refuse because a transition references it.
+    const referencedRoleIds = [
+      ...new Set(
+        transitions.flatMap((t) => (t.roleId === null ? [] : [t.roleId])),
+      ),
+    ].sort();
+    if (referencedRoleIds.length > 0) {
+      const lockedCount = await lockReferencedRolesForShare(
+        tx,
+        referencedRoleIds,
+      );
+      if (lockedCount !== referencedRoleIds.length)
+        throw new HTTPException(409, { message: "workflow_role_deleted" });
+    }
     const maxRow = await getMaxVersionNumber(tx, workflowId);
 
     const version = await insertWorkflowVersion(tx, {
