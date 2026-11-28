@@ -15,6 +15,10 @@ import {
   EmptyHeader,
   EmptyTitle,
   Skeleton,
+  Tabs,
+  TabsList,
+  TabsPanel,
+  TabsTab,
   useDelayedPending,
 } from "@taskdesk/ui";
 import { Plus, RefreshCw } from "lucide-react";
@@ -26,16 +30,24 @@ import { isForbiddenError } from "@/components/settings/settings-access";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import useWorkspaceRoles from "@/hooks/queries/workspace/use-workspace-roles";
 import { useCallerRoleAuthority } from "@/hooks/use-caller-role-authority";
-import { routes } from "@/lib/routes";
+import { type RolesListSearch, routes } from "@/lib/routes";
 import { CreateRoleDialog } from "./create-role-dialog";
+import { ProjectRolesView } from "./project-roles-view";
 
 /** `docs/screens.md` "Workspace — roles": name, description, rank, holders, system badge. */
-export function RolesList() {
+export function RolesList({
+  search = {},
+  onSearchChange = () => {},
+}: {
+  search?: RolesListSearch;
+  onSearchChange?: (next: RolesListSearch) => void;
+}) {
   const { t, i18n } = useTranslation();
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
   const roles = useWorkspaceRoles(workspace?.id);
   const authority = useCallerRoleAuthority(workspace?.id);
   const [creating, setCreating] = useState(false);
+  const scope = search.scope === "project" ? "project" : "workspace";
   const loading = workspaceLoading || roles.isLoading;
   const placeholderVisible = useDelayedPending(loading, {
     releaseNow: !loading && roles.isSuccess && roles.data.length === 0,
@@ -58,85 +70,118 @@ export function RolesList() {
               {t("roles:list.description")}
             </p>
           </div>
-          {authority.canManageRoles ? (
+          {authority.canManageRoles && scope === "workspace" ? (
             <Button onClick={() => setCreating(true)} disabled={!workspace}>
               <Plus aria-hidden="true" />
               {t("roles:list.new")}
             </Button>
           ) : null}
         </div>
-        {!roles.isError && (loading || placeholderVisible) ? (
-          <div
-            style={{ visibility: placeholderVisible ? "visible" : "hidden" }}
-            role="status"
-            aria-label={t("roles:list.loading")}
-            className="space-y-3"
+        <Tabs
+          value={scope}
+          onValueChange={(value) =>
+            onSearchChange(value === "project" ? { scope: "project" } : {})
+          }
+        >
+          <TabsList
+            variant="underline"
+            aria-label={t("roles:projectRoles.tabsLabel")}
           >
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-          </div>
-        ) : roles.isError ? (
-          <Alert variant="error">
-            <AlertTitle>{t("roles:list.loadErrorTitle")}</AlertTitle>
-            <AlertDescription>
-              {t("roles:list.loadErrorDescription")}
-              <Button className="w-fit" onClick={() => void roles.refetch()}>
-                <RefreshCw aria-hidden="true" />
-                {t("common:actions.retry")}
-              </Button>
-            </AlertDescription>
-          </Alert>
-        ) : roles.data?.length ? (
-          <div className="flex flex-col gap-2">
-            {roles.data.map((role) => (
-              <Card key={role.id} className="@container">
-                <CardHeader>
-                  <CardTitle className="min-w-0 break-words @md:truncate">
-                    <Link
-                      className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      to={routes.workspaceRoleDetail.path}
-                      params={{ id: role.id }}
-                    >
-                      {role.name}
-                    </Link>
-                  </CardTitle>
-                  <CardDescription className="col-span-2 row-start-3 min-w-0 break-words @md:col-span-1 @md:row-start-2">
-                    {role.description ? `${role.description} · ` : ""}
-                    {t("roles:list.rank", { rank: role.rank })}
-                    {" · "}
-                    {t("roles:list.holders", { count: role.holderCount })}
-                    {role.updatedAt
-                      ? ` · ${t("roles:list.modified", { date: formatDate(role.updatedAt) })}`
-                      : ""}
-                  </CardDescription>
-                  <CardAction className="col-start-1 row-span-1 row-start-2 flex flex-wrap items-center justify-self-start gap-2 @md:col-start-2 @md:row-span-2 @md:row-start-1 @md:justify-self-end">
-                    {role.isSystem ? (
-                      <Badge variant="info">{t("roles:badges.system")}</Badge>
-                    ) : (
-                      <Badge variant="secondary">
-                        {t("roles:badges.custom")}
-                      </Badge>
-                    )}
-                    {!role.isEditable ? (
-                      <Badge variant="outline">
-                        {t("roles:badges.notEditable")}
-                      </Badge>
-                    ) : null}
-                  </CardAction>
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>{t("roles:list.emptyTitle")}</EmptyTitle>
-              <EmptyDescription>
-                {t("roles:list.emptyDescription")}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )}
+            <TabsTab value="workspace">
+              {t("roles:projectRoles.tabWorkspace")}
+            </TabsTab>
+            <TabsTab value="project">
+              {t("roles:projectRoles.tabProject")}
+            </TabsTab>
+          </TabsList>
+          <TabsPanel className="pt-4" value="workspace">
+            {!roles.isError && (loading || placeholderVisible) ? (
+              <div
+                style={{
+                  visibility: placeholderVisible ? "visible" : "hidden",
+                }}
+                role="status"
+                aria-label={t("roles:list.loading")}
+                className="space-y-3"
+              >
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            ) : roles.isError ? (
+              <Alert variant="error">
+                <AlertTitle>{t("roles:list.loadErrorTitle")}</AlertTitle>
+                <AlertDescription>
+                  {t("roles:list.loadErrorDescription")}
+                  <Button
+                    className="w-fit"
+                    onClick={() => void roles.refetch()}
+                  >
+                    <RefreshCw aria-hidden="true" />
+                    {t("common:actions.retry")}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : roles.data?.length ? (
+              <div className="flex flex-col gap-2">
+                {roles.data.map((role) => (
+                  <Card key={role.id} className="@container">
+                    <CardHeader>
+                      <CardTitle className="min-w-0 break-words @md:truncate">
+                        <Link
+                          className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          to={routes.workspaceRoleDetail.path}
+                          params={{ id: role.id }}
+                        >
+                          {role.name}
+                        </Link>
+                      </CardTitle>
+                      <CardDescription className="col-span-2 row-start-3 min-w-0 break-words @md:col-span-1 @md:row-start-2">
+                        {role.description ? `${role.description} · ` : ""}
+                        {t("roles:list.rank", { rank: role.rank })}
+                        {" · "}
+                        {t("roles:list.holders", { count: role.holderCount })}
+                        {role.updatedAt
+                          ? ` · ${t("roles:list.modified", { date: formatDate(role.updatedAt) })}`
+                          : ""}
+                      </CardDescription>
+                      <CardAction className="col-start-1 row-span-1 row-start-2 flex flex-wrap items-center justify-self-start gap-2 @md:col-start-2 @md:row-span-2 @md:row-start-1 @md:justify-self-end">
+                        {role.isSystem ? (
+                          <Badge variant="info">
+                            {t("roles:badges.system")}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">
+                            {t("roles:badges.custom")}
+                          </Badge>
+                        )}
+                        {!role.isEditable ? (
+                          <Badge variant="outline">
+                            {t("roles:badges.notEditable")}
+                          </Badge>
+                        ) : null}
+                      </CardAction>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyTitle>{t("roles:list.emptyTitle")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("roles:list.emptyDescription")}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </TabsPanel>
+          <TabsPanel className="pt-4" value="project">
+            <ProjectRolesView
+              workspaceId={workspace?.id}
+              canManage={authority.canManageRoles}
+            />
+          </TabsPanel>
+        </Tabs>
       </div>
       {creating && workspace ? (
         <CreateRoleDialog

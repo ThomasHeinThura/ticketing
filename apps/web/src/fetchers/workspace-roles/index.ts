@@ -6,6 +6,7 @@ import {
   httpErrorFromResponse,
   readErrorDetail,
 } from "@/lib/http-error";
+import { ROLE_REFUSAL_CODES } from "./refusal-codes";
 
 /**
  * Roles (RL-1..RL-15) on the canonical `role` store. A role's capabilities are the stored
@@ -24,6 +25,10 @@ export type WorkspaceRoleDetail = {
   isSystem: boolean;
   isEditable: boolean;
   holderCount: number;
+  /** `project` roles come from `?scope=project`; absent on older responses. */
+  scope?: "workspace" | "project";
+  /** Project roles only: distinct projects whose roster holds the role. */
+  projectCount?: number;
   /** Optimistic-concurrency token; echoed back as `expectedVersion` on save. */
   version: string;
   createdAt: string;
@@ -132,9 +137,14 @@ async function request<T>(
 const base = (workspaceId: string) =>
   `/workspace/${encodeURIComponent(workspaceId)}/roles`;
 
-export function listRoles(workspaceId: string) {
+export function listRoles(
+  workspaceId: string,
+  scope?: "workspace" | "project",
+) {
   return request<WorkspaceRoleDetail[]>(
-    base(workspaceId),
+    scope === "project"
+      ? `${base(workspaceId)}?scope=project`
+      : base(workspaceId),
     {},
     "Failed to load roles",
   );
@@ -243,12 +253,31 @@ export function reassignRole(
   );
 }
 
+export { ROLE_REFUSAL_CODES } from "./refusal-codes";
+
 /** Deletion is a pending action: nothing is removed until the requester approves it. */
 export async function requestRoleDeletion(workspaceId: string, roleId: string) {
   const response = await apiFetch(
     getApiUrl(`${base(workspaceId)}/${encodeURIComponent(roleId)}`),
     { method: "DELETE", credentials: "include" },
   );
+  if (response.status === 400 || response.status === 409) {
+    const body: unknown = await response
+      .clone()
+      .json()
+      .catch(() => null);
+    const code =
+      body && typeof body === "object" && "error" in body ? body.error : null;
+    if (typeof code === "string" && ROLE_REFUSAL_CODES.includes(code))
+      throw new RoleApiError(
+        response.status,
+        "message" in (body as object)
+          ? String((body as { message: unknown }).message)
+          : code,
+        code,
+        body as Record<string, unknown>,
+      );
+  }
   return readPendingDeletion(
     response,
     "Failed to delete the role",

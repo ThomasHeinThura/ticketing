@@ -716,6 +716,13 @@ export function parseTeamDetailSearch(raw: unknown): TeamDetailSearch {
     : {};
 }
 
+/** Roles list: `scope=project` shows the project roles; workspace roles are the default and never written. */
+export type RolesListSearch = { scope?: "project" };
+export function parseRolesListSearch(raw: unknown): RolesListSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return value.scope === "project" ? { scope: "project" } : {};
+}
+
 /** Role editor tabs (RL-1..RL-13); `capabilities` is the default and is never written. */
 export const ROLE_DETAIL_TABS = [
   "capabilities",
@@ -1876,7 +1883,10 @@ export const routes = {
   /** `docs/screens.md` "Workspace — roles" and "Role editor". */
   workspaceRoles: {
     path: "/dashboard/settings/workspace/roles" as const,
-    build: () => "/dashboard/settings/workspace/roles",
+    build: (search: RolesListSearch = {}) =>
+      parseRolesListSearch(search).scope
+        ? "/dashboard/settings/workspace/roles?scope=project"
+        : "/dashboard/settings/workspace/roles",
   },
   workspaceRoleDetail: {
     path: "/dashboard/settings/workspace/roles/$id" as const,

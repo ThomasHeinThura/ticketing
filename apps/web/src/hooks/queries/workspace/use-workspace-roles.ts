@@ -26,3 +26,16 @@ function useWorkspaceRoles(workspaceId: string | undefined) {
 }
 
 export default useWorkspaceRoles;
+
+/** Project-scope roles live under their own key so they never reach the workspace role pickers. */
+export const projectRolesKey = (workspaceId: string | undefined) =>
+  ["workspace-roles", workspaceId, "project"] as const;
+
+export function useProjectRoles(workspaceId: string | undefined) {
+  return useQuery<WorkspaceRole[]>({
+    queryKey: projectRolesKey(workspaceId),
+    enabled: !!workspaceId,
+    queryFn: async () =>
+      workspaceId ? await listRoles(workspaceId, "project") : [],
+  });
+}

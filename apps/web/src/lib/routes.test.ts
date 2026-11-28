@@ -30,6 +30,7 @@ import {
   parsePortalCatalogueSearch,
   parsePortalSignInSearch,
   parseRequestTypeEditorSearch,
+  parseRolesListSearch,
   parseSavedViewsSearch,
   parseSavedViewUrlSearch,
   parseSavedViewUrlSearchFromQueryString,
@@ -1599,5 +1600,21 @@ it("strips malformed OIDC mapping URL state and isolates tabs", () => {
   expect(parseIdentityConnectionEditorSearch(params)).toEqual({
     tab: "groups",
     oidcMapping: "map-1",
+  });
+});
+
+describe("roles list search", () => {
+  it("keeps only the project scope in the URL", () => {
+    expect(parseRolesListSearch({ scope: "project" })).toEqual({
+      scope: "project",
+    });
+    expect(parseRolesListSearch({ scope: "workspace" })).toEqual({});
+    expect(parseRolesListSearch({ scope: "x" })).toEqual({});
+    expect(routes.workspaceRoles.build({ scope: "project" })).toBe(
+      "/dashboard/settings/workspace/roles?scope=project",
+    );
+    expect(routes.workspaceRoles.build()).toBe(
+      "/dashboard/settings/workspace/roles",
+    );
   });
 });

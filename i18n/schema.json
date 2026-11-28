@@ -12,6 +12,9 @@
 				"appName": {
 					"type": "string"
 				},
+				"managedServiceUnused": {
+					"type": "string"
+				},
 				"pageLoading": {
 					"type": "string"
 				},
@@ -1082,6 +1085,7 @@
 			},
 			"required": [
 				"appName",
+				"managedServiceUnused",
 				"pageLoading",
 				"audit",
 				"picker",
@@ -5048,12 +5052,6 @@
 								"kind": {
 									"type": "string"
 								},
-								"project": {
-									"type": "string"
-								},
-								"managedService": {
-									"type": "string"
-								},
 								"health": {
 									"type": "string"
 								},
@@ -5150,8 +5148,6 @@
 								"title",
 								"description",
 								"kind",
-								"project",
-								"managedService",
 								"health",
 								"unset",
 								"red",
@@ -5308,6 +5304,9 @@
 										"datesOrdered": {
 											"type": "string"
 										},
+										"managedEndDate": {
+											"type": "string"
+										},
 										"keyFormat": {
 											"type": "string"
 										},
@@ -5323,6 +5322,7 @@
 										"notFound",
 										"personNotEligible",
 										"datesOrdered",
+										"managedEndDate",
 										"keyFormat",
 										"keyTaken",
 										"generic"
@@ -30029,6 +30029,12 @@
 						},
 						"self_edit_confirmation_required": {
 							"type": "string"
+						},
+						"role_name_taken": {
+							"type": "string"
+						},
+						"project_role_details_only": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -30044,7 +30050,9 @@
 						"role_not_deletable",
 						"role_not_editable",
 						"rank_guard",
-						"self_edit_confirmation_required"
+						"self_edit_confirmation_required",
+						"role_name_taken",
+						"project_role_details_only"
 					]
 				},
 				"fields": {
@@ -31244,6 +31252,254 @@
 						}
 					},
 					"required": ["create", "previewImpact", "save", "unexpectedDryRun"]
+				},
+				"projectRoles": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"tabsLabel": {
+							"type": "string"
+						},
+						"tabWorkspace": {
+							"type": "string"
+						},
+						"tabProject": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"notUsed": {
+							"type": "string"
+						},
+						"projectsUsed_one": {
+							"type": "string"
+						},
+						"projectsUsed_zero": {
+							"type": "string"
+						},
+						"projectsUsed_two": {
+							"type": "string"
+						},
+						"projectsUsed_few": {
+							"type": "string"
+						},
+						"projectsUsed_many": {
+							"type": "string"
+						},
+						"projectsUsed_other": {
+							"type": "string"
+						},
+						"edit": {
+							"type": "string"
+						},
+						"editNamed": {
+							"type": "string"
+						},
+						"deleteNamed": {
+							"type": "string"
+						},
+						"editTitle": {
+							"type": "string"
+						},
+						"editDescription": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"conflictDescription": {
+							"type": "string"
+						},
+						"reload": {
+							"type": "string"
+						},
+						"blockedBuiltInTitle": {
+							"type": "string"
+						},
+						"blockedBuiltInDescription": {
+							"type": "string"
+						},
+						"blockedInUseTitle": {
+							"type": "string"
+						},
+						"blockedInUseDescription_one": {
+							"type": "string"
+						},
+						"blockedInUseDescription_zero": {
+							"type": "string"
+						},
+						"blockedInUseDescription_two": {
+							"type": "string"
+						},
+						"blockedInUseDescription_few": {
+							"type": "string"
+						},
+						"blockedInUseDescription_many": {
+							"type": "string"
+						},
+						"blockedInUseDescription_other": {
+							"type": "string"
+						},
+						"blockedInUseProjects_one": {
+							"type": "string"
+						},
+						"blockedInUseProjects_zero": {
+							"type": "string"
+						},
+						"blockedInUseProjects_two": {
+							"type": "string"
+						},
+						"blockedInUseProjects_few": {
+							"type": "string"
+						},
+						"blockedInUseProjects_many": {
+							"type": "string"
+						},
+						"blockedInUseProjects_other": {
+							"type": "string"
+						},
+						"blockedInUseMore_one": {
+							"type": "string"
+						},
+						"blockedInUseMore_zero": {
+							"type": "string"
+						},
+						"blockedInUseMore_two": {
+							"type": "string"
+						},
+						"blockedInUseMore_few": {
+							"type": "string"
+						},
+						"blockedInUseMore_many": {
+							"type": "string"
+						},
+						"blockedInUseMore_other": {
+							"type": "string"
+						},
+						"blockedHistoryTitle": {
+							"type": "string"
+						},
+						"blockedHistoryDescription_one": {
+							"type": "string"
+						},
+						"blockedHistoryDescription_zero": {
+							"type": "string"
+						},
+						"blockedHistoryDescription_two": {
+							"type": "string"
+						},
+						"blockedHistoryDescription_few": {
+							"type": "string"
+						},
+						"blockedHistoryDescription_many": {
+							"type": "string"
+						},
+						"blockedHistoryDescription_other": {
+							"type": "string"
+						},
+						"openMembers": {
+							"type": "string"
+						},
+						"blockedRefsDescription": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_one": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_zero": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_two": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_few": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_many": {
+							"type": "string"
+						},
+						"refWorkflowTransitions_other": {
+							"type": "string"
+						},
+						"refAutomations_one": {
+							"type": "string"
+						},
+						"refAutomations_zero": {
+							"type": "string"
+						},
+						"refAutomations_two": {
+							"type": "string"
+						},
+						"refAutomations_few": {
+							"type": "string"
+						},
+						"refAutomations_many": {
+							"type": "string"
+						},
+						"refAutomations_other": {
+							"type": "string"
+						},
+						"refIdentityMappings_one": {
+							"type": "string"
+						},
+						"refIdentityMappings_zero": {
+							"type": "string"
+						},
+						"refIdentityMappings_two": {
+							"type": "string"
+						},
+						"refIdentityMappings_few": {
+							"type": "string"
+						},
+						"refIdentityMappings_many": {
+							"type": "string"
+						},
+						"refIdentityMappings_other": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"tabsLabel",
+						"tabWorkspace",
+						"tabProject",
+						"description",
+						"loading",
+						"loadErrorTitle",
+						"loadErrorDescription",
+						"emptyTitle",
+						"emptyDescription",
+						"notUsed",
+						"edit",
+						"editNamed",
+						"deleteNamed",
+						"editTitle",
+						"editDescription",
+						"saved",
+						"conflictDescription",
+						"reload",
+						"blockedBuiltInTitle",
+						"blockedBuiltInDescription",
+						"blockedInUseTitle",
+						"blockedHistoryTitle",
+						"openMembers",
+						"blockedRefsDescription"
+					]
 				}
 			},
 			"required": [
@@ -31266,7 +31522,8 @@
 				"tabs",
 				"stepUp",
 				"capabilityCatalog",
-				"clientErrors"
+				"clientErrors",
+				"projectRoles"
 			]
 		},
 		"agile": {
@@ -37092,6 +37349,9 @@
 						"end": {
 							"type": "string"
 						},
+						"runsContinuously": {
+							"type": "string"
+						},
 						"manager": {
 							"type": "string"
 						},
@@ -37114,6 +37374,7 @@
 						"internal",
 						"start",
 						"end",
+						"runsContinuously",
 						"manager",
 						"defaultAssignee",
 						"supportLevel",
@@ -43570,6 +43831,9 @@
 								"mcp": {
 									"type": "string"
 								},
+								"bundle": {
+									"type": "string"
+								},
 								"unknown": {
 									"type": "string"
 								}
@@ -43590,6 +43854,7 @@
 								"plane",
 								"planeHint",
 								"mcp",
+								"bundle",
 								"unknown"
 							]
 						},

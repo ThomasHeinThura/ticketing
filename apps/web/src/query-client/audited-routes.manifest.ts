@@ -978,7 +978,10 @@ export const AUDITED_ROUTES: AuditedRoute[] = [
     actions: ["role.updated"],
     producers: ["workspace/role-service.ts", "workspace/role-governance.ts"],
     fetchers: [`${F}workspace-roles/index.ts#updateRole`],
-    mutations: [`${C}settings/roles/role-capabilities-panel.tsx`],
+    mutations: [
+      `${C}settings/roles/role-capabilities-panel.tsx`,
+      `${C}settings/roles/project-roles-view.tsx`,
+    ],
   },
   {
     route: "POST /workspace/{workspaceId}/roles/{roleId}/reassign",

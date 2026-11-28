@@ -71,6 +71,12 @@ function useRosterMutation<Variables extends Audited>(
         queryClient.invalidateQueries({
           queryKey: ["workspace-capabilities"],
         }),
+        // Project-role holder and project counts follow the roster.
+        queryClient.invalidateQueries({
+          queryKey: variables.workspaceId
+            ? ["workspace-roles", variables.workspaceId, "project"]
+            : ["workspace-roles"],
+        }),
       ]);
     },
   });

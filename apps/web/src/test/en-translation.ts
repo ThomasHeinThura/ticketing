@@ -51,15 +51,23 @@ export function translate(
   options: Record<string, unknown> = {},
 ): string {
   const [namespace, path] = key.split(":");
-  const value = path
-    ?.split(".")
-    .reduce<unknown>(
-      (node, part) =>
-        node && typeof node === "object"
-          ? (node as Record<string, unknown>)[part]
-          : undefined,
-      (en as Record<string, unknown>)[namespace],
-    );
+  const pluralSuffix =
+    typeof options.count === "number"
+      ? `_${new Intl.PluralRules("en").select(options.count)}`
+      : "";
+  const lookup = (dotted: string | undefined) =>
+    dotted
+      ?.split(".")
+      .reduce<unknown>(
+        (node, part) =>
+          node && typeof node === "object"
+            ? (node as Record<string, unknown>)[part]
+            : undefined,
+        (en as Record<string, unknown>)[namespace],
+      );
+  const value =
+    (pluralSuffix ? lookup(`${path}${pluralSuffix}`) : undefined) ??
+    lookup(path);
   if (typeof value !== "string") {
     if (typeof options.defaultValue === "string") {
       return interpolateEnglish(options.defaultValue, namespace, options);

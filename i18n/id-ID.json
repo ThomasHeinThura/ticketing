@@ -7291,7 +7291,9 @@
 			"role_not_deletable": "A built-in role cannot be deleted",
 			"role_not_editable": "This role cannot be edited",
 			"rank_guard": "Rank limit",
-			"self_edit_confirmation_required": "Confirm editing your own role"
+			"self_edit_confirmation_required": "Confirm editing your own role",
+			"role_name_taken": "Peran proyek lain sudah memakai nama ini",
+			"project_role_details_only": "Di sini peran proyek hanya bisa diganti nama atau deskripsinya"
 		},
 		"fields": {
 			"description": "Description",
@@ -7583,6 +7585,40 @@
 			"previewImpact": "Failed to preview the role impact",
 			"save": "Failed to save the role",
 			"unexpectedDryRun": "Role dry-run returned a mutation result"
+		},
+		"projectRoles": {
+			"tabsLabel": "Jenis peran",
+			"tabWorkspace": "Peran ruang kerja",
+			"tabProject": "Peran proyek",
+			"description": "Peran yang dimiliki orang di dalam satu proyek. Di sini Anda bisa mengganti nama dan deskripsinya. Siapa yang memegang suatu peran dikelola di halaman Anggota setiap proyek.",
+			"loading": "Memuat peran proyek",
+			"loadErrorTitle": "Peran proyek tidak dapat dimuat",
+			"loadErrorDescription": "Peran proyek tidak dapat dimuat. Coba lagi.",
+			"emptyTitle": "Belum ada peran proyek",
+			"emptyDescription": "Peran proyek bawaan muncul di sini setelah sebuah proyek menggunakannya. Peran proyek kustom juga muncul di sini.",
+			"notUsed": "Tidak dipakai di proyek mana pun",
+			"projectsUsed_other": "{{count}} proyek",
+			"edit": "Ubah detail",
+			"editNamed": "Ubah detail {{name}}",
+			"deleteNamed": "Hapus {{name}}",
+			"editTitle": "Ubah peran proyek",
+			"editDescription": "Ubah nama dan deskripsi. Apa yang diizinkan peran ini tetap sama.",
+			"saved": "Peran proyek diperbarui",
+			"conflictDescription": "Muat ulang untuk melihat nama dan deskripsi terbaru, lalu ulangi perubahan Anda.",
+			"reload": "Muat ulang",
+			"blockedBuiltInTitle": "Peran bawaan tetap ada",
+			"blockedBuiltInDescription": "Peran proyek bawaan adalah bagian dari TaskDesk dan tidak bisa dihapus.",
+			"blockedInUseTitle": "Peran ini masih dipakai",
+			"blockedInUseDescription_other": "{{count}} orang masih memegang peran ini. Pindahkan mereka ke peran lain di halaman Anggota setiap proyek terlebih dahulu.",
+			"blockedInUseProjects_other": "Dipakai di {{count}} proyek",
+			"blockedInUseMore_other": "dan {{count}} proyek lainnya",
+			"blockedHistoryTitle": "Disimpan untuk riwayat",
+			"blockedHistoryDescription_other": "{{count}} penugasan lama dari anggota yang sudah dihapus masih merujuk ke peran ini, sehingga belum bisa dihapus. Peran ini menyimpan riwayat tersebut.",
+			"openMembers": "Buka halaman Anggota {{name}}",
+			"blockedRefsDescription": "Tidak ada yang memegang peran ini, tetapi pengaturan lain masih menggunakannya. Hapus dulu dari sana:",
+			"refWorkflowTransitions_other": "{{count}} transisi alur kerja",
+			"refAutomations_other": "{{count}} otomatisasi",
+			"refIdentityMappings_other": "{{count}} pemetaan grup identitas"
 		}
 	},
 	"agile": {

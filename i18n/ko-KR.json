@@ -7291,7 +7291,9 @@
 			"role_not_deletable": "A built-in role cannot be deleted",
 			"role_not_editable": "This role cannot be edited",
 			"rank_guard": "Rank limit",
-			"self_edit_confirmation_required": "Confirm editing your own role"
+			"self_edit_confirmation_required": "Confirm editing your own role",
+			"role_name_taken": "같은 이름의 다른 프로젝트 역할이 이미 있습니다",
+			"project_role_details_only": "여기서는 프로젝트 역할의 이름과 설명만 바꿀 수 있습니다"
 		},
 		"fields": {
 			"description": "Description",
@@ -7583,6 +7585,40 @@
 			"previewImpact": "Failed to preview the role impact",
 			"save": "Failed to save the role",
 			"unexpectedDryRun": "Role dry-run returned a mutation result"
+		},
+		"projectRoles": {
+			"tabsLabel": "역할 유형",
+			"tabWorkspace": "워크스페이스 역할",
+			"tabProject": "프로젝트 역할",
+			"description": "사람들이 하나의 프로젝트 안에서 갖는 역할입니다. 여기에서 이름과 설명을 바꿀 수 있습니다. 누가 어떤 역할을 갖는지는 각 프로젝트의 구성원 페이지에서 관리합니다.",
+			"loading": "프로젝트 역할 불러오는 중",
+			"loadErrorTitle": "프로젝트 역할을 불러오지 못했습니다",
+			"loadErrorDescription": "프로젝트 역할을 불러오지 못했습니다. 다시 시도해 주세요.",
+			"emptyTitle": "아직 프로젝트 역할이 없습니다",
+			"emptyDescription": "기본 제공 프로젝트 역할은 프로젝트가 사용하기 시작하면 여기에 표시됩니다. 사용자 지정 프로젝트 역할도 여기에 표시됩니다.",
+			"notUsed": "어떤 프로젝트에서도 사용되지 않음",
+			"projectsUsed_other": "프로젝트 {{count}}개",
+			"edit": "세부 정보 편집",
+			"editNamed": "{{name}} 세부 정보 편집",
+			"deleteNamed": "{{name}} 삭제",
+			"editTitle": "프로젝트 역할 편집",
+			"editDescription": "이름과 설명을 변경합니다. 역할이 허용하는 내용은 그대로입니다.",
+			"saved": "프로젝트 역할을 업데이트했습니다",
+			"conflictDescription": "새로고침하여 최신 이름과 설명을 확인한 뒤 변경을 다시 진행하세요.",
+			"reload": "새로고침",
+			"blockedBuiltInTitle": "기본 제공 역할은 유지됩니다",
+			"blockedBuiltInDescription": "기본 제공 프로젝트 역할은 TaskDesk의 일부이므로 삭제할 수 없습니다.",
+			"blockedInUseTitle": "이 역할은 아직 사용 중입니다",
+			"blockedInUseDescription_other": "{{count}}명이 아직 이 역할을 갖고 있습니다. 먼저 각 프로젝트의 구성원 페이지에서 다른 역할로 옮겨 주세요.",
+			"blockedInUseProjects_other": "프로젝트 {{count}}개에서 사용 중",
+			"blockedInUseMore_other": "그 외 프로젝트 {{count}}개",
+			"blockedHistoryTitle": "기록 보존을 위해 유지됨",
+			"blockedHistoryDescription_other": "제거된 구성원의 이전 할당 {{count}}건이 아직 이 역할을 가리키고 있어 지금은 삭제할 수 없습니다. 역할은 그 기록을 보관합니다.",
+			"openMembers": "{{name}}의 구성원 페이지 열기",
+			"blockedRefsDescription": "이 역할을 가진 사람은 없지만 다른 설정에서 아직 사용 중입니다. 먼저 그곳에서 제거해 주세요:",
+			"refWorkflowTransitions_other": "워크플로 전환 {{count}}개",
+			"refAutomations_other": "자동화 {{count}}개",
+			"refIdentityMappings_other": "ID 그룹 매핑 {{count}}개"
 		}
 	},
 	"agile": {

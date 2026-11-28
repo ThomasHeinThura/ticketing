@@ -14975,6 +14975,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/roles/role-capabilities-panel.tsx:RoleCapabilitiesPanel",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -15670,6 +15681,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/roles/create-role-dialog.tsx:CreateRoleDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-destructive#0",
@@ -17344,6 +17366,44 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:IdentityConnectionEditorRoute",
 					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
@@ -18016,6 +18076,44 @@
 					"jsx:Tabs[0]/TabsList[0]/TabsTab[5]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -28348,6 +28446,44 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/routes/agent/_layout/_authenticated/god-mode/authentication/$id.tsx:IdentityConnectionEditorRoute",
 					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
@@ -29051,6 +29187,44 @@
 					"jsx:Tabs[0]/TabsList[0]/TabsTab[5]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -33647,6 +33821,24 @@
 				"chain": [
 					"packages/ui/src/components/tabs.tsx:TabsList",
 					"jsx:TabsPrimitive.List[0]>*:data-[slot=tabs-tab]:hover:bg-accent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/tabs.tsx:TabsList",
+					"jsx:TabsPrimitive.List[0]>*:data-[slot=tabs-tab]:hover:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -33904,6 +34096,44 @@
 					"jsx:Tabs[0]/TabsList[0]/TabsTab[5]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -34549,6 +34779,24 @@
 				"chain": [
 					"packages/ui/src/components/tabs.tsx:TabsList",
 					"jsx:TabsPrimitive.List[0]>*:data-[slot=tabs-tab]:hover:bg-accent",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/tabs.tsx:TabsList",
+					"jsx:TabsPrimitive.List[0]>*:data-[slot=tabs-tab]:hover:bg-accent",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -34806,6 +35054,44 @@
 					"jsx:Tabs[0]/TabsList[0]/TabsTab[5]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -38215,6 +38501,9 @@
 			"apps/web/src/components/settings/custom-fields/custom-fields-list.tsx::CustomFieldsList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/custom-fields/custom-fields-list.tsx::CustomFieldsList::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx::CustomerInvitationsContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/roles/project-roles-view.tsx::DeleteBlockedDialog::p[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/roles/project-roles-view.tsx::ProjectRolesView::p[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/roles/project-roles-view.tsx::ProjectRolesView::ul[0]/li[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/roles/role-insight-panels.tsx::RoleComparePanel::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/roles/role-insight-panels.tsx::RoleComparePanel::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[1]::text-muted-foreground#0",
 			"apps/web/src/components/settings/roles/role-insight-panels.tsx::RoleHistoryPanel::Table[0]/TableBody[0]/TableRow[0]/TableCell[2]/div[0]/span[0]::text-muted-foreground#0",
@@ -43314,6 +43603,54 @@
 				"id": "apps/web/src/components/settings/customer-invitations/customer-invitations.tsx::CustomerInvitationsContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/customer-invitations/customer-invitations.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/roles/project-roles-view.tsx::DeleteBlockedDialog::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/roles/project-roles-view.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/roles/project-roles-view.tsx::ProjectRolesView::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/roles/project-roles-view.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/roles/project-roles-view.tsx::ProjectRolesView::ul[0]/li[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/roles/project-roles-view.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -51541,6 +51878,9 @@
 			"apps/web/src/components/settings/custom-fields/custom-fields-list.tsx::CustomFieldsList::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/custom-fields/custom-fields-list.tsx::CustomFieldsList::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/customer-invitations/customer-invitations.tsx::CustomerInvitationsContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/roles/project-roles-view.tsx::DeleteBlockedDialog::p[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/roles/project-roles-view.tsx::ProjectRolesView::p[0]::text-muted-foreground#0",
+			"apps/web/src/components/settings/roles/project-roles-view.tsx::ProjectRolesView::ul[0]/li[0]/div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/roles/role-insight-panels.tsx::RoleComparePanel::div[0]/p[0]::text-muted-foreground#0",
 			"apps/web/src/components/settings/roles/role-insight-panels.tsx::RoleComparePanel::div[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[1]::text-muted-foreground#0",
 			"apps/web/src/components/settings/roles/role-insight-panels.tsx::RoleHistoryPanel::Table[0]/TableBody[0]/TableRow[0]/TableCell[2]/div[0]/span[0]::text-muted-foreground#0",
@@ -56641,6 +56981,54 @@
 				"id": "apps/web/src/components/settings/customer-invitations/customer-invitations.tsx::CustomerInvitationsContent::div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
 				"surfaceContext": "caller-chain",
 				"usage": "apps/web/src/components/settings/customer-invitations/customer-invitations.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/roles/project-roles-view.tsx::DeleteBlockedDialog::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/roles/project-roles-view.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/roles/project-roles-view.tsx::ProjectRolesView::p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/roles/project-roles-view.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "apps/web/src/components/settings/roles/project-roles-view.tsx::ProjectRolesView::ul[0]/li[0]/div[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/settings/roles/project-roles-view.tsx"
 			},
 			{
 				"backdropLayers": [],
@@ -70948,6 +71336,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:ProjectRolesView",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/roles/role-detail.tsx:RoleDetailView",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -77095,6 +77494,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:ProjectRolesView",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/roles/role-detail.tsx:RoleDetailView",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -80246,6 +80656,24 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:ProjectRolesView",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/roles/role-capabilities-panel.tsx:RoleCapabilitiesPanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
@@ -82979,6 +83407,19 @@
 				"chain": [
 					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/settings/roles/role-capabilities-panel.tsx:RoleCapabilitiesPanel",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -83381,6 +83822,19 @@
 					"apps/web/src/components/settings/roles/create-role-dialog.tsx:CreateRoleDialog",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/settings/roles/create-role-dialog.tsx:CreateRoleDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -86007,6 +86461,24 @@
 				"backdropLayers": ["bg-background"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:ProjectRolesView",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/roles/role-capabilities-panel.tsx:RoleCapabilitiesPanel",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
@@ -88740,6 +89212,19 @@
 				"chain": [
 					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/god-mode/step-up-fields.tsx:FailureAlert",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/settings/roles/role-capabilities-panel.tsx:RoleCapabilitiesPanel",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -89142,6 +89627,19 @@
 					"apps/web/src/components/settings/roles/create-role-dialog.tsx:CreateRoleDialog",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/settings/roles/create-role-dialog.tsx:CreateRoleDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -91024,6 +91522,19 @@
 				"backdropLayers": ["bg-popover"],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/time-tracking/work-item-time.tsx:WorkItemTime",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/work-item/work-item-side-pane.tsx:WorkItemSidePane",
@@ -92283,6 +92794,19 @@
 					"apps/web/src/components/project/overview/team-page.tsx:StakeholderDialog",
 					"Alert->packages/ui/src/components/alert.tsx:Alert",
 					"apps/web/src/components/project/overview/team-page.tsx:StakeholderDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/alert.tsx"
+			},
+			{
+				"backdropLayers": ["bg-popover"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
+					"Alert->packages/ui/src/components/alert.tsx:Alert",
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
@@ -95026,6 +95550,24 @@
 				"chain": [
 					"packages/ui/src/components/tabs.tsx:TabsList",
 					"jsx:TabsPrimitive.List[0]>bg-muted",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/tabs.tsx:TabsList",
+					"jsx:TabsPrimitive.List[0]>bg-muted",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -95283,6 +95825,44 @@
 					"jsx:Tabs[0]/TabsList[0]/TabsTab[5]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -96488,6 +97068,24 @@
 				"chain": [
 					"packages/ui/src/components/tabs.tsx:TabsList",
 					"jsx:TabsPrimitive.List[0]>bg-muted",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsList::TabsPrimitive.List[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"packages/ui/src/components/tabs.tsx:TabsList",
+					"jsx:TabsPrimitive.List[0]>bg-muted",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
@@ -96745,6 +97343,44 @@
 					"jsx:Tabs[0]/TabsList[0]/TabsTab[5]",
 					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles/$id.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles/$id",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[0]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
+					"apps/web/src/routes/agent/_layout/_authenticated/dashboard.tsx:/_layout/_authenticated/dashboard",
+					"apps/web/src/routes/agent/_layout/_authenticated.tsx:/_layout/_authenticated",
+					"apps/web/src/routes/agent/_layout.tsx:/_layout",
+					"apps/web/src/index.css:body>@apply bg-background"
+				],
+				"id": "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/tabs.tsx"
+			},
+			{
+				"backdropLayers": ["bg-background"],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/roles-list.tsx:RolesList",
+					"jsx:div[0]/Tabs[0]/TabsList[0]/TabsTab[1]",
+					"component-slot:packages/ui/src/components/tabs.tsx:TabsList.children",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx:/_layout/_authenticated/dashboard/settings/workspace/roles",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace.tsx:/_layout/_authenticated/dashboard/settings/workspace",
 					"apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings.tsx:/_layout/_authenticated/dashboard/settings",
@@ -98781,6 +99417,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/roles/role-capabilities-panel.tsx:RoleCapabilitiesPanel",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -98881,6 +99528,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/roles/create-role-dialog.tsx:CreateRoleDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
@@ -103180,6 +103838,28 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/roles/create-role-dialog.tsx:CreateRoleDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/dialog.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:DeleteBlockedDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/dialog.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
@@ -104732,6 +105412,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/roles/role-capabilities-panel.tsx:RoleCapabilitiesPanel",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
@@ -104832,6 +105523,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/roles/create-role-dialog.tsx:CreateRoleDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
+				"surfaceContext": "caller-chain",
+				"usage": "apps/web/src/components/god-mode/step-up-fields.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "apps/web/src/components/god-mode/step-up-fields.tsx::StepUpFields::fieldset[0]/p[0]::text-muted-foreground#1",
@@ -109155,6 +109857,28 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/roles/create-role-dialog.tsx:CreateRoleDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/dialog.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:DeleteBlockedDialog",
+					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
+				],
+				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/dialog.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:EditDetailsDialog",
 					"DialogContent->packages/ui/src/components/dialog.tsx:DialogPopup"
 				],
 				"id": "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
@@ -117539,6 +118263,17 @@
 				"backdropLayers": [],
 				"category": "body",
 				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:ProjectRolesView",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
 					"apps/web/src/components/settings/roles/role-detail.tsx:RoleDetailView",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
@@ -118411,6 +119146,17 @@
 				"category": "body",
 				"chain": [
 					"apps/web/src/components/settings/label-catalogue.tsx:LabelCatalogue",
+					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
+				],
+				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+				"surfaceContext": "caller-chain",
+				"usage": "packages/ui/src/components/empty.tsx"
+			},
+			{
+				"backdropLayers": [],
+				"category": "body",
+				"chain": [
+					"apps/web/src/components/settings/roles/project-roles-view.tsx:ProjectRolesView",
 					"EmptyHeader->packages/ui/src/components/empty.tsx:EmptyHeader"
 				],
 				"id": "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
