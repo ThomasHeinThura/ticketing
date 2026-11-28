@@ -11,11 +11,17 @@ export const workspacesOptions = () => ({
 // ["workspaces"] key is deliberate: apps/web/src/routes/_layout/
 // _authenticated/dashboard/settings/workspace/general.tsx's delete-workspace
 // mutation already invalidates this exact key.
-function useGetWorkspaces(refetchOnMount = false, enabled = true) {
+function useGetWorkspaces(
+  refetchOnMount = false,
+  enabled = true,
+  /** Narrows which result changes re-render this caller (TanStack `notifyOnChangeProps`). */
+  notifyOnChangeProps?: () => Array<"data" | "error" | "isPending">,
+) {
   const query = useQuery({
     ...workspacesOptions(),
     refetchOnMount,
     enabled,
+    notifyOnChangeProps,
   });
 
   // Getters keep TanStack's tracked properties lazy: a caller that reads only `data` (every

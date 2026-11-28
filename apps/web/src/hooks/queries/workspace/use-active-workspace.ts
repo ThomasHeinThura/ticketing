@@ -1,4 +1,5 @@
 import { useParams } from "@tanstack/react-router";
+import { useCallback, useRef } from "react";
 import useGetWorkspaces from "@/hooks/queries/workspace/use-get-workspaces";
 import { authClient } from "@/lib/auth-client";
 import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
@@ -20,7 +21,16 @@ import { getActiveOrganizationId } from "@/lib/session-active-organization-id";
 // that source rather than assumed.
 function useActiveWorkspace() {
   const { data: session, error } = authClient.useSession();
-  const workspaceQuery = useGetWorkspaces();
+  // Once this caller has its workspace, only the list itself may re-render it: a failed background
+  // refresh must not re-render every list row through this hook (G11). Tracked properties would
+  // otherwise keep `error` subscribed after an unresolved first render.
+  const resolved = useRef(false);
+  const notifyOn = useCallback(
+    (): Array<"data" | "error" | "isPending"> =>
+      resolved.current ? ["data"] : ["data", "error", "isPending"],
+    [],
+  );
+  const workspaceQuery = useGetWorkspaces(false, true, notifyOn);
   const workspaces = workspaceQuery.data;
   // Select the id itself: the router compares selections by identity, so a fresh object here
   // re-rendered every caller (each list row's permission check) on any navigation, a search
@@ -42,6 +52,7 @@ function useActiveWorkspace() {
   // Read the list's loading and error state only while the workspace is unresolved: once it is
   // found, a failed background refresh keeps the cached workspace and must not re-render every
   // list row through this hook (G11).
+  resolved.current = Boolean(workspace);
   const workspacesError = workspace ? null : workspaceQuery.error;
   const isWorkspacesLoading = workspace ? false : workspaceQuery.isLoading;
   const combinedError = workspacesError ?? error ?? null;

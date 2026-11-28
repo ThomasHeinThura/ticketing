@@ -37,3 +37,30 @@ it("does not re-render a data-only caller while the list refetches", async () =>
   await waitFor(() => expect(client.isFetching()).toBe(0));
   expect(renders).toBe(settled);
 });
+
+it("lets a caller ignore a failed refresh once it only listens to data", async () => {
+  const list = [{ id: "workspace-1", name: "Support" }];
+  fetcher.mockResolvedValue(list);
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const wrapper = ({ children }: PropsWithChildren) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  let renders = 0;
+  const { result } = renderHook(
+    () => {
+      renders += 1;
+      const query = useGetWorkspaces(false, true, () => ["data"]);
+      return { data: query.data, error: query.error };
+    },
+    { wrapper },
+  );
+  await waitFor(() => expect(result.current.data).toEqual(list));
+  const settled = renders;
+  fetcher.mockRejectedValueOnce(new Error("offline"));
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["workspaces"] });
+  });
+  expect(renders).toBe(settled);
+});
