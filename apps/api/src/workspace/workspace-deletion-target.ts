@@ -39,7 +39,9 @@ import {
   countRoleReferences,
   deleteLegacyWorkspaceRoleRow,
   deleteRoleRow,
+  findRoleAnchor,
   listProjectRoleHolds,
+  listProjectsForRefusal,
   lockRoleRow,
   summariseProjectRoleHolds,
 } from "./role.repository";
@@ -179,12 +181,7 @@ async function assertProjectRoleDeletable(
   const { holderCount, projectCount } = summariseProjectRoleHolds(holds);
   if (holderCount > 0) {
     const projectIds = [...new Set(holds.map((hold) => hold.projectId))];
-    const projects = await tx
-      .select({ id: schema.projectTable.id, name: schema.projectTable.name })
-      .from(schema.projectTable)
-      .where(inArray(schema.projectTable.id, projectIds))
-      .orderBy(schema.projectTable.name)
-      .limit(20);
+    const projects = await listProjectsForRefusal(tx, projectIds, 20);
     roleErrorToHttp(
       new ProjectRoleInUseError(holderCount, projectCount, projects),
     );
@@ -211,21 +208,9 @@ export const workspaceRoleDeletionTarget: RegisteredDeletionTarget = {
     // Canonical `role` rows (owner decision, 23 Oct). A legacy `workspace_role` id still
     // resolves: migration 0145 keeps the id of every migrated row. Project-scope roles ride the
     // same target (RL-8 click approval); they are told apart by the scope read here.
-    const [anchor] = await tx
-      .select({
-        workspaceId: schema.roleTable.workspaceId,
-        scope: schema.roleTable.scope,
-      })
-      .from(schema.roleTable)
-      .where(
-        and(
-          eq(schema.roleTable.id, id),
-          inArray(schema.roleTable.scope, ["workspace", "project"]),
-        ),
-      )
-      .limit(1);
-    if (!anchor?.workspaceId) return undefined;
-    const scope = anchor.scope === "project" ? "project" : "workspace";
+    const anchor = await findRoleAnchor(tx, id);
+    if (!anchor) return undefined;
+    const { scope } = anchor;
     // The membership/role advisory pair guards `workspace_member.role` references only; a
     // project role is guarded by its own row lock, taken below.
     if (scope === "workspace")
@@ -247,19 +232,8 @@ export const workspaceRoleDeletionTarget: RegisteredDeletionTarget = {
     tx,
     id,
   ): Promise<RegisteredDeletionReadScope | undefined> => {
-    const [role] = await tx
-      .select({
-        id: schema.roleTable.id,
-        workspaceId: schema.roleTable.workspaceId,
-      })
-      .from(schema.roleTable)
-      .where(
-        and(
-          eq(schema.roleTable.id, id),
-          inArray(schema.roleTable.scope, ["workspace", "project"]),
-        ),
-      )
-      .limit(1);
+    const anchor = await findRoleAnchor(tx, id);
+    const role = anchor ? { id, workspaceId: anchor.workspaceId } : undefined;
     return role?.workspaceId
       ? {
           id: role.id,

@@ -5,14 +5,15 @@ import {
   type WorkflowTransition,
 } from "@taskdesk/domain";
 import type { ResolvedIdentity } from "@taskdesk/permissions";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import type { AppendAuditLogInput } from "../../audit/audit-writer";
 import db from "../../database";
-import { roleTable, workflowTable } from "../../database/schema";
+import { workflowTable } from "../../database/schema";
 import { appendAuditSavepoint } from "../../events/audit-savepoint";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
 import type { z } from "../../openapi";
+import { lockReferencedRolesForShare } from "../../workspace/role.repository";
 import {
   findWorkflowWorkspaceId,
   getMaxVersionNumber,
@@ -172,13 +173,11 @@ async function createWorkflowVersion(
       ),
     ].sort();
     if (referencedRoleIds.length > 0) {
-      const locked = await tx
-        .select({ id: roleTable.id })
-        .from(roleTable)
-        .where(inArray(roleTable.id, referencedRoleIds))
-        .orderBy(roleTable.id)
-        .for("share");
-      if (locked.length !== referencedRoleIds.length)
+      const lockedCount = await lockReferencedRolesForShare(
+        tx,
+        referencedRoleIds,
+      );
+      if (lockedCount !== referencedRoleIds.length)
         throw new HTTPException(409, { message: "workflow_role_deleted" });
     }
     const maxRow = await getMaxVersionNumber(tx, workflowId);

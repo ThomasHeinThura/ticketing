@@ -647,3 +647,59 @@ export async function listPersonNames(
     .where(inArray(schema.userTable.id, [...userIds]));
   return new Map(rows.map((row) => [row.id, row.name]));
 }
+
+/** The workspace and scope a role id belongs to, for the click-deletion target (either scope). */
+export async function findRoleAnchor(
+  executor: Executor,
+  roleId: string,
+): Promise<{ workspaceId: string; scope: RoleScope } | undefined> {
+  const [anchor] = await executor
+    .select({
+      workspaceId: schema.roleTable.workspaceId,
+      scope: schema.roleTable.scope,
+    })
+    .from(schema.roleTable)
+    .where(
+      and(
+        eq(schema.roleTable.id, roleId),
+        inArray(schema.roleTable.scope, ["workspace", "project"]),
+      ),
+    )
+    .limit(1);
+  if (!anchor?.workspaceId) return undefined;
+  return {
+    workspaceId: anchor.workspaceId,
+    scope: anchor.scope === "project" ? "project" : "workspace",
+  };
+}
+
+/** Up to `limit` projects by name, for the role-in-use refusal. */
+export async function listProjectsForRefusal(
+  executor: Executor,
+  projectIds: readonly string[],
+  limit: number,
+): Promise<Array<{ id: string; name: string }>> {
+  return executor
+    .select({ id: schema.projectTable.id, name: schema.projectTable.name })
+    .from(schema.projectTable)
+    .where(inArray(schema.projectTable.id, [...projectIds]))
+    .orderBy(schema.projectTable.name)
+    .limit(limit);
+}
+
+/**
+ * Share-locks the roles a workflow save references, in id order (role delete takes only the role
+ * row FOR UPDATE, so there is no cycle). Returns how many still exist.
+ */
+export async function lockReferencedRolesForShare(
+  tx: Executor,
+  roleIds: readonly string[],
+): Promise<number> {
+  const locked = await tx
+    .select({ id: schema.roleTable.id })
+    .from(schema.roleTable)
+    .where(inArray(schema.roleTable.id, [...roleIds]))
+    .orderBy(schema.roleTable.id)
+    .for("share");
+  return locked.length;
+}
