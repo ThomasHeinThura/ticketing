@@ -27,6 +27,7 @@ import {
   useProjectViewPreference,
 } from "@/hooks/use-project-view-preference";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { type DueDateStatus, getDueDateStatus } from "@/lib/due-date-status";
 import { routes } from "@/lib/routes";
 import {
   workItemKaneoView,
@@ -116,10 +117,11 @@ type ListRowProps = {
   onOpenItem: (key: string) => void;
   onToggleSelection: (key: string, selected: boolean) => void;
   /**
-   * The current hour. The due-date badge reads the clock while rendering, so a parent render
-   * re-renders rows at most once an hour to move a badge across its day threshold.
+   * The row's due-date badge state, computed by the parent each render. TaskRow reads the clock
+   * while rendering, so passing the state lets a skipped row re-render exactly when its badge
+   * crosses a threshold.
    */
-  dueClockHour: number;
+  dueStatus: DueDateStatus;
 };
 
 /** Only primitives, row objects and callbacks that are stable per list: an unchanged row skips. */
@@ -347,7 +349,7 @@ export default function WorkItemKaneoList({
       <WorkItemListRow
         item={item}
         task={task}
-        dueClockHour={Math.floor(Date.now() / 3_600_000)}
+        dueStatus={getDueDateStatus(item.dueDate, column.isFinal)}
         isFinal={column.isFinal}
         projectSlug={workItemProjectSlug(item)}
         displayPreferences={displayPreferences}

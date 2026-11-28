@@ -188,17 +188,22 @@ describe("work list row render cost (G11)", () => {
     expect(total()).toBe(1);
   });
 
-  it("re-renders rows on a parent render once the hour changes, for the due-date badge", () => {
-    const now = vi
-      .spyOn(Date, "now")
-      .mockReturnValue(Date.UTC(2026, 10, 28, 9, 10));
-    const view = list();
+  it("re-renders a skipped row on a parent render once its due-date badge changes", () => {
+    const dueAt = Date.UTC(2026, 10, 28, 10, 30);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(dueAt - 3 * 86_400_000 - 60_000);
+    const dated = items.map((row) =>
+      row.number === 2
+        ? { ...row, dueDate: new Date(dueAt).toISOString() }
+        : row,
+    );
+    const view = list({ workItems: dated });
     probe.renders.clear();
     view.rerender({ hasMore: true });
     expect(total()).toBe(0);
-    now.mockReturnValue(Date.UTC(2026, 10, 28, 10, 1));
+    vi.setSystemTime(dueAt - 3 * 86_400_000 + 60_000);
     view.rerender({ hasMore: false });
-    expect(total()).toBe(4);
-    now.mockRestore();
+    expect([...probe.renders.keys()]).toEqual(["id-2"]);
+    vi.useRealTimers();
   });
 });
