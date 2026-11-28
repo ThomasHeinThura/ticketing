@@ -247,7 +247,12 @@ const FEATURE_CACHE_TTL_MS = 5_000;
 const featureCache = new Map<string, { value: boolean; expiresAt: number }>();
 
 /** Clears every cached flag lookup. Called after each flag write commits, and by tests. */
+// Bumped on invalidation, so a lookup that started before a flag write cannot store its stale
+// result after the clear.
+let cacheGeneration = 0;
+
 export function invalidateFeatureFlagCache(): void {
+  cacheGeneration += 1;
   featureCache.clear();
   portalScopeCache = null;
 }
@@ -259,9 +264,11 @@ async function cachedLookup(
   const now = Date.now();
   const hit = featureCache.get(key);
   if (hit && hit.expiresAt > now) return hit.value ? "on" : "off";
+  const generation = cacheGeneration;
   try {
     const value = await lookup();
-    featureCache.set(key, { value, expiresAt: now + FEATURE_CACHE_TTL_MS });
+    if (generation === cacheGeneration)
+      featureCache.set(key, { value, expiresAt: now + FEATURE_CACHE_TTL_MS });
     return value ? "on" : "off";
   } catch {
     return "unknown";
@@ -479,6 +486,7 @@ export async function customerPortalScope(): Promise<CustomerPortalScope | null>
   if (portalScopeCache && portalScopeCache.expiresAt > now)
     return portalScopeCache.value;
   const feature = "feature.customer_portal" as const;
+  const generation = cacheGeneration;
   try {
     const [instance, workspaceRows, projectRows] = await Promise.all([
       instanceView(feature),
@@ -502,7 +510,8 @@ export async function customerPortalScope(): Promise<CustomerPortalScope | null>
       workspaces: new Map(workspaceRows.map((row) => [row.id, row.enabled])),
       projects: new Map(projectRows.map((row) => [row.id, row.enabled])),
     };
-    portalScopeCache = { value, expiresAt: now + FEATURE_CACHE_TTL_MS };
+    if (generation === cacheGeneration)
+      portalScopeCache = { value, expiresAt: now + FEATURE_CACHE_TTL_MS };
     return value;
   } catch {
     return null;
