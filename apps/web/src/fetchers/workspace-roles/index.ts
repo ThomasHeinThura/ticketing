@@ -6,6 +6,7 @@ import {
   httpErrorFromResponse,
   readErrorDetail,
 } from "@/lib/http-error";
+import { ROLE_REFUSAL_CODES } from "./refusal-codes";
 
 /**
  * Roles (RL-1..RL-15) on the canonical `role` store. A role's capabilities are the stored
@@ -252,12 +253,7 @@ export function reassignRole(
   );
 }
 
-/** Codes a role delete is refused with, at request time and again at approval. */
-export const ROLE_REFUSAL_CODES = [
-  "role_not_deletable",
-  "role_in_use",
-  "role_has_revoked_grants",
-];
+export { ROLE_REFUSAL_CODES } from "./refusal-codes";
 
 /** Deletion is a pending action: nothing is removed until the requester approves it. */
 export async function requestRoleDeletion(workspaceId: string, roleId: string) {

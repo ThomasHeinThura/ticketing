@@ -1,7 +1,7 @@
 import { client } from "@taskdesk/libs";
 import type { InferResponseType } from "hono/client";
 import type { StepUpMethod } from "@/fetchers/god-mode/instance-users";
-import { ROLE_REFUSAL_CODES } from "@/fetchers/workspace-roles";
+import { ROLE_REFUSAL_CODES } from "@/fetchers/workspace-roles/refusal-codes";
 import { HttpError, readErrorDetail } from "@/lib/http-error";
 
 const pendingActions = client.me["pending-actions"];

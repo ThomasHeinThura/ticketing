@@ -1,5 +1,5 @@
 import type { TFunction } from "i18next";
-import { ROLE_REFUSAL_CODES } from "@/fetchers/workspace-roles";
+import { ROLE_REFUSAL_CODES } from "@/fetchers/workspace-roles/refusal-codes";
 import { HttpError } from "@/lib/http-error";
 
 export type Body = Record<string, unknown>;
