@@ -424,7 +424,10 @@ function InstanceUsersPage() {
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,28rem)]">
           <Card className="min-w-0 overflow-hidden">
             <CardContent className="p-0">
-              <Table className="sm:min-w-[44rem] sm:table-fixed">
+              <Table
+                scrollLabel={t("instanceUsers:copy.d094be66b726")}
+                className="sm:min-w-[44rem] sm:table-fixed"
+              >
                 <TableHeader>
                   <TableRow>
                     <TableHead className="sm:w-[44%]">
@@ -457,10 +460,6 @@ function InstanceUsersPage() {
                             const { action: _action, ...rest } = current;
                             return { ...rest, user: user.id };
                           }}
-                          aria-label={t("instanceUsers:selectUser", {
-                            name: user.name,
-                            email: user.email,
-                          })}
                         >
                           <span
                             className="block break-words font-medium sm:truncate"

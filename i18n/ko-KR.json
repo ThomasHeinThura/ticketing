@@ -4716,7 +4716,6 @@
 		}
 	},
 	"instanceUsers": {
-		"selectUser": "{{name}}, {{email}} 열기",
 		"copy": {
 			"d094be66b726": "인스턴스 사용자",
 			"211715f3fe3d": "이 인스턴스의 계정을 검색하고 관리합니다.",

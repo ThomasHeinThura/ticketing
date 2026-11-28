@@ -21,6 +21,7 @@ import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { accountRows } from "./accounts-file.mjs";
 
 const repo = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -37,7 +38,7 @@ const agent = process.env.SIT_AGENT_ORIGIN ?? "https://ticketing.localhost";
 const portal = process.env.SIT_PORTAL_ORIGIN ?? "https://portal.localhost";
 const smokeArgs = process.argv.slice(2).filter((arg) => arg !== "--");
 const journeyDir = path.join(repo, "apps/web/e2e-sit");
-const hasInstanceAdmin = JSON.parse(readFileSync(accounts, "utf8")).some(
+const hasInstanceAdmin = accountRows(readFileSync(accounts, "utf8")).some(
   (row) => row.role === "instance-admin",
 );
 const notRun = [];
