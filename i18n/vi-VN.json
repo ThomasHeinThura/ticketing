@@ -7292,7 +7292,9 @@
 			"role_not_deletable": "A built-in role cannot be deleted",
 			"role_not_editable": "This role cannot be edited",
 			"rank_guard": "Rank limit",
-			"self_edit_confirmation_required": "Confirm editing your own role"
+			"self_edit_confirmation_required": "Confirm editing your own role",
+			"role_name_taken": "Một vai trò dự án khác đã có tên này",
+			"project_role_details_only": "Ở đây chỉ có thể đổi tên hoặc sửa mô tả của vai trò dự án"
 		},
 		"fields": {
 			"description": "Description",
@@ -7584,6 +7586,41 @@
 			"previewImpact": "Failed to preview the role impact",
 			"save": "Failed to save the role",
 			"unexpectedDryRun": "Role dry-run returned a mutation result"
+		},
+		"projectRoles": {
+			"tabsLabel": "Loại vai trò",
+			"tabWorkspace": "Vai trò không gian làm việc",
+			"tabProject": "Vai trò dự án",
+			"description": "Các vai trò mà mọi người có trong một dự án. Tại đây bạn có thể đổi tên và sửa mô tả của chúng. Ai giữ vai trò nào được quản lý ở trang Thành viên của từng dự án.",
+			"loading": "Đang tải vai trò dự án",
+			"loadErrorTitle": "Không thể tải vai trò dự án",
+			"loadErrorDescription": "Không thể tải các vai trò dự án. Hãy thử lại.",
+			"emptyTitle": "Chưa có vai trò dự án",
+			"emptyDescription": "Vai trò dự án tích hợp sẽ xuất hiện ở đây khi có dự án sử dụng chúng. Vai trò dự án tùy chỉnh cũng xuất hiện ở đây.",
+			"notUsed": "Không được dùng trong dự án nào",
+			"projectsUsed_one": "{{count}} dự án",
+			"projectsUsed_other": "{{count}} dự án",
+			"edit": "Sửa chi tiết",
+			"editNamed": "Sửa chi tiết của {{name}}",
+			"deleteNamed": "Xóa {{name}}",
+			"editTitle": "Sửa vai trò dự án",
+			"editDescription": "Đổi tên và mô tả. Những gì vai trò cho phép vẫn giữ nguyên.",
+			"saved": "Đã cập nhật vai trò dự án",
+			"conflictDescription": "Hãy tải lại để xem tên và mô tả mới nhất, rồi thực hiện lại thay đổi của bạn.",
+			"reload": "Tải lại",
+			"blockedBuiltInTitle": "Vai trò tích hợp được giữ lại",
+			"blockedBuiltInDescription": "Vai trò dự án tích hợp là một phần của TaskDesk và không thể xóa.",
+			"blockedInUseTitle": "Vai trò này vẫn đang được dùng",
+			"blockedInUseDescription_one": "{{count}} người vẫn giữ vai trò này. Hãy chuyển họ sang vai trò khác ở trang Thành viên của từng dự án trước.",
+			"blockedInUseDescription_other": "{{count}} người vẫn giữ vai trò này. Hãy chuyển họ sang vai trò khác ở trang Thành viên của từng dự án trước.",
+			"blockedInUseProjects_one": "Đang dùng trong {{count}} dự án",
+			"blockedInUseProjects_other": "Đang dùng trong {{count}} dự án",
+			"blockedInUseMore_one": "và {{count}} dự án khác",
+			"blockedInUseMore_other": "và {{count}} dự án khác",
+			"blockedHistoryTitle": "Được giữ lại để lưu lịch sử",
+			"blockedHistoryDescription_one": "{{count}} lần gán trước đây của thành viên đã bị gỡ vẫn trỏ tới vai trò này nên chưa thể xóa. Vai trò giữ lại lịch sử đó.",
+			"blockedHistoryDescription_other": "{{count}} lần gán trước đây của các thành viên đã bị gỡ vẫn trỏ tới vai trò này nên chưa thể xóa. Vai trò giữ lại lịch sử đó.",
+			"openMembers": "Mở trang Thành viên của {{name}}"
 		}
 	},
 	"agile": {

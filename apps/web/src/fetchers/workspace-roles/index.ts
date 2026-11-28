@@ -24,6 +24,10 @@ export type WorkspaceRoleDetail = {
   isSystem: boolean;
   isEditable: boolean;
   holderCount: number;
+  /** `project` roles come from `?scope=project`; absent on older responses. */
+  scope?: "workspace" | "project";
+  /** Project roles only: distinct projects whose roster holds the role. */
+  projectCount?: number;
   /** Optimistic-concurrency token; echoed back as `expectedVersion` on save. */
   version: string;
   createdAt: string;
@@ -132,9 +136,14 @@ async function request<T>(
 const base = (workspaceId: string) =>
   `/workspace/${encodeURIComponent(workspaceId)}/roles`;
 
-export function listRoles(workspaceId: string) {
+export function listRoles(
+  workspaceId: string,
+  scope?: "workspace" | "project",
+) {
   return request<WorkspaceRoleDetail[]>(
-    base(workspaceId),
+    scope === "project"
+      ? `${base(workspaceId)}?scope=project`
+      : base(workspaceId),
     {},
     "Failed to load roles",
   );
@@ -243,12 +252,36 @@ export function reassignRole(
   );
 }
 
+/** Refusals of a project role delete that carry counts the screen explains in words. */
+const DELETE_REFUSALS = [
+  "role_not_deletable",
+  "role_in_use",
+  "role_has_revoked_grants",
+];
+
 /** Deletion is a pending action: nothing is removed until the requester approves it. */
 export async function requestRoleDeletion(workspaceId: string, roleId: string) {
   const response = await apiFetch(
     getApiUrl(`${base(workspaceId)}/${encodeURIComponent(roleId)}`),
     { method: "DELETE", credentials: "include" },
   );
+  if (response.status === 400 || response.status === 409) {
+    const body: unknown = await response
+      .clone()
+      .json()
+      .catch(() => null);
+    const code =
+      body && typeof body === "object" && "error" in body ? body.error : null;
+    if (typeof code === "string" && DELETE_REFUSALS.includes(code))
+      throw new RoleApiError(
+        response.status,
+        "message" in (body as object)
+          ? String((body as { message: unknown }).message)
+          : code,
+        code,
+        body as Record<string, unknown>,
+      );
+  }
   return readPendingDeletion(
     response,
     "Failed to delete the role",
