@@ -193,9 +193,7 @@ async function assertProjectRoleDeletable(
   if (revoked > 0) roleErrorToHttp(new ProjectRoleRevokedGrantsError(revoked));
   const references = await countRoleReferences(tx, loaded.id);
   if (Object.values(references).some((value) => value > 0))
-    throw new HTTPException(409, {
-      message: new RoleInUseError(references).message,
-    });
+    roleErrorToHttp(new RoleInUseError(references));
 }
 
 /**

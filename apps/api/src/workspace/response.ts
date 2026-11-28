@@ -248,6 +248,12 @@ export const workspaceRoleHistorySchema = z
           after: z.number().nullable(),
         })
         .nullable(),
+      name: z
+        .object({ before: z.string().nullable(), after: z.string().nullable() })
+        .nullable(),
+      description: z
+        .object({ before: z.string().nullable(), after: z.string().nullable() })
+        .nullable(),
       createdAt: responseTimestamp,
     }),
   )

@@ -25,6 +25,7 @@ import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation
 import {
   approveWorkspaceRoleDeletion,
   deleteWorkspaceRoleNative,
+  getWorkspaceRoleHistoryNative,
   listWorkspaceRolesNative,
   requestWorkspaceRoleDeletion,
   updateWorkspaceRoleNative,
@@ -670,6 +671,56 @@ describe("delete project role (RL-8 click approval)", () => {
   });
 });
 
+describe("project role history", () => {
+  it("shows a rename and a re-description, and hides the role from another workspace", async () => {
+    const w = await world();
+    const role = await projectRole(w.workspaceId, "cab", { name: "CAB" });
+    const patch = await updateWorkspaceRoleNative(
+      w.app,
+      w.owner.cookie,
+      w.workspaceId,
+      role.id,
+      { name: "Change board", description: "Reviews changes" },
+    );
+    expect(patch.status).toBe(200);
+
+    const response = await getWorkspaceRoleHistoryNative(
+      w.app,
+      w.owner.cookie,
+      w.workspaceId,
+      role.id,
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const history = (await response.json()) as Array<{
+      action: string;
+      name: { before: string | null; after: string | null } | null;
+      description: { before: string | null; after: string | null } | null;
+    }>;
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      action: "role.updated",
+      name: { before: "CAB", after: "Change board" },
+      description: { before: null, after: "Reviews changes" },
+    });
+
+    const stranger = await world();
+    const cross = await getWorkspaceRoleHistoryNative(
+      w.app,
+      stranger.owner.cookie,
+      stranger.workspaceId,
+      role.id,
+    );
+    const missing = await getWorkspaceRoleHistoryNative(
+      w.app,
+      stranger.owner.cookie,
+      stranger.workspaceId,
+      "no-such-role",
+    );
+    expect(cross.status).toBe(404);
+    expect(missing.status).toBe(404);
+  });
+});
+
 describe("contract: structured refusals are declared as JSON", () => {
   it("declares the coded JSON body next to the plain-text one", () => {
     const spec = JSON.parse(
@@ -931,6 +982,11 @@ describe("workflow saves vs project role delete", () => {
     await saving;
     const response = await deletion;
     expect(response.status, await response.clone().text()).toBe(409);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(await response.json()).toMatchObject({
+      error: "role_in_use",
+      references: { workflowTransitions: 1 },
+    });
     expect(await roleRow(role.id)).toBeDefined();
   });
 });

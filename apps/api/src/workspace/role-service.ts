@@ -302,8 +302,22 @@ export type RoleHistoryEntry = {
   added: string[];
   removed: string[];
   rank: { before: number | null; after: number | null } | null;
+  /** Project-role renames and re-descriptions (and the name a delete removed). */
+  name: { before: string | null; after: string | null } | null;
+  description: { before: string | null; after: string | null } | null;
   createdAt: Date;
 };
+
+function change(
+  value: unknown,
+): { before: string | null; after: string | null } | null {
+  if (!value || typeof value !== "object") return null;
+  const { before, after } = value as Record<string, unknown>;
+  return {
+    before: typeof before === "string" ? before : null,
+    after: typeof after === "string" ? after : null,
+  };
+}
 
 function stringList(value: unknown): string[] {
   return Array.isArray(value)
@@ -316,7 +330,10 @@ export async function getRoleHistory(
   roleId: string,
   limit = 50,
 ): Promise<RoleHistoryEntry[]> {
-  const row = await getRoleWithHolderCount(db, workspaceId, roleId);
+  // Both lookups keep `workspace_id`, so another workspace's role is the same 404 as a missing one.
+  const row =
+    (await getRoleWithHolderCount(db, workspaceId, roleId)) ??
+    (await getProjectRoleWithHolderCount(db, workspaceId, roleId));
   if (!row) throw new WorkspaceRoleNotFoundError(roleId);
   const rows = await listRoleHistory(db, workspaceId, roleId, limit);
   const names = await listPersonNames(
@@ -351,6 +368,19 @@ export async function getRoleHistory(
       added: entry.action === "role.created" ? afterCaps : diff.added,
       removed: diff.removed,
       rank,
+      // A delete keeps the plain name and description it removed in `before`.
+      name:
+        entry.action === "role.deleted"
+          ? typeof before.name === "string"
+            ? { before: before.name, after: null }
+            : null
+          : change(after.name),
+      description:
+        entry.action === "role.deleted"
+          ? typeof before.description === "string"
+            ? { before: before.description, after: null }
+            : null
+          : change(after.description),
       createdAt: entry.createdAt,
     };
   });

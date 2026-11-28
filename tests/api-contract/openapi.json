@@ -5276,6 +5276,54 @@
                 "after"
               ]
             },
+            "name": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "properties": {
+                "before": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "after": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "before",
+                "after"
+              ]
+            },
+            "description": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "properties": {
+                "before": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "after": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "before",
+                "after"
+              ]
+            },
             "createdAt": {
               "type": "string",
               "format": "date-time"
@@ -5289,6 +5337,8 @@
             "added",
             "removed",
             "rank",
+            "name",
+            "description",
             "createdAt"
           ]
         }
