@@ -206,4 +206,12 @@ describe("work list row render cost (G11)", () => {
     expect([...probe.renders.keys()]).toEqual(["id-2"]);
     vi.useRealTimers();
   });
+
+  it("re-renders only the new row when an item is inserted before the others", () => {
+    const view = list();
+    probe.renders.clear();
+    const inserted = { ...items[0], id: "id-0", key: "WLP-0", number: 0 };
+    view.rerender({ workItems: [inserted, ...items] });
+    expect([...probe.renders.keys()]).toEqual(["id-0"]);
+  });
 });

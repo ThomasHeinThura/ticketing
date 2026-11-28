@@ -347,6 +347,7 @@ export default function WorkItemKaneoList({
     if (!item) return null;
     const inlineRow = (
       <WorkItemListRow
+        key={task.id}
         item={item}
         task={task}
         dueStatus={getDueDateStatus(item.dueDate, column.isFinal)}
