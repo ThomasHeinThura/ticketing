@@ -52,6 +52,22 @@ describe("per-account sign-in throttle", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("counts an IPv6 /64 as one client, so rotating addresses cannot reset the budget", async () => {
+    const t = setup();
+    for (let i = 0; i < 10; i++)
+      await t.attempt(
+        "account-password",
+        "a@example.com",
+        `2001:db8:1:2::${i + 1}`,
+      );
+    await expect(
+      t.attempt("account-password", "a@example.com", "2001:db8:1:2:ffff::9"),
+    ).rejects.toMatchObject(body429);
+    await expect(
+      t.attempt("account-password", "a@example.com", "2001:db8:1:3::1"),
+    ).resolves.toBeUndefined();
+  });
+
   it("stops distributed guessing at 100 per email across IPs", async () => {
     const t = setup();
     for (let i = 0; i < 100; i++)
