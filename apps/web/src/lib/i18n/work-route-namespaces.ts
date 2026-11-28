@@ -33,16 +33,27 @@ export const WORK_ROUTE_BOUNDARY_FREE_MODULES = [
 export const SPLIT_OUT_NAMESPACES = ["tasksExtra", "workItemsExtra"] as const;
 
 /**
- * Screens that render only on other paths. `routes/agent/__root.tsx` (beforeLoad) awaits
- * `whenAllNamespacesLoaded()` for every path except the work list, so these cannot paint before
- * the deferred group lands and the render-graph guard does not follow imports into them. A module
- * they share with the work path is still scanned through that path. Removing the root gate means
- * removing this list.
+ * Import edges into screens that render only on other paths. `routes/agent/__root.tsx`
+ * (beforeLoad) awaits `whenAllNamespacesLoaded()` for every path except the work list, so these
+ * screens cannot paint before the deferred group lands. The render-graph guard skips an edge only
+ * when BOTH the importing module and the screen match; any other importer of the screen is still
+ * followed. (The command palette's `void import` of projects-page is a preload and is already
+ * ignored.) Removing the root gate means removing this list.
  */
 export const WORK_ROUTE_NON_WORK_SCREENS = [
-  "/components/project-list/projects-page.tsx",
-  "/components/project/overview/project-overview-page.tsx",
-  "/components/agent-not-found.tsx",
+  {
+    importer: "/main.tsx",
+    target: "/components/agent-not-found.tsx",
+  },
+  {
+    importer: "/routes/agent/_layout/_authenticated/agent.tsx",
+    target: "/components/project-list/projects-page.tsx",
+  },
+  {
+    importer:
+      "/routes/agent/_layout/_authenticated/agent/projects/$projectKey.tsx",
+    target: "/components/project/overview/project-overview-page.tsx",
+  },
 ] as const;
 
 /** Entry points of the agent work route and shell render graph (relative to `apps/web/src`). */

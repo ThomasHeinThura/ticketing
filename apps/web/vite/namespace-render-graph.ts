@@ -168,14 +168,17 @@ export function isContainedInBoundary(
   return uses > 0;
 }
 
+/** An import edge the walk does not follow: only when the importer AND the target match. */
+export type SkippedEdge = { importer: string; target: string };
+
 /**
  * Modules reachable from `roots` by static AND dynamic imports without passing a namespace
  * boundary. An edge into a module listed in `gated` is a boundary only when every JSX use of
  * the imported component sits inside a namespace boundary element of the importer; traversal
  * stops there. Route modules other than the roots and the generated route tree are not
  * followed: they render only after navigation, which the root route gates on the deferred group.
- * `skip` lists screens that render only on other paths (see `WORK_ROUTE_NON_WORK_SCREENS`); they
- * are not followed either.
+ * `skip` lists import edges into screens that render only on other paths (see
+ * `WORK_ROUTE_NON_WORK_SCREENS`); those edges are not followed, any other importer still is.
  */
 export function collectUngatedRenderModules({
   srcDir,
@@ -187,7 +190,7 @@ export function collectUngatedRenderModules({
   srcDir: string;
   roots: readonly string[];
   gated: readonly string[];
-  skip?: readonly string[];
+  skip?: readonly SkippedEdge[];
   read?: (file: string) => string;
 }): Map<string, string> {
   const rootSet = new Set(roots.map((root) => path.join(srcDir, root)));
@@ -205,7 +208,14 @@ export function collectUngatedRenderModules({
       if (/\.test\.tsx?$/.test(normalized)) continue;
       if (normalized.includes("/routeTree.")) continue;
       if (normalized.includes("/src/routes/") && !rootSet.has(target)) continue;
-      if (skip.some((suffix) => normalized.endsWith(suffix))) continue;
+      const from = file.replaceAll("\\", "/");
+      if (
+        skip.some(
+          (edge) =>
+            from.endsWith(edge.importer) && normalized.endsWith(edge.target),
+        )
+      )
+        continue;
       if (isGated(target) && isContainedInBoundary(source, specifier)) continue;
       visit(target);
     }
@@ -223,7 +233,7 @@ export function findUngatedDeferredReads(options: {
   roots: readonly string[];
   gated: readonly string[];
   known: readonly string[];
-  skip?: readonly string[];
+  skip?: readonly SkippedEdge[];
   read?: (file: string) => string;
 }) {
   return findDeferredNamespaceUsers(

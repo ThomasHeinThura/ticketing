@@ -287,6 +287,14 @@ describe("work route render graph guard", () => {
     expect(scan()).not.toContain(projectsPage);
     // A read in the screen itself is not reported, one in a module the shell also renders is.
     expect(scan({ [projectsPage]: inject })).toEqual([]);
+    // A new importer on the work path is not exempt: the screen's reads become visible again.
+    expect(
+      scan({
+        "routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx":
+          (s) =>
+            `import ProjectsPage from "@/components/project-list/projects-page";\n${s}\nexport const P = ProjectsPage;`,
+      }),
+    ).toContain(projectsPage);
     expect(
       scan({
         "components/nav-main.tsx": (s) => `${s}\nconst x = t("settings:y");`,
