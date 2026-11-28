@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 import { redactSecretErrorContext } from "../e2e/helpers/redact-secret-error-context";
 import {
   discoverTarget,
-  isInstanceAdminIdentity,
   type Role,
   type Session,
   signIn,
@@ -15,10 +14,11 @@ test.afterEach(({ browserName: _browserName }, testInfo) => {
 /**
  * Release journey: import. Every import route (`GET/POST /api/imports*`, `/api/import-sources*`)
  * requires the `instance:admin` capability (apps/api/src/imports/policy.ts), which God Mode
- * signs in with its own password and MFA. The first test proves every workspace role that is not
- * an instance administrator (an account sharing the `instance-admin` entry's email is skipped)
- * is refused every import route, and that the God Mode import screen shows a workspace admin
- * "Access denied". The instance administrator is covered by release-import-apply.spec.ts.
+ * signs in with its own password and MFA. The first test proves every workspace role whose session
+ * the server does not report as an instance administrator is refused every import route, and
+ * that the God Mode import screen shows such a workspace admin "Access denied". Instance
+ * administrators (any account, including a break-glass grant) are covered by
+ * release-import-apply.spec.ts.
  */
 const csv = "external_id,title,type\nR929-1,R929 import denial row,task\n";
 const roles: Role[] = ["owner", "admin", "lead", "member", "viewer"];
@@ -32,12 +32,15 @@ test("workspace roles are refused every import route and the God Mode import scr
     const lead = await signIn(browser, "lead");
     sessions.push(lead);
     const { workspaceId } = await discoverTarget(lead);
-    const refused = roles.filter((role) => !isInstanceAdminIdentity(role));
-    // The screen check below needs a workspace admin that is not an instance administrator.
-    expect(refused).toContain("admin");
-    for (const role of refused) {
+    const refused: Role[] = [];
+    for (const role of roles) {
       const session = await signIn(browser, role);
       sessions.push(session);
+      // The server's own answer decides, so any instance administrator is skipped.
+      const me = await session.call("GET", "/auth/get-session");
+      expect(me.status, `${role} session`).toBe(200);
+      if (me.body?.user?.role === "admin") continue;
+      refused.push(role);
       const list = await session.call(
         "GET",
         `/imports?workspaceId=${workspaceId}`,
@@ -56,6 +59,8 @@ test("workspace roles are refused every import route and the God Mode import scr
       });
       expect(created.status, `${role} create source`).toBe(403);
     }
+    // Never pass vacuously: a workspace admin must be among the refused accounts.
+    expect(refused).toContain("admin");
     const admin = sessions.find((session) => session.role === "admin");
     if (!admin) throw new Error("No admin session.");
     const page = await admin.context.newPage();

@@ -33,7 +33,7 @@ If calibration stops the performance job before G13 runs, G13 remains unmeasured
 | Planning, time, cost | `release-time-cost` (log, edit, totals, cost only for rate managers, viewer denied, timesheet); `release-planning` (cycle create, add item, complete, cleanup) | burndown, weekly timesheet submit, rates, budgets, capacity |
 | Reports, KB, change | `release-reports-kb` (publish an article, customer finds and opens it, report catalogue page; the article is archived because no route deletes it); `report-epic-rollup` (private state, outside the command); smoke opens KB | the other reports, dashboards, KB deflection, freeze/CAB rollback, release notes |
 | Feature flags | `release-feature-off` (cycles off for a project: API and screen refused 404, override restored) | other flags, workspace and instance levels |
-| Import | `release-import` (every workspace role that is not an instance administrator refused; an account whose email matches the `instance-admin` entry is skipped; God Mode screen denied to a workspace admin), `release-import-apply` (CSV preview and apply of one row, item removed again; runs only with an `instance-admin` account) | adapter journeys other than CSV |
+| Import | `release-import` (every workspace role whose session the server does not report as an instance administrator is refused; God Mode screen denied to a workspace admin), `release-import-apply` (CSV preview and apply of one row, item removed again; runs only with an `instance-admin` account) | adapter journeys other than CSV |
 
 
 | Area | Journeys |
