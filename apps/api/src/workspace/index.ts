@@ -82,6 +82,7 @@ import {
   invitedWorkspaceMemberSchema,
   leftWorkspaceSchema,
   removedWorkspaceMemberSchema,
+  roleRefusalSchema,
   transferredWorkspaceOwnershipSchema,
   workspaceDetailSchema,
   workspaceInvitationCopiedLinkSchema,
@@ -745,6 +746,15 @@ const copyWorkspaceInvitationLinkRoute = createRoute({
 // DELETE is a click-level pending action (RL-8; see `elevated-enforcement.ts`). Capabilities live
 // in the canonical `role` row; `workspace_member.role` holds the role key.
 
+/** A role refusal is coded JSON or a plain message, depending on which guard refused. */
+const roleRefusalResponse = (description: string) => ({
+  description,
+  content: {
+    "text/plain": { schema: z.string() },
+    "application/json": { schema: roleRefusalSchema },
+  },
+});
+
 const listWorkspaceRolesRoute = createRoute({
   method: "get",
   operationId: "listWorkspaceRoles",
@@ -998,14 +1008,16 @@ const updateWorkspaceRoleRoute = createRoute({
         }),
       ]),
     ),
-    400: errorResponse("Invalid body, or an unknown permission resource"),
+    400: roleRefusalResponse(
+      "Invalid body, an unknown permission resource, or (project role) project_role_details_only",
+    ),
     401: errorResponse("No credential at all"),
-    403: errorResponse(
-      "An API key or impersonation session (session_required), no workspace access, missing ac:update permission, granting a permission the caller does not themselves hold, or the step-up proof is missing (step_up_required) or unusable (step_up_unavailable)",
+    403: roleRefusalResponse(
+      "An API key or impersonation session (session_required), no workspace access, missing ac:update permission, granting a permission the caller does not themselves hold, the step-up proof is missing (step_up_required) or unusable (step_up_unavailable), or a built-in or higher-ranked role (role_not_editable, rank_guard)",
     ),
     404: errorResponse("The role does not exist"),
-    409: errorResponse(
-      "RL-7: the save would leave no active person able to manage roles",
+    409: roleRefusalResponse(
+      "RL-7: the save would leave no active person able to manage roles; a stale version (role_changed, carries `current`); or a project role name already in use",
     ),
   },
 });
@@ -1031,16 +1043,16 @@ const deleteWorkspaceRoleRoute = createRoute({
       "Pending deletion; role unchanged",
       registeredDeletionRequestSchema,
     ),
-    400: errorResponse(
-      "The role is 'owner', or is still assigned to one or more members",
+    400: roleRefusalResponse(
+      "The role is 'owner', or is still assigned to one or more members; a built-in project role is role_not_deletable",
     ),
     401: errorResponse("No credential at all"),
     403: errorResponse(
       "An API key or impersonation session (session_required), no workspace access, or missing ac:delete permission",
     ),
     404: errorResponse("The role does not exist"),
-    409: errorResponse(
-      "An equivalent deletion is already pending, or a project role is still held or referenced",
+    409: roleRefusalResponse(
+      "An equivalent deletion is already pending, or a project role is still held (role_in_use with holderCount, projectCount, projects) or has revoked grants (role_has_revoked_grants)",
     ),
   },
 });

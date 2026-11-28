@@ -183,6 +183,28 @@ export const workspaceRoleSchema = z
   })
   .openapi("WorkspaceRole");
 
+/** The coded JSON body of a structured role refusal (the plain-text refusals stay text/plain). */
+export const roleRefusalSchema = z
+  .object({
+    error: z.string().openapi({
+      description:
+        "Stable code, e.g. role_in_use, role_has_revoked_grants, role_not_deletable, role_not_editable, role_changed, project_role_details_only, rank_guard.",
+    }),
+    message: z.string(),
+    holderCount: z.number().int().optional(),
+    projectCount: z.number().int().optional(),
+    projects: z
+      .array(z.object({ id: z.string(), name: z.string() }))
+      .optional()
+      .openapi({ description: "Up to 20 projects that still use the role." }),
+    revokedGrantCount: z.number().int().optional(),
+    references: z.record(z.string(), z.number().int()).optional(),
+    current: workspaceRoleSchema.optional().openapi({
+      description: "role_changed: the role as it is now.",
+    }),
+  })
+  .openapi("RoleRefusal");
+
 export const workspaceRoleHolderSchema = z
   .object({
     userId: z.string(),

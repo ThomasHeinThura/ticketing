@@ -4,6 +4,7 @@
  * approval). Built-in project roles are immutable; the role key never changes.
  */
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { getDatabasePool, schema } from "../../apps/api/src/database";
@@ -13,11 +14,13 @@ import {
   resolveRoleCaller,
   updateProjectRoleDetails,
 } from "../../apps/api/src/workspace/role-service";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { createProjectFixture } from "./helpers/fixtures";
 import { signUpUser } from "./helpers/organization-http";
 import { projectKey } from "./helpers/project-key";
 import { addMember } from "./helpers/reach-world";
+import { mintStepUpToken } from "./helpers/step-up";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
 import {
   approveWorkspaceRoleDeletion,
@@ -475,17 +478,23 @@ describe("delete project role (RL-8 click approval)", () => {
       role.id,
     );
     expect(response.status).toBe(409);
+    expect(response.headers.get("content-type")).toContain("application/json");
     expect(await response.json()).toMatchObject({
       error: "role_in_use",
+      message: expect.any(String),
       holderCount: 2,
       projectCount: 1,
+      projects: [{ id: w.project.id, name: expect.any(String) }],
     });
     expect(await roleRow(role.id)).toBeDefined();
   });
 
   it("deletes an unheld role on approval, never touching a workspace role with the same key", async () => {
     const w = await world();
-    const role = await projectRole(w.workspaceId, "lead", { name: "Dup" });
+    const role = await projectRole(w.workspaceId, "lead", {
+      name: "Dup",
+      description: "Keep me",
+    });
     const [workspaceLead] = await db
       .select({ id: schema.roleTable.id })
       .from(schema.roleTable)
@@ -530,7 +539,13 @@ describe("delete project role (RL-8 click approval)", () => {
           eq(schema.auditLogTable.action, "role.deleted"),
         ),
       );
-    expect(audit?.before).toMatchObject({ scope: "project", role: "lead" });
+    expect(audit?.before).toMatchObject({
+      scope: "project",
+      role: "lead",
+      name: "Dup",
+      description: "Keep me",
+      holderCount: 0,
+    });
   });
 
   it("re-checks holders at approval time", async () => {
@@ -563,6 +578,7 @@ describe("delete project role (RL-8 click approval)", () => {
       role.id,
     );
     expect(response.status).toBe(409);
+    expect(response.headers.get("content-type")).toContain("application/json");
     expect(await response.json()).toMatchObject({
       error: "role_has_revoked_grants",
       revokedGrantCount: 1,
@@ -651,5 +667,270 @@ describe("delete project role (RL-8 click approval)", () => {
     const resolved = await lookup;
     expect(resolved?.roleId).toBeDefined();
     expect(resolved?.roleId).not.toBe(doomed.id);
+  });
+});
+
+describe("contract: structured refusals are declared as JSON", () => {
+  it("declares the coded JSON body next to the plain-text one", () => {
+    const spec = JSON.parse(
+      readFileSync(
+        new URL("../api-contract/openapi.json", import.meta.url),
+        "utf8",
+      ),
+    ) as {
+      paths: Record<
+        string,
+        Record<
+          string,
+          { responses: Record<string, { content?: Record<string, unknown> }> }
+        >
+      >;
+      components: { schemas: Record<string, { properties?: object }> };
+    };
+    const path = spec.paths["/workspace/{workspaceId}/roles/{roleId}"];
+    for (const [method, status] of [
+      ["delete", "409"],
+      ["delete", "400"],
+      ["patch", "409"],
+      ["patch", "403"],
+      ["patch", "400"],
+    ] as const) {
+      const content = path?.[method]?.responses[status]?.content;
+      expect(Object.keys(content ?? {}).sort()).toEqual([
+        "application/json",
+        "text/plain",
+      ]);
+    }
+    expect(
+      Object.keys(spec.components.schemas.RoleRefusal?.properties ?? {}),
+    ).toEqual(
+      expect.arrayContaining([
+        "error",
+        "holderCount",
+        "projectCount",
+        "projects",
+        "revokedGrantCount",
+      ]),
+    );
+  });
+});
+
+async function injectRoleAuditFailure<T>(run: () => Promise<T>): Promise<T> {
+  await db.execute(sql`
+    CREATE OR REPLACE FUNCTION fail_role_updated_audit() RETURNS trigger AS $$
+    BEGIN
+      IF NEW.action = 'role.updated' THEN RAISE EXCEPTION 'injected audit failure'; END IF;
+      RETURN NEW;
+    END $$ LANGUAGE plpgsql`);
+  await db.execute(
+    sql`CREATE TRIGGER fail_role_updated_audit BEFORE INSERT ON audit_log FOR EACH ROW EXECUTE FUNCTION fail_role_updated_audit()`,
+  );
+  try {
+    return await run();
+  } finally {
+    await db.execute(
+      sql`DROP TRIGGER IF EXISTS fail_role_updated_audit ON audit_log`,
+    );
+    await db.execute(sql`DROP FUNCTION IF EXISTS fail_role_updated_audit()`);
+  }
+}
+
+describe("failure injection and races", () => {
+  it("an audit failure after the proof and the write rolls everything back; the same proof works after recovery", async () => {
+    const w = await world();
+    const role = await projectRole(w.workspaceId, "cab", { name: "CAB" });
+    const body = { name: "Renamed" };
+    const token = await mintStepUpToken(
+      w.app,
+      w.owner.cookie,
+      "workspace_role_update",
+      { workspaceId: w.workspaceId, roleId: role.id, ...body },
+    );
+    expect(token).toBeTruthy();
+
+    const failed = await injectRoleAuditFailure(() =>
+      updateWorkspaceRoleNative(
+        w.app,
+        w.owner.cookie,
+        w.workspaceId,
+        role.id,
+        body,
+        token ?? undefined,
+      ),
+    );
+    expect(failed.status).toBeGreaterThanOrEqual(500);
+    const after = await roleRow(role.id);
+    expect(after?.name).toBe("CAB");
+    expect(after?.updatedAt.getTime()).toBe(role.updatedAt.getTime());
+    const audits = await db
+      .select({ action: schema.auditLogTable.action })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, role.id));
+    expect(audits.filter((a) => a.action === "role.updated")).toHaveLength(0);
+    const consumed = await db
+      .select({ id: schema.auditLogTable.id })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.step_up_consumed"));
+    expect(consumed).toHaveLength(0);
+    const spent = await db.execute(
+      sql`SELECT count(*)::int AS n FROM step_up_confirmation WHERE state = 'consumed'`,
+    );
+    expect((spent.rows[0] as { n: number }).n).toBe(0);
+
+    const retry = await updateWorkspaceRoleNative(
+      w.app,
+      w.owner.cookie,
+      w.workspaceId,
+      role.id,
+      body,
+      token ?? undefined,
+    );
+    expect(retry.status, await retry.clone().text()).toBe(200);
+    expect((await roleRow(role.id))?.name).toBe("Renamed");
+  });
+
+  it("refuses an approval when a revoked grant appeared after the request", async () => {
+    const w = await world();
+    const role = await projectRole(w.workspaceId, "cab", { name: "CAB" });
+    const pending = await requestWorkspaceRoleDeletion(
+      w.app,
+      w.owner.cookie,
+      w.workspaceId,
+      role.id,
+    );
+    await holder(role.id, w.workspaceId, w.project.id, "revoked");
+    const approved = await approveWorkspaceRoleDeletion(
+      w.app,
+      w.owner.cookie,
+      pending,
+    );
+    expect(approved.status).toBe(409);
+    expect(await roleRow(role.id)).toBeDefined();
+  });
+});
+
+describe("workflow saves vs project role delete", () => {
+  async function workflowWorld() {
+    const w = await world();
+    const [a, b] = await db
+      .insert(schema.stateTemplateTable)
+      .values([
+        { workspaceId: w.workspaceId, key: "a", name: "A", group: "backlog" },
+        { workspaceId: w.workspaceId, key: "b", name: "B", group: "started" },
+      ])
+      .returning();
+    if (!a || !b) throw new Error("state fixture missing");
+    const post = (path: string, body: unknown) =>
+      csrfRequest(
+        w.app,
+        path,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            cookie: w.owner.cookie,
+          },
+          body: JSON.stringify(body),
+        },
+        w.owner.cookie,
+      );
+    const created = await post("/api/workflows", {
+      workspaceId: w.workspaceId,
+      key: "flow",
+      name: "Flow",
+    });
+    expect(created.status, await created.clone().text()).toBeLessThan(300);
+    const workflow = (await created.json()) as { id: string };
+    const edge = (roleId: string | null) => ({
+      fromStateTemplateId: a.id,
+      toStateTemplateId: b.id,
+      roleId,
+      notePolicy: "none",
+      noteVisibility: "internal",
+    });
+    return { ...w, a, b, workflow, post, edge };
+  }
+
+  it("a save that validated a role deleted meanwhile answers 409, not an FK 500", async () => {
+    const w = await workflowWorld();
+    const role = await projectRole(w.workspaceId, "cab", { name: "CAB" });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let locked!: () => void;
+    const lockTaken = new Promise<void>((resolve) => {
+      locked = resolve;
+    });
+    // An approved delete in flight: row locked and deleted, not yet committed.
+    const deleting = db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT id FROM role WHERE id = ${role.id} FOR UPDATE`,
+      );
+      await tx.delete(schema.roleTable).where(eq(schema.roleTable.id, role.id));
+      locked();
+      await gate;
+    });
+    await lockTaken;
+    const save = w.post(`/api/workflows/${w.workflow.id}/versions`, {
+      transitions: [w.edge(role.id)],
+    });
+    await waitForBlockedQuery();
+    release();
+    await deleting;
+    const response = await save;
+    expect(response.status, await response.clone().text()).toBe(409);
+    expect(await response.text()).toContain("workflow_role_deleted");
+  });
+
+  it("a delete queued behind a saving workflow refuses because a transition now references the role", async () => {
+    const w = await workflowWorld();
+    const role = await projectRole(w.workspaceId, "cab", { name: "CAB" });
+    const versionResponse = await w.post(
+      `/api/workflows/${w.workflow.id}/versions`,
+      { transitions: [w.edge(null)] },
+    );
+    expect(versionResponse.status).toBeLessThan(300);
+    const [version] = await db
+      .select({ id: schema.workflowVersionTable.id })
+      .from(schema.workflowVersionTable)
+      .where(eq(schema.workflowVersionTable.workflowId, w.workflow.id));
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let held!: () => void;
+    const holding = new Promise<void>((resolve) => {
+      held = resolve;
+    });
+    // The save: share-locks the role (as the controller does) and inserts a referencing row.
+    const saving = db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT id FROM role WHERE id = ${role.id} FOR SHARE`,
+      );
+      await tx.insert(schema.workflowTransitionTable).values({
+        versionId: version?.id ?? "",
+        fromStateTemplateId: w.a.id,
+        toStateTemplateId: w.b.id,
+        roleId: role.id,
+        notePolicy: "none",
+        noteVisibility: "internal",
+      });
+      held();
+      await gate;
+    });
+    await holding;
+    const deletion = deleteWorkspaceRoleNative(
+      w.app,
+      w.owner.cookie,
+      w.workspaceId,
+      role.id,
+    );
+    await waitForBlockedQuery();
+    release();
+    await saving;
+    const response = await deletion;
+    expect(response.status, await response.clone().text()).toBe(409);
+    expect(await roleRow(role.id)).toBeDefined();
   });
 });

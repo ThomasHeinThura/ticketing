@@ -5358,6 +5358,66 @@
           "capabilityCount"
         ]
       },
+      "RoleRefusal": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Stable code, e.g. role_in_use, role_has_revoked_grants, role_not_deletable, role_not_editable, role_changed, project_role_details_only, rank_guard."
+          },
+          "message": {
+            "type": "string"
+          },
+          "holderCount": {
+            "type": "integer"
+          },
+          "projectCount": {
+            "type": "integer"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            },
+            "description": "Up to 20 projects that still use the role."
+          },
+          "revokedGrantCount": {
+            "type": "integer"
+          },
+          "references": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "current": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WorkspaceRole"
+              },
+              {
+                "description": "role_changed: the role as it is now."
+              }
+            ]
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ]
+      },
       "WorkspaceRoleReassignResult": {
         "type": "object",
         "properties": {
@@ -36270,11 +36330,16 @@
             }
           },
           "400": {
-            "description": "Invalid body, or an unknown permission resource",
+            "description": "Invalid body, an unknown permission resource, or (project role) project_role_details_only",
             "content": {
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRefusal"
                 }
               }
             }
@@ -36290,11 +36355,16 @@
             }
           },
           "403": {
-            "description": "An API key or impersonation session (session_required), no workspace access, missing ac:update permission, granting a permission the caller does not themselves hold, or the step-up proof is missing (step_up_required) or unusable (step_up_unavailable)",
+            "description": "An API key or impersonation session (session_required), no workspace access, missing ac:update permission, granting a permission the caller does not themselves hold, the step-up proof is missing (step_up_required) or unusable (step_up_unavailable), or a built-in or higher-ranked role (role_not_editable, rank_guard)",
             "content": {
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRefusal"
                 }
               }
             }
@@ -36310,11 +36380,16 @@
             }
           },
           "409": {
-            "description": "RL-7: the save would leave no active person able to manage roles",
+            "description": "RL-7: the save would leave no active person able to manage roles; a stale version (role_changed, carries `current`); or a project role name already in use",
             "content": {
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRefusal"
                 }
               }
             }
@@ -36395,11 +36470,16 @@
             }
           },
           "400": {
-            "description": "The role is 'owner', or is still assigned to one or more members",
+            "description": "The role is 'owner', or is still assigned to one or more members; a built-in project role is role_not_deletable",
             "content": {
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRefusal"
                 }
               }
             }
@@ -36435,11 +36515,16 @@
             }
           },
           "409": {
-            "description": "An equivalent deletion is already pending, or a project role is still held or referenced",
+            "description": "An equivalent deletion is already pending, or a project role is still held (role_in_use with holderCount, projectCount, projects) or has revoked grants (role_has_revoked_grants)",
             "content": {
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleRefusal"
                 }
               }
             }

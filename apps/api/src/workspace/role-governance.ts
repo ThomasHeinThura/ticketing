@@ -211,6 +211,18 @@ export async function appendRoleAudit(
           role: input.roleName,
           capabilities: sortedCapabilities(input.before),
           ...(input.scope === undefined ? {} : { scope: input.scope }),
+          // A delete has no `after`, so the snapshot keeps what the role was.
+          ...(input.action === "role.deleted"
+            ? {
+                ...(input.name ? { name: input.name.before } : {}),
+                ...(input.description
+                  ? { description: input.description.before }
+                  : {}),
+                ...(input.holderCount === undefined
+                  ? {}
+                  : { holderCount: input.holderCount }),
+              }
+            : {}),
         }
       : null,
     after:
