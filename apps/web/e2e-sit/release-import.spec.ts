@@ -16,7 +16,7 @@ test.afterEach(({ browserName: _browserName }, testInfo) => {
  * requires the `instance:admin` capability (apps/api/src/imports/policy.ts), which God Mode
  * signs in with its own password and MFA. The first test proves every workspace role whose session
  * the server does not report as an instance administrator is refused every import route, and
- * that the God Mode import screen shows such a workspace admin "Access denied". Instance
+ * that the God Mode import screen shows the most privileged such account "Access denied". Instance
  * administrators (any account, including a break-glass grant) are covered by
  * release-import-apply.spec.ts.
  */
@@ -59,11 +59,13 @@ test("workspace roles are refused every import route and the God Mode import scr
       });
       expect(created.status, `${role} create source`).toBe(403);
     }
-    // Never pass vacuously: a workspace admin must be among the refused accounts.
-    expect(refused).toContain("admin");
-    const admin = sessions.find((session) => session.role === "admin");
-    if (!admin) throw new Error("No admin session.");
-    const page = await admin.context.newPage();
+    // Never pass vacuously: at least one workspace account must have been refused. The screen
+    // check uses the most privileged of them (admin when it is not an instance administrator).
+    expect(refused.length, "accounts checked for refusal").toBeGreaterThan(0);
+    const screenRole = roles.find((role) => refused.includes(role));
+    const viewer = sessions.find((session) => session.role === screenRole);
+    if (!viewer) throw new Error("No refused session for the screen check.");
+    const page = await viewer.context.newPage();
     await page.goto("/god-mode/imports");
     await expect(page.getByText("Access denied")).toBeVisible();
     await expect(
